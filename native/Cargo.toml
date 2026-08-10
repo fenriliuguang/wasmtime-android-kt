@@ -1,0 +1,29 @@
+[package]
+name = "wasmtime-android-kt"
+version = "0.1.0"
+edition = "2021"
+description = "Thin JNI cdylib over upstream Wasmtime for Android (Track B)"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "wasmtime_android_kt"
+crate-type = ["cdylib"]
+
+[dependencies]
+# Pin to Track A Wasmtime generation (wasmtime4j 47.0.2-*). Revise tech-stack.md on bump.
+jni = "0.21"
+wasmtime = { version = "47.0.2", default-features = false, features = [
+    "std",
+    "cranelift",
+    "runtime",
+    "component-model",
+    "component-model-async",
+    "async",
+] }
+
+[profile.release]
+lto = false
+codegen-units = 16
+# On Windows hosts, scripts/build-native-android.ps1 may force opt-level=0
+# (rustc ACCESS_VIOLATION workaround when cross-compiling to Android).

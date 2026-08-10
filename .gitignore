@@ -1,0 +1,22 @@
+.idea/
+*.iml
+.gradle/
+build/
+local.properties
+.DS_Store
+*.so
+*.dll
+*.dylib
+target/
+.deps/
+*.apk
+*.aab
+captures/
+.cxx/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Keep jniLibs directory layout; binaries stay local.
+!android/jniLibs/**/.gitkeep
+!native/link-stubs/libpthread.so
