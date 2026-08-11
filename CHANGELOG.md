@@ -4,6 +4,11 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Chore — Apache-2.0 license + third-party notices (2026-08-11)
+
+- Add root [`LICENSE`](LICENSE) (Apache-2.0), [`NOTICE`](NOTICE), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
+- Align with `native/Cargo.toml` `license = "Apache-2.0"`; set same on guest crate; link from README (ZH+EN)
+
 ### Chore — OSS PR readiness (CI, CONTRIBUTING, templates) (2026-08-11)
 
 - Add `.github/workflows/ci.yml`: `cargo test` in `native/` + `:runtime-api:compileKotlin`; aggregate check name `CI` for Rulesets

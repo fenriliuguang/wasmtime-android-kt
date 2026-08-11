@@ -88,6 +88,7 @@
 - [x] CI：[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（`cargo test` + `:runtime-api:compileKotlin`）；Ruleset 挂状态检查名 **`CI`**  
 - [x] [`CONTRIBUTING.md`](../../CONTRIBUTING.md) → 本文 + [`../contribute.md`](../contribute.md)  
 - [x] Issue / PR 模板：[`.github/`](../../.github/)  
+- [x] 许可证：[`LICENSE`](../../LICENSE)（Apache-2.0）+ [`NOTICE`](../../NOTICE) + [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md)  
 - [x] 权限口径写入 CONTRIBUTING（协作者 Write；外人 Fork + PR）— **须在 GitHub 网页落实** Collaborators  
 
 合入本清单对应 PR 后：在 Ruleset 中启用 **Require status checks → `CI`**，再把 Enforcement 设为 Active。

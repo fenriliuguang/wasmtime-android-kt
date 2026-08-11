@@ -1,0 +1,7 @@
+wasmtime-android-kt
+Copyright 2026 焚日流光
+
+This product includes software developed at Bytecode Alliance
+(https://bytecodealliance.org/), including Wasmtime and Cranelift,
+licensed under the Apache License 2.0 with LLVM Exceptions.
+See THIRD_PARTY_NOTICES.md for a summary of third-party licenses.

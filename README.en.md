@@ -65,3 +65,8 @@ Pinned versions: NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1` — see [`docs/
 - **Long-term planning docs** (no new code required in this tranche)
 - **Archived** M0–M5 thin L1 base (sync CM, true CM async, experimental webgpu→L2, Dawn smoke)
 - **No** wasmtime4j dependency; **no** silent replace of Track A acceptance
+
+## License
+
+**Apache License 2.0** — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).  
+Third-party summary: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) (Wasmtime is Apache-2.0 WITH LLVM-exception).

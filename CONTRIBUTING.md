@@ -64,4 +64,5 @@ cargo test --all-targets
 
 ## 许可
 
-贡献默认与本仓相同许可证（见仓库 `LICENSE` 或根 README 声明）。提交即表示你有权按该许可贡献。
+贡献默认与本仓相同许可证：**Apache License 2.0**（[`LICENSE`](LICENSE)、[`NOTICE`](NOTICE)）。  
+第三方依赖见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。提交即表示你有权按该许可贡献。
