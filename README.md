@@ -80,6 +80,7 @@
 | [里程碑史实](docs/scheme/milestones.md) | M0–M5 冻结 DoD |
 | [非目标](docs/scheme/non-goals.md) | 明确不做 |
 | [Changelog](CHANGELOG.md) | 变更 |
+| [许可 / 第三方](THIRD_PARTY_NOTICES.md) | Apache-2.0 + 依赖摘要 |
 
 ## 当前交付
 
@@ -87,7 +88,13 @@
 - **短期底座已归档**：M0–M5 薄 L1（同步 CM、真 CM async、experimental webgpu→L2、Dawn smoke、错误/ABI/API 政策）  
 - **不**依赖 wasmtime4j；**不**默认对外发布；**不**替换轨 A 主验收  
 
+## 许可
+
+本仓采用 **Apache License 2.0**（见 [`LICENSE`](LICENSE)、[`NOTICE`](NOTICE)）。  
+第三方依赖许可摘要：[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)（引擎 Wasmtime 为 Apache-2.0 WITH LLVM-exception）。
+
 ## 参考
 
 - 轨 A：[`wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) · [真 CM async 闸门归档](../wasi-webgpu-jvm-mvp/docs/scheme/archive-true-cm-async-dod.md) · [UPSTREAM §5](../wasi-webgpu-jvm-mvp/patches/UPSTREAM.md)  
 - [Wasmtime](https://docs.wasmtime.dev/) · [Component Model Async](https://component-model.bytecodealliance.org/design/async.html) · [androidx.webgpu](https://developer.android.com/jetpack/androidx/releases/webgpu)  
+
