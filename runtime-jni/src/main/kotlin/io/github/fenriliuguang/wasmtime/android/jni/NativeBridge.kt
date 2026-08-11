@@ -49,4 +49,8 @@ object NativeBridge {
         a: Int,
         b: Int,
     ): Int
+
+    /** M2: `run_concurrent` + `call_concurrent` for export `run: func() -> u32`. */
+    @JvmStatic
+    external fun nativeCallRunConcurrent(store: Long, instance: Long): Int
 }

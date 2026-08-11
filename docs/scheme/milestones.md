@@ -58,12 +58,12 @@ M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 A
 
 ### DoD
 
-- [ ] Host 经官方 concurrent API 注册 **async** import  
-- [ ] Host 可 **创建并 complete / reject** future（假 payload 可）  
-- [ ] Guest（最小 async smoke）观察到完成值或拒绝  
-- [ ] 文档：线程模型初稿（谁驱动 `run_concurrent`）  
-- [ ] CHANGELOG  
-- [ ] **闸门：** 若不可行，书面记录根因并暂停 M3+  
+- [x] Host 经官方 concurrent API 注册 **async** import（`func_wrap_concurrent("get")`）  
+- [x] Host 可 **创建并 complete** future（`FutureReader` + oneshot；reject 路径保留 `Err`）  
+- [x] Guest（`fixtures/m2/async_get`）观察到完成值 `42`（真机仪器）  
+- [x] 文档：线程模型初稿（[`../mapping/threading-m2-async.md`](../mapping/threading-m2-async.md)）  
+- [x] CHANGELOG  
+- [x] **闸门：** 已通过 — 可进入 M3  
 
 ### 非目标
 

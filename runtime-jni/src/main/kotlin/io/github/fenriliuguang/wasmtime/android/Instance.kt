@@ -24,4 +24,14 @@ class Instance internal constructor(internal var handle: Long) : AutoCloseable {
         require(store.handle != 0L) { "store closed" }
         return NativeBridge.nativeCallU32U32(store.handle, handle, exportName, a, b)
     }
+
+    /**
+     * M2: call root export `run: func() -> u32` via Wasmtime `run_concurrent` /
+     * `call_concurrent` (host may use `func_wrap_concurrent` + futures).
+     */
+    fun callRunConcurrent(store: Store): Int {
+        require(handle != 0L) { "instance closed" }
+        require(store.handle != 0L) { "store closed" }
+        return NativeBridge.nativeCallRunConcurrent(store.handle, handle)
+    }
 }

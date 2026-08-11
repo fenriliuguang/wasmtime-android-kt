@@ -1,0 +1,10 @@
+package local:m2-async-smoke@0.1.0;
+
+interface host {
+  get: async func() -> u32;
+}
+
+world smoke {
+  import host;
+  export run: func() -> u32;
+}

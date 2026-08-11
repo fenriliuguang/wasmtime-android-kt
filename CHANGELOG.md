@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — M2 true CM async gate (2026-08-11)
+
+- Engine enables `wasm_component_model_async`; linker registers `get` via `func_wrap_concurrent`
+- Host creates `FutureReader` (oneshot), completes with `42`; guest `fixtures/m2/async_get` observes via `run`
+- JNI `nativeCallRunConcurrent` → `pollster::block_on(run_concurrent(call_concurrent))`
+- Docs: [`docs/mapping/threading-m2-async.md`](docs/mapping/threading-m2-async.md); instrument `AsyncCmGetInstrumentedTest`
+
 ### Code — M1 sync CM closed (2026-08-11)
 
 - Kotlin API: `Engine` / `Store` / `Component` / `Linker` / `Instance` + `WasmtimeException` + `HostU32U32ToU32`

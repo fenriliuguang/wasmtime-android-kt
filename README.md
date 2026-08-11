@@ -4,7 +4,7 @@
 
 **中文** | [English](README.en.md)
 
-> **状态：M0–M1 已真机验收（2026-08-11）。** 下一步 M2 真 CM async。  
+> **状态：M0–M2 已真机验收（2026-08-11）。** 下一步 M3 接轨 A L2。  
 > 姊妹项目（轨 A）：[`../wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) — 锁死 **sync-compat** + wasmtime4j；真机验收仍为 CM cube。  
 > 详细章程：[`docs/scheme/charter.md`](docs/scheme/charter.md)。  
 > **构建说明：** [`docs/build.md`](docs/build.md)。
@@ -67,6 +67,7 @@
 | [里程碑与 DoD](docs/scheme/milestones.md) | M0–M5 堆叠 |
 | [非目标](docs/scheme/non-goals.md) | 明确不做 |
 | [Android 线程契约](docs/mapping/threading-android.md) | Dawn / Surface / CM scheduler |
+| [M2 `run_concurrent` 泵](docs/mapping/threading-m2-async.md) | 谁驱动 async 事件循环 |
 | [Changelog](CHANGELOG.md) | 变更 |
 
 ## 当前交付

@@ -13,6 +13,8 @@ crate-type = ["cdylib"]
 [dependencies]
 # Pin to Track A Wasmtime generation (wasmtime4j 47.0.2-*). Revise tech-stack.md on bump.
 jni = "0.21"
+pollster = "0.4"
+futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 wasmtime = { version = "47.0.2", default-features = false, features = [
     "std",
     "cranelift",

@@ -1,18 +1,20 @@
-//! Sync Component Model JNI (M1: compile / host import / resource / call).
+//! Component Model JNI (M1 sync + M2 concurrent/async).
 
+use crate::engine::new_engine;
 use crate::error::{throw, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{HostState, Widget};
 use crate::jvm;
+use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
 use jni::sys::{jint, jlong};
 use jni::JNIEnv;
-use wasmtime::component::{Component, Linker, Resource, ResourceType};
+use wasmtime::component::{Component, FutureReader, Linker, Resource, ResourceType};
 use wasmtime::{Engine, Store};
 
 type HostStore = Store<HostState>;
 
-fn define_m1_host(linker: &mut Linker<HostState>) -> Result<(), String> {
+fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     linker
         .root()
         .resource(
@@ -66,15 +68,44 @@ fn define_m1_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         )
         .map_err(|e| e.to_string())?;
 
+    // M2: true CM async host import via official concurrent API + FutureReader complete.
+    linker
+        .root()
+        .func_wrap_concurrent("get", |accessor, ()| {
+            Box::pin(async move {
+                let (tx, rx) = oneshot::channel::<u32>();
+                let mut reader = accessor.with(|mut access| {
+                    FutureReader::new(&mut access, async move {
+                        match rx.await {
+                            Ok(v) => Ok(Some(v)),
+                            Err(_) => Err(wasmtime::Error::msg("future rejected/canceled")),
+                        }
+                    })
+                })?;
+                // Complete then close so the producer is observed (not left pending).
+                tx.send(42)
+                    .map_err(|_| wasmtime::Error::msg("no future consumer"))?;
+                accessor.with(|mut access| reader.close(&mut access))?;
+                Ok((42u32,))
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
 #[no_mangle]
 pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeEngineNew(
-    _env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
 ) -> jlong {
-    to_handle(Engine::default())
+    match new_engine() {
+        Ok(engine) => to_handle(engine),
+        Err(e) => {
+            throw(&mut env, e);
+            0
+        }
+    }
 }
 
 #[no_mangle]
@@ -184,7 +215,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     }
     let engine = unsafe { from_handle::<Engine>(engine) };
     let mut linker = Linker::<HostState>::new(engine);
-    if let Err(e) = define_m1_host(&mut linker) {
+    if let Err(e) = define_host(&mut linker) {
         throw(&mut env, e);
         return 0;
     }
@@ -215,7 +246,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     let linker = unsafe { from_handle::<Linker<HostState>>(linker) };
     let store = unsafe { from_handle::<HostStore>(store) };
     let component = unsafe { from_handle::<Component>(component) };
-    match linker.instantiate(&mut *store, component) {
+    match pollster::block_on(linker.instantiate_async(&mut *store, component)) {
         Ok(instance) => to_handle(instance),
         Err(e) => {
             throw_err(&mut env, e);
@@ -303,6 +334,44 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     };
     match func.call(&mut *store, (a as u32, b as u32)) {
         Ok((result,)) => result as jint,
+        Err(e) => {
+            throw_err(&mut env, e);
+            0
+        }
+    }
+}
+
+/// M2: call root export `run: func() -> u32` under `run_concurrent` / `call_concurrent`.
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallRunConcurrent(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    instance: jlong,
+) -> jint {
+    if store == 0 || instance == 0 {
+        throw(&mut env, "null store/instance handle");
+        return 0;
+    }
+    let store = unsafe { from_handle::<HostStore>(store) };
+    let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
+
+    // Sync export that sync-lowers an async import: drive with run_concurrent + call_concurrent.
+    // (Matches Wasmtime's sync-lower-async-host pattern; pollster pumps the event loop.)
+    let result = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor.with(|mut access| {
+                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
+                })?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    });
+
+    match result {
+        Ok(v) => v as jint,
         Err(e) => {
             throw_err(&mut env, e);
             0

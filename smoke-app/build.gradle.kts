@@ -9,7 +9,16 @@ val copyM1Fixtures by tasks.registering(Copy::class) {
     into(layout.projectDirectory.dir("src/androidTest/assets/m1"))
 }
 
-tasks.named("preBuild").configure { dependsOn(copyM1Fixtures) }
+val copyM2Fixtures by tasks.registering(Copy::class) {
+    from(rootProject.file("fixtures/m2")) {
+        include("*.wasm")
+    }
+    into(layout.projectDirectory.dir("src/androidTest/assets/m2"))
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(copyM1Fixtures, copyM2Fixtures)
+}
 
 android {
     namespace = "io.github.fenriliuguang.wasmtime.android.smoke"

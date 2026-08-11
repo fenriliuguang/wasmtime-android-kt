@@ -1,0 +1,12 @@
+[package]
+name = "m2-async-smoke"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+wit-bindgen = { version = "0.59.0", default-features = false, features = ["macros", "realloc", "async"] }
