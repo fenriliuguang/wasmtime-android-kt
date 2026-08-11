@@ -4,7 +4,7 @@
 
 [中文](README.md) | **English**
 
-> **Status: M0 build skeleton landed (2026-08-10).** No Component Model runtime API yet (M1+).  
+> **Status: M0–M5 closed (2026-08-11).** Authoritative DoD: [`docs/scheme/milestones.md`](docs/scheme/milestones.md) (ZH).  
 > Sister project (Track A): [`../wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) — **locked sync-compat** + wasmtime4j; device acceptance remains CM cube.  
 > Full charter: [`docs/scheme/charter.en.md`](docs/scheme/charter.en.md).  
 > **Build guide:** [`docs/build.md`](docs/build.md) (Chinese; commands are OS-agnostic).

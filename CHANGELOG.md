@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Docs — M5 close: contributor shell + WASI worlds RFC (2026-08-11)
+
+- Add [`docs/contribute.md`](docs/contribute.md): contributor flow; optional desktop JVM shell
+- Add `scripts/build-native-host.ps1` → `desktop/jniLibs/`; JVM smoke `:runtime-jni:test` (`HostLoadLibraryTest`)
+- Add [`docs/scheme/rfc-wasi-worlds.md`](docs/scheme/rfc-wasi-worlds.md): conditional WASI world roadmap (P0 webgpu subset; P2 needs new RFC)
+- Mark M5 DoD complete in [`docs/scheme/milestones.md`](docs/scheme/milestones.md)
+
 ### Docs — M5 slice: API stability policy (2026-08-11)
 
 - Add [`docs/scheme/api-stability.md`](docs/scheme/api-stability.md): `0.x-experimental` SemVer rules, surface tiers, Track A follow, 1.0 gate

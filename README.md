@@ -4,7 +4,7 @@
 
 **中文** | [English](README.en.md)
 
-> **状态：M0–M4 已真机验收；M5 进行中（错误 / 产物 / API 政策，2026-08-11）。** M4 为 Dawn clear→present 专用 smoke（非轨 A cube 替换）。  
+> **状态：M0–M5 已收口（2026-08-11）。** M4 为 Dawn clear→present 专用 smoke（非轨 A cube 替换）；M5 含错误模型 / 双 ABI / API 政策 / 贡献者桌面壳 / WASI world RFC。  
 > 姊妹项目（轨 A）：[`../wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) — 锁死 **sync-compat** + wasmtime4j；真机验收仍为 CM cube。  
 > 详细章程：[`docs/scheme/charter.md`](docs/scheme/charter.md)。  
 > **构建说明：** [`docs/build.md`](docs/build.md)。
@@ -53,7 +53,8 @@
 | `android/` | AAR + `jniLibs` |
 | `smoke-app/` | 最小 Activity + `LoadLibraryInstrumentedTest` |
 | `native/` | Rust cdylib（`wasmtime` 47.0.2 + JNI） |
-| `scripts/build-native-android.ps1` | cargo-ndk 流水线 |
+| `scripts/build-native-android.ps1` | cargo-ndk 流水线（正式 ABI） |
+| `scripts/build-native-host.ps1` | 可选桌面宿主 cdylib |
 
 ## 文档索引
 
@@ -62,6 +63,8 @@
 | [章程（主计划）](docs/scheme/charter.md) | 背景、依赖、目标堆叠、里程碑、风险、DoD |
 | [API 稳定性](docs/scheme/api-stability.md) | experimental `0.x` SemVer 与破坏性约定 |
 | [如何构建](docs/build.md) | NDK / cargo-ndk / Gradle 复现步骤 |
+| [贡献者 / 桌面壳](docs/contribute.md) | 可选宿主 native + JVM 冒烟 |
+| [WASI world RFC](docs/scheme/rfc-wasi-worlds.md) | 更多 world：有条件支持 |
 | [轨 A L2 依赖](docs/build-track-a-deps.md) | mavenLocal `host-api` / `abi-cm` |
 | [错误模型](docs/mapping/errors.md) | L1 异常分层（M5）；M3 subset 见 [errors-m3](docs/mapping/errors-m3.md) |
 | [Native 产物布局](docs/mapping/artifacts.md) | jniLibs ABI / `build-info.json` / 校验脚本 |
@@ -77,10 +80,10 @@
 
 ## 当前交付
 
-- 计划文档 + **M0 Gradle / native 骨架**  
-- `JNI_OnLoad` → `JNI_VERSION_1_6`；`loadLibrary` 仪器用例  
-- **无** CM instantiate / async / L2 接线（M1+）  
-- **不**依赖 wasmtime4j  
+- M0–M5 DoD 已勾选（见 [`docs/scheme/milestones.md`](docs/scheme/milestones.md)）  
+- 薄 L1：同步 CM、真 CM async、experimental webgpu → 轨 A L2、Dawn clear→present smoke  
+- M5：稳定错误类型、双 ABI 产物、API 政策、[`docs/contribute.md`](docs/contribute.md)、[`rfc-wasi-worlds.md`](docs/scheme/rfc-wasi-worlds.md)  
+- **不**依赖 wasmtime4j；**不**默认对外发布  
 
 ## 参考
 

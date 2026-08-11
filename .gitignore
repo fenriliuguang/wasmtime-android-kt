@@ -20,6 +20,8 @@ captures/
 # Keep jniLibs directory layout; binaries stay local.
 !android/jniLibs/**/.gitkeep
 android/jniLibs/build-info.json
+!desktop/jniLibs/**/.gitkeep
+desktop/jniLibs/build-info.json
 !native/link-stubs/libpthread.so
 
 # Copied from fixtures/m1 by smoke-app preBuild.

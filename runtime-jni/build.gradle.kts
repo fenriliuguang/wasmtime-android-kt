@@ -16,4 +16,16 @@ dependencies {
     // Track A L2 (Cpu path). Requires `./gradlew publishEngineeredToMavenLocal` in wasi-webgpu-jvm-mvp.
     api(libs.wasi.webgpu.host.api)
     api(libs.wasi.webgpu.abi.cm)
+    testImplementation(libs.junit)
+}
+
+// Optional desktop shell: load host cdylib from desktop/jniLibs (see docs/contribute.md).
+val desktopJniLibs = rootProject.layout.projectDirectory.dir("desktop/jniLibs")
+tasks.test {
+    val jniPath = desktopJniLibs.asFile.absolutePath
+    systemProperty("java.library.path", jniPath)
+    systemProperty("wasmtime.desktop.jniLibs", jniPath)
+    val sep = System.getProperty("path.separator")
+    val pathKey = if (System.getProperty("os.name").orEmpty().startsWith("Windows")) "Path" else "PATH"
+    environment(pathKey, jniPath + sep + (System.getenv(pathKey) ?: System.getenv("PATH") ?: ""))
 }

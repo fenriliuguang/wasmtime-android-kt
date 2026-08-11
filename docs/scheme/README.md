@@ -14,7 +14,7 @@
 | **M2 真 CM async** | **完成**（2026-08-11） |
 | **M3 接 L2** | **完成**（2026-08-11） |
 | **M4 Android 上屏 smoke** | **完成**（Dawn clear→present；2026-08-11） |
-| **M5 运行时硬化** | 进行中（错误 / 产物 / API 政策；2026-08-11） |
+| **M5 运行时硬化** | **完成**（错误 / 产物 / API / 贡献者壳 / WASI RFC；2026-08-11） |
 
 ## 文档
 
@@ -25,6 +25,8 @@
 | [`tech-stack.md`](tech-stack.md) | Wasmtime / JNI / NDK / 依赖 |
 | [`milestones.md`](milestones.md) | M0–M5 DoD |
 | [`api-stability.md`](api-stability.md) | experimental semver / 破坏性约定 |
+| [`rfc-wasi-worlds.md`](rfc-wasi-worlds.md) | 更多 WASI world：有条件支持 / 优先级 |
+| [`../contribute.md`](../contribute.md) | 贡献者构建；可选桌面开发壳 |
 | [`non-goals.md`](non-goals.md) | 非目标硬表 |
 | [`../mapping/threading-android.md`](../mapping/threading-android.md) | 线程契约 |
 

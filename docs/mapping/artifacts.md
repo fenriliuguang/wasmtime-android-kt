@@ -60,6 +60,18 @@ android/jniLibs/
 - `-RequireAll`：必须同时有 `arm64-v8a` 与 `x86_64`  
 - 若存在 `build-info.json`，可选核对 sha256（脚本默认核对所列 ABI）  
 
+## 可选：桌面宿主产物（非正式）
+
+开发便利见 [`../contribute.md`](../contribute.md)：
+
+```powershell
+.\scripts\build-native-host.ps1
+# → desktop/jniLibs/wasmtime_android_kt.dll|.so|.dylib + build-info.json
+```
+
+- **不**进入 AAR / 仪器门禁；**不**替代上表双 ABI。  
+- JVM：`-Djava.library.path=<repo>/desktop/jniLibs`（`:runtime-jni:test` 已配置）。
+
 ## 非目标
 
 - 不上传 Maven / 不宣布对外二进制发布  

@@ -92,7 +92,18 @@ OEM / UTP 竞态时可改用 `adb shell am instrument`（经验同轨 A）。
 | `smoke-app` | 最小 Activity + 仪器 |
 | `native/` | Rust cdylib（非 Gradle 子项目） |
 
+## 4. 可选：桌面开发壳
+
+无 NDK 时可用宿主 cdylib + JVM 冒烟迭代 L1（**非正式门禁**）：
+
+```powershell
+.\scripts\build-native-host.ps1
+.\gradlew.bat :runtime-jni:test
+```
+
+完整贡献者流程见 [`contribute.md`](contribute.md)。
+
 ## 明确不做
 
 - **不**依赖 `wasmtime4j` / 轨 A `runtime-wasmtime`
-- M0 **不** instantiate component、不接 Dawn（见 [`scheme/milestones.md`](scheme/milestones.md)）
+- 桌面壳 **不**替代 Android 仪器门禁（见 [`scheme/milestones.md`](scheme/milestones.md)）
