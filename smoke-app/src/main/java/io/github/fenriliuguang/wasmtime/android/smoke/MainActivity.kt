@@ -5,19 +5,34 @@ import android.os.Bundle
 import android.widget.TextView
 import io.github.fenriliuguang.wasmtime.android.jni.NativeBridge
 
-/** Minimal shell: load native + show Wasmtime version (M0). */
+/**
+ * Smoke shell: SurfaceView for M4 instruments + native version probe.
+ *
+ * Pass [EXTRA_SKIP_DEMO_AUTORUN] to skip native load (instrumented Surface path).
+ */
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val text = TextView(this)
-        text.text =
-            try {
-                val id = NativeBridge.nativeRuntimeId()
-                val ver = NativeBridge.nativeWasmtimeVersion()
-                "ok\n$id\nwasmtime $ver"
-            } catch (t: Throwable) {
-                "load failed: ${t.message}"
+        setContentView(R.layout.activity_main)
+
+        val status = findViewById<TextView>(R.id.status)
+        val skipDemo = intent.getBooleanExtra(EXTRA_SKIP_DEMO_AUTORUN, false)
+        status.text =
+            if (skipDemo) {
+                "Surface ready (autorun skipped)"
+            } else {
+                try {
+                    val id = NativeBridge.nativeRuntimeId()
+                    val ver = NativeBridge.nativeWasmtimeVersion()
+                    "ok\n$id\nwasmtime $ver"
+                } catch (t: Throwable) {
+                    "load failed: ${t.message}"
+                }
             }
-        setContentView(text)
+    }
+
+    companion object {
+        const val EXTRA_SKIP_DEMO_AUTORUN: String =
+            "io.github.fenriliuguang.wasmtime.android.smoke.SKIP_DEMO_AUTORUN"
     }
 }

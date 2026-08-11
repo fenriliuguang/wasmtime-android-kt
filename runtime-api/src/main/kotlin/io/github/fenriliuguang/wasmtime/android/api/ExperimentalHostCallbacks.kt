@@ -1,0 +1,57 @@
+package io.github.fenriliuguang.wasmtime.android.api
+
+/**
+ * Flat experimental CM host callbacks for Track B L1 (u32 reps, not WIT resources).
+ *
+ * M3 uses [requestAdapter] only. M4 render smoke wires the clear→present subset.
+ * Defaults throw so partial attachments stay explicit.
+ */
+interface ExperimentalHostCallbacks {
+    fun requestAdapter(): Int = unsupported("requestAdapter")
+
+    fun adapterRequestDevice(adapter: Int): Int = unsupported("adapterRequestDevice")
+
+    fun deviceGetQueue(device: Int): Int = unsupported("deviceGetQueue")
+
+    fun createSurfaceFromNativeWindow(windowHandle: Long): Int =
+        unsupported("createSurfaceFromNativeWindow")
+
+    fun surfaceConfigure(
+        surface: Int,
+        device: Int,
+        adapter: Int,
+        width: Int,
+        height: Int,
+    ): Int = unsupported("surfaceConfigure")
+
+    fun surfaceGetCurrentTextureView(surface: Int): Int =
+        unsupported("surfaceGetCurrentTextureView")
+
+    fun deviceCreateCommandEncoder(device: Int): Int = unsupported("deviceCreateCommandEncoder")
+
+    /** Host picks a fixed clear color (smoke). */
+    fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")
+
+    fun renderPassEnd(pass: Int) {
+        unsupported("renderPassEnd")
+    }
+
+    fun commandEncoderFinish(encoder: Int): Int = unsupported("commandEncoderFinish")
+
+    fun queueSubmit1(queue: Int, commandBuffer: Int) {
+        unsupported("queueSubmit1")
+    }
+
+    fun surfacePresent(surface: Int) {
+        unsupported("surfacePresent")
+    }
+
+    fun surfaceUnconfigure(surface: Int) {
+        unsupported("surfaceUnconfigure")
+    }
+
+    private companion object {
+        private fun unsupported(name: String): Nothing =
+            throw UnsupportedOperationException("ExperimentalHostCallbacks.$name not wired")
+    }
+}

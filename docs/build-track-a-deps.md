@@ -13,6 +13,7 @@ cd ..\wasi-webgpu-jvm-mvp
 
 - `io.github.fenriliuguang.wasi.webgpu.experimental:host-api`
 - `io.github.fenriliuguang.wasi.webgpu.experimental:abi-cm`
+- `io.github.fenriliuguang.wasi.webgpu.experimental:host-webgpu`（M4+ Dawn；Android AAR）
 
 详见轨 A [`docs/maven-local.md`](../../wasi-webgpu-jvm-mvp/docs/maven-local.md)。
 

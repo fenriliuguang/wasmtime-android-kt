@@ -41,4 +41,14 @@ class Instance internal constructor(internal var handle: Long) : AutoCloseable {
         require(store.handle != 0L) { "store closed" }
         return NativeBridge.nativeCallRunConcurrent(store.handle, handle)
     }
+
+    /**
+     * Call a root export with signature `(u64, u32, u32) -> u32`.
+     * [a] is treated as unsigned bits (e.g. Android native window handle).
+     */
+    fun callU64U32U32(store: Store, exportName: String, a: Long, b: Int, c: Int): Int {
+        require(handle != 0L) { "instance closed" }
+        require(store.handle != 0L) { "store closed" }
+        return NativeBridge.nativeCallU64U32U32(store.handle, handle, exportName, a, b, c)
+    }
 }

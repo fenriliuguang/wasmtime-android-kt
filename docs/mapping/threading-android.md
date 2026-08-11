@@ -33,6 +33,12 @@ Rust async rt   ：只做 Wasmtime 调度；回呼 Java 经线程安全队列
 
 若 M2 证明「CM loop 必须与 GpuThread 合一」更简单，则 **合并**，并写进本页修订。
 
+### M4 钉死（2026-08-11）
+
+- 仪器 `DawnRenderSmokeInstrumentedTest`：CM instantiate / host 回调 / Dawn present **均在同一 GpuThread**（匿名后台线程）。  
+- UI 线程只做 Surface 生命周期与 Activity 启停；`windowFromSurface` 在 GpuThread 上调用。  
+- M4 首片仍为 sync-compat（无第二 CM async 泵）；与 M2 `run_concurrent` 路径隔离。
+
 ## 4. 与轨 A 的差异
 
 | 点 | 轨 A（sync-compat） | 轨 B（目标） |

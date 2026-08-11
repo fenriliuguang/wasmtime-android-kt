@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — M4 Dawn render smoke (2026-08-11)
+
+- Depend on Track A `host-webgpu` (Dawn) in smoke-app main APK (native `.so` packaging)
+- L1 flat experimental host subset: adapter/device/queue/surface/clear/present (u32 reps)
+- Fixture `fixtures/m4/render_smoke` (`run-clear`); instrument `DawnRenderSmokeInstrumentedTest`
+- Gap list: [`docs/mapping/gap-m4-vs-cube.md`](docs/mapping/gap-m4-vs-cube.md); threading note in `threading-android.md`
+
 ### Code — M3 L1→L2 request-adapter (2026-08-11)
 
 - Depend on Track A `host-api` + `abi-cm` via mavenLocal (`docs/build-track-a-deps.md`)

@@ -18,6 +18,7 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 androidx-test-services = { group = "androidx.test.services", name = "test-services", version.ref = "androidxTestServices" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 wasi-webgpu-host-api = { group = "io.github.fenriliuguang.wasi.webgpu.experimental", name = "host-api", version.ref = "wasiWebgpu" }
+wasi-webgpu-host-webgpu = { group = "io.github.fenriliuguang.wasi.webgpu.experimental", name = "host-webgpu", version.ref = "wasiWebgpu" }
 wasi-webgpu-abi-cm = { group = "io.github.fenriliuguang.wasi.webgpu.experimental", name = "abi-cm", version.ref = "wasiWebgpu" }
 
 [plugins]

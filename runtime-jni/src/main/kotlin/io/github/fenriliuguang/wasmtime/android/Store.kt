@@ -1,5 +1,6 @@
 package io.github.fenriliuguang.wasmtime.android
 
+import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
 import io.github.fenriliuguang.wasmtime.android.api.HostU32Supplier
 import io.github.fenriliuguang.wasmtime.android.api.HostU32U32ToU32
 import io.github.fenriliuguang.wasmtime.android.jni.NativeBridge
@@ -20,12 +21,23 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
     }
 
     /**
-     * Register Kotlin implementation for
-     * `experimental:webgpu-cm/host@0.8.0#request-adapter` → `u32` rep.
+     * Register Kotlin [ExperimentalHostCallbacks] for
+     * `experimental:webgpu-cm/host@0.8.0` (flat u32-rep imports).
+     */
+    fun setExperimentalHost(callback: ExperimentalHostCallbacks) {
+        require(handle != 0L) { "store closed" }
+        NativeBridge.nativeStoreSetExperimentalHost(handle, callback)
+    }
+
+    /**
+     * Convenience for M3: only `request-adapter` → `u32` rep.
      */
     fun setRequestAdapter(callback: HostU32Supplier) {
-        require(handle != 0L) { "store closed" }
-        NativeBridge.nativeStoreSetRequestAdapter(handle, callback)
+        setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = callback.invoke()
+            },
+        )
     }
 
     companion object {

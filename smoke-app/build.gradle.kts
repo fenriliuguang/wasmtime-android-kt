@@ -23,8 +23,15 @@ val copyM3Fixtures by tasks.registering(Copy::class) {
     into(layout.projectDirectory.dir("src/androidTest/assets/m3"))
 }
 
+val copyM4Fixtures by tasks.registering(Copy::class) {
+    from(rootProject.file("fixtures/m4")) {
+        include("*.wasm")
+    }
+    into(layout.projectDirectory.dir("src/androidTest/assets/m4"))
+}
+
 tasks.named("preBuild").configure {
-    dependsOn(copyM1Fixtures, copyM2Fixtures, copyM3Fixtures)
+    dependsOn(copyM1Fixtures, copyM2Fixtures, copyM3Fixtures, copyM4Fixtures)
 }
 
 android {
@@ -72,7 +79,9 @@ android {
 dependencies {
     implementation(project(":android"))
     implementation(libs.androidx.core.ktx)
-    // Track A Cpu L2 for M3 instrumented path (also pulled via :runtime-jni).
+    // Dawn native (`libwebgpu_c_bundled.so`) must live in the main APK (Track A pattern).
+    implementation(libs.wasi.webgpu.host.webgpu)
+    // Track A L2 Cpu path for M3 instruments (also via :runtime-jni).
     androidTestImplementation(libs.wasi.webgpu.host.api)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)

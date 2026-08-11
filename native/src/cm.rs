@@ -91,19 +91,124 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
-    // M3: Track A experimental CM host — request-adapter → L2 (Cpu/Dawn) via Kotlin callback.
+    // M3/M4: Track A experimental CM host (flat u32 reps) → L2 via Kotlin callbacks.
     let mut exp = linker
         .instance("experimental:webgpu-cm/host@0.8.0")
         .map_err(|e| e.to_string())?;
-    exp.func_wrap("request-adapter", |caller, ()| {
-        let cb = caller
-            .data()
-            .request_adapter_cb
+
+    fn exp_cb(data: &HostState) -> Result<jni::objects::GlobalRef, wasmtime::Error> {
+        data.experimental_host_cb
             .as_ref()
-            .ok_or_else(|| wasmtime::Error::msg("request-adapter callback not set"))?
-            .clone();
-        let rep = jvm::call_u32_supplier(&cb).map_err(wasmtime::Error::msg)?;
+            .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+            .cloned()
+    }
+
+    exp.func_wrap("request-adapter", |caller, ()| {
+        let cb = exp_cb(caller.data())?;
+        let rep = jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
         Ok((rep,))
+    })
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap("adapter-request-device", |caller, (adapter,): (u32,)| {
+        let cb = exp_cb(caller.data())?;
+        let rep = jvm::exp_adapter_request_device(&cb, adapter).map_err(wasmtime::Error::msg)?;
+        Ok((rep,))
+    })
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap("device-get-queue", |caller, (device,): (u32,)| {
+        let cb = exp_cb(caller.data())?;
+        let rep = jvm::exp_device_get_queue(&cb, device).map_err(wasmtime::Error::msg)?;
+        Ok((rep,))
+    })
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap(
+        "create-surface-from-native-window",
+        |caller, (window,): (u64,)| {
+            let cb = exp_cb(caller.data())?;
+            let rep = jvm::exp_create_surface(&cb, window).map_err(wasmtime::Error::msg)?;
+            Ok((rep,))
+        },
+    )
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap(
+        "surface-configure",
+        |caller, (surface, device, adapter, width, height): (u32, u32, u32, u32, u32)| {
+            let cb = exp_cb(caller.data())?;
+            let format = jvm::exp_surface_configure(&cb, surface, device, adapter, width, height)
+                .map_err(wasmtime::Error::msg)?;
+            Ok((format,))
+        },
+    )
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap(
+        "surface-get-current-texture-view",
+        |caller, (surface,): (u32,)| {
+            let cb = exp_cb(caller.data())?;
+            let rep = jvm::exp_surface_get_view(&cb, surface).map_err(wasmtime::Error::msg)?;
+            Ok((rep,))
+        },
+    )
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap(
+        "device-create-command-encoder",
+        |caller, (device,): (u32,)| {
+            let cb = exp_cb(caller.data())?;
+            let rep =
+                jvm::exp_create_command_encoder(&cb, device).map_err(wasmtime::Error::msg)?;
+            Ok((rep,))
+        },
+    )
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap(
+        "command-encoder-begin-render-pass-clear",
+        |caller, (encoder, view): (u32, u32)| {
+            let cb = exp_cb(caller.data())?;
+            let rep = jvm::exp_begin_render_pass_clear(&cb, encoder, view)
+                .map_err(wasmtime::Error::msg)?;
+            Ok((rep,))
+        },
+    )
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap("render-pass-end", |caller, (pass,): (u32,)| {
+        let cb = exp_cb(caller.data())?;
+        jvm::exp_render_pass_end(&cb, pass).map_err(wasmtime::Error::msg)?;
+        Ok(())
+    })
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap("command-encoder-finish", |caller, (encoder,): (u32,)| {
+        let cb = exp_cb(caller.data())?;
+        let rep = jvm::exp_command_encoder_finish(&cb, encoder).map_err(wasmtime::Error::msg)?;
+        Ok((rep,))
+    })
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap("queue-submit1", |caller, (queue, commands): (u32, u32)| {
+        let cb = exp_cb(caller.data())?;
+        jvm::exp_queue_submit1(&cb, queue, commands).map_err(wasmtime::Error::msg)?;
+        Ok(())
+    })
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap("surface-present", |caller, (surface,): (u32,)| {
+        let cb = exp_cb(caller.data())?;
+        jvm::exp_surface_present(&cb, surface).map_err(wasmtime::Error::msg)?;
+        Ok(())
+    })
+    .map_err(|e| e.to_string())?;
+
+    exp.func_wrap("surface-unconfigure", |caller, (surface,): (u32,)| {
+        let cb = exp_cb(caller.data())?;
+        jvm::exp_surface_unconfigure(&cb, surface).map_err(wasmtime::Error::msg)?;
+        Ok(())
     })
     .map_err(|e| e.to_string())?;
 
@@ -183,7 +288,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
 }
 
 #[no_mangle]
-pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreSetRequestAdapter(
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreSetExperimentalHost(
     mut env: JNIEnv,
     _class: JClass,
     store: jlong,
@@ -194,7 +299,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         return;
     }
     if callback.is_null() {
-        throw(&mut env, "null request-adapter callback");
+        throw(&mut env, "null experimental host callback");
         return;
     }
     let gref = match jvm::global_ref(&mut env, callback) {
@@ -205,7 +310,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         }
     };
     let store = unsafe { from_handle::<HostStore>(store) };
-    store.data_mut().request_adapter_cb = Some(gref);
+    store.data_mut().experimental_host_cb = Some(gref);
 }
 
 #[no_mangle]
@@ -412,6 +517,47 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         }
     };
     match func.call(&mut *store, (a as u32, b as u32)) {
+        Ok((result,)) => result as jint,
+        Err(e) => {
+            throw_err(&mut env, e);
+            0
+        }
+    }
+}
+
+/// M4: call root export `(u64, u32, u32) -> u32` (e.g. `run-clear`).
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallU64U32U32(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    instance: jlong,
+    export_name: JString,
+    a: jlong,
+    b: jint,
+    c: jint,
+) -> jint {
+    if store == 0 || instance == 0 {
+        throw(&mut env, "null store/instance handle");
+        return 0;
+    }
+    let name: String = match env.get_string(&export_name) {
+        Ok(s) => s.into(),
+        Err(e) => {
+            throw_err(&mut env, e);
+            return 0;
+        }
+    };
+    let store = unsafe { from_handle::<HostStore>(store) };
+    let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
+    let func = match instance.get_typed_func::<(u64, u32, u32), (u32,)>(&mut *store, name.as_str()) {
+        Ok(f) => f,
+        Err(e) => {
+            throw_err(&mut env, e);
+            return 0;
+        }
+    };
+    match func.call(&mut *store, (a as u64, b as u32, c as u32)) {
         Ok((result,)) => result as jint,
         Err(e) => {
             throw_err(&mut env, e);

@@ -95,11 +95,11 @@ M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 A
 
 ### DoD
 
-- [ ] 在 Android + Dawn L2 上跑通：cube 子集 **或** 专用 render smoke Guest  
-- [ ] 遵守 [`threading-android.md`](../mapping/threading-android.md)  
-- [ ] 独立仪器用例 / 脚本（名称勿覆盖轨 A 主脚本职责）  
-- [ ] 差距清单：相对轨 A cube 缺什么  
-- [ ] CHANGELOG  
+- [x] 在 Android + Dawn L2 上跑通：**专用 render smoke Guest**（clear→present；`fixtures/m4/render_smoke`）  
+- [x] 遵守 [`threading-android.md`](../mapping/threading-android.md)（GpuThread 合一）  
+- [x] 独立仪器用例：`DawnRenderSmokeInstrumentedTest`（不覆盖轨 A cube 主验收）  
+- [x] 差距清单：[`../mapping/gap-m4-vs-cube.md`](../mapping/gap-m4-vs-cube.md)  
+- [x] CHANGELOG  
 
 ### 非目标
 
@@ -131,9 +131,9 @@ M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 A
 | 里程碑 | 状态 | 日期 |
 |--------|------|------|
 | 文档立项 | **完成** | 2026-08-10 |
-| M0 | 骨架 + arm64 `.so` + Gradle 绿；ART 仪器待设备 | 2026-08-10 |
-| M1 | 未开工 | — |
-| M2 | 未开工 | — |
-| M3 | 未开工 | — |
-| M4 | 未开工 | — |
+| M0 | **完成**（真机 loadLibrary） | 2026-08-11 |
+| M1 | **完成**（同步 CM） | 2026-08-11 |
+| M2 | **完成**（真 CM async 闸门） | 2026-08-11 |
+| M3 | **完成**（L1→Cpu L2 request-adapter） | 2026-08-11 |
+| M4 | **完成**（Dawn clear→present smoke；真机 arm64 已验） | 2026-08-11 |
 | M5 | 未开工 | — |
