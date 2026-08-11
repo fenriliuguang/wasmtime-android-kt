@@ -36,6 +36,25 @@ pub fn call_u32_u32_to_u32(cb: &GlobalRef, a: u32, b: u32) -> Result<u32, String
         .map_err(|e| format!("host invoke result: {e}"))
 }
 
+pub fn call_u32_supplier(cb: &GlobalRef) -> Result<u32, String> {
+    let jvm = JVM.get().ok_or_else(|| "JavaVM not initialized".to_string())?;
+    let mut env = jvm
+        .attach_current_thread()
+        .map_err(|e| format!("attach_current_thread: {e}"))?;
+    let result = env
+        .call_method(cb.as_obj(), "invoke", "()I", &[])
+        .map_err(|e| format!("host invoke: {e}"))?;
+    if env.exception_check().unwrap_or(false) {
+        let _ = env.exception_describe();
+        let _ = env.exception_clear();
+        return Err("host callback threw".into());
+    }
+    result
+        .i()
+        .map(|v| v as u32)
+        .map_err(|e| format!("host invoke result: {e}"))
+}
+
 pub fn global_ref(env: &mut JNIEnv, obj: JObject) -> Result<GlobalRef, String> {
     env.new_global_ref(&obj)
         .map_err(|e| format!("new_global_ref: {e}"))

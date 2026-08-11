@@ -7,6 +7,8 @@ junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 androidxTestServices = "1.5.0"
 appcompat = "1.6.1"
+# Track A engineered artifacts (mavenLocal via publishEngineeredToMavenLocal).
+wasiWebgpu = "0.1.0-experimental"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -15,6 +17,8 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-test-services = { group = "androidx.test.services", name = "test-services", version.ref = "androidxTestServices" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+wasi-webgpu-host-api = { group = "io.github.fenriliuguang.wasi.webgpu.experimental", name = "host-api", version.ref = "wasiWebgpu" }
+wasi-webgpu-abi-cm = { group = "io.github.fenriliuguang.wasi.webgpu.experimental", name = "abi-cm", version.ref = "wasiWebgpu" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

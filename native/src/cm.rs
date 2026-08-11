@@ -91,6 +91,22 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
+    // M3: Track A experimental CM host — request-adapter → L2 (Cpu/Dawn) via Kotlin callback.
+    let mut exp = linker
+        .instance("experimental:webgpu-cm/host@0.8.0")
+        .map_err(|e| e.to_string())?;
+    exp.func_wrap("request-adapter", |caller, ()| {
+        let cb = caller
+            .data()
+            .request_adapter_cb
+            .as_ref()
+            .ok_or_else(|| wasmtime::Error::msg("request-adapter callback not set"))?
+            .clone();
+        let rep = jvm::call_u32_supplier(&cb).map_err(wasmtime::Error::msg)?;
+        Ok((rep,))
+    })
+    .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
@@ -164,6 +180,32 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     };
     let store = unsafe { from_handle::<HostStore>(store) };
     store.data_mut().add_cb = Some(gref);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreSetRequestAdapter(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    callback: JObject,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    if callback.is_null() {
+        throw(&mut env, "null request-adapter callback");
+        return;
+    }
+    let gref = match jvm::global_ref(&mut env, callback) {
+        Ok(g) => g,
+        Err(e) => {
+            throw(&mut env, e);
+            return;
+        }
+    };
+    let store = unsafe { from_handle::<HostStore>(store) };
+    store.data_mut().request_adapter_cb = Some(gref);
 }
 
 #[no_mangle]
@@ -294,6 +336,43 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         }
     };
     match func.call(&mut *store, (arg as u32,)) {
+        Ok((result,)) => result as jint,
+        Err(e) => {
+            throw_err(&mut env, e);
+            0
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallUnitToU32(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    instance: jlong,
+    export_name: JString,
+) -> jint {
+    if store == 0 || instance == 0 {
+        throw(&mut env, "null store/instance handle");
+        return 0;
+    }
+    let name: String = match env.get_string(&export_name) {
+        Ok(s) => s.into(),
+        Err(e) => {
+            throw_err(&mut env, e);
+            return 0;
+        }
+    };
+    let store = unsafe { from_handle::<HostStore>(store) };
+    let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
+    let func = match instance.get_typed_func::<(), (u32,)>(&mut *store, name.as_str()) {
+        Ok(f) => f,
+        Err(e) => {
+            throw_err(&mut env, e);
+            return 0;
+        }
+    };
+    match func.call(&mut *store, ()) {
         Ok((result,)) => result as jint,
         Err(e) => {
             throw_err(&mut env, e);

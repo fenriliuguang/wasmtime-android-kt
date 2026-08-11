@@ -11,6 +11,8 @@ pub struct Widget {
 pub struct HostState {
     pub table: ResourceTable,
     pub add_cb: Option<GlobalRef>,
+    /// Kotlin `HostU32Supplier` for experimental `request-adapter`.
+    pub request_adapter_cb: Option<GlobalRef>,
 }
 
 impl Default for HostState {
@@ -18,6 +20,7 @@ impl Default for HostState {
         Self {
             table: ResourceTable::new(),
             add_cb: None,
+            request_adapter_cb: None,
         }
     }
 }

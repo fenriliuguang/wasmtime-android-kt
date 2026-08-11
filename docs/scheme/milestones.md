@@ -77,11 +77,11 @@ M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 A
 
 ### DoD
 
-- [ ] 依赖轨 A `host-api`（及必要 abi 常量）  
-- [ ] 至少一条主链：`request-adapter` **或** experimental `request-adapter` 经本 L1 → L2（Cpu 或 Dawn）  
-- [ ] 错误映射策略文档（trap vs result；可先 subset）  
-- [ ] 轨 A 主 CI / cube **仍绿**（本仓变更不强制改轨 A 门禁）  
-- [ ] CHANGELOG  
+- [x] 依赖轨 A `host-api`（及 `abi-cm`；mavenLocal）  
+- [x] 至少一条主链：experimental `request-adapter` 经本 L1 → L2（**Cpu**）  
+- [x] 错误映射策略文档（[`../mapping/errors-m3.md`](../mapping/errors-m3.md)）  
+- [x] 轨 A 主 CI / cube **仍绿**（本仓仅消费 engineered 坐标，未改轨 A）  
+- [x] CHANGELOG  
 
 ### 非目标
 

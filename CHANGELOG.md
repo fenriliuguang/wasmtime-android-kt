@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — M3 L1→L2 request-adapter (2026-08-11)
+
+- Depend on Track A `host-api` + `abi-cm` via mavenLocal (`docs/build-track-a-deps.md`)
+- L1 registers `experimental:webgpu-cm/host@0.8.0#request-adapter` → Kotlin → `AbiCmHostBindings` / `CpuWasiWebGpuHost`
+- Fixture `fixtures/m3/request_adapter`; instrument `RequestAdapterInstrumentedTest` (non-zero u32 rep)
+- Error subset: [`docs/mapping/errors-m3.md`](docs/mapping/errors-m3.md)
+
 ### Code — M2 true CM async gate (2026-08-11)
 
 - Engine enables `wasm_component_model_async`; linker registers `get` via `func_wrap_concurrent`
