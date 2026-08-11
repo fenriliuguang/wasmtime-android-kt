@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — M5 slice: stable error types (2026-08-11)
+
+- Kotlin: `WasmtimeApiException` / `Compile` / `Link` / `Trap` under `WasmtimeException` + `Kind`
+- JNI throws typed subclasses (`native/src/error.rs`)
+- Docs: [`docs/mapping/errors.md`](docs/mapping/errors.md) (M3 page points here)
+- Instrument: `ErrorKindInstrumentedTest` (invalid bytes → `WasmtimeCompileException`)
+
 ### Code — M4 Dawn render smoke (2026-08-11)
 
 - Depend on Track A `host-webgpu` (Dawn) in smoke-app main APK (native `.so` packaging)

@@ -1,7 +1,7 @@
 //! Component Model JNI (M1 sync + M2 concurrent/async).
 
 use crate::engine::new_engine;
-use crate::error::{throw, throw_err};
+use crate::error::{throw, throw_compile, throw_link, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{HostState, Widget};
 use crate::jvm;
@@ -335,7 +335,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     match Component::new(engine, &data) {
         Ok(c) => to_handle(c),
         Err(e) => {
-            throw_err(&mut env, e);
+            throw_compile(&mut env, e);
             0
         }
     }
@@ -363,7 +363,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     let engine = unsafe { from_handle::<Engine>(engine) };
     let mut linker = Linker::<HostState>::new(engine);
     if let Err(e) = define_host(&mut linker) {
-        throw(&mut env, e);
+        throw_link(&mut env, e);
         return 0;
     }
     to_handle(linker)
@@ -396,7 +396,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     match pollster::block_on(linker.instantiate_async(&mut *store, component)) {
         Ok(instance) => to_handle(instance),
         Err(e) => {
-            throw_err(&mut env, e);
+            throw_link(&mut env, e);
             0
         }
     }
