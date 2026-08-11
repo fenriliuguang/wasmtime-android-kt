@@ -28,16 +28,19 @@ cargo install cargo-ndk
 
 ## 1. 构建 Android `.so`
 
+正式布局见 [`mapping/artifacts.md`](mapping/artifacts.md)。
+
 ```powershell
 cd d:\projects\wasmtime-android-kt
 .\scripts\build-native-android.ps1
 ```
 
-默认产出：
+默认产出（双 ABI + 元数据）：
 
 ```text
 android/jniLibs/arm64-v8a/libwasmtime_android_kt.so
 android/jniLibs/x86_64/libwasmtime_android_kt.so
+android/jniLibs/build-info.json
 ```
 
 仅 arm64：
@@ -46,11 +49,18 @@ android/jniLibs/x86_64/libwasmtime_android_kt.so
 .\scripts\build-native-android.ps1 -Targets arm64-v8a
 ```
 
+校验（不编译；`-RequireAll` 要求双 ABI）：
+
+```powershell
+.\scripts\verify-native-android.ps1 -RequireAll
+```
+
 说明：
 
 - `JNI_OnLoad` 返回 **`JNI_VERSION_1_6`**（ART 拒 1_8）。
 - Bionic 无 `libpthread`：脚本用 `native/link-stubs/libpthread.so` → `INPUT(-lc)`。
 - Windows 交叉编译默认 `CARGO_PROFILE_RELEASE_OPT_LEVEL=0`（规避 rustc ACCESS_VIOLATION），再用 `llvm-strip`。
+- 构建结束写入 `build-info.json` 并对本次 `-Targets` 跑校验。
 
 ## 2. 编译 JVM / Android 模块
 

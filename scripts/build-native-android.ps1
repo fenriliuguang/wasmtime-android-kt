@@ -1,10 +1,12 @@
 # Cross-compile Track B cdylib for Android and install into android/jniLibs.
 # Aligns NDK / API / ABI / Rust toolchain with Track A build-wasmtime4j-android.ps1.
+# Layout policy: docs/mapping/artifacts.md
 param(
     [string]$NdkVersion = "28.2.13676358",
     [int]$ApiLevel = 24,
     [string[]]$Targets = @("arm64-v8a", "x86_64"),
-    [switch]$SkipStrip
+    [switch]$SkipStrip,
+    [switch]$SkipVerify
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,6 +14,9 @@ $Root = Split-Path -Parent $PSScriptRoot
 $Native = Join-Path $Root "native"
 $Out = Join-Path $Root "android\jniLibs"
 $Stubs = Join-Path $Native "link-stubs"
+$LibFile = "libwasmtime_android_kt.so"
+$LoadLibrary = "wasmtime_android_kt"
+$RustToolchain = if ($env:RUSTUP_TOOLCHAIN) { $env:RUSTUP_TOOLCHAIN } else { "1.97.1" }
 
 $Sdk = if ($env:ANDROID_SDK_ROOT) {
     $env:ANDROID_SDK_ROOT
@@ -37,7 +42,7 @@ Set-Content -Path (Join-Path $Stubs "libpthread.so") -Value "INPUT(-lc)`n" -NoNe
 $env:ANDROID_NDK_HOME = $Ndk
 $env:ANDROID_NDK_ROOT = $Ndk
 if (-not $env:RUSTUP_TOOLCHAIN) {
-    $env:RUSTUP_TOOLCHAIN = "1.97.1"
+    $env:RUSTUP_TOOLCHAIN = $RustToolchain
 }
 # Windows host + aarch64/x86_64-linux-android: rustc 1.97.1 ACCESS_VIOLATION at opt-level>=1.
 if (($IsWindows -or $env:OS -eq "Windows_NT") -and -not $env:CARGO_PROFILE_RELEASE_OPT_LEVEL) {
@@ -65,16 +70,47 @@ try {
 }
 
 Write-Host "Installed Android natives under $Out"
-Get-ChildItem -Recurse $Out -Filter "libwasmtime_android_kt.so" | ForEach-Object {
-    if (-not $SkipStrip) {
-        $strip = Join-Path $Ndk "toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-strip.exe"
-        if (-not (Test-Path $strip)) {
-            $strip = Get-ChildItem -Path (Join-Path $Ndk "toolchains\llvm\prebuilt") -Recurse -Filter "llvm-strip*" -ErrorAction SilentlyContinue |
-                Select-Object -First 1 -ExpandProperty FullName
-        }
-        if ($strip -and (Test-Path $strip)) {
-            & $strip --strip-unneeded $_.FullName
-        }
+$strip = $null
+if (-not $SkipStrip) {
+    $strip = Join-Path $Ndk "toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-strip.exe"
+    if (-not (Test-Path $strip)) {
+        $strip = Get-ChildItem -Path (Join-Path $Ndk "toolchains\llvm\prebuilt") -Recurse -Filter "llvm-strip*" -ErrorAction SilentlyContinue |
+            Select-Object -First 1 -ExpandProperty FullName
     }
-    "{0} ({1:N1} MB)" -f $_.FullName, ($_.Length / 1MB)
+}
+
+$abiMap = [ordered]@{}
+foreach ($abi in $Targets) {
+    $path = Join-Path $Out (Join-Path $abi $LibFile)
+    if (-not (Test-Path $path)) {
+        throw "expected artifact missing after build: $path"
+    }
+    if ($strip -and (Test-Path $strip)) {
+        & $strip --strip-unneeded $path
+    }
+    $item = Get-Item $path
+    $sha = (Get-FileHash -Algorithm SHA256 -Path $path).Hash.ToLowerInvariant()
+    $abiMap[$abi] = [ordered]@{
+        relativePath = "$abi/$LibFile"
+        bytes        = $item.Length
+        sha256       = $sha
+    }
+    "{0} ({1:N1} MB)" -f $item.FullName, ($item.Length / 1MB)
+}
+
+$info = [ordered]@{
+    libraryFile   = $LibFile
+    loadLibrary   = $LoadLibrary
+    ndkVersion    = $NdkVersion
+    apiLevel      = $ApiLevel
+    rustToolchain = $RustToolchain
+    builtAt       = (Get-Date).ToUniversalTime().ToString("o")
+    abis          = $abiMap
+}
+$infoPath = Join-Path $Out "build-info.json"
+($info | ConvertTo-Json -Depth 6) | Set-Content -Path $infoPath -Encoding utf8
+Write-Host "Wrote $infoPath"
+
+if (-not $SkipVerify) {
+    & (Join-Path $PSScriptRoot "verify-native-android.ps1") -Abis $Targets
 }

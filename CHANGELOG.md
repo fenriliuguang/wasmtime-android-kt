@@ -4,6 +4,12 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — M5 slice: native artifact layout (2026-08-11)
+
+- Document formal `android/jniLibs/{arm64-v8a,x86_64}/` layout ([`docs/mapping/artifacts.md`](docs/mapping/artifacts.md))
+- `build-native-android.ps1` writes `build-info.json` (sha256 / sizes / toolchain)
+- Add `scripts/verify-native-android.ps1` (`-RequireAll` for dual ABI)
+
 ### Code — M5 slice: stable error types (2026-08-11)
 
 - Kotlin: `WasmtimeApiException` / `Compile` / `Link` / `Trap` under `WasmtimeException` + `Kind`

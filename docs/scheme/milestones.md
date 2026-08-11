@@ -115,7 +115,7 @@ M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 A
 ### DoD（可拆子切片）
 
 - [x] 稳定错误类型与文档（`Wasmtime*Exception` + [`../mapping/errors.md`](../mapping/errors.md)；2026-08-11）  
-- [ ] arm64 + x86_64 正式产物布局  
+- [x] arm64 + x86_64 正式产物布局（[`../mapping/artifacts.md`](../mapping/artifacts.md) + `verify-native-android.ps1`；2026-08-11）  
 - [ ] API 稳定性政策（experimental 下的 semver 约定）  
 - [ ] 贡献者构建文档；可选桌面开发壳  
 - [ ] 是否支持更多 WASI world 的路线图（单独 RFC）  
@@ -136,4 +136,4 @@ M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 A
 | M2 | **完成**（真 CM async 闸门） | 2026-08-11 |
 | M3 | **完成**（L1→Cpu L2 request-adapter） | 2026-08-11 |
 | M4 | **完成**（Dawn clear→present smoke；真机 arm64 已验） | 2026-08-11 |
-| M5 | 进行中（错误模型切片已落地） | 2026-08-11 |
+| M5 | 进行中（错误模型 + 产物布局） | 2026-08-11 |
