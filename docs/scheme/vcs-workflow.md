@@ -97,8 +97,8 @@
 |------|------|
 | 是否新建 `feature/stream`、`feature/webgpu`、`feature/clocks` 等长期线 | **不新建** |
 | 本批规划文档 PR 分支 | `docs/long-term-plan-vcs-workflow` → 合入 `main` 后删除 |
-| 下一短命切片（自文档尖端分出；无提交前仅作起点，合入即删） | `docs/w0-wasi-webgpu-gap`（W0 差距表）· `feat/p3-stream-read`（L1 stream 首刀） |
-| 暂缓建枝 | `feat/wasi-clocks` / cli stdio 等 — 待 stream 或明确 Guest 阻塞再开 |
+| 已推进短命切片 | `docs/w0-wasi-webgpu-gap`（已合 `main`）· `feat/p3-stream-read`（stream 读端 smoke） |
+| 暂缓建枝 | stream **写端** / cli stdio / `feat/wasi-clocks` — 读端合入后再开；webgpu W1 另开 `feat/…` |
 
 ## 8. 修订
 

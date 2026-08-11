@@ -9,7 +9,7 @@ use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
 use jni::sys::{jint, jlong};
 use jni::JNIEnv;
-use wasmtime::component::{Component, FutureReader, Linker, Resource, ResourceType};
+use wasmtime::component::{Component, FutureReader, Linker, Resource, ResourceType, StreamReader};
 use wasmtime::{Engine, Store};
 
 type HostStore = Store<HostState>;
@@ -594,6 +594,84 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
             })
             .await?
     });
+
+    match result {
+        Ok(v) => v as jint,
+        Err(e) => {
+            throw_err(&mut env, e);
+            0
+        }
+    }
+}
+
+/// P3-PRIM-3: host `StreamReader` (fixed `P3ST` bytes) → guest export `read`.
+/// Packed result: `(nbytes << 4) | status` (status 1 = DROPPED).
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallStreamRead(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    instance: jlong,
+    max_len: jint,
+) -> jint {
+    if store == 0 || instance == 0 {
+        throw(&mut env, "null store/instance handle");
+        return 0;
+    }
+    if max_len <= 0 {
+        throw(&mut env, "max_len must be positive");
+        return 0;
+    }
+    let store = unsafe { from_handle::<HostStore>(store) };
+    let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
+
+    let result = (|| -> wasmtime::Result<u32> {
+        let func = instance
+            .get_typed_func::<(StreamReader<u8>, u32), (u32,)>(&mut *store, "read")?;
+        let reader = StreamReader::new(&mut *store, b"P3ST".to_vec())?;
+        let (packed,) =
+            pollster::block_on(func.call_async(&mut *store, (reader, max_len as u32)))?;
+        Ok(packed)
+    })();
+
+    match result {
+        Ok(v) => v as jint,
+        Err(e) => {
+            throw_err(&mut env, e);
+            0
+        }
+    }
+}
+
+/// P3-PRIM-3: host `StreamReader` (fixed `P3ST` bytes) → guest export `read`.
+/// Packed result: `(nbytes << 4) | status` (status 1 = DROPPED).
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallStreamRead(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    instance: jlong,
+    max_len: jint,
+) -> jint {
+    if store == 0 || instance == 0 {
+        throw(&mut env, "null store/instance handle");
+        return 0;
+    }
+    if max_len <= 0 {
+        throw(&mut env, "max_len must be positive");
+        return 0;
+    }
+    let store = unsafe { from_handle::<HostStore>(store) };
+    let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
+
+    let result = (|| -> wasmtime::Result<u32> {
+        let func = instance
+            .get_typed_func::<(StreamReader<u8>, u32), (u32,)>(&mut *store, "read")?;
+        let reader = StreamReader::new(&mut *store, b"P3ST".to_vec())?;
+        let (packed,) =
+            pollster::block_on(func.call_async(&mut *store, (reader, max_len as u32)))?;
+        Ok(packed)
+    })();
 
     match result {
         Ok(v) => v as jint,

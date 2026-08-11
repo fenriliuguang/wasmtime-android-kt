@@ -4,6 +4,12 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — P3-PRIM-3 stream read smoke (2026-08-11)
+
+- Host `StreamReader::new` with fixed `P3ST` bytes → guest canon `stream.read` (`fixtures/p3/stream_read`)
+- Native test `p3_stream_read`; JNI `nativeCallStreamRead` / `Instance.callStreamRead`
+- Instrument `StreamReadInstrumentedTest` (packed result 65); docs: wasi-p3-surface + threading-m2-async
+
 ### Docs — W0 gap: experimental vs wasi:webgpu (2026-08-11)
 
 - Add [`docs/mapping/gap-experimental-vs-wasi-webgpu.md`](docs/mapping/gap-experimental-vs-wasi-webgpu.md): map 13 flat experimental imports to `wasi:webgpu@0.3.0-rc.2`; pin proposal; W1–W4 next cuts

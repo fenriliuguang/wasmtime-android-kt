@@ -2,6 +2,7 @@
 //! M0: `JNI_OnLoad` + identity / version probes.
 //! M1: sync Component Model (host import + u32 resource).
 //! M2: true CM async (`func_wrap_concurrent` + `FutureReader` + `run_concurrent`).
+//! P3: host `StreamReader` + guest `stream.read` smoke.
 
 mod cm;
 mod engine;

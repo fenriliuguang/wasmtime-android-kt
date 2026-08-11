@@ -51,4 +51,15 @@ class Instance internal constructor(internal var handle: Long) : AutoCloseable {
         require(store.handle != 0L) { "store closed" }
         return NativeBridge.nativeCallU64U32U32(store.handle, handle, exportName, a, b, c)
     }
+
+    /**
+     * P3-PRIM-3: host-produced `stream<u8>` consumed by guest export `read`.
+     * Payload is fixed ASCII `P3ST` (4 bytes). Packed result `(n << 4) | status`.
+     */
+    fun callStreamRead(store: Store, maxLen: Int = 100): Int {
+        require(handle != 0L) { "instance closed" }
+        require(store.handle != 0L) { "store closed" }
+        require(maxLen > 0) { "maxLen must be positive" }
+        return NativeBridge.nativeCallStreamRead(store.handle, handle, maxLen)
+    }
 }

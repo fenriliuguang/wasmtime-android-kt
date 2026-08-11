@@ -37,7 +37,7 @@ World 层（组合）           wasi:cli/command · wasi:http/service · …
 |----|------|--------------|--------|------|
 | P3-PRIM-1 | `async func` host/guest | M2 已有 concurrent 注册 + `run_concurrent` | **保持 / 产品化** | 文档化线程泵；多回调并发 |
 | P3-PRIM-2 | `future<T>` 创建/完成/拒绝 | M2 oneshot 路径已通 | **保持 / 扩展** | 多 future、错误完成、生命周期 |
-| P3-PRIM-3 | `stream<T>` 读/写端 | **缺口** | **P1 最高** | WASI 0.3 相对 M2 的最大缺口；stdio/fs/http/webgpu 缓冲都依赖 |
+| P3-PRIM-3 | `stream<T>` 读/写端 | **读端 smoke 已通**（`StreamReader` + guest `stream.read`；见 `fixtures/p3`） | **P1 最高**（写端仍缺） | 写方向翻转 / stream+future 完成模式未做；stdio 仍等写端 |
 | P3-PRIM-4 | stream+future 完成模式 | 缺口 | 随 P3-PRIM-3 | 见 WASI 0.3「stream-plus-future」 |
 | P3-PRIM-5 | 写方向翻转（host 消费 guest `stream`） | 缺口 | 随 P3-PRIM-3 | stdout / 网络 send 等 |
 | P3-PRIM-6 | 0.2 polyfill（可选） | 未做 | 低 | 上游/runtime 可侧；不挡 P0 |
