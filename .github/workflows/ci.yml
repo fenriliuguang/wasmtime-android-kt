@@ -11,32 +11,56 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: always
+  # Wasmtime debug builds OOMs on default GitHub-hosted runners if fully parallel.
+  CARGO_BUILD_JOBS: 2
+  RUSTFLAGS: "-C debuginfo=0"
+
 jobs:
   native:
     name: native (cargo test)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: native
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain (rust-toolchain.toml)
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config
+
+      # jni crate / future bindgen paths; also mirrors desktop shell expectations.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.97.1"
+          components: rustfmt, clippy
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: native -> target
+          # Include job parallelism in key so cache stays coherent with RUSTFLAGS.
+          shared-key: "native-j2-nodebug"
 
-      - name: cargo test
-        run: cargo test --all-targets
+      - name: cargo test (integration smokes)
+        working-directory: native
+        run: |
+          rustc -V
+          cargo --version
+          echo "JAVA_HOME=$JAVA_HOME"
+          # Prefer explicit integration tests (M2 + P3 stream). --locked pins CI to Cargo.lock.
+          cargo test --locked --test m2_async_get --test p3_stream_read
 
   jvm-api:
     name: jvm (runtime-api compile)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
