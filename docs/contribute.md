@@ -3,7 +3,8 @@
 **中文** | （暂无 EN）
 
 > M5：把「怎么本地搭环境 / 怎么用桌面 JVM 迭代 L1」从 Android 真机门禁里拆出来写清楚。  
-> 正式 Android 复现仍以 [`build.md`](build.md) + [`mapping/artifacts.md`](mapping/artifacts.md) 为准。
+> 正式 Android 复现仍以 [`build.md`](build.md) + [`mapping/artifacts.md`](mapping/artifacts.md) 为准。  
+> **分支 / PR / 开源协作：** 见 [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md)（短命分支；不建长期并行线）。
 
 ## 1. 范围
 
@@ -12,6 +13,7 @@
 | 复现 Android `.so` + 仪器门禁 | 把桌面壳当成 CI / DoD 主门禁 |
 | 可选：宿主 OS 编桌面 native，跑 JVM 冒烟 | Panama（[`scheme/non-goals.md`](scheme/non-goals.md) DG-1） |
 | 改文档 / fixtures / Kotlin API 时同步 CHANGELOG | 静默替换轨 A 主验收（NG-1） |
+| 按 [`vcs-workflow.md`](scheme/vcs-workflow.md) 开短命分支 + PR | 常驻多长期 `feature/*` 分叉后大爆炸合并 |
 
 原则：**Android-first**；桌面只是开发便利。
 
@@ -78,17 +80,22 @@ java -Djava.library.path="$PWD\desktop\jniLibs" ...
 | 钉死工具链 / ABI | `docs/build.md`、`scheme/tech-stack.md`、CHANGELOG |
 | 公开 API / 错误类型 | `scheme/api-stability.md`、`mapping/errors.md`、CHANGELOG |
 | 与轨 A L2 接线 | `dual-track.md`、必要时差距文档 |
-| WASI world 范围 | 先读 [`scheme/rfc-wasi-worlds.md`](scheme/rfc-wasi-worlds.md)；大扩面另开 RFC |
+| WASI / webgpu 范围 | 先读 [`scheme/long-term-plan.md`](scheme/long-term-plan.md) 与 [`wasi-p3-surface.md`](scheme/wasi-p3-surface.md) / [`roadmap-wasi-webgpu.md`](scheme/roadmap-wasi-webgpu.md) |
 
 ## 5. PR / 提交建议
 
-1. 保持双轨隔离：本仓 PR **不**要求轨 A 为配合而破 sync-compat。  
-2. 仪器绿优先于桌面绿；桌面壳失败但 Android 绿时，注明宿主环境即可。  
-3. experimental `0.x`：破坏性变更写清 CHANGELOG（见 API 稳定性政策）。
+完整规则见 [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md)。摘要：
+
+1. 从最新 `main` 开短命分支（`docs/` / `feat/` / `fix/`）；**不**开常驻多长期并行线。  
+2. 一 PR 一事；文档与行为变更同车；写 CHANGELOG。  
+3. 保持双轨隔离：本仓 PR **不**要求轨 A 为配合而破 sync-compat。  
+4. 仪器绿优先于桌面绿；桌面壳失败但 Android 绿时，注明宿主环境即可。  
+5. experimental `0.x`：破坏性变更写清 CHANGELOG（见 API 稳定性政策）。
 
 ## 6. 相关链接
 
+- [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md) — 分支 / PR / 开源协作  
+- [`scheme/long-term-plan.md`](scheme/long-term-plan.md) — 现行长期计划  
 - [`build.md`](build.md) — Android 构建复现  
 - [`mapping/artifacts.md`](mapping/artifacts.md) — 正式 jniLibs  
-- [`scheme/milestones.md`](scheme/milestones.md) — DoD  
-- [`scheme/rfc-wasi-worlds.md`](scheme/rfc-wasi-worlds.md) — WASI world 路线图  
+- [`scheme/archive/m0-m5-thin-l1.md`](scheme/archive/m0-m5-thin-l1.md) — 短期里程碑归档  

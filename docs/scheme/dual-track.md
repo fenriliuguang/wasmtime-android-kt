@@ -2,7 +2,8 @@
 
 **中文** | [English](dual-track.en.md)
 
-> 与章程 [`charter.md`](charter.md) 配套。约束两仓如何并行而不互相拖垮。
+> 与章程 [`charter.md`](charter.md) 配套。约束两仓如何并行而不互相拖垮。  
+> 轨 B 现行产品主线：[`long-term-plan.md`](long-term-plan.md)（短期 M0–M5 已归档）。
 
 ## 1. 角色
 

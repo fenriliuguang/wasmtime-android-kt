@@ -3,7 +3,7 @@
 **中文** | [English](tech-stack.en.md)
 
 > 初订于 2026-08-10；**代码期可修订**，修订须更新本章 + CHANGELOG。  
-> 配套：[`charter.md`](charter.md) · [`milestones.md`](milestones.md)
+> 配套：[`charter.md`](charter.md) · [`long-term-plan.md`](long-term-plan.md) · [`wasmtime-tracking.md`](wasmtime-tracking.md)（版本升级流程）。
 
 ## 1. 引擎：官方 Wasmtime
 
@@ -12,7 +12,7 @@
 | Crate | `wasmtime`（Bytecode Alliance） |
 | 建议主版本 | **47.x**（与轨 A wasmtime4j 钉的 Wasmtime 代际对齐，降低 Guest/WIT 漂移）；若需更新 API，文档写明与轨 A 差异 |
 | Features（最小） | `component-model`, 隐含/显式 `component-model-async`, 运行所需 `async` / runtime |
-| 可选稍后 | `cranelift` 默认；profiling、wasi、wasi-http、**wasi-p3** — **不**作 M0–M2 关门 |
+| 可选稍后 | `cranelift` 默认；`wasmtime-wasi` / WASI 0.3 Host — 按 [`wasi-p3-surface.md`](wasi-p3-surface.md) 切片启用，流程见 [`wasmtime-tracking.md`](wasmtime-tracking.md) |
 | 禁用依赖 | **不**链接 `wasmtime4j-native` / 不 `dlopen` 4j `.so` |
 
 ### 1.1 必须使用的官方 async 面（M2+）
@@ -108,10 +108,11 @@ Rust (scripts/build-native-android.ps1 / cargo ndk)
 ## 8. 明确不依赖
 
 - tegmentum wasmtime4j（Maven / 源码作运行时）  
-- 完整 wasi-http / wasi-nn 作为短期目标  
 - 浏览器 WebAssembly JS API  
+- 默认把第三方 `wasi-webgpu-wasmtime` 链进 Android cdylib（对照实现另论）  
 
 ## 9. 上游态度
 
-- 官方 Wasmtime：跟随稳定发布；issue/PR **可以**按需（与轨 A「不对 4j 提 PR」政策分离）  
+- **官方 Wasmtime：唯一引擎依赖**；版本与特性按 [`wasmtime-tracking.md`](wasmtime-tracking.md) 追踪；issue/PR **可以**按需（与轨 A「不对 4j 提 PR」政策分离）  
+- WASI 0.3 正式规格与 wasi:webgpu 提案：产品优先级见长期计划；实现跟 Wasmtime 代际对齐  
 - wasmtime4j：仅作反面教材与经验来源；不作为依赖  

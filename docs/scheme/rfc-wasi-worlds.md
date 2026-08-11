@@ -1,10 +1,11 @@
 # RFC：是否 / 如何支持更多 WASI world
 
-**状态：Accepted（路线图决策）** · 2026-08-11 · M5  
+**状态：Superseded（2026-08-11）** · 原 Accepted · M5  
 **中文** | （暂无 EN）
 
-> 回应 [`milestones.md`](milestones.md) M5：「是否支持更多 WASI world 的路线图（单独 RFC）」。  
-> 本文件是**产品范围决策**，不是实现规格；落地须另开切片 RFC / PR。
+> **已被取代：** [`long-term-plan.md`](long-term-plan.md) + [`wasi-p3-surface.md`](wasi-p3-surface.md) + [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)。  
+> 短期口径（「标准 WASI 默认不做 / webgpu 仅 experimental」）在长期阶段已修订为：**主推 WASI 0.3 正式面**，提案面 **优先 wasi:webgpu**。  
+> 下文保留为 M5 收口史实；新排期以长期计划为准。
 
 ## 1. 背景
 

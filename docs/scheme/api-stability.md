@@ -43,7 +43,7 @@
 
 须 **单独 RFC**，建议同时满足：
 
-1. M5 DoD 已关闭（见 [`milestones.md`](milestones.md)）；仍须公开 API 冻结清单与发布政策  
+1. 短期 M5 已归档（见 [`milestones.md`](milestones.md)）；长期须另满足 [`long-term-plan.md`](long-term-plan.md) L5 与公开 API 冻结清单 / 发布政策 
 
 2. 公开 API 有冻结清单与弃用周期（至少一轮 MINOR）  
 3. 双 ABI 产物与校验进入常规 CI  

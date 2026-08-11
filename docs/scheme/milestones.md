@@ -1,17 +1,20 @@
-# 里程碑与 DoD（轨 B）
+# 里程碑与 DoD（轨 B）— M0–M5 史实
 
 **中文** | [English](milestones.en.md)
 
-> 与 [`charter.md`](charter.md) 目标堆叠对应。未勾选 = 未完成。  
-> 构建复现：[`../build.md`](../build.md)。
+> **状态：已归档（2026-08-11）。** 短期薄 L1 路径收口。  
+> 归档入口：[`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md)。  
+> **现行规划：** [`long-term-plan.md`](long-term-plan.md)（堆叠 L0–L5；主推 WASI 0.3 + wasi:webgpu）。  
+> 构建复现：[`../build.md`](../build.md)。  
+> 下文勾选表冻结为史实；**勿**再把未完成产品工作记入 M0–M5。
 
-## 总序
+## 总序（史实）
 
 ```text
 M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 Android 上屏 → M5 硬化
 ```
 
-**M2 失败 ⇒ 停止 M3/M4 的 L2/图形投入**，先修 runtime（与轨 A true-cm-async 闸门同构，但底座换成官方 Wasmtime）。
+**当时硬序：** M2 失败 ⇒ 停止 M3/M4 的 L2/图形投入（与轨 A true-cm-async 闸门同构，底座为官方 Wasmtime）。
 
 ---
 
@@ -137,3 +140,5 @@ M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 A
 | M3 | **完成**（L1→Cpu L2 request-adapter） | 2026-08-11 |
 | M4 | **完成**（Dawn clear→present smoke；真机 arm64 已验） | 2026-08-11 |
 | M5 | **完成**（错误 / 产物 / API 政策 / 贡献者壳 / WASI RFC） | 2026-08-11 |
+| **短期路径归档** | **完成** → [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) | 2026-08-11 |
+| **长期计划（文档）** | **现行** → [`long-term-plan.md`](long-term-plan.md) | 2026-08-11 |

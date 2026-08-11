@@ -1,10 +1,13 @@
-# Milestones & DoD (Track B)
+# Milestones & DoD (Track B) — M0–M5 historical
 
 [中文](milestones.md) | **English**
 
-Order: **M0 → M1 → M2 (hard gate) → M3 → M4 → M5**.  
-If M2 fails, stop M3/M4 L2/graphics spend until runtime is fixed.  
-Authoritative checkboxes: [`milestones.md`](milestones.md) (ZH).
+> **Status: archived (2026-08-11).** Archive entry: [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md).  
+> **Current plan:** [`long-term-plan.md`](long-term-plan.md) (ZH; stacks L0–L5).  
+> Checkboxes below are frozen history — do not reopen product work under M0–M5 IDs.
+
+Historical order: **M0 → M1 → M2 (hard gate) → M3 → M4 → M5**.  
+Authoritative narrative: [`milestones.md`](milestones.md) (ZH).
 
 | ID | Name | One-line DoD | Status |
 |----|------|----------------|--------|

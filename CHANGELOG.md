@@ -4,6 +4,15 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Docs — long-term plan + archive short-term M0–M5 (2026-08-11)
+
+- Archive short-term thin L1 path: [`docs/scheme/archive/m0-m5-thin-l1.md`](docs/scheme/archive/m0-m5-thin-l1.md); freeze [`milestones.md`](docs/scheme/milestones.md) as history
+- Add long-term plan: [`docs/scheme/long-term-plan.md`](docs/scheme/long-term-plan.md) (P0 wasi:webgpu · P1 WASI 0.3 · P2 Wasmtime tracking; stacks L0–L5)
+- Add [`wasi-p3-surface.md`](docs/scheme/wasi-p3-surface.md), [`roadmap-wasi-webgpu.md`](docs/scheme/roadmap-wasi-webgpu.md), [`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)
+- Add [`vcs-workflow.md`](docs/scheme/vcs-workflow.md): short-lived branches + PR; no long-lived parallel feature lines; open-source PR readiness
+- Supersede [`rfc-wasi-worlds.md`](docs/scheme/rfc-wasi-worlds.md); revise [`non-goals.md`](docs/scheme/non-goals.md) NG-4/NG-5/NG-11 for long-term
+- Update charter / scheme index / contribute / root README (ZH+EN) — **docs only**, no code
+
 ### Docs — M5 close: contributor shell + WASI worlds RFC (2026-08-11)
 
 - Add [`docs/contribute.md`](docs/contribute.md): contributor flow; optional desktop JVM shell

@@ -4,15 +4,17 @@
 
 **中文** | [English](README.en.md)
 
-> **状态：M0–M5 已收口（2026-08-11）。** M4 为 Dawn clear→present 专用 smoke（非轨 A cube 替换）；M5 含错误模型 / 双 ABI / API 政策 / 贡献者桌面壳 / WASI world RFC。  
+> **状态：短期 M0–M5 已归档；长期规划已立（2026-08-11，文档期）。**  
+> **现行主线：** WASI 0.3 正式面 + **wasi:webgpu 提案（P0）** + 追踪官方 Wasmtime → [`docs/scheme/long-term-plan.md`](docs/scheme/long-term-plan.md)。  
+> 短期薄 L1 归档：[`docs/scheme/archive/m0-m5-thin-l1.md`](docs/scheme/archive/m0-m5-thin-l1.md)。  
 > 姊妹项目（轨 A）：[`../wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) — 锁死 **sync-compat** + wasmtime4j；真机验收仍为 CM cube。  
 > 详细章程：[`docs/scheme/charter.md`](docs/scheme/charter.md)。  
 > **构建说明：** [`docs/build.md`](docs/build.md)。
 
 ## 一句话
 
-**长期**：面向 Android 的 Java/Kotlin Wasm 运行时（Component Model 优先）。  
-**短期**：基于 **官方 Wasmtime** 的自研薄 L1（JNI），可插到轨 A 已有 L2（`WasiWebGpuHost` / Dawn），并具备真 CM async 能力。
+**长期**：Android-first 的 Java/Kotlin Component 运行时——主推 **WASI 0.3** 已批准能力，提案面优先 **wasi:webgpu**，引擎只跟 **官方 Wasmtime**。  
+**已验证底座（已归档）**：自研薄 L1（JNI）可插轨 A L2（Dawn），并具备真 CM async。
 
 ## 双轨关系
 
@@ -60,30 +62,28 @@
 
 | 文档 | 说明 |
 |------|------|
-| [章程（主计划）](docs/scheme/charter.md) | 背景、依赖、目标堆叠、里程碑、风险、DoD |
-| [API 稳定性](docs/scheme/api-stability.md) | experimental `0.x` SemVer 与破坏性约定 |
-| [如何构建](docs/build.md) | NDK / cargo-ndk / Gradle 复现步骤 |
-| [贡献者 / 桌面壳](docs/contribute.md) | 可选宿主 native + JVM 冒烟 |
-| [WASI world RFC](docs/scheme/rfc-wasi-worlds.md) | 更多 world：有条件支持 |
-| [轨 A L2 依赖](docs/build-track-a-deps.md) | mavenLocal `host-api` / `abi-cm` |
-| [错误模型](docs/mapping/errors.md) | L1 异常分层（M5）；M3 subset 见 [errors-m3](docs/mapping/errors-m3.md) |
-| [Native 产物布局](docs/mapping/artifacts.md) | jniLibs ABI / `build-info.json` / 校验脚本 |
-| [M4 vs cube 差距](docs/mapping/gap-m4-vs-cube.md) | 相对轨 A cube 缺什么 |
+| [长期计划](docs/scheme/long-term-plan.md) | **现行**主线：WASI 0.3 · wasi:webgpu · Wasmtime |
+| [WASI 0.3 表面](docs/scheme/wasi-p3-surface.md) | 正式特性优先级 / 切片门禁 |
+| [wasi:webgpu 路线图](docs/scheme/roadmap-wasi-webgpu.md) | 提案推进（P0） |
+| [Wasmtime 追踪](docs/scheme/wasmtime-tracking.md) | 钉版 / 升级 / 回归 |
+| [版本控制工作流](docs/scheme/vcs-workflow.md) | 短命分支 + PR；开源接 PR |
+| [短期归档 M0–M5](docs/scheme/archive/m0-m5-thin-l1.md) | 薄 L1 验证路径收口 |
+| [章程](docs/scheme/charter.md) | 背景、原则、风险 |
 | [方案索引](docs/scheme/README.md) | 阶段表 |
-| [双轨契约](docs/scheme/dual-track.md) | 与轨 A 的边界、共享面、禁止事项 |
-| [技术栈与依赖](docs/scheme/tech-stack.md) | Wasmtime / NDK / JDK / 构建 |
-| [里程碑与 DoD](docs/scheme/milestones.md) | M0–M5 堆叠 |
+| [API 稳定性](docs/scheme/api-stability.md) | experimental `0.x` SemVer |
+| [如何构建](docs/build.md) | NDK / cargo-ndk / Gradle |
+| [贡献者 / 桌面壳](docs/contribute.md) | 可选宿主 native + JVM 冒烟 |
+| [双轨契约](docs/scheme/dual-track.md) | 与轨 A 边界 |
+| [技术栈](docs/scheme/tech-stack.md) | Wasmtime / NDK / JDK |
+| [里程碑史实](docs/scheme/milestones.md) | M0–M5 冻结 DoD |
 | [非目标](docs/scheme/non-goals.md) | 明确不做 |
-| [Android 线程契约](docs/mapping/threading-android.md) | Dawn / Surface / CM scheduler |
-| [M2 `run_concurrent` 泵](docs/mapping/threading-m2-async.md) | 谁驱动 async 事件循环 |
 | [Changelog](CHANGELOG.md) | 变更 |
 
 ## 当前交付
 
-- M0–M5 DoD 已勾选（见 [`docs/scheme/milestones.md`](docs/scheme/milestones.md)）  
-- 薄 L1：同步 CM、真 CM async、experimental webgpu → 轨 A L2、Dawn clear→present smoke  
-- M5：稳定错误类型、双 ABI 产物、API 政策、[`docs/contribute.md`](docs/contribute.md)、[`rfc-wasi-worlds.md`](docs/scheme/rfc-wasi-worlds.md)  
-- **不**依赖 wasmtime4j；**不**默认对外发布  
+- **长期规划文档已立**（无新代码要求）：见上「长期计划」四件套  
+- **短期底座已归档**：M0–M5 薄 L1（同步 CM、真 CM async、experimental webgpu→L2、Dawn smoke、错误/ABI/API 政策）  
+- **不**依赖 wasmtime4j；**不**默认对外发布；**不**替换轨 A 主验收  
 
 ## 参考
 

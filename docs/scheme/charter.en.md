@@ -2,9 +2,9 @@
 
 [中文](charter.md) | **English**
 
-> **Status: planning freeze draft (2026-08-10).** Docs only; **no code.**  
+> **Status: short-term M0–M5 archived; long-term plan current (2026-08-11).** Authoritative ZH: [`charter.md`](charter.md) · [`long-term-plan.md`](long-term-plan.md).  
 > Sister Track A: [`wasi-webgpu-jvm-mvp`](../../../wasi-webgpu-jvm-mvp) — **locked sync-compat**.  
-> Index: [`dual-track.en.md`](dual-track.en.md) · [`tech-stack.en.md`](tech-stack.en.md) · [`milestones.en.md`](milestones.en.md) · [`non-goals.en.md`](non-goals.en.md)
+> Index: [`README.en.md`](README.en.md) · [`dual-track.en.md`](dual-track.en.md) · [`milestones.en.md`](milestones.en.md) · [`non-goals.en.md`](non-goals.en.md)
 
 ## 1. Background
 

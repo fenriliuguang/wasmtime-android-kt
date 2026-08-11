@@ -2,9 +2,9 @@
 
 **中文** | [English](charter.en.md)
 
-> **状态：M0 工程骨架已落地（2026-08-10）。** CM API / async 仍属 M1+。  
+> **状态：短期 M0–M5 已归档（2026-08-11）；现行见 [`long-term-plan.md`](long-term-plan.md)。**  
 > 姊妹轨 A：[`wasi-webgpu-jvm-mvp`](../../../wasi-webgpu-jvm-mvp) — **锁死 sync-compat**。  
-> 索引：[`README.md`](../../README.md) · [`../build.md`](../build.md) · [`dual-track.md`](dual-track.md) · [`tech-stack.md`](tech-stack.md) · [`milestones.md`](milestones.md) · [`non-goals.md`](non-goals.md)
+> 索引：[`README.md`](../../README.md) · [`../build.md`](../build.md) · [`dual-track.md`](dual-track.md) · [`tech-stack.md`](tech-stack.md) · [`long-term-plan.md`](long-term-plan.md) · [`non-goals.md`](non-goals.md)
 
 ---
 
@@ -59,36 +59,40 @@
 
 仍为 **experimental** 直至单独宣布；**不**自动等于合规 wasi:webgpu 产品。
 
-### 2.2 短期目标（验证路径）
+### 2.2 短期目标（验证路径）— **已完成并归档**
 
-**自研薄 L1**：
+**自研薄 L1**（M0–M5，2026-08-11 收口）：
 
 - 依赖 **官方 `wasmtime` crate**（钉版本，与轨 A 可对齐或略新）
 - 自研 **JNI + 最小 Java/Kotlin API**（不经 wasmtime4j）
 - 能：`compile/instantiate` component → 注册 host imports（含 resource rep）→ 调用 export
 - 能：至少一条 **真 CM async** host import（future complete/reject）
-- 能：在 Android 真机上与轨 A **同一 L2** 联调（先 smoke，后追齐 cube 子集）
+- 能：在 Android 真机上与轨 A **同一 L2** 联调（Dawn clear→present smoke）
 
-### 2.3 目标堆叠（由下到上）
+归档：[`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) · 史实 DoD：[`milestones.md`](milestones.md)。
+
+### 2.3 长期目标堆叠（现行）
+
+详见 [`long-term-plan.md`](long-term-plan.md)。摘要：
 
 ```text
-L0  工程骨架（Gradle/Android NDK/Rust cdylib、CI 草稿）     ← 代码期 M0
-L1a 同步 CM：instantiate + sync host + 调 export            ← M1
-L1b 真 CM async：FutureReader + concurrent host + smoke     ← M2
-L1c 接轨 A L2：adapter/device/map 或 experimental 子集      ← M3
-L1d Android 上屏：cube 子集或专用 smoke Guest               ← M4
-L2* 运行时产品化：文档、ABI 稳定、多 ABI、错误模型           ← M5+（长期）
+L0  底座冻结与 Wasmtime 追踪机制
+L1  WASI 0.3 原语完备（含 stream）
+L2  WASI 0.3 核心 package 子集（按需）
+L3  wasi:webgpu 提案主链（P0；真 async）
+L4  双轨可选合流准备
+L5  运行时产品化门槛
 ```
 
-`*` 表示超出「薄 L1」进入「Android Wasm runtime」产品层；**不**阻塞 M1–M4。
+战略硬序：**wasi:webgpu（提案）→ WASI 0.3 正式面 → 官方 Wasmtime 追踪**。
 
 ### 2.4 成功标准（阶段性）
 
 | 阶段 | 成功长什么样 |
 |------|----------------|
-| 短期成功 | Android 上一条真 async host import e2e 绿灯；轨 A CI/cube **零回归** |
-| 中期成功 | 同一 L2 上可跑与轨 A 对等的 CM Guest 子集（或明确差距清单） |
-| 长期成功 | 第三方能以「Android JVM Wasm runtime」理解本仓，而不必先理解 wasmtime4j |
+| 短期成功（已达成） | Android 上真 async host import e2e 绿灯；轨 A CI/cube **零回归** |
+| 中期成功 | WASI 0.3 原语（含 stream）可承载；`wasi:webgpu` 提案主链真 async 仪器绿灯 |
+| 长期成功 | 第三方以「Android 上跟官方 Wasmtime / WASI 0.3、优先 wasi:webgpu」理解本仓，而不必先理解 wasmtime4j |
 
 ---
 
@@ -96,12 +100,12 @@ L2* 运行时产品化：文档、ABI 稳定、多 ABI、错误模型           
 
 完整表见 [`non-goals.md`](non-goals.md)。要点：
 
-- **不**在轨 B 初期替换轨 A 主验收 / Demo  
-- **不** fork 维护完整 wasmtime4j 作为主路径  
-- **不**重造完整 Kotlin WebGPU 客户端 API（L2 原则继承）  
-- **不**以完整 WASI Preview3 / wasi-http 为短期关门条件  
-- **不**宣传已合规 wasi:webgpu；**不**默认对外发布  
-- **不**在无里程碑证据前把轨 A 依赖切到本仓  
+- **不**静默替换轨 A 主验收 / Demo  
+- **不**以 wasmtime4j 为运行时依赖；**只**追踪官方 Wasmtime  
+- **不**重造完整 Kotlin WebGPU 客户端 API / 第二套 Dawn  
+- **不**以「全量 WASI 0.3 套件 / 全量 testsuite」为单一 KPI（**主推**已批准 P3 **切片** + **wasi:webgpu 提案**）  
+- **不**在未达标前宣传合规 wasi:webgpu / 生产级 runtime；**不**默认对外发布  
+- **不**用 sync-compat 冒充真 CM async / WASI 0.3 异步  
 
 ---
 
@@ -155,18 +159,12 @@ wasmtime-android-kt/
 
 ## 6. 里程碑（摘要）
 
-详见 [`milestones.md`](milestones.md)。
+| 世代 | 文档 |
+|------|------|
+| **现行** L0–L5 | [`long-term-plan.md`](long-term-plan.md) |
+| **已归档** M0–M5 | [`milestones.md`](milestones.md) · [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) |
 
-| ID | 名称 | 一句话 DoD |
-|----|------|------------|
-| **M0** | 仓与构建骨架 | Android `.so` 可加载；`JNI_OnLoad` OK |
-| **M1** | 同步 CM 最小环 | 假 world：host sync import + guest export 往返 |
-| **M2** | 真 CM async | 一条 future complete/reject e2e（可假 payload） |
-| **M3** | 接 L2 | 至少 `request-adapter` 或 experimental 等价经本 L1→L2 |
-| **M4** | Android 图形 smoke | cube 子集或专用 Guest 上屏；**不**取代轨 A 仪器门禁 |
-| **M5** | 运行时硬化 | 错误模型、多 ABI、文档、可选桌面开发壳 |
-
-**硬序：** M0 → M1 → M2（M2 失败则停 L2 接线，先修 runtime）。M3/M4 依赖 M2。
+短期史实硬序（已完成）：M0 → M1 → M2（真 async 闸门）→ M3 → M4 → M5。
 
 ---
 
@@ -193,7 +191,9 @@ wasmtime-android-kt/
 | ART / TBI / JNI_VERSION | 中 | 复用轨 A android patch 经验清单 |
 | 双轨人力稀释 | 中 | 轨 A 只做稳性/文档；轨 B 固定里程碑，禁止无 DoD 扩张 |
 | Wasmtime 大版本 API 晃动 | 中 | 钉 crate 版本；changelog 跟踪 `component` concurrent |
-| 范围膨胀成「完整 WASI」 | 高 | [`non-goals.md`](non-goals.md) 硬表；P3 不作关门 |
+| 范围膨胀成「完整 WASI 套件」 | 高 | [`non-goals.md`](non-goals.md) NG-4；按 [`wasi-p3-surface.md`](wasi-p3-surface.md) 切片 |
+| Wasmtime major 晃动 | 中 | [`wasmtime-tracking.md`](wasmtime-tracking.md) 升级 RFC |
+| wasi:webgpu 提案 WIT 漂移 | 中 | [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) 钉版 + gap 表 |
 
 ---
 
@@ -219,7 +219,12 @@ wasmtime-android-kt/
 
 ## 11. 链接
 
+- 长期计划：[`long-term-plan.md`](long-term-plan.md)  
+- WASI 0.3 表面：[`wasi-p3-surface.md`](wasi-p3-surface.md)  
+- wasi:webgpu 路线：[`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)  
+- Wasmtime 追踪：[`wasmtime-tracking.md`](wasmtime-tracking.md)  
+- 短期归档：[`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md)  
 - 轨 A 闸门：[`archive-true-cm-async-dod`](../../../wasi-webgpu-jvm-mvp/docs/scheme/archive-true-cm-async-dod.md)  
-- 轨 A 线程：[`threading.md`](../../../wasi-webgpu-jvm-mvp/docs/mapping/threading.md)  
-- Wasmtime component async API：`FutureProducer` / `FutureReader` / `func_wrap_concurrent`  
-- Component Model async 说明：https://component-model.bytecodealliance.org/design/async.html  
+- WASI 0.3：https://wasi.dev/releases/wasi-p3 · https://bytecodealliance.org/articles/WASI-0.3  
+- wasi:webgpu：https://github.com/WebAssembly/wasi-webgpu  
+- Component Model async：https://component-model.bytecodealliance.org/design/async.html  
