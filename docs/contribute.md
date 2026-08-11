@@ -4,7 +4,7 @@
 
 > M5：把「怎么本地搭环境 / 怎么用桌面 JVM 迭代 L1」从 Android 真机门禁里拆出来写清楚。  
 > 正式 Android 复现仍以 [`build.md`](build.md) + [`mapping/artifacts.md`](mapping/artifacts.md) 为准。  
-> **分支 / PR / 开源协作：** 见 [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md)（短命分支；不建长期并行线）。
+> **分支 / PR / 开源协作：** 见根目录 [`CONTRIBUTING.md`](../CONTRIBUTING.md) 与 [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md)（短命分支；不建长期并行线）。
 
 ## 1. 范围
 

@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Chore — OSS PR readiness (CI, CONTRIBUTING, templates) (2026-08-11)
+
+- Add `.github/workflows/ci.yml`: `cargo test` in `native/` + `:runtime-api:compileKotlin`; aggregate check name `CI` for Rulesets
+- Add [`CONTRIBUTING.md`](CONTRIBUTING.md) (workflow, CI, Write vs Fork permissions)
+- Add PR / Issue templates under `.github/`
+- Update [`vcs-workflow.md`](docs/scheme/vcs-workflow.md) open-source checklist
+
 ### Code — P3-PRIM-3 stream read smoke (2026-08-11)
 
 - Host `StreamReader::new` with fixed `P3ST` bytes → guest canon `stream.read` (`fixtures/p3/stream_read`)

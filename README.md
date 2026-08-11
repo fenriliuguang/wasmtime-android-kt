@@ -66,7 +66,8 @@
 | [WASI 0.3 表面](docs/scheme/wasi-p3-surface.md) | 正式特性优先级 / 切片门禁 |
 | [wasi:webgpu 路线图](docs/scheme/roadmap-wasi-webgpu.md) | 提案推进（P0） |
 | [Wasmtime 追踪](docs/scheme/wasmtime-tracking.md) | 钉版 / 升级 / 回归 |
-| [版本控制工作流](docs/scheme/vcs-workflow.md) | 短命分支 + PR；开源接 PR |
+| [贡献指南](CONTRIBUTING.md) | PR / CI / 权限；链到 VCS 与构建文档 |
+| [版本控制工作流](docs/scheme/vcs-workflow.md) | 短命分支 + PR；Ruleset 清单 |
 | [experimental ↔ wasi:webgpu 差距](docs/mapping/gap-experimental-vs-wasi-webgpu.md) | W0 对照表 |
 | [短期归档 M0–M5](docs/scheme/archive/m0-m5-thin-l1.md) | 薄 L1 验证路径收口 |
 | [章程](docs/scheme/charter.md) | 背景、原则、风险 |

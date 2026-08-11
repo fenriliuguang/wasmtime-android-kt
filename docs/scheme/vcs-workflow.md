@@ -83,13 +83,14 @@
 
 开源或接受外部 PR 前建议具备：
 
-- [ ] `main` 禁止直推（branch protection）  
-- [ ] PR 必经审查（维护者自审亦可起步）  
-- [ ] CI：至少 native 构建脚本 + 可自动的 JVM/仪器子集  
-- [ ] CONTRIBUTING 指向本文 + [`../contribute.md`](../contribute.md)  
-- [ ] 清晰的 issue / PR 模板（可选，开源时补）  
+- [ ] `main` 禁止直推（**Ruleset**，非经典 Branch protection）：Settings → Rules → Rulesets；目标 Default branch；勾选 Require PR / linear history / block force push；详见 GitHub [Creating rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository)  
+- [ ] PR 必经审查（一人维护：Required approvals = **0** 亦可；有第二人再升 1）  
+- [x] CI：[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（`cargo test` + `:runtime-api:compileKotlin`）；Ruleset 挂状态检查名 **`CI`**  
+- [x] [`CONTRIBUTING.md`](../../CONTRIBUTING.md) → 本文 + [`../contribute.md`](../contribute.md)  
+- [x] Issue / PR 模板：[`.github/`](../../.github/)  
+- [x] 权限口径写入 CONTRIBUTING（协作者 Write；外人 Fork + PR）— **须在 GitHub 网页落实** Collaborators  
 
-在此之前，维护者仍按本文用短分支 + PR（或等价：短分支 + 自审合并）练习流程。
+合入本清单对应 PR 后：在 Ruleset 中启用 **Require status checks → `CI`**，再把 Enforcement 设为 Active。
 
 ## 7. 当前仓库实操（2026-08-11）
 
