@@ -45,8 +45,7 @@
 | 上屏用专用 smoke Guest | 长期对齐提案 Guest；上屏边界或需 wasi-gfx / 平台 surface 胶水 |
 | 差距史实 | [`../mapping/gap-m4-vs-cube.md`](../mapping/gap-m4-vs-cube.md)（experimental 坐标） |
 
-**首份代码期交付建议（仍属文档可先做）：**  
-`docs/mapping/gap-experimental-vs-wasi-webgpu.md` — 函数级对照表（experimental 名 ↔ 提案 WIT 名 ↔ async/sync ↔ L2 有无）。
+**W0 交付：** [`../mapping/gap-experimental-vs-wasi-webgpu.md`](../mapping/gap-experimental-vs-wasi-webgpu.md) — 函数级对照表（experimental 名 ↔ 提案 WIT 名 ↔ async/sync ↔ L2 有无）；提案钉 `wasi:webgpu@0.3.0-rc.2`。
 
 ## 4. 切片堆叠（建议序）
 

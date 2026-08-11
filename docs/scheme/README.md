@@ -37,6 +37,7 @@
 | [`non-goals.md`](non-goals.md) | 非目标硬表（长期修订） |
 | [`../contribute.md`](../contribute.md) | 贡献者构建；可选桌面开发壳 |
 | [`../mapping/threading-android.md`](../mapping/threading-android.md) | 线程契约 |
+| [`../mapping/gap-experimental-vs-wasi-webgpu.md`](../mapping/gap-experimental-vs-wasi-webgpu.md) | W0：experimental ↔ 提案对照 |
 
 ### 归档 / 史实
 

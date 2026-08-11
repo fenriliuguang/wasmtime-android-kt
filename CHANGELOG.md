@@ -4,6 +4,11 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Docs — W0 gap: experimental vs wasi:webgpu (2026-08-11)
+
+- Add [`docs/mapping/gap-experimental-vs-wasi-webgpu.md`](docs/mapping/gap-experimental-vs-wasi-webgpu.md): map 13 flat experimental imports to `wasi:webgpu@0.3.0-rc.2`; pin proposal; W1–W4 next cuts
+- Link from [`roadmap-wasi-webgpu.md`](docs/scheme/roadmap-wasi-webgpu.md)
+
 ### Docs — long-term plan + archive short-term M0–M5 (2026-08-11)
 
 - Archive short-term thin L1 path: [`docs/scheme/archive/m0-m5-thin-l1.md`](docs/scheme/archive/m0-m5-thin-l1.md); freeze [`milestones.md`](docs/scheme/milestones.md) as history
