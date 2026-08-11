@@ -4,6 +4,11 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Fix — CI native job OOM / exit 101 (2026-08-11)
+
+- Cap `CARGO_BUILD_JOBS=2`, strip debuginfo in CI; install JDK + build-essential
+- Run locked integration tests `m2_async_get` + `p3_stream_read` (avoid full `--all-targets` memory spike)
+
 ### Chore — OSS PR readiness (CI, CONTRIBUTING, templates) (2026-08-11)
 
 - Add `.github/workflows/ci.yml`: `cargo test` in `native/` + `:runtime-api:compileKotlin`; aggregate check name `CI` for Rulesets
