@@ -1,10 +1,12 @@
 //! Track B thin L1: upstream Wasmtime + JNI.
 //! M0: `JNI_OnLoad` + identity / version probes.
-//! M1: sync Component Model compile / instantiate / call export.
+//! M1: sync Component Model (host import + u32 resource).
 
 mod cm;
 mod error;
 mod handles;
+mod host;
+mod jvm;
 
 use jni::objects::JClass;
 use jni::sys::{jint, jstring, JNI_VERSION_1_6, JavaVM};
@@ -13,7 +15,8 @@ use std::os::raw::c_void;
 
 /// ART accepts only JNI 1.2 / 1.4 / 1.6 — not 1.8 (65544). Track A lesson.
 #[no_mangle]
-pub extern "system" fn JNI_OnLoad(_vm: *mut JavaVM, _reserved: *mut c_void) -> jint {
+pub extern "system" fn JNI_OnLoad(vm: *mut JavaVM, _reserved: *mut c_void) -> jint {
+    jvm::set_vm(vm);
     JNI_VERSION_1_6
 }
 

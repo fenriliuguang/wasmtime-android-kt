@@ -40,11 +40,11 @@ M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 A
 
 ### DoD
 
-- [x] Engine/Store/Linker/Component/Instance 最小 Kotlin API（slice 1）  
-- [ ] 注册至少 1 个 sync host import + 1 个 guest export  
-- [x] 假 world 往返断言（仪器：`add_one` export `run` → `a+1`）  
-- [ ] Resource：至少 1 种 host resource，**u32 rep** 进出（可为假）  
-- [ ] CHANGELOG（slice 1 已记；M1 关门再勾）  
+- [x] Engine/Store/Linker/Component/Instance 最小 Kotlin API  
+- [x] 注册至少 1 个 sync host import + 1 个 guest export（`add` ← Kotlin；`run`）  
+- [x] 假 world 往返断言（仪器：`add_one` / `host_add` / `widget_echo`）  
+- [x] Resource：host `widget`，**u32 rep** 经 guest `run` 进出  
+- [x] CHANGELOG  
 
 ### 非目标
 

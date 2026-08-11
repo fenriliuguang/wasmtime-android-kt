@@ -3,7 +3,9 @@ plugins {
 }
 
 val copyM1Fixtures by tasks.registering(Copy::class) {
-    from(rootProject.file("fixtures/m1/add_one.wasm"))
+    from(rootProject.file("fixtures/m1")) {
+        include("*.wasm")
+    }
     into(layout.projectDirectory.dir("src/androidTest/assets/m1"))
 }
 

@@ -1,9 +1,11 @@
 package io.github.fenriliuguang.wasmtime.android.jni
 
+import io.github.fenriliuguang.wasmtime.android.api.HostU32U32ToU32
+
 /**
  * JNI surface for Track B.
  * M0: identity / version probes.
- * M1: sync CM compile / instantiate / call u32 export.
+ * M1: sync CM compile / host import / u32 resource / call export.
  */
 object NativeBridge {
     init {
@@ -23,6 +25,7 @@ object NativeBridge {
 
     @JvmStatic external fun nativeStoreNew(engine: Long): Long
     @JvmStatic external fun nativeStoreClose(handle: Long)
+    @JvmStatic external fun nativeStoreSetHostAdd(store: Long, callback: HostU32U32ToU32)
 
     @JvmStatic external fun nativeComponentCompile(engine: Long, bytes: ByteArray): Long
     @JvmStatic external fun nativeComponentClose(handle: Long)
@@ -36,4 +39,14 @@ object NativeBridge {
     /** Call root export `(u32) -> u32`. */
     @JvmStatic
     external fun nativeCallU32(store: Long, instance: Long, exportName: String, arg: Int): Int
+
+    /** Call root export `(u32, u32) -> u32`. */
+    @JvmStatic
+    external fun nativeCallU32U32(
+        store: Long,
+        instance: Long,
+        exportName: String,
+        a: Int,
+        b: Int,
+    ): Int
 }

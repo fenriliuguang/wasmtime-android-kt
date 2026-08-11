@@ -1,14 +1,73 @@
-//! Sync Component Model JNI surface (M1 slice 1: compile / instantiate / call export).
+//! Sync Component Model JNI (M1: compile / host import / resource / call).
 
 use crate::error::{throw, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
-use jni::objects::{JByteArray, JClass, JString};
+use crate::host::{HostState, Widget};
+use crate::jvm;
+use jni::objects::{JByteArray, JClass, JObject, JString};
 use jni::sys::{jint, jlong};
 use jni::JNIEnv;
-use wasmtime::component::{Component, Linker};
+use wasmtime::component::{Component, Linker, Resource, ResourceType};
 use wasmtime::{Engine, Store};
 
-type HostStore = Store<()>;
+type HostStore = Store<HostState>;
+
+fn define_m1_host(linker: &mut Linker<HostState>) -> Result<(), String> {
+    linker
+        .root()
+        .resource(
+            "widget",
+            ResourceType::host::<Widget>(),
+            |mut store, rep| {
+                let resource = Resource::<Widget>::new_own(rep);
+                store.data_mut().table.delete(resource)?;
+                Ok(())
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    linker
+        .root()
+        .func_wrap(
+            "make-widget",
+            |mut store, (rep,): (u32,)| {
+                let resource = store.data_mut().table.push(Widget { rep })?;
+                Ok((resource,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    linker
+        .root()
+        .func_wrap(
+            "echo-widget",
+            |mut store, (r,): (Resource<Widget>,)| {
+                let w = store.data_mut().table.get(&r)?;
+                Ok((w.rep,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    linker
+        .root()
+        .func_wrap(
+            "add",
+            |caller, (a, b): (u32, u32)| {
+                let cb = caller
+                    .data()
+                    .add_cb
+                    .as_ref()
+                    .ok_or_else(|| wasmtime::Error::msg("host add callback not set"))?
+                    .clone();
+                let result =
+                    jvm::call_u32_u32_to_u32(&cb, a, b).map_err(wasmtime::Error::msg)?;
+                Ok((result,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
 
 #[no_mangle]
 pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeEngineNew(
@@ -38,7 +97,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         return 0;
     }
     let engine = unsafe { from_handle::<Engine>(engine) };
-    to_handle(Store::new(engine, ()))
+    to_handle(Store::new(engine, HostState::default()))
 }
 
 #[no_mangle]
@@ -48,6 +107,32 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     handle: jlong,
 ) {
     unsafe { drop_handle::<HostStore>(handle) }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreSetHostAdd(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    callback: JObject,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    if callback.is_null() {
+        throw(&mut env, "null host add callback");
+        return;
+    }
+    let gref = match jvm::global_ref(&mut env, callback) {
+        Ok(g) => g,
+        Err(e) => {
+            throw(&mut env, e);
+            return;
+        }
+    };
+    let store = unsafe { from_handle::<HostStore>(store) };
+    store.data_mut().add_cb = Some(gref);
 }
 
 #[no_mangle]
@@ -98,7 +183,12 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         return 0;
     }
     let engine = unsafe { from_handle::<Engine>(engine) };
-    to_handle(Linker::<()>::new(engine))
+    let mut linker = Linker::<HostState>::new(engine);
+    if let Err(e) = define_m1_host(&mut linker) {
+        throw(&mut env, e);
+        return 0;
+    }
+    to_handle(linker)
 }
 
 #[no_mangle]
@@ -107,7 +197,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     _class: JClass,
     handle: jlong,
 ) {
-    unsafe { drop_handle::<Linker<()>>(handle) }
+    unsafe { drop_handle::<Linker<HostState>>(handle) }
 }
 
 #[no_mangle]
@@ -122,7 +212,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         throw(&mut env, "null linker/store/component handle");
         return 0;
     }
-    let linker = unsafe { from_handle::<Linker<()>>(linker) };
+    let linker = unsafe { from_handle::<Linker<HostState>>(linker) };
     let store = unsafe { from_handle::<HostStore>(store) };
     let component = unsafe { from_handle::<Component>(component) };
     match linker.instantiate(&mut *store, component) {
@@ -173,6 +263,45 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         }
     };
     match func.call(&mut *store, (arg as u32,)) {
+        Ok((result,)) => result as jint,
+        Err(e) => {
+            throw_err(&mut env, e);
+            0
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallU32U32(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    instance: jlong,
+    export_name: JString,
+    a: jint,
+    b: jint,
+) -> jint {
+    if store == 0 || instance == 0 {
+        throw(&mut env, "null store/instance handle");
+        return 0;
+    }
+    let name: String = match env.get_string(&export_name) {
+        Ok(s) => s.into(),
+        Err(e) => {
+            throw_err(&mut env, e);
+            return 0;
+        }
+    };
+    let store = unsafe { from_handle::<HostStore>(store) };
+    let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
+    let func = match instance.get_typed_func::<(u32, u32), (u32,)>(&mut *store, name.as_str()) {
+        Ok(f) => f,
+        Err(e) => {
+            throw_err(&mut env, e);
+            return 0;
+        }
+    };
+    match func.call(&mut *store, (a as u32, b as u32)) {
         Ok((result,)) => result as jint,
         Err(e) => {
             throw_err(&mut env, e);

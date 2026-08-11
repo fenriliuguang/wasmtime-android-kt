@@ -1,17 +1,15 @@
-# M1 sync CM fixture
+# M1 sync CM fixtures
 
-Minimal Component Model guest with **no imports**:
-
-- export `run: func(a: u32) -> u32` → returns `a + 1`
-
-```text
-add_one.wat   source (wasm-tools parse)
-add_one.wasm  checked-in binary for instruments / offline builds
-```
+| File | Imports | Export | Behavior |
+|------|---------|--------|----------|
+| `add_one.wasm` | — | `run(a) -> u32` | `a + 1` |
+| `host_add.wasm` | `add(a,b)->u32` | `run(a,b)->u32` | calls host `add` |
+| `widget_echo.wasm` | `widget` resource, `make-widget`, `echo-widget` | `run(rep)->u32` | make then echo u32 rep |
 
 Regenerate:
 
 ```powershell
 wasm-tools parse fixtures/m1/add_one.wat -o fixtures/m1/add_one.wasm
-wasm-tools validate fixtures/m1/add_one.wasm
+wasm-tools parse fixtures/m1/host_add.wat -o fixtures/m1/host_add.wasm
+wasm-tools parse fixtures/m1/widget_echo.wat -o fixtures/m1/widget_echo.wasm
 ```

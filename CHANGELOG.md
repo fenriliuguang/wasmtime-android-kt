@@ -4,6 +4,12 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — M1 sync CM closed (2026-08-11)
+
+- Kotlin API: `Engine` / `Store` / `Component` / `Linker` / `Instance` + `WasmtimeException` + `HostU32U32ToU32`
+- JNI: compile / instantiate / call `(u32)->u32` and `(u32,u32)->u32`; Kotlin host `add` callback; host `widget` resource (u32 rep) via `make-widget` / `echo-widget`
+- Fixtures: `add_one`, `host_add`, `widget_echo`; instruments cover instantiate, host import, resource round-trip
+
 ### Code — M1 slice 1 sync CM instantiate (2026-08-11)
 
 - Kotlin API: `Engine` / `Store` / `Component` / `Linker` / `Instance` + `WasmtimeException`

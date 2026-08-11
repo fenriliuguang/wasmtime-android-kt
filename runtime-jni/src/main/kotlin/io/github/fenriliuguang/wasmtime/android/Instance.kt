@@ -17,4 +17,11 @@ class Instance internal constructor(internal var handle: Long) : AutoCloseable {
         require(store.handle != 0L) { "store closed" }
         return NativeBridge.nativeCallU32(store.handle, handle, exportName, arg)
     }
+
+    /** Call a root export with signature `(u32, u32) -> u32`. */
+    fun callU32U32(store: Store, exportName: String, a: Int, b: Int): Int {
+        require(handle != 0L) { "instance closed" }
+        require(store.handle != 0L) { "store closed" }
+        return NativeBridge.nativeCallU32U32(store.handle, handle, exportName, a, b)
+    }
 }
