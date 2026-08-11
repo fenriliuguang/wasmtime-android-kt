@@ -14,7 +14,7 @@
 | **M2 真 CM async** | **完成**（2026-08-11） |
 | **M3 接 L2** | **完成**（2026-08-11） |
 | **M4 Android 上屏 smoke** | **完成**（Dawn clear→present；2026-08-11） |
-| **M5 运行时硬化** | 进行中（错误模型 + 产物布局；2026-08-11） |
+| **M5 运行时硬化** | 进行中（错误 / 产物 / API 政策；2026-08-11） |
 
 ## 文档
 
@@ -24,6 +24,7 @@
 | [`dual-track.md`](dual-track.md) | 与轨 A 锁死 / 共享 / 隔离 |
 | [`tech-stack.md`](tech-stack.md) | Wasmtime / JNI / NDK / 依赖 |
 | [`milestones.md`](milestones.md) | M0–M5 DoD |
+| [`api-stability.md`](api-stability.md) | experimental semver / 破坏性约定 |
 | [`non-goals.md`](non-goals.md) | 非目标硬表 |
 | [`../mapping/threading-android.md`](../mapping/threading-android.md) | 线程契约 |
 

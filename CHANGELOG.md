@@ -4,6 +4,11 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Docs — M5 slice: API stability policy (2026-08-11)
+
+- Add [`docs/scheme/api-stability.md`](docs/scheme/api-stability.md): `0.x-experimental` SemVer rules, surface tiers, Track A follow, 1.0 gate
+- Wire `smoke-app` `versionName` to `wasmtime.android.version` in root `gradle.properties`
+
 ### Code — M5 slice: native artifact layout (2026-08-11)
 
 - Document formal `android/jniLibs/{arm64-v8a,x86_64}/` layout ([`docs/mapping/artifacts.md`](docs/mapping/artifacts.md))

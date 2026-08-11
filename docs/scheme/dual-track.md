@@ -75,4 +75,5 @@
 | sync-compat 行为 / cube 验收 | 仅轨 A |
 | Wasmtime 版本、JNI、future API | 仅轨 B |
 | L2 接口变更 | 轨 A 先改；轨 B 跟随；保持 semver/experimental 标注 |
+| 轨 B 公共 API / 版本号 | 见 [`api-stability.md`](api-stability.md) |
 | 双轨契约本身 | 两仓文档同步改（本页 + 轨 A 索引） |
