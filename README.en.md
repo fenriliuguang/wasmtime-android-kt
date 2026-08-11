@@ -50,6 +50,7 @@ Pinned versions: NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1` — see [`docs/
 
 | Doc | Notes |
 |-----|--------|
+| [Contributing](CONTRIBUTING.md) | PR / CI / permissions (ZH) |
 | [Long-term plan](docs/scheme/long-term-plan.md) | **Current** (ZH): WASI 0.3 · wasi:webgpu · Wasmtime |
 | [Scheme index](docs/scheme/README.en.md) | Stage table |
 | [Charter](docs/scheme/charter.en.md) | Vision / risks (EN may lag ZH) |
