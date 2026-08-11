@@ -4,6 +4,11 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — M0 device gate (2026-08-11)
+
+- Fix smoke-app androidTest deps: add Espresso (brings `AndroidJUnitRunner`) and use `androidTestUtil` for `test-services` (align Track A; OEM/UTP)
+- Verified on device (arm64-v8a): `LoadLibraryInstrumentedTest.loadLibraryAndQueryWasmtimeVersion` green
+
 ### Code — M0 build skeleton (2026-08-10)
 
 - Gradle multi-module: `runtime-api`, `runtime-jni`, `android`, `smoke-app` (AGP 9.3.1 / Kotlin 2.1.21 / Gradle 9.6.1)

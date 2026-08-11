@@ -47,6 +47,8 @@ android {
 dependencies {
     implementation(project(":android"))
     implementation(libs.androidx.core.ktx)
+    androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.test.services)
+    // Lets AGP/UTP install androidx.test.services (needed on API 30+ / OEM devices).
+    androidTestUtil(libs.androidx.test.services)
 }

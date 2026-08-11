@@ -23,7 +23,7 @@ M0 骨架 → M1 同步 CM → M2 真 async（硬闸门）→ M3 接 L2 → M4 A
 
 - [x] Gradle 多模块骨架 + `native/` Rust cdylib  
 - [x] `cargo ndk` 产出 `arm64-v8a` `.so`（`scripts/build-native-android.ps1`）  
-- [ ] `JNI_OnLoad` 在 ART 成功；仪器或最小 App `loadLibrary` 不崩（用例已就位；需设备验证）  
+- [x] `JNI_OnLoad` 在 ART 成功；仪器 `loadLibrary` + `nativeWasmtimeVersion`（真机 arm64 已验）  
 - [x] README「如何构建」可复现（[`../build.md`](../build.md)）  
 - [x] CHANGELOG  
 
