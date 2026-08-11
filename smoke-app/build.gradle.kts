@@ -2,6 +2,13 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+val copyM1Fixtures by tasks.registering(Copy::class) {
+    from(rootProject.file("fixtures/m1/add_one.wasm"))
+    into(layout.projectDirectory.dir("src/androidTest/assets/m1"))
+}
+
+tasks.named("preBuild").configure { dependsOn(copyM1Fixtures) }
+
 android {
     namespace = "io.github.fenriliuguang.wasmtime.android.smoke"
     compileSdk {

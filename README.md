@@ -4,7 +4,7 @@
 
 **中文** | [English](README.en.md)
 
-> **状态：M0 工程骨架已落地（2026-08-10）。** 尚无 Component Model 运行时 API（M1+）。  
+> **状态：M0 已真机验收；M1 slice 1（compile/instantiate/call export）进行中（2026-08-11）。**  
 > 姊妹项目（轨 A）：[`../wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) — 锁死 **sync-compat** + wasmtime4j；真机验收仍为 CM cube。  
 > 详细章程：[`docs/scheme/charter.md`](docs/scheme/charter.md)。  
 > **构建说明：** [`docs/build.md`](docs/build.md)。

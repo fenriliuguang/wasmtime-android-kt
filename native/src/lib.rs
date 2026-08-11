@@ -1,9 +1,14 @@
 //! Track B thin L1: upstream Wasmtime + JNI.
-//! M0: `JNI_OnLoad` + identity / version probes. CM surfaces land in M1+.
+//! M0: `JNI_OnLoad` + identity / version probes.
+//! M1: sync Component Model compile / instantiate / call export.
 
-use jni::JNIEnv;
+mod cm;
+mod error;
+mod handles;
+
 use jni::objects::JClass;
 use jni::sys::{jint, jstring, JNI_VERSION_1_6, JavaVM};
+use jni::JNIEnv;
 use std::os::raw::c_void;
 
 /// ART accepts only JNI 1.2 / 1.4 / 1.6 — not 1.8 (65544). Track A lesson.

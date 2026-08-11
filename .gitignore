@@ -20,3 +20,6 @@ captures/
 # Keep jniLibs directory layout; binaries stay local.
 !android/jniLibs/**/.gitkeep
 !native/link-stubs/libpthread.so
+
+# Copied from fixtures/m1 by smoke-app preBuild.
+smoke-app/src/androidTest/assets/
