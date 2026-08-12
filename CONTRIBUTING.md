@@ -27,7 +27,7 @@ Pull Request 与 `main` 推送会跑 GitHub Actions 工作流 **CI**（见 [`.gi
 
 | Job | 内容 |
 |-----|------|
-| `native (cargo test)` | `native/` 下 `cargo test --locked --test m2_async_get --test p3_stream_read`（CI 限并行以防 OOM） |
+| `native (cargo test)` | `native/` 下 `cargo test --locked --test m2_async_get --test p3_stream_read --test p3_stream_write`（CI 限并行以防 OOM） |
 | `jvm (runtime-api compile)` | `:runtime-api:compileKotlin`（不依赖轨 A / Android SDK） |
 
 本地建议：

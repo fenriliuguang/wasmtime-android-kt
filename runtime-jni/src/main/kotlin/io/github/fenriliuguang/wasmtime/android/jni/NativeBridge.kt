@@ -10,7 +10,7 @@ import io.github.fenriliuguang.wasmtime.android.api.HostU32U32ToU32
  * M2: concurrent async get.
  * M3: experimental request-adapter → Track A L2.
  * M4: flat clear→present experimental host + `(u64,u32,u32)->u32` export.
- * P3: host StreamReader → guest stream.read smoke.
+ * P3: stream.read (host→guest) + stream.write / take (guest→host).
  */
 object NativeBridge {
     init {
@@ -82,4 +82,11 @@ object NativeBridge {
      */
     @JvmStatic
     external fun nativeCallStreamRead(store: Long, instance: Long, maxLen: Int): Int
+
+    /**
+     * P3-PRIM-5: call guest `run` which `stream.write`s `P3WR` into host `take`
+     * (`StreamConsumer` + `future<u32>`). Returns consumed byte count (4).
+     */
+    @JvmStatic
+    external fun nativeCallStreamWrite(store: Long, instance: Long): Int
 }

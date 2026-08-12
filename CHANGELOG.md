@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — P3-PRIM-5 stream write / host consume smoke (2026-08-12)
+
+- Guest `stream.new` + `stream.write` (`P3WR`) → host `take` pipes `StreamConsumer`, returns `future<u32>` byte count (`fixtures/p3/stream_write`)
+- Native test `p3_stream_write`; JNI `nativeCallStreamWrite` / `Instance.callStreamWrite`
+- Instrument `StreamWriteInstrumentedTest`; docs: wasi-p3-surface + threading-m2-async
+- Fix duplicate `nativeCallStreamRead` JNI export in `cm.rs`
+
 ### Chore — Apache-2.0 license + third-party notices (2026-08-11)
 
 - Add root [`LICENSE`](LICENSE) (Apache-2.0), [`NOTICE`](NOTICE), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)

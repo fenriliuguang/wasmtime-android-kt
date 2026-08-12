@@ -20,7 +20,7 @@
 ## Test plan
 
 <!-- 列出跑过的命令，例如：
-- cd native && cargo test --test p3_stream_read
+- cd native && cargo test --test p3_stream_read --test p3_stream_write
 - ./gradlew :runtime-api:compileKotlin
 -->
 
