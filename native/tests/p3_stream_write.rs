@@ -31,7 +31,7 @@ impl StreamConsumer<()> for CollectConsumer {
 
     fn poll_consume(
         self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
+        cx: &mut Context<'_>,
         store: StoreContextMut<()>,
         src: Source<'_, Self::Item>,
         finish: bool,
@@ -43,8 +43,9 @@ impl StreamConsumer<()> for CollectConsumer {
             if finish {
                 return Poll::Ready(Ok(StreamResult::Cancelled));
             }
-            // Zero-length readiness probe (see wasi:cli stdout consumer).
-            return Poll::Ready(Ok(StreamResult::Completed));
+            // Match cm.rs: avoid Completed-on-empty sync reentry (Android stack).
+            cx.waker().wake_by_ref();
+            return Poll::Pending;
         }
         let n = chunk.len();
         this.buf.lock().unwrap().extend_from_slice(chunk);

@@ -40,7 +40,7 @@ impl StreamConsumer<HostState> for CollectConsumer {
 
     fn poll_consume(
         self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
+        cx: &mut Context<'_>,
         store: StoreContextMut<HostState>,
         src: Source<'_, Self::Item>,
         finish: bool,
@@ -52,7 +52,12 @@ impl StreamConsumer<HostState> for CollectConsumer {
             if finish {
                 return Poll::Ready(Ok(StreamResult::Cancelled));
             }
-            return Poll::Ready(Ok(StreamResult::Completed));
+            // Zero-length readiness probe (component-model#561). Returning
+            // Completed here can sync-reenter poll_consume until Android's
+            // smaller JNI stack overflows (seen on Vivo/arm64 opt-level=0).
+            // Pending + wake yields so guest stream.write can progress.
+            cx.waker().wake_by_ref();
+            return Poll::Pending;
         }
         let n = chunk.len();
         this.buf.lock().unwrap().extend_from_slice(chunk);
@@ -191,7 +196,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         let (tx, rx) = oneshot::channel::<u32>();
         let buf = Arc::new(Mutex::new(Vec::new()));
         reader.pipe(
-            store,
+            &mut *store,
             CollectConsumer {
                 buf: buf.clone(),
                 done: Some(tx),
@@ -838,11 +843,19 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     let store = unsafe { from_handle::<HostStore>(store) };
     let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
 
-    let result = (|| -> wasmtime::Result<u32> {
-        let func = instance.get_typed_func::<(), (u32,)>(&mut *store, "run")?;
-        let (n,) = pollster::block_on(func.call_async(&mut *store, ()))?;
-        Ok(n)
-    })();
+    // Drive with run_concurrent (same as M2 / wait-for). Plain call_async can
+    // sync-reenter StreamConsumer on Android until the JNI stack overflows.
+    let result = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor.with(|mut access| {
+                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
+                })?;
+                let (n,) = func.call_concurrent(accessor, ()).await?;
+                Ok(n)
+            })
+            .await?
+    });
 
     match result {
         Ok(v) => v as jint,
