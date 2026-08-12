@@ -23,6 +23,7 @@
 | [`long-term-plan.md`](long-term-plan.md) | 长期战略；L0–L5；P0/P1/P2 硬序 |
 | [`wasi-p3-surface.md`](wasi-p3-surface.md) | WASI 0.3 正式特性优先级与切片门禁 |
 | [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | wasi:webgpu 提案推进（P0） |
+| [`w1-dual-register.md`](w1-dual-register.md) | W1：提案名双注册刀切计划（实现另 PR） |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | 官方 Wasmtime 钉版 / 升级 / 回归 |
 | [`vcs-workflow.md`](vcs-workflow.md) | 短命分支 + PR；Ruleset / CI 清单 |
 | [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) | 贡献入口（权限 / CI / PR） |

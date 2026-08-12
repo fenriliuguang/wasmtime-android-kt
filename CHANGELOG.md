@@ -9,6 +9,10 @@ All notable planning and code changes for this experimental Android-first Wasm r
 - Register `wasi:clocks/monotonic-clock@0.3.0#now` (process-wide Instant epoch → non-decreasing mark)
 - Fixture `fixtures/wasi/monotonic_now`; native `wasi_monotonic_now`; instrument `WasiMonotonicClockInstrumentedTest`
 - CI includes `--test wasi_monotonic_now`; wait-* / system-clock / timezone deferred
+### Docs — W1 dual-register cut plan (2026-08-12)
+
+- Add [`docs/scheme/w1-dual-register.md`](docs/scheme/w1-dual-register.md): minimal DoD for dual-registering `wasi:webgpu` names onto existing L2 sync `request-adapter`; pin restated; guest/instrument/out-of-scope
+- Link from gap §5, roadmap W1, and [`vcs-workflow.md`](docs/scheme/vcs-workflow.md) §7（next code knife `feat/webgpu-w1-…`）
 
 ### Code — WASI 0.3 wasi:random get-random-u64 smoke (2026-08-12)
 

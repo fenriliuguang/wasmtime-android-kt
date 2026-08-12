@@ -68,7 +68,8 @@
 
 ## 5. 建议下一刀（与路线图对齐）
 
-1. **W1**：双注册或别名——提案 interface 名注册至少一条到现有 L2（仍可 u32）；更新 `abi-cm` 跟随策略。  
+1. **W1（下一代码刀）**：双注册或别名——提案 interface 名注册至少一条到现有 L2（仍可 u32）；更新 `abi-cm` 跟随策略。  
+   **刀切计划（文档）：** [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)（首选 `request-adapter` ↔ `gpu.request-adapter`；实现走 `feat/webgpu-w1-…`）。  
 2. **W2（硬闸门）**：`request-adapter`（及 `request-device`）改为 **真 async** host import；仪器断言非 Latch 冒充。  
 3. **W3**：按本表高频方法扩 resource 面；每片独立 DoD。  
 4. **W4**：present / native window 书面选 A（继续 experimental surface）/ B（wasi-gfx RFC）/ C（headless）。
