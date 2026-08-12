@@ -35,6 +35,14 @@
 
 约束：stream / future 未完成时勿丢弃 `Store`；stdio 等 package 应复用同一 consumer 模式。见 [`../scheme/wasi-p3-surface.md`](../scheme/wasi-p3-surface.md) P3-PRIM-3/4/5。
 
+## WASI cli stdout（复用写端 consumer）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | `wasi:cli/stdout@0.3.0#write-via-stream`：与根 `take` 共用 `CollectConsumer` / `pipe`；过渡返回 `future<u32>` 字节数 |
+| **Guest** | 同写端流程，import 包名不同（`fixtures/wasi/cli_stdout`；载荷 `OUT\n`） |
+| **Pump** | 同写端：`call_async` + `pollster::block_on`（仪器侧复用 `callStreamWrite`） |
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。

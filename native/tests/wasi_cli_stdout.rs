@@ -1,4 +1,4 @@
-//! P3-PRIM-3/5: guest stream.write → host StreamConsumer; take returns future<u32>.
+//! WASI 0.3: wasi:cli/stdout@0.3.0#write-via-stream smoke (transitional future<u32>).
 
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
@@ -10,7 +10,7 @@ use wasmtime::component::{
 };
 use wasmtime::{Config, Engine, Store, StoreContextMut};
 
-const PAYLOAD: &[u8] = b"P3WR";
+const PAYLOAD: &[u8] = b"OUT\n";
 
 struct CollectConsumer {
     buf: Arc<Mutex<Vec<u8>>>,
@@ -55,42 +55,43 @@ impl StreamConsumer<()> for CollectConsumer {
 }
 
 #[test]
-fn p3_stream_write_smoke() -> wasmtime::Result<()> {
+fn wasi_cli_stdout_write_via_stream_smoke() -> wasmtime::Result<()> {
     let mut config = Config::new();
     config.wasm_component_model(true);
     config.wasm_component_model_async(true);
     let engine = Engine::new(&config)?;
     let bytes = std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../fixtures/p3/stream_write.wasm"
+        "/../fixtures/wasi/cli_stdout.wasm"
     ))?;
     let component = Component::new(&engine, bytes)?;
 
     let mut linker = Linker::new(&engine);
-    linker.root().func_wrap(
-        "take",
-        |mut store: StoreContextMut<()>, (reader,): (StreamReader<u8>,)| {
-            let (tx, rx) = oneshot::channel::<u32>();
-            let buf = Arc::new(Mutex::new(Vec::new()));
-            reader.pipe(
-                &mut store,
-                CollectConsumer {
-                    buf: buf.clone(),
-                    done: Some(tx),
-                },
-            )?;
-            let fut = FutureReader::new(&mut store, async move {
-                let n = match rx.await {
-                    Ok(n) => n,
-                    Err(_) => 0,
-                };
-                // FutureProducer for async blocks: Output = Result<Item, _> (not Option).
-                Ok::<_, wasmtime::Error>(n)
-            })?;
-            let _ = buf;
-            Ok((fut,))
-        },
-    )?;
+    linker
+        .instance("wasi:cli/stdout@0.3.0")?
+        .func_wrap(
+            "write-via-stream",
+            |mut store: StoreContextMut<()>, (reader,): (StreamReader<u8>,)| {
+                let (tx, rx) = oneshot::channel::<u32>();
+                let buf = Arc::new(Mutex::new(Vec::new()));
+                reader.pipe(
+                    &mut store,
+                    CollectConsumer {
+                        buf: buf.clone(),
+                        done: Some(tx),
+                    },
+                )?;
+                let fut = FutureReader::new(&mut store, async move {
+                    let n = match rx.await {
+                        Ok(n) => n,
+                        Err(_) => 0,
+                    };
+                    Ok::<_, wasmtime::Error>(n)
+                })?;
+                let _ = buf;
+                Ok((fut,))
+            },
+        )?;
 
     let mut store = Store::new(&engine, ());
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;

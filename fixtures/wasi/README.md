@@ -22,6 +22,18 @@ Host: `wasi:clocks/monotonic-clock@0.3.0#now`（进程内 `Instant` 纪元 → �
 wasm-tools parse fixtures/wasi/monotonic_now.wat -o fixtures/wasi/monotonic_now.wasm
 ```
 
+## `wasi:cli` — `stdout.write-via-stream`
+
+Guest export: `run: func() -> u32`（字节数）  
+Host: `wasi:cli/stdout@0.3.0#write-via-stream`（`CollectConsumer` 管道；钉 `@0.3.0`）
+
+**过渡签名：** `func(data: stream<u8>) -> future<u32>`（与根 import `take` 同形）。官方 WIT 为 `future<result<_, error-code>>`；手写 WAT 枚举结果另切片。
+
+成功：guest 写入 `OUT\n`（4 字节）后 `run` 返回 `4`。本切片不含 stdin / stderr / `wasi:cli/command`。
+
+```powershell
+wasm-tools parse fixtures/wasi/cli_stdout.wat -o fixtures/wasi/cli_stdout.wasm
+```
 ## `wasi:clocks` — `monotonic-clock.wait-for`
 
 Guest export: `run: async func() -> u32`（先 `wait-for` ~2ms，再返回 `1`）  

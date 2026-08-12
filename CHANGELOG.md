@@ -4,6 +4,19 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Fix — Android stream write / cli stdout instrumented stack overflow (2026-08-12)
+
+- Empty-chunk `StreamConsumer` returns `Pending`+wake (avoid Completed sync-reentry)
+- `nativeCallStreamWrite` drives via `run_concurrent` / `call_concurrent` (same pump as M2)
+- Fix `pipe_stream_byte_count` store reborrow (`&mut *store`) after conflict merge
+- Note: Windows default `CARGO_PROFILE_RELEASE_OPT_LEVEL=0` still deepens frames; device stream smoke validated with `=2`
+
+### Code — WASI 0.3 wasi:cli stdout write-via-stream smoke (2026-08-12)
+
+- Register `wasi:cli/stdout@0.3.0#write-via-stream` (shared `CollectConsumer` / `pipe` with root `take`)
+- **Transitional** signature: `stream<u8> -> future<u32>` byte count (not official `future<result<_, error-code>>`)
+- Fixture `fixtures/wasi/cli_stdout` (`OUT\n`); native `wasi_cli_stdout`; instrument `WasiCliStdoutInstrumentedTest`
+- CI includes `--test wasi_cli_stdout`; stdin / stderr / `wasi:cli/command` deferred
 ### Code — WASI 0.3 wasi:clocks monotonic-clock.wait-for smoke (2026-08-12)
 
 - Register `wasi:clocks/monotonic-clock@0.3.0#wait-for` (`func_wrap_concurrent` + oneshot / helper-thread sleep; keep `#now`)

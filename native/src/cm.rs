@@ -40,7 +40,7 @@ impl StreamConsumer<HostState> for CollectConsumer {
 
     fn poll_consume(
         self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
+        cx: &mut Context<'_>,
         store: StoreContextMut<HostState>,
         src: Source<'_, Self::Item>,
         finish: bool,
@@ -52,7 +52,12 @@ impl StreamConsumer<HostState> for CollectConsumer {
             if finish {
                 return Poll::Ready(Ok(StreamResult::Cancelled));
             }
-            return Poll::Ready(Ok(StreamResult::Completed));
+            // Zero-length readiness probe (component-model#561). Returning
+            // Completed here can sync-reenter poll_consume until Android's
+            // smaller JNI stack overflows (seen on Vivo/arm64 opt-level=0).
+            // Pending + wake yields so guest stream.write can progress.
+            cx.waker().wake_by_ref();
+            return Poll::Pending;
         }
         let n = chunk.len();
         this.buf.lock().unwrap().extend_from_slice(chunk);
@@ -182,29 +187,53 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
+    // Pipe guest stream<u8> into CollectConsumer; complete future with byte count.
+    // Shared by root `take` (P3 fixture) and wasi:cli/stdout write-via-stream.
+    fn pipe_stream_byte_count(
+        store: &mut StoreContextMut<HostState>,
+        reader: StreamReader<u8>,
+    ) -> wasmtime::Result<FutureReader<u32>> {
+        let (tx, rx) = oneshot::channel::<u32>();
+        let buf = Arc::new(Mutex::new(Vec::new()));
+        reader.pipe(
+            &mut *store,
+            CollectConsumer {
+                buf: buf.clone(),
+                done: Some(tx),
+            },
+        )?;
+        let fut = FutureReader::new(store, async move {
+            let n = match rx.await {
+                Ok(n) => n,
+                Err(_) => 0,
+            };
+            Ok::<_, wasmtime::Error>(n)
+        })?;
+        let _ = buf;
+        Ok(fut)
+    }
+
     // P3-PRIM-5: host consumes guest stream; returns future<u32> byte count.
     linker
         .root()
         .func_wrap(
             "take",
             |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
-                let (tx, rx) = oneshot::channel::<u32>();
-                let buf = Arc::new(Mutex::new(Vec::new()));
-                reader.pipe(
-                    &mut store,
-                    CollectConsumer {
-                        buf: buf.clone(),
-                        done: Some(tx),
-                    },
-                )?;
-                let fut = FutureReader::new(&mut store, async move {
-                    let n = match rx.await {
-                        Ok(n) => n,
-                        Err(_) => 0,
-                    };
-                    Ok::<_, wasmtime::Error>(n)
-                })?;
-                let _ = buf;
+                let fut = pipe_stream_byte_count(&mut store, reader)?;
+                Ok((fut,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    // WASI 0.3: wasi:cli/stdout@0.3.0 — transitional write-via-stream → future<u32>.
+    // Official WIT: future<result<_, error-code>>; enum result deferred for hand-written WAT.
+    linker
+        .instance("wasi:cli/stdout@0.3.0")
+        .map_err(|e| e.to_string())?
+        .func_wrap(
+            "write-via-stream",
+            |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
+                let fut = pipe_stream_byte_count(&mut store, reader)?;
                 Ok((fut,))
             },
         )
@@ -814,11 +843,19 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     let store = unsafe { from_handle::<HostStore>(store) };
     let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
 
-    let result = (|| -> wasmtime::Result<u32> {
-        let func = instance.get_typed_func::<(), (u32,)>(&mut *store, "run")?;
-        let (n,) = pollster::block_on(func.call_async(&mut *store, ()))?;
-        Ok(n)
-    })();
+    // Drive with run_concurrent (same as M2 / wait-for). Plain call_async can
+    // sync-reenter StreamConsumer on Android until the JNI stack overflows.
+    let result = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor.with(|mut access| {
+                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
+                })?;
+                let (n,) = func.call_concurrent(accessor, ()).await?;
+                Ok(n)
+            })
+            .await?
+    });
 
     match result {
         Ok(v) => v as jint,

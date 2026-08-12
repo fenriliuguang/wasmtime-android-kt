@@ -53,7 +53,7 @@ World 层（组合）           wasi:cli/command · wasi:http/service · …
 | **CM 原语**（上表） | **必做底座** | L1 堆叠 |
 | `wasi:clocks`（`system-clock` / `wait-until` / `wait-for`） | **高** | **`monotonic-clock.now` + `wait-for` smoke 已通**（`fixtures/wasi/monotonic_now` · `monotonic_wait_for`；钉 `@0.3.0`）；`wait-until` / `system-clock` / timezone 另切片 |
 | `wasi:random` | **高** | **`get-random-u64` smoke 已通**（`fixtures/wasi/random_u64`；钉 `@0.3.0`）；`get-random-bytes` 另切片 |
-| `wasi:cli` stdio（stream+future） | **中高** | P3-PRIM-3/5 读写下底座已通；可开最小 stdout smoke |
+| `wasi:cli` stdio（stream+future） | **中高** | **`stdout.write-via-stream` smoke 已通**（`fixtures/wasi/cli_stdout`；钉 `@0.3.0`；过渡 `future<u32>` 字节数，非官方 `result`/`error-code`）；stdin / stderr 另切片 |
 | `wasi:cli/command`（`async run`） | **中** | stdio + clocks/random 子集可用 |
 | `wasi:filesystem` | **中** | 明确 Guest 阻塞；Android 沙箱路径策略先写文档 |
 | `wasi:sockets` | **中低** | 网络权限与线程模型 RFC |
