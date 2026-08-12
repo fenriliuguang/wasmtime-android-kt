@@ -99,8 +99,8 @@
 |------|------|
 | 是否新建 `feature/stream`、`feature/webgpu`、`feature/clocks` 等长期线 | **不新建** |
 | 本批规划文档 PR 分支 | `docs/long-term-plan-vcs-workflow` → 合入 `main` 后删除 |
-| 已推进短命切片 | `docs/w0-wasi-webgpu-gap` · `feat/p3-stream-read` · `feat/p3-stream-write` · `feat/wasi-random` · `feat/wasi-clocks`（`now`） · `feat/wasi-clocks-wait-for` · `feat/wasi-cli-stdout` · `docs/webgpu-w1-dual-register` · **`feat/webgpu-w1-request-adapter`**（W1 双注册过渡扁平） |
-| 可开下一刀 | cli stdin/stderr · clocks `wait-until` / `system-clock` · **webgpu W2**（真 async；见 [`w1-dual-register.md`](w1-dual-register.md) / roadmap）— 勿抢同一 `native/cm.rs` 无协调 |
+| 已推进短命切片 | `docs/w0-wasi-webgpu-gap` · `feat/p3-stream-read` · `feat/p3-stream-write` · `feat/wasi-random` · `feat/wasi-clocks`（`now`） · `feat/wasi-clocks-wait-for` · **`feat/wasi-clocks-wait-until`** · `feat/wasi-cli-stdout` · `docs/webgpu-w1-dual-register` · `feat/webgpu-w1-request-adapter`（W1 双注册过渡扁平） |
+| 可开下一刀 | cli stdin/stderr · clocks `system-clock` · **webgpu W2**（真 async；见 [`w1-dual-register.md`](w1-dual-register.md) / roadmap）— 勿抢同一 `native/cm.rs` 无协调 |
 
 ## 8. 修订
 

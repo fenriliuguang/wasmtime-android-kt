@@ -154,17 +154,19 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:clocks/monotonic-clock@0.3.0 (now + wait-for).
+    // WASI 0.3: wasi:clocks/monotonic-clock@0.3.0 (now + wait-for + wait-until).
     {
+        use std::sync::OnceLock;
+        use std::time::Instant;
+        // Shared Instant epoch for now / wait-until (same process-wide mark).
+        static MONOTONIC_START: OnceLock<Instant> = OnceLock::new();
+
         let mut clocks = linker
             .instance("wasi:clocks/monotonic-clock@0.3.0")
             .map_err(|e| e.to_string())?;
         clocks
             .func_wrap("now", |_store, ()| {
-                use std::sync::OnceLock;
-                use std::time::Instant;
-                static START: OnceLock<Instant> = OnceLock::new();
-                let start = START.get_or_init(Instant::now);
+                let start = MONOTONIC_START.get_or_init(Instant::now);
                 Ok((start.elapsed().as_nanos() as u64,))
             })
             .map_err(|e| e.to_string())?;
@@ -177,6 +179,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     std::thread::spawn(move || {
                         if capped > 0 {
                             std::thread::sleep(std::time::Duration::from_nanos(capped));
+                        }
+                        let _ = tx.send(());
+                    });
+                    let _ = rx.await;
+                    Ok(())
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        clocks
+            .func_wrap_concurrent("wait-until", |_accessor, (when,): (u64,)| {
+                Box::pin(async move {
+                    let start = MONOTONIC_START.get_or_init(Instant::now);
+                    let now = start.elapsed().as_nanos() as u64;
+                    let sleep_ns = when.saturating_sub(now).min(1_000_000_000); // 1s host cap
+                    let (tx, rx) = oneshot::channel::<()>();
+                    std::thread::spawn(move || {
+                        if sleep_ns > 0 {
+                            std::thread::sleep(std::time::Duration::from_nanos(sleep_ns));
                         }
                         let _ = tx.send(());
                     });
