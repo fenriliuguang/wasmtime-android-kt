@@ -53,10 +53,9 @@
 W0  钉版与差距表（文档）
     提案 WIT 版本 · 与 Wasmtime / wit-bindgen 对齐说明 · gap 表
 
-W1  链接与 resource 边界
-    提案 world/interface 名注册；GpuHandle u32 rep 映射保持
-    至少 1 个 sync 或已稳定方法经标准名打通（若提案仍全 async 则直接 W2）
-    刀切计划：[`w1-dual-register.md`](w1-dual-register.md)（双注册；实现 `feat/webgpu-w1-…`）
+W1  链接与 resource 边界（已交付）
+    提案 instance 双注册过渡扁平 `request-adapter` → 同一 L2 sync u32
+    见 [`w1-dual-register.md`](w1-dual-register.md)；终态 `[method]` / resource 表属 W3
 
 W2  真 async 主链（硬闸门）
     request-adapter / request-device（提案名）future 完成

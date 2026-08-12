@@ -4,6 +4,12 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — W1 wasi:webgpu dual-register request-adapter (2026-08-12)
+
+- Dual-register transitional flat `wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter` onto the same L2 sync u32 path as experimental (not `[method]gpu.request-adapter`; not true async)
+- Fixture `fixtures/w1/webgpu_request_adapter`; native `wasi_webgpu_request_adapter`; twin instrument `WasiWebGpuRequestAdapterInstrumentedTest`; `copyW1Fixtures`
+- Re-pin proposal tag `v0.3.0-rc.2` → `6a776bada0b66d3dbf9da304a49ff2947ce4e1f8`; mark W1 delivered in scheme docs; CI `--test wasi_webgpu_request_adapter`
+
 ### Fix — Android stream write / cli stdout instrumented stack overflow (2026-08-12)
 
 - Empty-chunk `StreamConsumer` returns `Pending`+wake (avoid Completed sync-reentry)

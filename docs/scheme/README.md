@@ -12,7 +12,7 @@
 | **文档立项 / 章程** | **完成**（2026-08-10） |
 | **短期 M0–M5 薄 L1** | **已归档**（2026-08-11）→ [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) |
 | **长期计划（文档期）** | **现行**（2026-08-11）→ [`long-term-plan.md`](long-term-plan.md) |
-| **长期 L1+ 代码切片** | **进行中**（stream 读/写 · `wasi:random` u64 · `wasi:clocks` now；下一刀 webgpu W1 / cli stdio / clocks wait-*） |
+| **长期 L1+ 代码切片** | **进行中**（stream 读/写 · `wasi:random` u64 · `wasi:clocks` now · webgpu W1 双注册；下一刀 W2 真 async / cli stdio / clocks wait-*） |
 
 ## 文档
 
@@ -23,7 +23,7 @@
 | [`long-term-plan.md`](long-term-plan.md) | 长期战略；L0–L5；P0/P1/P2 硬序 |
 | [`wasi-p3-surface.md`](wasi-p3-surface.md) | WASI 0.3 正式特性优先级与切片门禁 |
 | [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | wasi:webgpu 提案推进（P0） |
-| [`w1-dual-register.md`](w1-dual-register.md) | W1：提案名双注册刀切计划（实现另 PR） |
+| [`w1-dual-register.md`](w1-dual-register.md) | W1：提案名双注册（已交付；过渡扁平；下一刀 W2） |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | 官方 Wasmtime 钉版 / 升级 / 回归 |
 | [`vcs-workflow.md`](vcs-workflow.md) | 短命分支 + PR；Ruleset / CI 清单 |
 | [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) | 贡献入口（权限 / CI / PR） |

@@ -240,125 +240,147 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     // M3/M4: Track A experimental CM host (flat u32 reps) → L2 via Kotlin callbacks.
-    let mut exp = linker
-        .instance("experimental:webgpu-cm/host@0.8.0")
+    // Scope ends before W1 wasi:webgpu dual-register (Linker::instance is once-per-name).
+    {
+        let mut exp = linker
+            .instance("experimental:webgpu-cm/host@0.8.0")
+            .map_err(|e| e.to_string())?;
+
+        fn exp_cb(data: &HostState) -> Result<jni::objects::GlobalRef, wasmtime::Error> {
+            data.experimental_host_cb
+                .as_ref()
+                .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                .cloned()
+        }
+
+        exp.func_wrap("request-adapter", |caller, ()| {
+            let cb = exp_cb(caller.data())?;
+            let rep = jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+            Ok((rep,))
+        })
         .map_err(|e| e.to_string())?;
 
-    fn exp_cb(data: &HostState) -> Result<jni::objects::GlobalRef, wasmtime::Error> {
-        data.experimental_host_cb
-            .as_ref()
-            .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-            .cloned()
-    }
-
-    exp.func_wrap("request-adapter", |caller, ()| {
-        let cb = exp_cb(caller.data())?;
-        let rep = jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-        Ok((rep,))
-    })
-    .map_err(|e| e.to_string())?;
-
-    exp.func_wrap("adapter-request-device", |caller, (adapter,): (u32,)| {
-        let cb = exp_cb(caller.data())?;
-        let rep = jvm::exp_adapter_request_device(&cb, adapter).map_err(wasmtime::Error::msg)?;
-        Ok((rep,))
-    })
-    .map_err(|e| e.to_string())?;
-
-    exp.func_wrap("device-get-queue", |caller, (device,): (u32,)| {
-        let cb = exp_cb(caller.data())?;
-        let rep = jvm::exp_device_get_queue(&cb, device).map_err(wasmtime::Error::msg)?;
-        Ok((rep,))
-    })
-    .map_err(|e| e.to_string())?;
-
-    exp.func_wrap(
-        "create-surface-from-native-window",
-        |caller, (window,): (u64,)| {
+        exp.func_wrap("adapter-request-device", |caller, (adapter,): (u32,)| {
             let cb = exp_cb(caller.data())?;
-            let rep = jvm::exp_create_surface(&cb, window).map_err(wasmtime::Error::msg)?;
+            let rep = jvm::exp_adapter_request_device(&cb, adapter).map_err(wasmtime::Error::msg)?;
             Ok((rep,))
-        },
-    )
-    .map_err(|e| e.to_string())?;
+        })
+        .map_err(|e| e.to_string())?;
 
-    exp.func_wrap(
-        "surface-configure",
-        |caller, (surface, device, adapter, width, height): (u32, u32, u32, u32, u32)| {
+        exp.func_wrap("device-get-queue", |caller, (device,): (u32,)| {
             let cb = exp_cb(caller.data())?;
-            let format = jvm::exp_surface_configure(&cb, surface, device, adapter, width, height)
-                .map_err(wasmtime::Error::msg)?;
-            Ok((format,))
-        },
-    )
-    .map_err(|e| e.to_string())?;
-
-    exp.func_wrap(
-        "surface-get-current-texture-view",
-        |caller, (surface,): (u32,)| {
-            let cb = exp_cb(caller.data())?;
-            let rep = jvm::exp_surface_get_view(&cb, surface).map_err(wasmtime::Error::msg)?;
+            let rep = jvm::exp_device_get_queue(&cb, device).map_err(wasmtime::Error::msg)?;
             Ok((rep,))
-        },
-    )
-    .map_err(|e| e.to_string())?;
+        })
+        .map_err(|e| e.to_string())?;
 
-    exp.func_wrap(
-        "device-create-command-encoder",
-        |caller, (device,): (u32,)| {
+        exp.func_wrap(
+            "create-surface-from-native-window",
+            |caller, (window,): (u64,)| {
+                let cb = exp_cb(caller.data())?;
+                let rep = jvm::exp_create_surface(&cb, window).map_err(wasmtime::Error::msg)?;
+                Ok((rep,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+        exp.func_wrap(
+            "surface-configure",
+            |caller, (surface, device, adapter, width, height): (u32, u32, u32, u32, u32)| {
+                let cb = exp_cb(caller.data())?;
+                let format =
+                    jvm::exp_surface_configure(&cb, surface, device, adapter, width, height)
+                        .map_err(wasmtime::Error::msg)?;
+                Ok((format,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+        exp.func_wrap(
+            "surface-get-current-texture-view",
+            |caller, (surface,): (u32,)| {
+                let cb = exp_cb(caller.data())?;
+                let rep = jvm::exp_surface_get_view(&cb, surface).map_err(wasmtime::Error::msg)?;
+                Ok((rep,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+        exp.func_wrap(
+            "device-create-command-encoder",
+            |caller, (device,): (u32,)| {
+                let cb = exp_cb(caller.data())?;
+                let rep =
+                    jvm::exp_create_command_encoder(&cb, device).map_err(wasmtime::Error::msg)?;
+                Ok((rep,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+        exp.func_wrap(
+            "command-encoder-begin-render-pass-clear",
+            |caller, (encoder, view): (u32, u32)| {
+                let cb = exp_cb(caller.data())?;
+                let rep = jvm::exp_begin_render_pass_clear(&cb, encoder, view)
+                    .map_err(wasmtime::Error::msg)?;
+                Ok((rep,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+        exp.func_wrap("render-pass-end", |caller, (pass,): (u32,)| {
+            let cb = exp_cb(caller.data())?;
+            jvm::exp_render_pass_end(&cb, pass).map_err(wasmtime::Error::msg)?;
+            Ok(())
+        })
+        .map_err(|e| e.to_string())?;
+
+        exp.func_wrap("command-encoder-finish", |caller, (encoder,): (u32,)| {
             let cb = exp_cb(caller.data())?;
             let rep =
-                jvm::exp_create_command_encoder(&cb, device).map_err(wasmtime::Error::msg)?;
+                jvm::exp_command_encoder_finish(&cb, encoder).map_err(wasmtime::Error::msg)?;
             Ok((rep,))
-        },
-    )
-    .map_err(|e| e.to_string())?;
+        })
+        .map_err(|e| e.to_string())?;
 
-    exp.func_wrap(
-        "command-encoder-begin-render-pass-clear",
-        |caller, (encoder, view): (u32, u32)| {
+        exp.func_wrap("queue-submit1", |caller, (queue, commands): (u32, u32)| {
             let cb = exp_cb(caller.data())?;
-            let rep = jvm::exp_begin_render_pass_clear(&cb, encoder, view)
-                .map_err(wasmtime::Error::msg)?;
+            jvm::exp_queue_submit1(&cb, queue, commands).map_err(wasmtime::Error::msg)?;
+            Ok(())
+        })
+        .map_err(|e| e.to_string())?;
+
+        exp.func_wrap("surface-present", |caller, (surface,): (u32,)| {
+            let cb = exp_cb(caller.data())?;
+            jvm::exp_surface_present(&cb, surface).map_err(wasmtime::Error::msg)?;
+            Ok(())
+        })
+        .map_err(|e| e.to_string())?;
+
+        exp.func_wrap("surface-unconfigure", |caller, (surface,): (u32,)| {
+            let cb = exp_cb(caller.data())?;
+            jvm::exp_surface_unconfigure(&cb, surface).map_err(wasmtime::Error::msg)?;
+            Ok(())
+        })
+        .map_err(|e| e.to_string())?;
+    }
+
+    // W1: dual-register same L2 sync path under proposal instance (transitional flat
+    // `request-adapter`, not final `[method]gpu.request-adapter`).
+    linker
+        .instance("wasi:webgpu/webgpu@0.3.0-rc.2")
+        .map_err(|e| e.to_string())?
+        .func_wrap("request-adapter", |caller, ()| {
+            let cb = caller
+                .data()
+                .experimental_host_cb
+                .as_ref()
+                .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                .cloned()?;
+            let rep = jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
             Ok((rep,))
-        },
-    )
-    .map_err(|e| e.to_string())?;
-
-    exp.func_wrap("render-pass-end", |caller, (pass,): (u32,)| {
-        let cb = exp_cb(caller.data())?;
-        jvm::exp_render_pass_end(&cb, pass).map_err(wasmtime::Error::msg)?;
-        Ok(())
-    })
-    .map_err(|e| e.to_string())?;
-
-    exp.func_wrap("command-encoder-finish", |caller, (encoder,): (u32,)| {
-        let cb = exp_cb(caller.data())?;
-        let rep = jvm::exp_command_encoder_finish(&cb, encoder).map_err(wasmtime::Error::msg)?;
-        Ok((rep,))
-    })
-    .map_err(|e| e.to_string())?;
-
-    exp.func_wrap("queue-submit1", |caller, (queue, commands): (u32, u32)| {
-        let cb = exp_cb(caller.data())?;
-        jvm::exp_queue_submit1(&cb, queue, commands).map_err(wasmtime::Error::msg)?;
-        Ok(())
-    })
-    .map_err(|e| e.to_string())?;
-
-    exp.func_wrap("surface-present", |caller, (surface,): (u32,)| {
-        let cb = exp_cb(caller.data())?;
-        jvm::exp_surface_present(&cb, surface).map_err(wasmtime::Error::msg)?;
-        Ok(())
-    })
-    .map_err(|e| e.to_string())?;
-
-    exp.func_wrap("surface-unconfigure", |caller, (surface,): (u32,)| {
-        let cb = exp_cb(caller.data())?;
-        jvm::exp_surface_unconfigure(&cb, surface).map_err(wasmtime::Error::msg)?;
-        Ok(())
-    })
-    .map_err(|e| e.to_string())?;
+        })
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
