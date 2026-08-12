@@ -99,10 +99,8 @@
 |------|------|
 | 是否新建 `feature/stream`、`feature/webgpu`、`feature/clocks` 等长期线 | **不新建** |
 | 本批规划文档 PR 分支 | `docs/long-term-plan-vcs-workflow` → 合入 `main` 后删除 |
-| 已推进短命切片 | `docs/w0-wasi-webgpu-gap` · `feat/p3-stream-read` · `feat/p3-stream-write` · `feat/wasi-random`（`get-random-u64`） · `feat/wasi-clocks`（`monotonic-clock.now`） |
-| 可开下一刀 | cli stdio 子集 · webgpu W1（`feat/…`）· clocks `wait-*` / system-clock — 勿抢同一 `native/cm.rs` 无协调 |
-| 已推进短命切片 | `docs/w0-wasi-webgpu-gap` · `feat/p3-stream-read` · `feat/p3-stream-write` · `feat/wasi-random`（`get-random-u64`） · **`docs/webgpu-w1-dual-register`**（W1 刀切计划） |
-| 可开下一刀 | `feat/wasi-clocks`（可与 docs 并行）· cli stdio 子集 · **webgpu W1 代码** `feat/webgpu-w1-…`（见 [`w1-dual-register.md`](w1-dual-register.md)）— 勿抢同一 `native/cm.rs` 无协调 |
+| 已推进短命切片 | `docs/w0-wasi-webgpu-gap` · `feat/p3-stream-read` · `feat/p3-stream-write` · `feat/wasi-random`（`get-random-u64`） · `feat/wasi-clocks`（`monotonic-clock.now`） · `feat/wasi-clocks-wait-for`（`monotonic-clock.wait-for`） · **`docs/webgpu-w1-dual-register`**（W1 刀切计划） |
+| 可开下一刀 | cli stdio 子集 · clocks `wait-until` / `system-clock` · **webgpu W1 代码** `feat/webgpu-w1-…`（见 [`w1-dual-register.md`](w1-dual-register.md)）— 勿抢同一 `native/cm.rs` 无协调 |
 
 ## 8. 修订
 

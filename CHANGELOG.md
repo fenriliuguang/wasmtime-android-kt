@@ -4,6 +4,12 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — WASI 0.3 wasi:clocks monotonic-clock.wait-for smoke (2026-08-12)
+
+- Register `wasi:clocks/monotonic-clock@0.3.0#wait-for` (`func_wrap_concurrent` + oneshot / helper-thread sleep; keep `#now`)
+- Fixture `fixtures/wasi/monotonic_wait_for`; native `wasi_monotonic_wait_for`; instrument `WasiMonotonicWaitForInstrumentedTest` via `callRunConcurrent`
+- CI includes `--test wasi_monotonic_wait_for`; `wait-until` / `system-clock` / timezone deferred
+
 ### Code — WASI 0.3 wasi:clocks monotonic-clock.now smoke (2026-08-12)
 
 - Register `wasi:clocks/monotonic-clock@0.3.0#now` (process-wide Instant epoch → non-decreasing mark)
