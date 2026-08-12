@@ -162,29 +162,53 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
+    // Pipe guest stream<u8> into CollectConsumer; complete future with byte count.
+    // Shared by root `take` (P3 fixture) and wasi:cli/stdout write-via-stream.
+    fn pipe_stream_byte_count(
+        store: &mut StoreContextMut<HostState>,
+        reader: StreamReader<u8>,
+    ) -> wasmtime::Result<FutureReader<u32>> {
+        let (tx, rx) = oneshot::channel::<u32>();
+        let buf = Arc::new(Mutex::new(Vec::new()));
+        reader.pipe(
+            store,
+            CollectConsumer {
+                buf: buf.clone(),
+                done: Some(tx),
+            },
+        )?;
+        let fut = FutureReader::new(store, async move {
+            let n = match rx.await {
+                Ok(n) => n,
+                Err(_) => 0,
+            };
+            Ok::<_, wasmtime::Error>(n)
+        })?;
+        let _ = buf;
+        Ok(fut)
+    }
+
     // P3-PRIM-5: host consumes guest stream; returns future<u32> byte count.
     linker
         .root()
         .func_wrap(
             "take",
             |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
-                let (tx, rx) = oneshot::channel::<u32>();
-                let buf = Arc::new(Mutex::new(Vec::new()));
-                reader.pipe(
-                    &mut store,
-                    CollectConsumer {
-                        buf: buf.clone(),
-                        done: Some(tx),
-                    },
-                )?;
-                let fut = FutureReader::new(&mut store, async move {
-                    let n = match rx.await {
-                        Ok(n) => n,
-                        Err(_) => 0,
-                    };
-                    Ok::<_, wasmtime::Error>(n)
-                })?;
-                let _ = buf;
+                let fut = pipe_stream_byte_count(&mut store, reader)?;
+                Ok((fut,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    // WASI 0.3: wasi:cli/stdout@0.3.0 — transitional write-via-stream → future<u32>.
+    // Official WIT: future<result<_, error-code>>; enum result deferred for hand-written WAT.
+    linker
+        .instance("wasi:cli/stdout@0.3.0")
+        .map_err(|e| e.to_string())?
+        .func_wrap(
+            "write-via-stream",
+            |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
+                let fut = pipe_stream_byte_count(&mut store, reader)?;
                 Ok((fut,))
             },
         )

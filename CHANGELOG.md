@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — WASI 0.3 wasi:cli stdout write-via-stream smoke (2026-08-12)
+
+- Register `wasi:cli/stdout@0.3.0#write-via-stream` (shared `CollectConsumer` / `pipe` with root `take`)
+- **Transitional** signature: `stream<u8> -> future<u32>` byte count (not official `future<result<_, error-code>>`)
+- Fixture `fixtures/wasi/cli_stdout` (`OUT\n`); native `wasi_cli_stdout`; instrument `WasiCliStdoutInstrumentedTest`
+- CI includes `--test wasi_cli_stdout`; stdin / stderr / `wasi:cli/command` deferred
+
 ### Code — WASI 0.3 wasi:clocks monotonic-clock.now smoke (2026-08-12)
 
 - Register `wasi:clocks/monotonic-clock@0.3.0#now` (process-wide Instant epoch → non-decreasing mark)
