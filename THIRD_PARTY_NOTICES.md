@@ -11,6 +11,7 @@
 | `jni` | JNI 绑定 | Apache-2.0 OR MIT |
 | `futures` | async 工具 | Apache-2.0 OR MIT |
 | `pollster` | 阻塞驱动 | Apache-2.0 OR MIT |
+| `getrandom` | WASI random CSPRNG | Apache-2.0 OR MIT |
 
 传递依赖主要为 **Apache-2.0 OR MIT**、**MIT**、**MIT OR Unlicense**、**Zlib**，以及少量 **BSD-2/3-Clause** / **Unicode-3.0**（如 `encoding_rs`、`unicode-ident`）。均为宽松许可，与本仓 Apache-2.0 兼容。
 

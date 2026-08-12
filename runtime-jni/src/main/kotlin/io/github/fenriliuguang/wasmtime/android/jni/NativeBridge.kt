@@ -51,6 +51,10 @@ object NativeBridge {
     @JvmStatic
     external fun nativeCallUnitToU32(store: Long, instance: Long, exportName: String): Int
 
+    /** Call root export `() -> u64` (bits as signed Long). */
+    @JvmStatic
+    external fun nativeCallUnitToU64(store: Long, instance: Long, exportName: String): Long
+
     /** Call root export `(u32, u32) -> u32`. */
     @JvmStatic
     external fun nativeCallU32U32(

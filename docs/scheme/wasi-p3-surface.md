@@ -52,7 +52,7 @@ World 层（组合）           wasi:cli/command · wasi:http/service · …
 |-----------------|------------|-------------------|
 | **CM 原语**（上表） | **必做底座** | L1 堆叠 |
 | `wasi:clocks`（`system-clock` / `wait-until` / `wait-for`） | **高** | 原语就绪；webgpu/Guest 计时或通用 smoke 需要 |
-| `wasi:random` | **高** | 极小面；工具链常拉 |
+| `wasi:random` | **高** | **`get-random-u64` smoke 已通**（`fixtures/wasi/random_u64`；钉 `@0.3.0`）；`get-random-bytes` 另切片 |
 | `wasi:cli` stdio（stream+future） | **中高** | P3-PRIM-3/5 读写下底座已通；可开最小 stdout smoke |
 | `wasi:cli/command`（`async run`） | **中** | stdio + clocks/random 子集可用 |
 | `wasi:filesystem` | **中** | 明确 Guest 阻塞；Android 沙箱路径策略先写文档 |

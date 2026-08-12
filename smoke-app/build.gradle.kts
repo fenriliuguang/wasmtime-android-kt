@@ -37,8 +37,22 @@ val copyP3Fixtures by tasks.registering(Copy::class) {
     into(layout.projectDirectory.dir("src/androidTest/assets/p3"))
 }
 
+val copyWasiFixtures by tasks.registering(Copy::class) {
+    from(rootProject.file("fixtures/wasi")) {
+        include("*.wasm")
+    }
+    into(layout.projectDirectory.dir("src/androidTest/assets/wasi"))
+}
+
 tasks.named("preBuild").configure {
-    dependsOn(copyM1Fixtures, copyM2Fixtures, copyM3Fixtures, copyM4Fixtures, copyP3Fixtures)
+    dependsOn(
+        copyM1Fixtures,
+        copyM2Fixtures,
+        copyM3Fixtures,
+        copyM4Fixtures,
+        copyP3Fixtures,
+        copyWasiFixtures,
+    )
 }
 
 android {

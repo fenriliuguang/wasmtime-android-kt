@@ -138,6 +138,17 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
+    // WASI 0.3: wasi:random/random@0.3.0 (minimal: get-random-u64).
+    linker
+        .instance("wasi:random/random@0.3.0")
+        .map_err(|e| e.to_string())?
+        .func_wrap("get-random-u64", |_store, ()| {
+            let mut bytes = [0u8; 8];
+            getrandom::fill(&mut bytes).map_err(|e| wasmtime::Error::msg(e.to_string()))?;
+            Ok((u64::from_ne_bytes(bytes),))
+        })
+        .map_err(|e| e.to_string())?;
+
     // P3-PRIM-5: host consumes guest stream; returns future<u32> byte count.
     linker
         .root()
@@ -554,6 +565,43 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     };
     match func.call(&mut *store, ()) {
         Ok((result,)) => result as jint,
+        Err(e) => {
+            throw_err(&mut env, e);
+            0
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallUnitToU64(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    instance: jlong,
+    export_name: JString,
+) -> jlong {
+    if store == 0 || instance == 0 {
+        throw(&mut env, "null store/instance handle");
+        return 0;
+    }
+    let name: String = match env.get_string(&export_name) {
+        Ok(s) => s.into(),
+        Err(e) => {
+            throw_err(&mut env, e);
+            return 0;
+        }
+    };
+    let store = unsafe { from_handle::<HostStore>(store) };
+    let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
+    let func = match instance.get_typed_func::<(), (u64,)>(&mut *store, name.as_str()) {
+        Ok(f) => f,
+        Err(e) => {
+            throw_err(&mut env, e);
+            return 0;
+        }
+    };
+    match func.call(&mut *store, ()) {
+        Ok((result,)) => result as jlong,
         Err(e) => {
             throw_err(&mut env, e);
             0
