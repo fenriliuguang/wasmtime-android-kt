@@ -4,6 +4,12 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — WASI 0.3 wasi:random get-random-u64 smoke (2026-08-12)
+
+- Register `wasi:random/random@0.3.0#get-random-u64` (host CSPRNG via `getrandom`)
+- Fixture `fixtures/wasi/random_u64`; native `wasi_random_u64`; instrument `WasiRandomInstrumentedTest`
+- JNI/Kotlin `nativeCallUnitToU64` / `Instance.callUnitToU64`; CI includes the new cargo test
+
 ### Code — P3-PRIM-5 stream write / host consume smoke (2026-08-12)
 
 - Guest `stream.new` + `stream.write` (`P3WR`) → host `take` pipes `StreamConsumer`, returns `future<u32>` byte count (`fixtures/p3/stream_write`)
