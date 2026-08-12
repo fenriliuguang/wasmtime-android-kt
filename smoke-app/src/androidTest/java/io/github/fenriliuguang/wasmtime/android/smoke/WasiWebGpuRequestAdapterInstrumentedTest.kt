@@ -14,14 +14,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W1: guest imports transitional flat `wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter`
- * (not `[method]gpu.request-adapter`) → same L2 sync path as M3 via
- * [ExperimentalWebGpuBridge.attachRequestAdapter]. Sync-compat u32 only — not true async (W2).
+ * W2: guest imports transitional flat `wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter`
+ * (async; not `[method]gpu.request-adapter`) → true CM async L2 path via
+ * [ExperimentalWebGpuBridge.attachRequestAdapter] + [callRunConcurrent].
+ * Experimental flat sync path remains separate. Not full wasi:webgpu compliance.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuRequestAdapterInstrumentedTest {
     @Test
-    fun guestRequestAdapterViaProposalName() {
+    fun guestRequestAdapterViaProposalNameAsync() {
         val bytes =
             InstrumentationRegistry.getInstrumentation()
                 .context
@@ -36,7 +37,7 @@ class WasiWebGpuRequestAdapterInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachRequestAdapter(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callUnitToU32(store, "run")
+                                val rep = instance.callRunConcurrent(store)
                                 assertNotEquals("adapter rep must be non-zero", 0, rep)
                                 assertTrue("adapter rep should be positive", rep > 0)
                             }

@@ -22,8 +22,8 @@
 
 | # | experimental 扁平名（`cm.rs`） | 提案大致对应 | async? | 形状差距 | 优先级 |
 |---|-------------------------------|--------------|--------|----------|--------|
-| 1 | `request-adapter` | `gpu.request-adapter` | 提案 **async**；本仓 sync | W1 已双注册提案 instance 下**过渡扁平** `request-adapter`（非 `[method]`）；缺 options / resource 返回；真 async → **W2** | **W2** |
-| 2 | `adapter-request-device` | `gpu-adapter.request-device` | 提案 **async**；本仓 sync | 缺 descriptor / `result<_, request-device-error>` | **W2** |
+| 1 | `request-adapter` | `gpu.request-adapter` | 提案 **async**；**W2** 提案名路径真 async；experimental 仍 sync | W1 双注册过渡扁平；**W2** `func_wrap_concurrent`（非 `[method]`）；缺 options / resource 返回 | **W3**（`[method]`） |
+| 2 | `adapter-request-device` | `gpu-adapter.request-device` | 提案 **async**；本仓 sync | 缺 descriptor / `result<_, request-device-error>`；真 async **延期** | **W2 余量** |
 | 3 | `device-get-queue` | `gpu-device.queue`（getter） | sync | 名与 resource 方法形态 | W3 |
 | 4 | `create-surface-from-native-window` | **提案无**（平台 / wasi-gfx） | — | 轨 A Dawn 胶水；非 wasi:webgpu 范围 | W4 策略 |
 | 5 | `surface-configure` | `gpu-canvas-context.configure` | sync | 需完整 `gpu-canvas-configuration` record | W4 |
@@ -61,15 +61,15 @@
 |------|------|----------------|
 | WIT resource + `[method]` 名 | 扁平函数 + u32 | 提案 resource 表；rep 仍可 u32 对齐 L2 |
 | Descriptor / list / string 编组 | 几乎无 | 有限集编解码（tech-stack §2.1） |
-| 真 CM async 接 GPU | M2 仅假 `get`；webgpu 全 sync | W2：`request-adapter` / `request-device` 走 concurrent |
+| 真 CM async 接 GPU | M2 `get`；**W2** 提案名 `request-adapter` concurrent；experimental / `request-device` 仍 sync | `request-device` concurrent；更多 GPU async |
 | Package 字符串 | experimental + W1 双注册 `wasi:webgpu/webgpu@0.3.0-rc.2`（过渡扁平） | 收敛到 `[method]gpu.*` resource 名 |
 | 测试 Guest | `fixtures/m3` · `fixtures/w1` · `m4/render_smoke` | 提案 WIT 生成或手写 `[method]` Guest |
 | 合规 / CTS | 无 | 另 RFC（NG-5） |
 
 ## 5. 建议下一刀（与路线图对齐）
 
-1. **W1（已交付代码）**：双注册——`wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter`（**过渡扁平**，非 `[method]gpu.request-adapter`）→ 同一 L2 sync u32；见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)。`abi-cm` / Track A 跟随另 PR。  
-2. **W2（下一硬闸门）**：`request-adapter`（及 `request-device`）改为 **真 async** host import；仪器断言非 Latch 冒充。  
+1. **W1（已交付）**：双注册过渡扁平 `request-adapter`；见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)。  
+2. **W2（`request-adapter` 已交付；硬闸门部分过）**：提案名 `request-adapter` → **真 async** `func_wrap_concurrent` + `callRunConcurrent`；禁止 Latch 冒充。扁平 `request-device` / `adapter-request-device` async **延期**。  
 3. **W3**：按本表高频方法扩 resource 面；每片独立 DoD（含收敛到真 `[method]` 名）。  
 4. **W4**：present / native window 书面选 A（继续 experimental surface）/ B（wasi-gfx RFC）/ C（headless）。
 
