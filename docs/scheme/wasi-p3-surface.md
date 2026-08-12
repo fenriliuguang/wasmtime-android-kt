@@ -37,9 +37,9 @@ World 层（组合）           wasi:cli/command · wasi:http/service · …
 |----|------|--------------|--------|------|
 | P3-PRIM-1 | `async func` host/guest | M2 已有 concurrent 注册 + `run_concurrent` | **保持 / 产品化** | 文档化线程泵；多回调并发 |
 | P3-PRIM-2 | `future<T>` 创建/完成/拒绝 | M2 oneshot 路径已通 | **保持 / 扩展** | 多 future、错误完成、生命周期 |
-| P3-PRIM-3 | `stream<T>` 读/写端 | **读端 smoke 已通**（`StreamReader` + guest `stream.read`；见 `fixtures/p3`） | **P1 最高**（写端仍缺） | 写方向翻转 / stream+future 完成模式未做；stdio 仍等写端 |
-| P3-PRIM-4 | stream+future 完成模式 | 缺口 | 随 P3-PRIM-3 | 见 WASI 0.3「stream-plus-future」 |
-| P3-PRIM-5 | 写方向翻转（host 消费 guest `stream`） | 缺口 | 随 P3-PRIM-3 | stdout / 网络 send 等 |
+| P3-PRIM-3 | `stream<T>` 读/写端 | **读+写 smoke 已通**（读：`StreamReader`→guest `stream.read`；写：guest `stream.write`→host `take`/`StreamConsumer`；见 `fixtures/p3`） | **保持 / 扩展** | 多 chunk、背压、错误路径仍可扩；stdio 可开 |
+| P3-PRIM-4 | stream+future 完成模式 | **最小面已通**（`take` 返回 `future<u32>` 字节数；随写端 smoke） | 随 P3-PRIM-3 | 完整 WASI「stream-plus-future」错误码面另切片 |
+| P3-PRIM-5 | 写方向翻转（host 消费 guest `stream`） | **smoke 已通**（`fixtures/p3/stream_write`） | **保持** | stdout / 网络 send 可据此挂 Host |
 | P3-PRIM-6 | 0.2 polyfill（可选） | 未做 | 低 | 上游/runtime 可侧；不挡 P0 |
 
 **准入：** 任一原语切片须有可复现测试（优先 Android 仪器；桌面 JVM 可辅）+ 更新 [`../mapping/threading-m2-async.md`](../mapping/threading-m2-async.md) 或后继线程文档。
@@ -53,7 +53,7 @@ World 层（组合）           wasi:cli/command · wasi:http/service · …
 | **CM 原语**（上表） | **必做底座** | L1 堆叠 |
 | `wasi:clocks`（`system-clock` / `wait-until` / `wait-for`） | **高** | 原语就绪；webgpu/Guest 计时或通用 smoke 需要 |
 | `wasi:random` | **高** | 极小面；工具链常拉 |
-| `wasi:cli` stdio（stream+future） | **中高** | P3-PRIM-3 就绪；调试 / command world smoke |
+| `wasi:cli` stdio（stream+future） | **中高** | P3-PRIM-3/5 读写下底座已通；可开最小 stdout smoke |
 | `wasi:cli/command`（`async run`） | **中** | stdio + clocks/random 子集可用 |
 | `wasi:filesystem` | **中** | 明确 Guest 阻塞；Android 沙箱路径策略先写文档 |
 | `wasi:sockets` | **中低** | 网络权限与线程模型 RFC |

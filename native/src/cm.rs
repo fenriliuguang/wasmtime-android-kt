@@ -1,4 +1,4 @@
-//! Component Model JNI (M1 sync + M2 concurrent/async).
+//! Component Model JNI (M1 sync + M2 concurrent/async + P3 stream).
 
 use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_link, throw_err};
@@ -9,10 +9,57 @@ use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
 use jni::sys::{jint, jlong};
 use jni::JNIEnv;
-use wasmtime::component::{Component, FutureReader, Linker, Resource, ResourceType, StreamReader};
-use wasmtime::{Engine, Store};
+use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll};
+use wasmtime::component::{
+    Component, FutureReader, Linker, Resource, ResourceType, Source, StreamConsumer, StreamReader,
+    StreamResult,
+};
+use wasmtime::{Engine, Store, StoreContextMut};
 
 type HostStore = Store<HostState>;
+
+/// P3-PRIM-5: collect guest `stream.write` bytes; complete oneshot on drop.
+struct CollectConsumer {
+    buf: Arc<Mutex<Vec<u8>>>,
+    done: Option<oneshot::Sender<u32>>,
+}
+
+impl Drop for CollectConsumer {
+    fn drop(&mut self) {
+        if let Some(tx) = self.done.take() {
+            let n = self.buf.lock().map(|b| b.len() as u32).unwrap_or(0);
+            let _ = tx.send(n);
+        }
+    }
+}
+
+impl StreamConsumer<HostState> for CollectConsumer {
+    type Item = u8;
+
+    fn poll_consume(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+        store: StoreContextMut<HostState>,
+        src: Source<'_, Self::Item>,
+        finish: bool,
+    ) -> Poll<wasmtime::Result<StreamResult>> {
+        let this = self.get_mut();
+        let mut src = src.as_direct(store);
+        let chunk = src.remaining();
+        if chunk.is_empty() {
+            if finish {
+                return Poll::Ready(Ok(StreamResult::Cancelled));
+            }
+            return Poll::Ready(Ok(StreamResult::Completed));
+        }
+        let n = chunk.len();
+        this.buf.lock().unwrap().extend_from_slice(chunk);
+        src.mark_read(n);
+        Poll::Ready(Ok(StreamResult::Completed))
+    }
+}
 
 fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     linker
@@ -89,6 +136,34 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 Ok((42u32,))
             })
         })
+        .map_err(|e| e.to_string())?;
+
+    // P3-PRIM-5: host consumes guest stream; returns future<u32> byte count.
+    linker
+        .root()
+        .func_wrap(
+            "take",
+            |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
+                let (tx, rx) = oneshot::channel::<u32>();
+                let buf = Arc::new(Mutex::new(Vec::new()));
+                reader.pipe(
+                    &mut store,
+                    CollectConsumer {
+                        buf: buf.clone(),
+                        done: Some(tx),
+                    },
+                )?;
+                let fut = FutureReader::new(&mut store, async move {
+                    let n = match rx.await {
+                        Ok(n) => n,
+                        Err(_) => 0,
+                    };
+                    Ok::<_, wasmtime::Error>(n)
+                })?;
+                let _ = buf;
+                Ok((fut,))
+            },
+        )
         .map_err(|e| e.to_string())?;
 
     // M3/M4: Track A experimental CM host (flat u32 reps) → L2 via Kotlin callbacks.
@@ -643,34 +718,25 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     }
 }
 
-/// P3-PRIM-3: host `StreamReader` (fixed `P3ST` bytes) → guest export `read`.
-/// Packed result: `(nbytes << 4) | status` (status 1 = DROPPED).
+/// P3-PRIM-5: guest `stream.write` → host `take`/`StreamConsumer`; returns byte count.
 #[no_mangle]
-pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallStreamRead(
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallStreamWrite(
     mut env: JNIEnv,
     _class: JClass,
     store: jlong,
     instance: jlong,
-    max_len: jint,
 ) -> jint {
     if store == 0 || instance == 0 {
         throw(&mut env, "null store/instance handle");
-        return 0;
-    }
-    if max_len <= 0 {
-        throw(&mut env, "max_len must be positive");
         return 0;
     }
     let store = unsafe { from_handle::<HostStore>(store) };
     let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
 
     let result = (|| -> wasmtime::Result<u32> {
-        let func = instance
-            .get_typed_func::<(StreamReader<u8>, u32), (u32,)>(&mut *store, "read")?;
-        let reader = StreamReader::new(&mut *store, b"P3ST".to_vec())?;
-        let (packed,) =
-            pollster::block_on(func.call_async(&mut *store, (reader, max_len as u32)))?;
-        Ok(packed)
+        let func = instance.get_typed_func::<(), (u32,)>(&mut *store, "run")?;
+        let (n,) = pollster::block_on(func.call_async(&mut *store, ()))?;
+        Ok(n)
     })();
 
     match result {

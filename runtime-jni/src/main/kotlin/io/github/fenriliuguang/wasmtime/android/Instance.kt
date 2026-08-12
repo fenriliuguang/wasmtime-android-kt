@@ -62,4 +62,14 @@ class Instance internal constructor(internal var handle: Long) : AutoCloseable {
         require(maxLen > 0) { "maxLen must be positive" }
         return NativeBridge.nativeCallStreamRead(store.handle, handle, maxLen)
     }
+
+    /**
+     * P3-PRIM-5: guest `stream.write` (`P3WR`) → host `take` / `StreamConsumer`.
+     * Returns consumed byte count (4).
+     */
+    fun callStreamWrite(store: Store): Int {
+        require(handle != 0L) { "instance closed" }
+        require(store.handle != 0L) { "store closed" }
+        return NativeBridge.nativeCallStreamWrite(store.handle, handle)
+    }
 }

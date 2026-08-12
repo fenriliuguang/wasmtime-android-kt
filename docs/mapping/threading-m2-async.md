@@ -25,7 +25,15 @@
 | **Guest** | canon `stream.read`（本仓 `fixtures/p3/stream_read`） |
 | **Pump** | 当前 smoke 用 `call_async` + `pollster::block_on`（与 M2 `run_concurrent` 不同路径，仍须单 Store） |
 
-约束：stream 未 `close` / 未读尽时勿丢弃 `Store`；写端翻转与 stream+future 完成模式另切片。见 [`../scheme/wasi-p3-surface.md`](../scheme/wasi-p3-surface.md) P3-PRIM-3。
+## P3 stream 写端 / 写方向翻转（扩展）
+
+| 角色 | 职责 |
+|------|------|
+| **Host consumer** | 根 import `take(stream<u8>) -> future<u32>`：`StreamReader::pipe` + `StreamConsumer`；`FutureReader` 在 consumer drop 时完成字节数 |
+| **Guest** | `stream.new` → `take` → canon `stream.write` → `drop-writable` → `future.read`（`fixtures/p3/stream_write`） |
+| **Pump** | 同读端：`call_async` + `pollster::block_on`；须单 Store |
+
+约束：stream / future 未完成时勿丢弃 `Store`；stdio 等 package 应复用同一 consumer 模式。见 [`../scheme/wasi-p3-surface.md`](../scheme/wasi-p3-surface.md) P3-PRIM-3/4/5。
 
 ## 与轨 A 文档关系
 
