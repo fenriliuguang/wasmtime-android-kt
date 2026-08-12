@@ -149,6 +149,19 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
+    // WASI 0.3: wasi:clocks/monotonic-clock@0.3.0 (minimal: now → mark).
+    linker
+        .instance("wasi:clocks/monotonic-clock@0.3.0")
+        .map_err(|e| e.to_string())?
+        .func_wrap("now", |_store, ()| {
+            use std::sync::OnceLock;
+            use std::time::Instant;
+            static START: OnceLock<Instant> = OnceLock::new();
+            let start = START.get_or_init(Instant::now);
+            Ok((start.elapsed().as_nanos() as u64,))
+        })
+        .map_err(|e| e.to_string())?;
+
     // P3-PRIM-5: host consumes guest stream; returns future<u32> byte count.
     linker
         .root()

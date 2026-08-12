@@ -10,3 +10,14 @@ Host: `wasi:random/random@0.3.0#get-random-u64`（CSPRNG；钉 Wasmtime P3 WIT `
 ```powershell
 wasm-tools parse fixtures/wasi/random_u64.wat -o fixtures/wasi/random_u64.wasm
 ```
+
+## `wasi:clocks` — `monotonic-clock.now`
+
+Guest export: `run: func() -> u64`  
+Host: `wasi:clocks/monotonic-clock@0.3.0#now`（进程内 `Instant` 纪元 → 非递减 mark；钉 `@0.3.0`）
+
+成功：两次调用 `second >= first`（单调）。本切片不含 `wait-until` / `wait-for` / `system-clock` / timezone。
+
+```powershell
+wasm-tools parse fixtures/wasi/monotonic_now.wat -o fixtures/wasi/monotonic_now.wasm
+```

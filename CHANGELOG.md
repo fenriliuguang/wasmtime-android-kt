@@ -4,6 +4,12 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — WASI 0.3 wasi:clocks monotonic-clock.now smoke (2026-08-12)
+
+- Register `wasi:clocks/monotonic-clock@0.3.0#now` (process-wide Instant epoch → non-decreasing mark)
+- Fixture `fixtures/wasi/monotonic_now`; native `wasi_monotonic_now`; instrument `WasiMonotonicClockInstrumentedTest`
+- CI includes `--test wasi_monotonic_now`; wait-* / system-clock / timezone deferred
+
 ### Code — WASI 0.3 wasi:random get-random-u64 smoke (2026-08-12)
 
 - Register `wasi:random/random@0.3.0#get-random-u64` (host CSPRNG via `getrandom`)
