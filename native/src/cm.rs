@@ -149,18 +149,38 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:clocks/monotonic-clock@0.3.0 (minimal: now → mark).
-    linker
-        .instance("wasi:clocks/monotonic-clock@0.3.0")
-        .map_err(|e| e.to_string())?
-        .func_wrap("now", |_store, ()| {
-            use std::sync::OnceLock;
-            use std::time::Instant;
-            static START: OnceLock<Instant> = OnceLock::new();
-            let start = START.get_or_init(Instant::now);
-            Ok((start.elapsed().as_nanos() as u64,))
-        })
-        .map_err(|e| e.to_string())?;
+    // WASI 0.3: wasi:clocks/monotonic-clock@0.3.0 (now + wait-for).
+    {
+        let mut clocks = linker
+            .instance("wasi:clocks/monotonic-clock@0.3.0")
+            .map_err(|e| e.to_string())?;
+        clocks
+            .func_wrap("now", |_store, ()| {
+                use std::sync::OnceLock;
+                use std::time::Instant;
+                static START: OnceLock<Instant> = OnceLock::new();
+                let start = START.get_or_init(Instant::now);
+                Ok((start.elapsed().as_nanos() as u64,))
+            })
+            .map_err(|e| e.to_string())?;
+        // True CM async: yield on oneshot while a helper thread sleeps (no tokio).
+        clocks
+            .func_wrap_concurrent("wait-for", |_accessor, (ns,): (u64,)| {
+                Box::pin(async move {
+                    let capped = ns.min(1_000_000_000); // 1s host cap
+                    let (tx, rx) = oneshot::channel::<()>();
+                    std::thread::spawn(move || {
+                        if capped > 0 {
+                            std::thread::sleep(std::time::Duration::from_nanos(capped));
+                        }
+                        let _ = tx.send(());
+                    });
+                    let _ = rx.await;
+                    Ok(())
+                })
+            })
+            .map_err(|e| e.to_string())?;
+    }
 
     // Pipe guest stream<u8> into CollectConsumer; complete future with byte count.
     // Shared by root `take` (P3 fixture) and wasi:cli/stdout write-via-stream.
