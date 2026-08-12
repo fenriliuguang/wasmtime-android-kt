@@ -4,6 +4,12 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — WASI 0.3 wasi:clocks monotonic-clock.wait-until smoke (2026-08-12)
+
+- Register `wasi:clocks/monotonic-clock@0.3.0#wait-until` (`func_wrap_concurrent` + oneshot / helper-thread sleep; same Instant epoch as `#now`; keep `#now` + `#wait-for`)
+- Fixture `fixtures/wasi/monotonic_wait_until`; native `wasi_monotonic_wait_until`; instrument `WasiMonotonicWaitUntilInstrumentedTest` via `callRunConcurrent`
+- CI includes `--test wasi_monotonic_wait_until`; `system-clock` / timezone deferred
+
 ### Code — W1 wasi:webgpu dual-register request-adapter (2026-08-12)
 
 - Dual-register transitional flat `wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter` onto the same L2 sync u32 path as experimental (not `[method]gpu.request-adapter`; not true async)

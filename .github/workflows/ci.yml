@@ -55,7 +55,7 @@ jobs:
           cargo --version
           echo "JAVA_HOME=$JAVA_HOME"
           # Prefer explicit integration tests (M2 + P3 stream + WASI + W1 webgpu). --locked pins CI to Cargo.lock.
-          cargo test --locked --test m2_async_get --test p3_stream_read --test p3_stream_write --test wasi_random_u64 --test wasi_monotonic_now --test wasi_cli_stdout --test wasi_monotonic_wait_for --test wasi_webgpu_request_adapter
+          cargo test --locked --test m2_async_get --test p3_stream_read --test p3_stream_write --test wasi_random_u64 --test wasi_monotonic_now --test wasi_cli_stdout --test wasi_monotonic_wait_for --test wasi_monotonic_wait_until --test wasi_webgpu_request_adapter
 
   jvm-api:
     name: jvm (runtime-api compile)

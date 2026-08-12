@@ -45,3 +45,27 @@ Host: `wasi:clocks/monotonic-clock@0.3.0#wait-for`（`func_wrap_concurrent` + on
 wasm-tools parse fixtures/wasi/monotonic_wait_for.wat -o fixtures/wasi/monotonic_wait_for.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/monotonic_wait_for.wasm
 ```
+
+## `wasi:clocks` — `monotonic-clock.wait-until`
+
+Guest export: `run: async func() -> u32`（`now` → +2ms → `wait-until`，再返回 `1`）  
+Host: `wasi:clocks/monotonic-clock@0.3.0#wait-until`（与 `#now` 同 `Instant` 纪元；`func_wrap_concurrent` + oneshot / helper-thread sleep；钉 `@0.3.0`）
+
+成功：`run` 经 `run_concurrent` / `call_async` 返回 `1`。本切片不含 `system-clock` / timezone。
+
+```powershell
+wasm-tools parse fixtures/wasi/monotonic_wait_until.wat -o fixtures/wasi/monotonic_wait_until.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/monotonic_wait_until.wasm
+```
+
+## `wasi:clocks` — `monotonic-clock.wait-until`
+
+Guest export: `run: async func() -> u32`（`now` → 加 ~2ms → `wait-until` 该 instant，再返回 `1`）  
+Host: `wasi:clocks/monotonic-clock@0.3.0#wait-until`（与 `#now` 共享 `Instant` 纪元；`func_wrap_concurrent` + oneshot / helper-thread sleep `max(0, when - now)`，1s 上限；钉 `@0.3.0`）
+
+成功：`run` 经 `run_concurrent` / `call_async` 返回 `1`。本切片不含 `system-clock` / timezone。
+
+```powershell
+wasm-tools parse fixtures/wasi/monotonic_wait_until.wat -o fixtures/wasi/monotonic_wait_until.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/monotonic_wait_until.wasm
+```
