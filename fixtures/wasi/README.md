@@ -29,11 +29,25 @@ Host: `wasi:cli/stdout@0.3.0#write-via-stream`（`CollectConsumer` 管道；钉 
 
 **过渡签名：** `func(data: stream<u8>) -> future<u32>`（与根 import `take` 同形）。官方 WIT 为 `future<result<_, error-code>>`；手写 WAT 枚举结果另切片。
 
-成功：guest 写入 `OUT\n`（4 字节）后 `run` 返回 `4`。本切片不含 stdin / stderr / `wasi:cli/command`。
+成功：guest 写入 `OUT\n`（4 字节）后 `run` 返回 `4`。本切片不含 stdin / `wasi:cli/command`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_stdout.wat -o fixtures/wasi/cli_stdout.wasm
 ```
+
+## `wasi:cli` — `stderr.write-via-stream`
+
+Guest export: `run: func() -> u32`（字节数）  
+Host: `wasi:cli/stderr@0.3.0#write-via-stream`（与 stdout 共用 `CollectConsumer` / `pipe`；钉 `@0.3.0`）
+
+**过渡签名：** `func(data: stream<u8>) -> future<u32>`（与 stdout / 根 `take` 同形）。官方 WIT 为 `future<result<_, error-code>>`；手写 WAT 枚举结果另切片。
+
+成功：guest 写入 `ERR\n`（4 字节）后 `run` 返回 `4`。stdin / `wasi:cli/command` 另切片。
+
+```powershell
+wasm-tools parse fixtures/wasi/cli_stderr.wat -o fixtures/wasi/cli_stderr.wasm
+```
+
 ## `wasi:clocks` — `monotonic-clock.wait-for`
 
 Guest export: `run: async func() -> u32`（先 `wait-for` ~2ms，再返回 `1`）  

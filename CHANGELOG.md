@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — WASI 0.3 wasi:cli stderr write-via-stream smoke (2026-08-12)
+
+- Register `wasi:cli/stderr@0.3.0#write-via-stream` (shared `pipe_stream_byte_count` with stdout / root `take`)
+- **Transitional** signature: `stream<u8> -> future<u32>` byte count (not official `future<result<_, error-code>>`)
+- Fixture `fixtures/wasi/cli_stderr` (`ERR\n`); native `wasi_cli_stderr`; instrument `WasiCliStderrInstrumentedTest`
+- CI includes `--test wasi_cli_stderr`; stdin / `wasi:cli/command` deferred
+
 ### Code — WASI 0.3 wasi:clocks monotonic-clock.wait-until smoke (2026-08-12)
 
 - Register `wasi:clocks/monotonic-clock@0.3.0#wait-until` (`func_wrap_concurrent` + oneshot / helper-thread sleep; same Instant epoch as `#now`; keep `#now` + `#wait-for`)
@@ -28,7 +35,7 @@ All notable planning and code changes for this experimental Android-first Wasm r
 - Register `wasi:cli/stdout@0.3.0#write-via-stream` (shared `CollectConsumer` / `pipe` with root `take`)
 - **Transitional** signature: `stream<u8> -> future<u32>` byte count (not official `future<result<_, error-code>>`)
 - Fixture `fixtures/wasi/cli_stdout` (`OUT\n`); native `wasi_cli_stdout`; instrument `WasiCliStdoutInstrumentedTest`
-- CI includes `--test wasi_cli_stdout`; stdin / stderr / `wasi:cli/command` deferred
+- CI includes `--test wasi_cli_stdout`; stdin / `wasi:cli/command` deferred (stderr: see Unreleased stderr entry)
 ### Code — WASI 0.3 wasi:clocks monotonic-clock.wait-for smoke (2026-08-12)
 
 - Register `wasi:clocks/monotonic-clock@0.3.0#wait-for` (`func_wrap_concurrent` + oneshot / helper-thread sleep; keep `#now`)
