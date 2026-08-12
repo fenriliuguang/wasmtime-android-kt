@@ -208,7 +208,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     }
 
     // Pipe guest stream<u8> into CollectConsumer; complete future with byte count.
-    // Shared by root `take` (P3 fixture) and wasi:cli/stdout write-via-stream.
+    // Shared by root `take` (P3 fixture) and wasi:cli stdout/stderr write-via-stream.
     fn pipe_stream_byte_count(
         store: &mut StoreContextMut<HostState>,
         reader: StreamReader<u8>,
@@ -249,6 +249,19 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // Official WIT: future<result<_, error-code>>; enum result deferred for hand-written WAT.
     linker
         .instance("wasi:cli/stdout@0.3.0")
+        .map_err(|e| e.to_string())?
+        .func_wrap(
+            "write-via-stream",
+            |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
+                let fut = pipe_stream_byte_count(&mut store, reader)?;
+                Ok((fut,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    // WASI 0.3: wasi:cli/stderr@0.3.0 — same transitional write-via-stream → future<u32>.
+    linker
+        .instance("wasi:cli/stderr@0.3.0")
         .map_err(|e| e.to_string())?
         .func_wrap(
             "write-via-stream",
