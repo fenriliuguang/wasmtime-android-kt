@@ -121,3 +121,14 @@ Host: `wasi:clocks/system-clock@0.3.0#now`（`SystemTime` → unix 秒；钉 `@0
 ```powershell
 wasm-tools parse fixtures/wasi/system_now.wat -o fixtures/wasi/system_now.wasm
 ```
+
+## `wasi:clocks` — `monotonic-clock.resolution`
+
+Guest export: `run: func() -> u64`（duration 纳秒）
+Host: `wasi:clocks/monotonic-clock@0.3.0#resolution`（本机 `Instant` 按 1ns 粒度；钉 `@0.3.0`）
+
+成功：返回 `1`。timezone / `system-clock.resolution` 另切片。
+
+```powershell
+wasm-tools parse fixtures/wasi/monotonic_resolution.wat -o fixtures/wasi/monotonic_resolution.wasm
+```

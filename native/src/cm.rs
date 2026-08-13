@@ -168,7 +168,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:clocks/monotonic-clock@0.3.0 (now + wait-for + wait-until).
+    // WASI 0.3: wasi:clocks/monotonic-clock@0.3.0 (now + resolution + wait-for + wait-until).
     {
         use std::sync::OnceLock;
         use std::time::Instant;
@@ -182,6 +182,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap("now", |_store, ()| {
                 let start = MONOTONIC_START.get_or_init(Instant::now);
                 Ok((start.elapsed().as_nanos() as u64,))
+            })
+            .map_err(|e| e.to_string())?;
+        clocks
+            .func_wrap("resolution", |_store, ()| {
+                // Instant is nanosecond-granularity on this host.
+                Ok((1u64,))
             })
             .map_err(|e| e.to_string())?;
         // True CM async: yield on oneshot while a helper thread sleeps (no tokio).
