@@ -45,6 +45,7 @@
 
 ### 3.1 关注上游信号（清单）
 
+- Dependabot：仅 `native/` 的直接依赖 `wasmtime`（[`.github/dependabot.yml`](../../.github/dependabot.yml)）；**忽略 major**（须 §4.1 RFC）  
 - [Wasmtime 发布说明](https://github.com/bytecodealliance/wasmtime/releases)  
 - [Bytecode Alliance / WASI 0.3](https://bytecodealliance.org/articles/WASI-0.3)  
 - docs.rs：`wasmtime::component` concurrent / stream  
@@ -79,6 +80,7 @@
 
 | 触发 | 动作 |
 |------|------|
+| Dependabot 打开 `wasmtime` patch/minor PR | 按 §4.1 评估；更新 §2 / lockfile / 碎片；**不要**把 major 当普通 Dependabot 合入 |
 | 本仓准备开 L1 stream / WASI package 切片前 | 核查上游 API 是否稳定；更新 §3 |
 | 上游安全公告涉及 `wasmtime` | 立即评估 patch |
 | 轨 A 或提案 WIT 要求更新代际 | 开 major/minor 升级 RFC |

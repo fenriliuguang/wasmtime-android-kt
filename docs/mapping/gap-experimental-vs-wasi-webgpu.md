@@ -66,12 +66,12 @@
 | 测试 Guest | `fixtures/m3` · `fixtures/w1` · `m4/render_smoke` | 提案 WIT 生成或手写 `[method]` Guest |
 | 合规 / CTS | 无 | 另 RFC（NG-5） |
 
-## 5. 建议下一刀（与路线图对齐）
+## 5. 下一刀（活状态在看板）
 
-1. **W1（已交付）**：双注册过渡扁平 `request-adapter`；见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)。  
-2. **W2（adapter + device 已交付；硬闸门过）**：提案名 `request-adapter` / `adapter-request-device` → **真 async** `func_wrap_concurrent` + `callRunConcurrent`；禁止 Latch 冒充。  
-3. **W3**：按本表高频方法扩 resource 面；每片独立 DoD（含收敛到真 `[method]` 名）。  
-4. **W4**：present / native window 书面选 A（继续 experimental surface）/ B（wasi-gfx RFC）/ C（headless）。
+切片**定义**仍见 §2 各行与 [`../scheme/roadmap-wasi-webgpu.md`](../scheme/roadmap-wasi-webgpu.md)。  
+**正在做 / 下一刀** 只维护在 GitHub Project：[wasmtime-android-kt progress](https://github.com/users/fenriliuguang/projects/1)（筛 `Slice` = W3 / W4，`Status` = Todo 或 In Progress）。功能 PR **不要**在本页追加编号清单。
+
+史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸。W3 起按本表高频方法扩面并收敛 `[method]` 名；W4 为呈现策略书面选型。
 
 ## 6. 钉版与修订
 
