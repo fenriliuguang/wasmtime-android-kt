@@ -4,7 +4,8 @@
 
 > 路线图切片：**W1**（[`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) §4）。  
 > 差距表：[`../mapping/gap-experimental-vs-wasi-webgpu.md`](../mapping/gap-experimental-vs-wasi-webgpu.md)。  
-> **状态：已交付**（`feat/webgpu-w1-request-adapter`）。下一刀 → **W2**（真 async `request-adapter` / `request-device`）。
+> **状态：已交付**（`feat/webgpu-w1-request-adapter`）。  
+> **W2 进度：** `request-adapter` 真 async 已交付（`feat/webgpu-w2-async-request-adapter`）；扁平 `request-device` / `adapter-request-device` async **延期**。
 
 ## 1. 目的
 
@@ -31,17 +32,17 @@ W1 **不是**合规面、**不是**真 async、**不是**完整 resource 表。
 | experimental（不变） | `experimental:webgpu-cm/host@0.8.0` | `request-adapter` |
 | W1 提案名（过渡） | `wasi:webgpu/webgpu@0.3.0-rc.2` | `request-adapter`（**非** `[method]gpu.request-adapter`） |
 
-两条路径共享同一 host 闭包 → `exp_request_adapter` / L2 sync u32。  
-终态 resource 方法名与真 async 属 **W2/W3**。
+两条路径共享同一 L2 `exp_request_adapter` / u32；**W2 起**提案名路径为 `func_wrap_concurrent`，experimental 仍为 sync `func_wrap`。  
+终态 resource 方法名属 **W3**；`request-device` 真 async **延期**。
 
 ### 3.2 异步边界（硬约束，仍有效）
 
 | 允许 | 禁止 |
 |------|------|
-| W1 继续 **`func_wrap` sync + u32**（与今日 L2 一致） | 用 Latch / 假 future **冒充**提案 `async func` |
-| 文档与测试写明「提案名 + sync-compat 语义」 | 仪器绿灯文案写成「真 CM async」 |
+| **W2** 提案名 `request-adapter`：`func_wrap_concurrent` + oneshot/helper-thread yield → L2 | 用 Latch / 假 future **冒充**提案 `async func` |
+| experimental 路径继续 **`func_wrap` sync + u32** | 把 W2 仪器文案写成「合规 wasi:webgpu」 |
 
-**真 async（`func_wrap_concurrent` / future 完成）属 W2 硬闸门**。
+**真 async（`func_wrap_concurrent`）是 W2 硬闸门；`request-adapter` 已过闸，`request-device` 仍待。**
 
 ## 4. 落地清单
 
@@ -63,5 +64,5 @@ W1 **不是**合规面、**不是**真 async、**不是**完整 resource 表。
 
 ## 6. 修订
 
-- W1 已交付：本页标「已交付」；下一刀指向 W2。  
+- W1 已交付；W2：`request-adapter` 真 async 已交付；`request-device` async 延期。  
 - 改 instance / 过渡名：更新本页 + gap §5 + CHANGELOG Docs。

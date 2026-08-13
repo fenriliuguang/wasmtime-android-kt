@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — W2 true-async wasi:webgpu request-adapter (2026-08-12)
+
+- Convert proposal-instance transitional flat `wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter` from sync `func_wrap` to **true CM async** `func_wrap_concurrent` (oneshot + helper-thread yield → L2 `exp_request_adapter`); **forbid Latch fake-async**
+- Keep experimental `experimental:webgpu-cm/host@0.8.0#request-adapter` sync; still not `[method]gpu.*` / option / resource (W3)
+- Fixture `fixtures/w1/webgpu_request_adapter` async import+export; native test uses `run_concurrent` / `call_async`; instrument via `callRunConcurrent`
+- Defer async flat `adapter-request-device` / `request-device` to a later cut
+
 ### Code — WASI 0.3 wasi:cli stderr write-via-stream smoke (2026-08-12)
 
 - Register `wasi:cli/stderr@0.3.0#write-via-stream` (shared `pipe_stream_byte_count` with stdout / root `take`)

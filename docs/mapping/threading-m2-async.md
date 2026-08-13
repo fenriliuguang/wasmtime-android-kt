@@ -43,6 +43,17 @@
 | **Guest** | 同写端流程，import 包名不同（`fixtures/wasi/cli_stdout`；载荷 `OUT\n`） |
 | **Pump** | 同写端：`call_async` + `pollster::block_on`（仪器侧复用 `callStreamWrite`） |
 
+## WASI webgpu request-adapter（W2）
+
+| 角色 | 职责 |
+|------|------|
+| **Host concurrent** | `wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter`：`func_wrap_concurrent`；oneshot + helper-thread yield → `jvm::exp_request_adapter`（同一 L2） |
+| **Guest** | async import + async export `run`（`fixtures/w1/webgpu_request_adapter`） |
+| **Pump** | 同 M2：`callRunConcurrent` / `run_concurrent` |
+| **Experimental** | `experimental:webgpu-cm/host@0.8.0#request-adapter` 仍 `func_wrap` sync |
+
+禁止 Latch / 假 future 冒充。`request-device` async 延期。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。

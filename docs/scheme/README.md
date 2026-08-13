@@ -12,7 +12,7 @@
 | **文档立项 / 章程** | **完成**（2026-08-10） |
 | **短期 M0–M5 薄 L1** | **已归档**（2026-08-11）→ [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) |
 | **长期计划（文档期）** | **现行**（2026-08-11）→ [`long-term-plan.md`](long-term-plan.md) |
-| **长期 L1+ 代码切片** | **进行中**（stream 读/写 · `wasi:random` u64 · `wasi:clocks` now · webgpu W1 双注册；下一刀 W2 真 async / cli stdio / clocks wait-*） |
+| **长期 L1+ 代码切片** | **进行中**（stream · random · clocks · cli stdout · webgpu W1/W2 `request-adapter` 真 async；下一刀 `request-device` async / W3 / cli stdin） |
 
 ## 文档
 
