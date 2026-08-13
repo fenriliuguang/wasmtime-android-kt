@@ -24,7 +24,7 @@
 |---|-------------------------------|--------------|--------|----------|--------|
 | 1 | `request-adapter` | `gpu.request-adapter` | 提案 **async**；**W2** 提案名路径真 async；experimental 仍 sync | W1 双注册过渡扁平；**W2** `func_wrap_concurrent`（非 `[method]`）；缺 options / resource 返回 | **W3**（`[method]`） |
 | 2 | `adapter-request-device` | `gpu-adapter.request-device` | 提案 **async**；**W2** 提案名路径真 async；experimental 仍 sync | 缺 descriptor / `result<_, request-device-error>`；非 `[method]` | **W3**（`[method]`） |
-| 3 | `device-get-queue` | `gpu-device.queue`（getter） | sync | 名与 resource 方法形态 | W3 |
+| 3 | `device-get-queue` | `gpu-device.queue`（getter） | 提案 **sync**；**W3 首片**提案名路径过渡扁平 sync；experimental 仍 sync | W3 双注册过渡扁平（同 L2 u32）；`[method]gpu-device.queue` 仍属后续 W3 | **W3**（`[method]` 仍后） |
 | 4 | `create-surface-from-native-window` | **提案无**（平台 / wasi-gfx） | — | 轨 A Dawn 胶水；非 wasi:webgpu 范围 | W4 策略 |
 | 5 | `surface-configure` | `gpu-canvas-context.configure` | sync | 需完整 `gpu-canvas-configuration` record | W4 |
 | 6 | `surface-get-current-texture-view` | `get-current-texture` → 再取 view | sync | 提案返回 `gpu-texture`，非直接 view；多一步 | W3/W4 |
@@ -37,7 +37,7 @@
 | 13 | `surface-unconfigure` | `gpu-canvas-context.unconfigure` | sync | 对齐较易 | W4 |
 
 注册落点：`native/src/cm.rs` · `ExperimentalHostCallbacks` · `ExperimentalWebGpuBridge`。  
-仪器：`RequestAdapterInstrumentedTest`（#1 experimental）· `WasiWebGpuRequestAdapterInstrumentedTest`（#1 提案名过渡扁平）· `WasiWebGpuRequestDeviceInstrumentedTest`（#2 提案名过渡扁平）· `DawnRenderSmokeInstrumentedTest`（#1–13 子集）。
+仪器：`RequestAdapterInstrumentedTest`（#1 experimental）· `WasiWebGpuRequestAdapterInstrumentedTest`（#1 提案名过渡扁平）· `WasiWebGpuRequestDeviceInstrumentedTest`（#2 提案名过渡扁平）· `WasiWebGpuDeviceGetQueueInstrumentedTest`（#3 提案名过渡扁平 sync）· `DawnRenderSmokeInstrumentedTest`（#1–13 子集）。
 
 ## 3. 提案有、本仓未覆盖（抽样，非全表）
 

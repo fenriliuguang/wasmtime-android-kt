@@ -34,6 +34,21 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /** W3 first slice: adapter + device + queue (proposal-name sync getter uses these L2 callbacks). */
+    fun attachDeviceGetQueue(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
+            },
+        )
+    }
+
     /** M4: clear→present subset for dedicated render smoke Guest. */
     fun attachRenderSmoke(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
