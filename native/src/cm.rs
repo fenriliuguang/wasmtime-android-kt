@@ -1,7 +1,7 @@
 //! Component Model JNI (M1 sync + M2 concurrent/async + P3 stream).
 
 use crate::engine::new_engine;
-use crate::error::{throw, throw_compile, throw_err, throw_link};
+use crate::error::{throw, throw_compile, throw_link, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{HostState, Widget};
 use crate::jvm;
@@ -82,32 +82,42 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
 
     linker
         .root()
-        .func_wrap("make-widget", |mut store, (rep,): (u32,)| {
-            let resource = store.data_mut().table.push(Widget { rep })?;
-            Ok((resource,))
-        })
+        .func_wrap(
+            "make-widget",
+            |mut store, (rep,): (u32,)| {
+                let resource = store.data_mut().table.push(Widget { rep })?;
+                Ok((resource,))
+            },
+        )
         .map_err(|e| e.to_string())?;
 
     linker
         .root()
-        .func_wrap("echo-widget", |mut store, (r,): (Resource<Widget>,)| {
-            let w = store.data_mut().table.get(&r)?;
-            Ok((w.rep,))
-        })
+        .func_wrap(
+            "echo-widget",
+            |mut store, (r,): (Resource<Widget>,)| {
+                let w = store.data_mut().table.get(&r)?;
+                Ok((w.rep,))
+            },
+        )
         .map_err(|e| e.to_string())?;
 
     linker
         .root()
-        .func_wrap("add", |caller, (a, b): (u32, u32)| {
-            let cb = caller
-                .data()
-                .add_cb
-                .as_ref()
-                .ok_or_else(|| wasmtime::Error::msg("host add callback not set"))?
-                .clone();
-            let result = jvm::call_u32_u32_to_u32(&cb, a, b).map_err(wasmtime::Error::msg)?;
-            Ok((result,))
-        })
+        .func_wrap(
+            "add",
+            |caller, (a, b): (u32, u32)| {
+                let cb = caller
+                    .data()
+                    .add_cb
+                    .as_ref()
+                    .ok_or_else(|| wasmtime::Error::msg("host add callback not set"))?
+                    .clone();
+                let result =
+                    jvm::call_u32_u32_to_u32(&cb, a, b).map_err(wasmtime::Error::msg)?;
+                Ok((result,))
+            },
+        )
         .map_err(|e| e.to_string())?;
 
     // M2: true CM async host import via official concurrent API + FutureReader complete.
@@ -314,8 +324,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
 
         exp.func_wrap("adapter-request-device", |caller, (adapter,): (u32,)| {
             let cb = exp_cb(caller.data())?;
-            let rep =
-                jvm::exp_adapter_request_device(&cb, adapter).map_err(wasmtime::Error::msg)?;
+            let rep = jvm::exp_adapter_request_device(&cb, adapter).map_err(wasmtime::Error::msg)?;
             Ok((rep,))
         })
         .map_err(|e| e.to_string())?;
@@ -435,9 +444,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .data_mut()
                             .experimental_host_cb
                             .as_ref()
-                            .ok_or_else(|| {
-                                wasmtime::Error::msg("experimental host callback not set")
-                            })
+                            .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                             .cloned()
                     })?;
                     // Yield so this is true concurrent (not sync wrap / Latch fake-async).
@@ -459,9 +466,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .data_mut()
                             .experimental_host_cb
                             .as_ref()
-                            .ok_or_else(|| {
-                                wasmtime::Error::msg("experimental host callback not set")
-                            })
+                            .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                             .cloned()
                     })?;
                     let (tx, rx) = oneshot::channel::<()>();
@@ -864,8 +869,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     };
     let store = unsafe { from_handle::<HostStore>(store) };
     let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
-    let func = match instance.get_typed_func::<(u64, u32, u32), (u32,)>(&mut *store, name.as_str())
-    {
+    let func = match instance.get_typed_func::<(u64, u32, u32), (u32,)>(&mut *store, name.as_str()) {
         Ok(f) => f,
         Err(e) => {
             throw_err(&mut env, e);
@@ -901,8 +905,9 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     let result = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
-                let func = accessor
-                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let func = accessor.with(|mut access| {
+                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
+                })?;
                 let (value,) = func.call_concurrent(accessor, ()).await?;
                 Ok(value)
             })
@@ -940,10 +945,11 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
 
     let result = (|| -> wasmtime::Result<u32> {
-        let func =
-            instance.get_typed_func::<(StreamReader<u8>, u32), (u32,)>(&mut *store, "read")?;
+        let func = instance
+            .get_typed_func::<(StreamReader<u8>, u32), (u32,)>(&mut *store, "read")?;
         let reader = StreamReader::new(&mut *store, b"P3ST".to_vec())?;
-        let (packed,) = pollster::block_on(func.call_async(&mut *store, (reader, max_len as u32)))?;
+        let (packed,) =
+            pollster::block_on(func.call_async(&mut *store, (reader, max_len as u32)))?;
         Ok(packed)
     })();
 
@@ -976,8 +982,9 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     let result = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
-                let func = accessor
-                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let func = accessor.with(|mut access| {
+                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
+                })?;
                 let (n,) = func.call_concurrent(accessor, ()).await?;
                 Ok(n)
             })
