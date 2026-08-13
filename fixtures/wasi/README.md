@@ -11,6 +11,17 @@ Host: `wasi:random/random@0.3.0#get-random-u64`（CSPRNG；钉 Wasmtime P3 WIT `
 wasm-tools parse fixtures/wasi/random_u64.wat -o fixtures/wasi/random_u64.wasm
 ```
 
+## `wasi:random` — `get-random-bytes`
+
+Guest export: `run: func() -> u64`（把 8 字节 LE 打成 u64）
+Host: `wasi:random/random@0.3.0#get-random-bytes`（CSPRNG `list<u8>`；host 长度上限 4096；钉 `@0.3.0`）
+
+成功：两次 `run` 返回值不同（非常量 stub）。
+
+```powershell
+wasm-tools parse fixtures/wasi/random_bytes.wat -o fixtures/wasi/random_bytes.wasm
+```
+
 ## `wasi:clocks` — `monotonic-clock.now`
 
 Guest export: `run: func() -> u64`  
