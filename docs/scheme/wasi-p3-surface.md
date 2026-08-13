@@ -51,7 +51,7 @@ World 层（组合）           wasi:cli/command · wasi:http/service · …
 | Package / World | 本仓优先级 | 开门条件（须同时） |
 |-----------------|------------|-------------------|
 | **CM 原语**（上表） | **必做底座** | L1 堆叠 |
-| `wasi:clocks`（`system-clock` / `wait-until` / `wait-for`） | **高** | **`monotonic-clock.now` + `wait-for` + `wait-until` smoke 已通**（`fixtures/wasi/monotonic_now` · `monotonic_wait_for` · `monotonic_wait_until`；钉 `@0.3.0`）；`system-clock` / timezone 另切片 |
+| `wasi:clocks`（`system-clock` / `wait-until` / `wait-for`） | **高** | **`monotonic-clock.now` + `wait-for` + `wait-until` + `system-clock.now` smoke 已通**（`fixtures/wasi/monotonic_now` · `monotonic_wait_for` · `monotonic_wait_until` · `system_now`；钉 `@0.3.0`）；`system-clock.now` 为过渡 `u64` unix 秒（非官方 `instant` record）；`resolution` / timezone 另切片 |
 | `wasi:random` | **高** | **`get-random-u64` smoke 已通**（`fixtures/wasi/random_u64`；钉 `@0.3.0`）；`get-random-bytes` 另切片 |
 | `wasi:cli` stdio（stream+future） | **中高** | **`stdout` / `stderr.write-via-stream` + `stdin.read-via-stream` smoke 已通**（`fixtures/wasi/cli_stdout` · `cli_stderr` · `cli_stdin`；钉 `@0.3.0`；stdout/stderr 过渡 `future<u32>` 字节数；stdin 过渡 `func() -> stream<u8>`，非官方 tuple+`result`/`error-code`）；`wasi:cli/command` 另切片 |
 | `wasi:cli/command`（`async run`） | **中** | stdio + clocks/random 子集可用 |

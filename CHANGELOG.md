@@ -4,6 +4,12 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — WASI 0.3 wasi:clocks system-clock.now smoke (2026-08-13)
+
+- Register `wasi:clocks/system-clock@0.3.0#now` (**transitional** `func() -> u64` unix seconds; official `instant` `{seconds: s64, nanoseconds: u32}` deferred)
+- Fixture `fixtures/wasi/system_now`; native `wasi_system_now`; instrument `WasiSystemClockInstrumentedTest`
+- CI includes `--test wasi_system_now`; `resolution` / timezone deferred
+
 ### Code — WASI 0.3 wasi:cli stdin read-via-stream smoke (2026-08-13)
 
 - Register `wasi:cli/stdin@0.3.0#read-via-stream` (host `StreamReader` produces `IN\n`)
