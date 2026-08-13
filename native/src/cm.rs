@@ -915,6 +915,11 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     }
 }
 
+/// ART instrument threads are ~1MiB; W3 extra JNI hops overflow that.
+/// Pump Wasmtime on an 8MiB pthread; bounce L2 JNI to the caller (ART aborts
+/// AttachCurrentThread on a custom-stack pthread — Java Thread stackSize is ignored).
+const CM_PUMP_STACK_BYTES: usize = 8 * 1024 * 1024;
+
 /// M2: call root export `run: func() -> u32` under `run_concurrent` / `call_concurrent`.
 #[no_mangle]
 pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeCallRunConcurrent(
@@ -927,22 +932,30 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         throw(&mut env, "null store/instance handle");
         return 0;
     }
-    let store = unsafe { from_handle::<HostStore>(store) };
-    let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
 
     // Sync export that sync-lowers an async import: drive with run_concurrent + call_concurrent.
     // (Matches Wasmtime's sync-lower-async-host pattern; pollster pumps the event loop.)
-    let result = pollster::block_on(async {
-        store
-            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
-                let func = accessor.with(|mut access| {
-                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
-                })?;
-                let (value,) = func.call_concurrent(accessor, ()).await?;
-                Ok(value)
-            })
-            .await?
-    });
+    let result = match jvm::run_on_cm_pump(&mut env, CM_PUMP_STACK_BYTES, move || {
+        let store = unsafe { from_handle::<HostStore>(store) };
+        let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
+        pollster::block_on(async {
+            store
+                .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                    let func = accessor.with(|mut access| {
+                        instance.get_typed_func::<(), (u32,)>(&mut access, "run")
+                    })?;
+                    let (value,) = func.call_concurrent(accessor, ()).await?;
+                    Ok(value)
+                })
+                .await?
+        })
+    }) {
+        Ok(inner) => inner,
+        Err(e) => {
+            throw(&mut env, e);
+            return 0;
+        }
+    };
 
     match result {
         Ok(v) => v as jint,

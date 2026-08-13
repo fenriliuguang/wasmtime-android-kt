@@ -43,16 +43,16 @@ class Instance internal constructor(internal var handle: Long) : AutoCloseable {
      * M2: call root export `run: func() -> u32` via Wasmtime `run_concurrent` /
      * `call_concurrent` (host may use `func_wrap_concurrent` + futures).
      *
-     * Runs the native pump on a dedicated 8MiB-stack thread. ART instrument
-     * threads are ~1MiB; W3 guests that chain two async L2 callbacks plus a
-     * sync hop overflow that (`StackOverflowError` on Vivo).
+     * Native Wasmtime pump runs on an 8MiB pthread (`wasmtime-cm-pump`); L2 JNI
+     * hops bounce to the caller. ART instrument threads are ~1MiB; W3 guests
+     * that chain two async L2 callbacks plus a sync hop overflow that.
+     * Java `Thread` stackSize is ignored on this ART; attaching a custom-stack
+     * pthread aborts (`FindStackTop`).
      */
     fun callRunConcurrent(store: Store): Int {
         require(handle != 0L) { "instance closed" }
         require(store.handle != 0L) { "store closed" }
-        return onCmPumpThread {
-            NativeBridge.nativeCallRunConcurrent(store.handle, handle)
-        }
+        return NativeBridge.nativeCallRunConcurrent(store.handle, handle)
     }
 
     /**
@@ -84,36 +84,5 @@ class Instance internal constructor(internal var handle: Long) : AutoCloseable {
         require(handle != 0L) { "instance closed" }
         require(store.handle != 0L) { "store closed" }
         return NativeBridge.nativeCallStreamWrite(store.handle, handle)
-    }
-
-    private fun onCmPumpThread(block: () -> Int): Int {
-        if (onCmPump.get() == true) {
-            return block()
-        }
-        var result = 0
-        var error: Throwable? = null
-        val t = Thread(
-            null,
-            {
-                onCmPump.set(true)
-                try {
-                    result = block()
-                } catch (thrown: Throwable) {
-                    error = thrown
-                }
-            },
-            "wasmtime-cm-pump",
-            CM_PUMP_STACK_BYTES,
-        )
-        t.start()
-        t.join()
-        error?.let { throw it }
-        return result
-    }
-
-    companion object {
-        /** Larger than ART's ~1MiB instrument thread (W3 extra JNI hops). */
-        private const val CM_PUMP_STACK_BYTES = 8L * 1024L * 1024L
-        private val onCmPump = ThreadLocal<Boolean>()
     }
 }
