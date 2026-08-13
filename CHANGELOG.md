@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — W2 true-async wasi:webgpu adapter-request-device (2026-08-13)
+
+- Dual-register transitional flat `wasi:webgpu/webgpu@0.3.0-rc.2#adapter-request-device` as **true CM async** `func_wrap_concurrent` (oneshot + helper-thread yield → L2 `exp_adapter_request_device`); **forbid Latch fake-async**
+- Guest chains async `request-adapter` then `adapter-request-device`; experimental `adapter-request-device` stays sync; still not `[method]gpu-adapter.*` / descriptor / resource (W3)
+- Fixture `fixtures/w1/webgpu_request_device`; native `wasi_webgpu_request_device`; instrument `WasiWebGpuRequestDeviceInstrumentedTest` via `callRunConcurrent`
+- CI includes `--test wasi_webgpu_request_device`; W2 adapter/device 主链过闸；W3 resource 面另切片
+
 ### Code — WASI 0.3 wasi:clocks system-clock.now smoke (2026-08-13)
 
 - Register `wasi:clocks/system-clock@0.3.0#now` (**transitional** `func() -> u64` unix seconds; official `instant` `{seconds: s64, nanoseconds: u32}` deferred)

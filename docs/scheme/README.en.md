@@ -11,6 +11,6 @@
 | Docs charter | **Done** (2026-08-10) |
 | Short-term M0–M5 | **Archived** (2026-08-11) |
 | Long-term plan (docs) | **Current** (2026-08-11) |
-| Long-term L1+ code | **Not started** |
+| Long-term L1+ code | **In progress** (stream · random · clocks · cli stdio · webgpu W2 adapter/device true async; next: W3) |
 
 Primary docs are in Chinese; see ZH [`README.md`](README.md) for the full table. Sibling `*.en.md` files where present.  
