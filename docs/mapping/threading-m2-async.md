@@ -6,7 +6,7 @@
 
 | 角色 | 线程 | 职责 |
 |------|------|------|
-| **Pump** | 调用 `Instance.callRunConcurrent` 的线程（仪器 / 应用工作线程） | `pollster::block_on(store.run_concurrent(...))` 泵 CM async 任务 |
+| **Pump** | `Instance.callRunConcurrent` 内部 **8MiB** 专用线程 `wasmtime-cm-pump`（调用方 `join` 等待） | `pollster::block_on(store.run_concurrent(...))` 泵 CM async 任务 |
 | **Host concurrent** | 与 Pump **同一逻辑任务**（在 `run_concurrent` 内被 poll） | `func_wrap_concurrent` 闭包；`FutureReader` 创建 / complete |
 | **UI / 主线程** | ART main | **禁止** compile / instantiate / `block_on` 重路径 |
 
@@ -15,7 +15,8 @@
 1. **单 Store 单泵**：同一 `Store` 不得并发进入两次 `run_concurrent`。
 2. **Store 访问**：仅在 `accessor.with(|access| …)` 内碰 `Store`；**不可**跨 `.await` 持有 `Store`/`StoreContextMut`。
 3. **延后 complete**：若 oneshot 在另一线程 `send`，必须保证 wake 能回到 Pump；同线程在 `block_on` 里等待自己 `send` 会死锁。当前 M2 smoke 在 concurrent 闭包内同步 `send(42)`。
-4. **JNI**：从非附着线程回呼 Kotlin 须 `AttachCurrentThread`（见 `native/src/jvm.rs`）。
+4. **JNI**：从非附着线程回呼 Kotlin 须 `AttachCurrentThread`（见 `native/src/jvm.rs`）。  
+5. **泵栈**：`callRunConcurrent` 不在调用方线程上 `block_on`；ART 仪器线程约 1MiB，W3 多一跳 sync L2 会 `StackOverflowError`（Vivo 实测）。已合入的 `device-get-queue` 与后续 W3 同步切片共用此泵。
 
 ## P3 stream 读端（扩展）
 
@@ -61,6 +62,14 @@
 | **Experimental** | `experimental:webgpu-cm/host@0.8.0` 对应扁平面仍 `func_wrap` sync |
 
 禁止 Latch / 假 future 冒充。
+
+## WASI webgpu device-get-queue（W3）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 提案名过渡扁平 `device-get-queue`：`func_wrap` sync → 同一 L2 u32 |
+| **Guest** | async adapter → async device → sync get-queue（`fixtures/w1/webgpu_device_get_queue`） |
+| **Pump** | 必须走 8MiB `wasmtime-cm-pump`；直接在仪器线程 `nativeCallRunConcurrent` 会在 ~1MiB 栈溢出 |
 
 ## 与轨 A 文档关系
 
