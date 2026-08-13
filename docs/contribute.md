@@ -27,6 +27,8 @@
 | Android SDK + NDK `28.2.13676358` | 仅真机 / 模拟器仪器需要 |
 | 轨 A mavenLocal | 测 M3+ L2 接线时需要（[`build-track-a-deps.md`](build-track-a-deps.md)） |
 
+Cursor / VS Code：本仓几乎全是 Kotlin，请用 Gradle 编译，不要开 Red Hat Java（JDT LS）的 Gradle 导入与自动构建。仓库 [`.vscode/settings.json`](../.vscode/settings.json) 已关掉这三项；否则 JDT 会把 `.kt` 当资源拷到 `runtime-jni/bin/` 等目录，删了还会再出现。
+
 ## 3. 推荐工作流
 
 ### 3.1 Android 主路径（门禁）
