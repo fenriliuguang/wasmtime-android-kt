@@ -143,16 +143,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:random/random@0.3.0 (minimal: get-random-u64).
-    linker
-        .instance("wasi:random/random@0.3.0")
-        .map_err(|e| e.to_string())?
-        .func_wrap("get-random-u64", |_store, ()| {
-            let mut bytes = [0u8; 8];
-            getrandom::fill(&mut bytes).map_err(|e| wasmtime::Error::msg(e.to_string()))?;
-            Ok((u64::from_ne_bytes(bytes),))
-        })
-        .map_err(|e| e.to_string())?;
+    // WASI 0.3: wasi:random/random@0.3.0 (get-random-u64 + get-random-bytes).
+    {
+        let mut random = linker
+            .instance("wasi:random/random@0.3.0")
+            .map_err(|e| e.to_string())?;
+        random
+            .func_wrap("get-random-u64", |_store, ()| {
+                let mut bytes = [0u8; 8];
+                getrandom::fill(&mut bytes).map_err(|e| wasmtime::Error::msg(e.to_string()))?;
+                Ok((u64::from_ne_bytes(bytes),))
+            })
+            .map_err(|e| e.to_string())?;
+        random
+            .func_wrap("get-random-bytes", |_store, (len,): (u64,)| {
+                let n = (len as usize).min(4096);
+                let mut bytes = vec![0u8; n];
+                if n > 0 {
+                    getrandom::fill(&mut bytes)
+                        .map_err(|e| wasmtime::Error::msg(e.to_string()))?;
+                }
+                Ok((bytes,))
+            })
+            .map_err(|e| e.to_string())?;
+    }
 
     // WASI 0.3: wasi:clocks/monotonic-clock@0.3.0 (now + wait-for + wait-until).
     {
