@@ -77,7 +77,7 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/monotonic_
 Guest export: `run: async func() -> u32`（`now` → 加 ~2ms → `wait-until` 该 instant，再返回 `1`）  
 Host: `wasi:clocks/monotonic-clock@0.3.0#wait-until`（与 `#now` 共享 `Instant` 纪元；`func_wrap_concurrent` + oneshot / helper-thread sleep `max(0, when - now)`，1s 上限；钉 `@0.3.0`）
 
-成功：`run` 经 `run_concurrent` / `call_async` 返回 `1`。本切片不含 `system-clock` / timezone。
+成功：`run` 经 `run_concurrent` / `call_async` 返回 `1`。`system-clock` 见下节；timezone 另切片。
 
 ```powershell
 wasm-tools parse fixtures/wasi/monotonic_wait_until.wat -o fixtures/wasi/monotonic_wait_until.wasm
@@ -96,4 +96,17 @@ Host: `wasi:cli/stdin@0.3.0#read-via-stream`（`StreamReader::new` 产出 `IN\n`
 ```powershell
 wasm-tools parse fixtures/wasi/cli_stdin.wat -o fixtures/wasi/cli_stdin.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdin.wasm
+```
+
+## `wasi:clocks` — `system-clock.now`
+
+Guest export: `run: func() -> u64`（unix 秒）  
+Host: `wasi:clocks/system-clock@0.3.0#now`（`SystemTime` → unix 秒；钉 `@0.3.0`）
+
+**过渡签名：** `func() -> u64`。官方 WIT 为 `instant` record `{seconds: s64, nanoseconds: u32}`；record / `resolution` / timezone 另切片。
+
+成功：返回值落在合理 unix 秒区间（约 2024–2100）。
+
+```powershell
+wasm-tools parse fixtures/wasi/system_now.wat -o fixtures/wasi/system_now.wasm
 ```
