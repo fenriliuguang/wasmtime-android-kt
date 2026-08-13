@@ -43,6 +43,14 @@
 | **Guest** | 同写端流程，import 包名不同（`fixtures/wasi/cli_stdout`；载荷 `OUT\n`） |
 | **Pump** | 同写端：`call_async` + `pollster::block_on`（仪器侧复用 `callStreamWrite`） |
 
+## WASI cli stdin（复用读端 producer）
+
+| 角色 | 职责 |
+|------|------|
+| **Host producer** | `wasi:cli/stdin@0.3.0#read-via-stream`：`StreamReader::new(store, b"IN\n")`；过渡 `func() -> stream<u8>` |
+| **Guest** | import → canon `stream.read` → 返回 nbytes（`fixtures/wasi/cli_stdin`） |
+| **Pump** | 同写端：`call_async` / 仪器 `callStreamWrite`（`run` 导出） |
+
 ## WASI webgpu request-adapter（W2）
 
 | 角色 | 职责 |

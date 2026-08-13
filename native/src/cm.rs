@@ -272,6 +272,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         )
         .map_err(|e| e.to_string())?;
 
+    // WASI 0.3: wasi:cli/stdin@0.3.0 — transitional read-via-stream → stream<u8>.
+    // Official WIT: tuple<stream<u8>, future<result<_, error-code>>>; tuple/result deferred.
+    linker
+        .instance("wasi:cli/stdin@0.3.0")
+        .map_err(|e| e.to_string())?
+        .func_wrap(
+            "read-via-stream",
+            |mut store: StoreContextMut<HostState>, ()| {
+                let reader = StreamReader::new(&mut store, b"IN\n".to_vec())?;
+                Ok((reader,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
     // M3/M4: Track A experimental CM host (flat u32 reps) → L2 via Kotlin callbacks.
     // Scope ends before W1 wasi:webgpu dual-register (Linker::instance is once-per-name).
     {

@@ -27,7 +27,7 @@ Pull Request 与 `main` 推送会跑 GitHub Actions 工作流 **CI**（见 [`.gi
 
 | Job | 内容 |
 |-----|------|
-| `native (cargo test)` | `native/` 下 `cargo test --locked --test m2_async_get --test p3_stream_read --test p3_stream_write --test wasi_random_u64 --test wasi_monotonic_now --test wasi_cli_stdout --test wasi_cli_stderr --test wasi_monotonic_wait_for --test wasi_monotonic_wait_until --test wasi_webgpu_request_adapter`（CI 限并行以防 OOM） |
+| `native (cargo test)` | `native/` 下 `cargo test --locked --test m2_async_get --test p3_stream_read --test p3_stream_write --test wasi_random_u64 --test wasi_monotonic_now --test wasi_cli_stdout --test wasi_cli_stderr --test wasi_cli_stdin --test wasi_monotonic_wait_for --test wasi_monotonic_wait_until --test wasi_webgpu_request_adapter`（CI 限并行以防 OOM） |
 | `jvm (runtime-api compile)` | `:runtime-api:compileKotlin`（不依赖轨 A / Android SDK） |
 
 本地建议：
