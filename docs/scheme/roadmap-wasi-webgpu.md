@@ -104,5 +104,5 @@ Wasmtime 追踪（版本含 CM async / 必要时 stream）
 
 ## 7. 修订
 
-- W 切片增删、WIT 钉版变更：更新本页 + CHANGELOG +（若有）gap 表。  
+- W 切片增删、WIT 钉版变更：更新本页对应节 + `changelog/unreleased/` 碎片 +（若有）gap 表。不要为「下一刀」去改根 README 或 `vcs-workflow` 清单。  
 - 将 wasi-gfx 升为与本页同级：长期计划修订 RFC。  

@@ -53,8 +53,10 @@
 
 ## 6. CHANGELOG 约定
 
+其它文档里写「更新 CHANGELOG」均指新增 [`changelog/unreleased/<yyyy-mm-dd>-<slug>.md`](../../changelog/unreleased/README.md)，**不是**改根 `CHANGELOG.md`（并行短 PR 插 Unreleased 会冲突）。维护者用 `.\scripts\roll-changelog.ps1` 滚入。
+
 - 破坏性变更用明确用语：`BREAKING` 或中文「破坏性」。  
-- 错误类型 / 产物布局 / 本政策本身的修订记在 Unreleased，随版本发布章节归档。  
+- 错误类型 / 产物布局 / 本政策本身的修订记入碎片，随 roll-up / 版本发布章节归档。  
 - 不把「仅 fixtures / 仪器」写成库 API 变更，除非影响公共模块行为。
 
 ## 7. 非目标（本政策）

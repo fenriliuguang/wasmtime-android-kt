@@ -12,15 +12,16 @@
 ## Checklist
 
 - [ ] 已读 [`CONTRIBUTING.md`](../CONTRIBUTING.md) 与 [`docs/scheme/vcs-workflow.md`](../docs/scheme/vcs-workflow.md)
-- [ ] CHANGELOG Unreleased 已更新（用户可见行为 / 文档政策）
+- [ ] 已新增 `changelog/unreleased/<yyyy-mm-dd>-<slug>.md`（**不要**改根 `CHANGELOG.md`）
+- [ ] 未改枢纽文件（`CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md` / 本模板 / 根 README 索引），除非本 PR 就是改政策或工作流
 - [ ] 未静默替换轨 A 主验收；未引入 wasmtime4j 运行时依赖
-- [ ] 触及 `native/`：本地或 CI `cargo test` 绿
-- [ ] （若适用）更新差距表 / tracking / 线程文档
+- [ ] 触及 `native/`：本地或 CI `cargo test --locked --tests` 绿；新测试只加 `native/tests/*.rs`
+- [ ] （若适用）只更新本切片主题文档（差距表 / tracking / 线程），不改「下一刀」总表
 
 ## Test plan
 
 <!-- 列出跑过的命令，例如：
-- cd native && cargo test --test p3_stream_read --test p3_stream_write --test wasi_random_u64 --test wasi_monotonic_now --test wasi_cli_stdout --test wasi_cli_stdin --test wasi_system_now --test wasi_webgpu_request_device
+- cd native && cargo test --locked --tests
 - ./gradlew :runtime-api:compileKotlin
 -->
 

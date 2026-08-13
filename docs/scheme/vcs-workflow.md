@@ -15,6 +15,7 @@
 | 「并行」指什么 | 同时存在 **少量短命 PR**（通常 ≤2–3），各自独立 DoD，常合主干 |
 | 合并单元 | 一 PR 一事；可独立 revert |
 | `main` 要求 | 始终可构建；未完成能力不靠长期分叉隐瞒 |
+| 并行短刀怎么避免文档/CI 冲突 | **枢纽冻结**：功能 PR 不改 `CHANGELOG.md` / `ci.yml` 测试清单 / 根 README 索引；改用碎片文件 + `cargo test --tests` |
 
 ## 2. 为什么不用「多长期分支最后大合并」
 
@@ -45,12 +46,13 @@
 
 1. **一 PR 一事**：例如「stream 读端 smoke」与「升 Wasmtime major」不得混装。  
 2. **自带门禁证据**：至少说明跑了哪些命令；触及 native 时按 tracking 回归最低集。  
-3. **文档同车**：公开行为 / 差距 / 钉版变更与代码同 PR。  
-4. **CHANGELOG**：用户可见行为写入 Unreleased（或随版本节）。  
-5. **合并策略（现行建议）**  
+3. **文档同车**：公开行为 / 差距 / 钉版变更与代码同 PR。只改**本切片主题文档**的对应行/节；不要顺手改「下一刀」总表、根 README 索引或本页 §7。  
+4. **CHANGELOG**：用户可见行为写成 **新文件** [`changelog/unreleased/<yyyy-mm-dd>-<slug>.md`](../../changelog/unreleased/README.md)。**禁止**在功能 PR 里改根 [`CHANGELOG.md`](../../CHANGELOG.md)（并行插 Unreleased 必冲突）。维护者定期 `.\scripts\roll-changelog.ps1` 滚入。下文其它文档里写「更新 CHANGELOG」均指碎片，不是根文件。  
+5. **枢纽冻结**：见 [`CONTRIBUTING.md`](../../CONTRIBUTING.md)「枢纽冻结」。新 `native/tests/*.rs` **不必**改 [`ci.yml`](../../.github/workflows/ci.yml)（CI 已 `cargo test --locked --tests`）。  
+6. **合并策略（现行建议）**  
    - 开源前：维护者可 **squash merge** 到 `main`，保持线性历史。  
    - 开源后：对外部 PR 默认 squash（或 rebase 成清晰少数提交）；避免无意义的 merge 泡泡。  
-6. **删除已合分支**：合并后删远程/本地功能分支。
+7. **删除已合分支**：合并后删远程/本地功能分支。
 
 ## 5. 长期计划下的并行矩阵（排期，非常驻分支）
 
@@ -85,7 +87,7 @@
 
 - [ ] `main` 禁止直推（**Ruleset**，非经典 Branch protection）：Settings → Rules → Rulesets；目标 Default branch；勾选 Require PR / linear history / block force push；详见 GitHub [Creating rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository)  
 - [ ] PR 必经审查（一人维护：Required approvals = **0** 亦可；有第二人再升 1）  
-- [x] CI：[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（`cargo test` + `:runtime-api:compileKotlin`）；Ruleset 挂状态检查名 **`CI`**  
+- [x] CI：[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（`cargo test --locked --tests` + `:runtime-api:compileKotlin`）；Ruleset 挂状态检查名 **`CI`**  
 - [x] [`CONTRIBUTING.md`](../../CONTRIBUTING.md) → 本文 + [`../contribute.md`](../contribute.md)  
 - [x] Issue / PR 模板：[`.github/`](../../.github/)  
 - [x] 许可证：[`LICENSE`](../../LICENSE)（Apache-2.0）+ [`NOTICE`](../../NOTICE) + [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md)  
@@ -93,16 +95,15 @@
 
 合入本清单对应 PR 后：在 Ruleset 中启用 **Require status checks → `CI`**，再把 Enforcement 设为 Active。
 
-## 7. 当前仓库实操（2026-08-12）
+## 7. 当前仓库实操
 
 | 动作 | 决定 |
 |------|------|
 | 是否新建 `feature/stream`、`feature/webgpu`、`feature/clocks` 等长期线 | **不新建** |
-| 本批规划文档 PR 分支 | `docs/long-term-plan-vcs-workflow` → 合入 `main` 后删除 |
-| 已推进短命切片 | `docs/w0-wasi-webgpu-gap` · `feat/p3-stream-read` · `feat/p3-stream-write` · `feat/wasi-random` · `feat/wasi-clocks`（`now`） · `feat/wasi-clocks-wait-for` · `feat/wasi-clocks-wait-until` · `feat/wasi-cli-stdout` · `feat/wasi-cli-stderr` · `docs/webgpu-w1-dual-register` · `feat/webgpu-w1-request-adapter` · `feat/webgpu-w2-async-request-adapter` · `feat/wasi-cli-stdin` · `feat/wasi-clocks-system-now` · **`feat/webgpu-w2-async-request-device`**（W2 adapter/device 真 async 主链过闸） |
-| 可开下一刀 | W3 `[method]` / resource 面 · `get-random-bytes` · `wasi:cli/command` · system-clock `instant` record / `resolution` — 勿抢同一 `native/cm.rs` 无协调 |
+| 已合切片 / 下一刀 | **不在本页追加清单**（并行 PR 改同一表格必冲突）。进度与缺口见 [`wasi-p3-surface.md`](wasi-p3-surface.md)、[`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)、[`changelog/unreleased/`](../../changelog/unreleased/) |
+| 热点文件 | 同一时刻仍避免两条 PR 无协调地改同一 `native/` 源文件（尤其 linker 注册）；文档/CI 枢纽按 §4 冻结 |
 
 ## 8. 修订
 
-- 小修订：PR + CHANGELOG Docs。  
-- 改变「禁止长期并行线」或合并策略：更新本页并在长期计划文档地图中留链。  
+- 小修订：PR + `changelog/unreleased/` 碎片。  
+- 改变「禁止长期并行线」、枢纽冻结或合并策略：更新本页并在长期计划文档地图中留链。  

@@ -50,7 +50,7 @@ Pinned versions: NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1` — see [`docs/
 
 | Doc | Notes |
 |-----|--------|
-| [Contributing](CONTRIBUTING.md) | PR / CI / permissions (ZH) |
+| [Contributing](CONTRIBUTING.md) | PR / CI / hub-freeze (ZH) |
 | [Long-term plan](docs/scheme/long-term-plan.md) | **Current** (ZH): WASI 0.3 · wasi:webgpu · Wasmtime |
 | [Scheme index](docs/scheme/README.en.md) | Stage table |
 | [Charter](docs/scheme/charter.en.md) | Vision / risks (EN may lag ZH) |
@@ -58,13 +58,16 @@ Pinned versions: NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1` — see [`docs/
 | [Milestones (historical)](docs/scheme/milestones.en.md) | Frozen M0–M5 DoD |
 | [Build](docs/build.md) | Repro steps |
 | [Dual-track](docs/scheme/dual-track.en.md) | Contract with Track A |
-| [Changelog](CHANGELOG.md) | History |
+| [Changelog](CHANGELOG.md) | Rolled-up history; in-flight: [`changelog/unreleased/`](changelog/unreleased/) |
+
+> Do **not** add a row here for every short PR. Slice docs belong on topic pages (`wasi-p3-surface`, `roadmap-wasi-webgpu`, scheme index).
 
 ## Delivered now
 
 - **Long-term planning docs** (no new code required in this tranche)
 - **Archived** M0–M5 thin L1 base (sync CM, true CM async, experimental webgpu→L2, Dawn smoke)
 - **No** wasmtime4j dependency; **no** silent replace of Track A acceptance
+- Slice progress lives on topic docs and `changelog/unreleased/`, not this page
 
 ## License
 
