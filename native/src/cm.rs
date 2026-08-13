@@ -227,20 +227,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:clocks/system-clock@0.3.0#now — transitional u64 unix seconds
-    // (official WIT is instant {seconds: s64, nanoseconds: u32}; record deferred).
-    linker
-        .instance("wasi:clocks/system-clock@0.3.0")
-        .map_err(|e| e.to_string())?
-        .func_wrap("now", |_store, ()| {
-            use std::time::{SystemTime, UNIX_EPOCH};
-            let secs = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
-            Ok((secs,))
-        })
-        .map_err(|e| e.to_string())?;
+    // WASI 0.3: wasi:clocks/system-clock@0.3.0 (now + resolution).
+    // now: transitional u64 unix seconds (official WIT is instant record; deferred).
+    // resolution: transitional u64 ns (official WIT may be datetime record).
+    {
+        let mut clock = linker
+            .instance("wasi:clocks/system-clock@0.3.0")
+            .map_err(|e| e.to_string())?;
+        clock
+            .func_wrap("now", |_store, ()| {
+                use std::time::{SystemTime, UNIX_EPOCH};
+                let secs = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                Ok((secs,))
+            })
+            .map_err(|e| e.to_string())?;
+        clock
+            .func_wrap("resolution", |_store, ()| {
+                // Transitional u64 ns (official WIT may be datetime record).
+                Ok((1u64,))
+            })
+            .map_err(|e| e.to_string())?;
+    }
 
     // Pipe guest stream<u8> into CollectConsumer; complete future with byte count.
     // Shared by root `take` (P3 fixture) and wasi:cli stdout/stderr write-via-stream.

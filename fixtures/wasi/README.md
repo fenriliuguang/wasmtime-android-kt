@@ -132,3 +132,17 @@ Host: `wasi:clocks/monotonic-clock@0.3.0#resolution`（本机 `Instant` 按 1ns 
 ```powershell
 wasm-tools parse fixtures/wasi/monotonic_resolution.wat -o fixtures/wasi/monotonic_resolution.wasm
 ```
+
+## `wasi:clocks` — `system-clock.resolution`
+
+Guest export: `run: func() -> u64`（duration 纳秒）
+Host: `wasi:clocks/system-clock@0.3.0#resolution`（host 返回 `1`；钉 `@0.3.0`）
+
+**过渡签名：** `func() -> u64` 纳秒。官方 WIT 可能是 datetime record；本仓与 `system-clock.now` 的过渡 `u64` 对齐。timezone 另切片。
+
+成功：返回 `1`。
+
+```powershell
+wasm-tools parse fixtures/wasi/system_resolution.wat -o fixtures/wasi/system_resolution.wasm
+wasm-tools validate --features=component-model fixtures/wasi/system_resolution.wasm
+```
