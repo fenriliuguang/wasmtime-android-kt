@@ -20,7 +20,7 @@
 ## Test plan
 
 <!-- 列出跑过的命令，例如：
-- cd native && cargo test --test p3_stream_read --test p3_stream_write --test wasi_random_u64 --test wasi_monotonic_now --test wasi_cli_stdout --test wasi_cli_stdin --test wasi_system_now
+- cd native && cargo test --test p3_stream_read --test p3_stream_write --test wasi_random_u64 --test wasi_monotonic_now --test wasi_cli_stdout --test wasi_cli_stdin --test wasi_system_now --test wasi_webgpu_request_device
 - ./gradlew :runtime-api:compileKotlin
 -->
 

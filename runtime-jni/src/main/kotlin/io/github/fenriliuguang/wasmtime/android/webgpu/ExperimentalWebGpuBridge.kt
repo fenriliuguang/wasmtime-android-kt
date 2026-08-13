@@ -21,6 +21,19 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /** W2 remainder: adapter + device (proposal-name async path still uses these L2 callbacks). */
+    fun attachRequestDevice(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+            },
+        )
+    }
+
     /** M4: clear→present subset for dedicated render smoke Guest. */
     fun attachRenderSmoke(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)

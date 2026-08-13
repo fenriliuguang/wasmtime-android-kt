@@ -427,33 +427,58 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     }
 
-    // W2: proposal instance transitional flat `request-adapter` as true CM async
-    // (`func_wrap_concurrent` + oneshot yield). Experimental path above stays sync.
-    // Not final `[method]gpu.request-adapter` / option / resource (W3).
-    linker
-        .instance("wasi:webgpu/webgpu@0.3.0-rc.2")
-        .map_err(|e| e.to_string())?
-        .func_wrap_concurrent("request-adapter", |accessor, ()| {
-            Box::pin(async move {
-                let cb = accessor.with(|mut access| {
-                    access
-                        .data_mut()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()
-                })?;
-                // Yield so this is true concurrent (not sync wrap / Latch fake-async).
-                let (tx, rx) = oneshot::channel::<()>();
-                std::thread::spawn(move || {
-                    let _ = tx.send(());
-                });
-                let _ = rx.await;
-                let rep = jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                Ok((rep,))
+    // W2: proposal instance transitional flat `request-adapter` / `adapter-request-device`
+    // as true CM async (`func_wrap_concurrent` + oneshot yield). Experimental stays sync.
+    // Not final `[method]gpu.*` / option / resource (W3).
+    {
+        let mut webgpu = linker
+            .instance("wasi:webgpu/webgpu@0.3.0-rc.2")
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap_concurrent("request-adapter", |accessor, ()| {
+                Box::pin(async move {
+                    let cb = accessor.with(|mut access| {
+                        access
+                            .data_mut()
+                            .experimental_host_cb
+                            .as_ref()
+                            .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                            .cloned()
+                    })?;
+                    // Yield so this is true concurrent (not sync wrap / Latch fake-async).
+                    let (tx, rx) = oneshot::channel::<()>();
+                    std::thread::spawn(move || {
+                        let _ = tx.send(());
+                    });
+                    let _ = rx.await;
+                    let rep = jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    Ok((rep,))
+                })
             })
-        })
-        .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap_concurrent("adapter-request-device", |accessor, (adapter,): (u32,)| {
+                Box::pin(async move {
+                    let cb = accessor.with(|mut access| {
+                        access
+                            .data_mut()
+                            .experimental_host_cb
+                            .as_ref()
+                            .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                            .cloned()
+                    })?;
+                    let (tx, rx) = oneshot::channel::<()>();
+                    std::thread::spawn(move || {
+                        let _ = tx.send(());
+                    });
+                    let _ = rx.await;
+                    let rep = jvm::exp_adapter_request_device(&cb, adapter)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((rep,))
+                })
+            })
+            .map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }

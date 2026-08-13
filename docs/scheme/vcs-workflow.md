@@ -99,8 +99,8 @@
 |------|------|
 | 是否新建 `feature/stream`、`feature/webgpu`、`feature/clocks` 等长期线 | **不新建** |
 | 本批规划文档 PR 分支 | `docs/long-term-plan-vcs-workflow` → 合入 `main` 后删除 |
-| 已推进短命切片 | `docs/w0-wasi-webgpu-gap` · `feat/p3-stream-read` · `feat/p3-stream-write` · `feat/wasi-random` · `feat/wasi-clocks`（`now`） · `feat/wasi-clocks-wait-for` · `feat/wasi-clocks-wait-until` · `feat/wasi-cli-stdout` · `feat/wasi-cli-stderr` · `docs/webgpu-w1-dual-register` · `feat/webgpu-w1-request-adapter` · `feat/webgpu-w2-async-request-adapter` · `feat/wasi-cli-stdin` · **`feat/wasi-clocks-system-now`** |
-| 可开下一刀 | webgpu `request-device` async / W3 resource 面 · system-clock `instant` record / `resolution` — 勿抢同一 `native/cm.rs` 无协调 |
+| 已推进短命切片 | `docs/w0-wasi-webgpu-gap` · `feat/p3-stream-read` · `feat/p3-stream-write` · `feat/wasi-random` · `feat/wasi-clocks`（`now`） · `feat/wasi-clocks-wait-for` · `feat/wasi-clocks-wait-until` · `feat/wasi-cli-stdout` · `feat/wasi-cli-stderr` · `docs/webgpu-w1-dual-register` · `feat/webgpu-w1-request-adapter` · `feat/webgpu-w2-async-request-adapter` · `feat/wasi-cli-stdin` · `feat/wasi-clocks-system-now` · **`feat/webgpu-w2-async-request-device`**（W2 adapter/device 真 async 主链过闸） |
+| 可开下一刀 | W3 `[method]` / resource 面 · `get-random-bytes` · `wasi:cli/command` · system-clock `instant` record / `resolution` — 勿抢同一 `native/cm.rs` 无协调 |
 
 ## 8. 修订
 

@@ -51,16 +51,16 @@
 | **Guest** | import → canon `stream.read` → 返回 nbytes（`fixtures/wasi/cli_stdin`） |
 | **Pump** | 同写端：`call_async` / 仪器 `callStreamWrite`（`run` 导出） |
 
-## WASI webgpu request-adapter（W2）
+## WASI webgpu request-adapter / request-device（W2）
 
 | 角色 | 职责 |
 |------|------|
-| **Host concurrent** | `wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter`：`func_wrap_concurrent`；oneshot + helper-thread yield → `jvm::exp_request_adapter`（同一 L2） |
-| **Guest** | async import + async export `run`（`fixtures/w1/webgpu_request_adapter`） |
+| **Host concurrent** | `wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter` / `#adapter-request-device`：`func_wrap_concurrent`；oneshot + helper-thread yield → L2 |
+| **Guest** | async import + async export `run`（`fixtures/w1/webgpu_request_adapter` · `webgpu_request_device`） |
 | **Pump** | 同 M2：`callRunConcurrent` / `run_concurrent` |
-| **Experimental** | `experimental:webgpu-cm/host@0.8.0#request-adapter` 仍 `func_wrap` sync |
+| **Experimental** | `experimental:webgpu-cm/host@0.8.0` 对应扁平面仍 `func_wrap` sync |
 
-禁止 Latch / 假 future 冒充。`request-device` async 延期。
+禁止 Latch / 假 future 冒充。
 
 ## 与轨 A 文档关系
 

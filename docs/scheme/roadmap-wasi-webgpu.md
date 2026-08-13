@@ -57,9 +57,9 @@ W1  链接与 resource 边界（已交付）
     提案 instance 双注册过渡扁平 `request-adapter` → 同一 L2 sync u32
     见 [`w1-dual-register.md`](w1-dual-register.md)；终态 `[method]` / resource 表属 W3
 
-W2  真 async 主链（硬闸门；request-adapter 已交付）
-    request-adapter（提案名过渡扁平）`func_wrap_concurrent` + 仪器 `callRunConcurrent`
-    request-device async **延期**；禁止 Latch 冒充；非合规宣称
+W2  真 async 主链（硬闸门；adapter + device 已交付）
+    request-adapter / adapter-request-device（提案名过渡扁平）`func_wrap_concurrent` + 仪器 `callRunConcurrent`
+    禁止 Latch 冒充；非合规宣称；`[method]` 终态名属 W3
 
 W3  队列与缓冲关键面
     按差距表选高频 async/sync 方法切片；每片独立 DoD
