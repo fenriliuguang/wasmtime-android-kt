@@ -146,5 +146,5 @@ L5  运行时产品化门槛
 
 ## 9. 修订
 
-- 小修订（链接 / 措辞）：PR + CHANGELOG Docs。  
+- 小修订（链接 / 措辞）：PR + `changelog/unreleased/` 碎片。  
 - 改变 P0/P1/P2 硬序或 L0–L5 关门语义：新开 RFC，本页标注修订历史。  

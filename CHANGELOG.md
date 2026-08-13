@@ -4,6 +4,16 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+> **功能 PR 不要改本文件。** 新增 [`changelog/unreleased/<yyyy-mm-dd>-<slug>.md`](changelog/unreleased/README.md)。  
+> 维护者单线滚入：`.\scripts\roll-changelog.ps1`（把碎片插入下方并移到 `changelog/archive/`）。
+
+<!-- changelog:unreleased:start -->
+### Chore — 并行短刀：冻结文档/CI 枢纽 (2026-08-13)
+
+- CI `native` job 改为 `cargo test --locked --tests`：新 `native/tests/*.rs` 自动入闸，功能 PR 不必改 `.github/workflows/ci.yml`
+- 用户可见变更改为新增 `changelog/unreleased/<date>-<slug>.md`；禁止在功能 PR 里改根 `CHANGELOG.md`（维护者 `.\scripts\roll-changelog.ps1` 滚入）
+- CONTRIBUTING / PR 模板 / README / vcs-workflow 去掉会随每刀改写的测试枚举与 Unreleased 追加
+
 ### Code — W2 true-async wasi:webgpu adapter-request-device (2026-08-13)
 
 - Dual-register transitional flat `wasi:webgpu/webgpu@0.3.0-rc.2#adapter-request-device` as **true CM async** `func_wrap_concurrent` (oneshot + helper-thread yield → L2 `exp_adapter_request_device`); **forbid Latch fake-async**
@@ -206,3 +216,5 @@ All notable planning and code changes for this experimental Android-first Wasm r
 - Near-term: thin L1 over **upstream Wasmtime** (JNI), true CM async capable; plug into Track A L2
 - Docs: charter, dual-track contract, tech-stack, milestones M0–M5, non-goals, Android threading draft (ZH + EN)
 - Track A remains **locked sync-compat** (see sister repo)
+
+<!-- changelog:unreleased:end -->

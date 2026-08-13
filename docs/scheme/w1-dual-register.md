@@ -64,4 +64,4 @@ W1 **不是**合规面、**不是**真 async、**不是**完整 resource 表。
 ## 6. 修订
 
 - W1 已交付；W2：`request-adapter` + 扁平 `adapter-request-device` 真 async 已交付。  
-- 改 instance / 过渡名：更新本页 + gap §5 + CHANGELOG Docs。
+- 改 instance / 过渡名：更新本页 + gap §5 + `changelog/unreleased/` 碎片。

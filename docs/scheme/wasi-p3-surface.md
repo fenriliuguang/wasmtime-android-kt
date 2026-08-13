@@ -89,5 +89,5 @@ World 层（组合）           wasi:cli/command · wasi:http/service · …
 
 ## 7. 修订
 
-- 调整某一 package 优先级一档：更新本表 + CHANGELOG Docs。  
+- 调整某一 package 优先级一档：更新本表对应**一行** + `changelog/unreleased/` 碎片。不要顺手改其它 package 行或「下一刀」总述。  
 - 将某提案升为与 webgpu 同级 P0：须长期计划修订 RFC。  

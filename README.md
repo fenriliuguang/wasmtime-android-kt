@@ -60,13 +60,15 @@
 
 ## 文档索引
 
+> **本表是常青入口，不要为每一刀加行。** 切片文档挂到主题页：[`wasi-p3-surface.md`](docs/scheme/wasi-p3-surface.md)、[`roadmap-wasi-webgpu.md`](docs/scheme/roadmap-wasi-webgpu.md)、[`docs/scheme/README.md`](docs/scheme/README.md)。
+
 | 文档 | 说明 |
 |------|------|
 | [长期计划](docs/scheme/long-term-plan.md) | **现行**主线：WASI 0.3 · wasi:webgpu · Wasmtime |
 | [WASI 0.3 表面](docs/scheme/wasi-p3-surface.md) | 正式特性优先级 / 切片门禁 |
 | [wasi:webgpu 路线图](docs/scheme/roadmap-wasi-webgpu.md) | 提案推进（P0） |
 | [Wasmtime 追踪](docs/scheme/wasmtime-tracking.md) | 钉版 / 升级 / 回归 |
-| [贡献指南](CONTRIBUTING.md) | PR / CI / 权限；链到 VCS 与构建文档 |
+| [贡献指南](CONTRIBUTING.md) | PR / CI / 枢纽冻结；链到 VCS 与构建文档 |
 | [版本控制工作流](docs/scheme/vcs-workflow.md) | 短命分支 + PR；Ruleset 清单 |
 | [experimental ↔ wasi:webgpu 差距](docs/mapping/gap-experimental-vs-wasi-webgpu.md) | W0 对照表 |
 | [短期归档 M0–M5](docs/scheme/archive/m0-m5-thin-l1.md) | 薄 L1 验证路径收口 |
@@ -79,7 +81,7 @@
 | [技术栈](docs/scheme/tech-stack.md) | Wasmtime / NDK / JDK |
 | [里程碑史实](docs/scheme/milestones.md) | M0–M5 冻结 DoD |
 | [非目标](docs/scheme/non-goals.md) | 明确不做 |
-| [Changelog](CHANGELOG.md) | 变更 |
+| [Changelog](CHANGELOG.md) | 已滚入历史；进行中见 [`changelog/unreleased/`](changelog/unreleased/) |
 | [许可 / 第三方](THIRD_PARTY_NOTICES.md) | Apache-2.0 + 依赖摘要 |
 
 ## 当前交付
@@ -87,6 +89,7 @@
 - **长期规划文档已立**（无新代码要求）：见上「长期计划」四件套  
 - **短期底座已归档**：M0–M5 薄 L1（同步 CM、真 CM async、experimental webgpu→L2、Dawn smoke、错误/ABI/API 政策）  
 - **不**依赖 wasmtime4j；**不**默认对外发布；**不**替换轨 A 主验收  
+- 切片进度不写在本页：见 WASI 表面 / webgpu 路线图 / `changelog/unreleased/`  
 
 ## 许可
 

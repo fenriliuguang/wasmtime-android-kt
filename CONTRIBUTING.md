@@ -8,7 +8,7 @@
 
 | 文档 | 内容 |
 |------|------|
-| [`docs/scheme/vcs-workflow.md`](docs/scheme/vcs-workflow.md) | 分支命名、PR 规则、并行矩阵、Ruleset / 开源就绪 |
+| [`docs/scheme/vcs-workflow.md`](docs/scheme/vcs-workflow.md) | 分支命名、PR 规则、**枢纽冻结**、Ruleset / 开源就绪 |
 | [`docs/contribute.md`](docs/contribute.md) | 本地构建、桌面开发壳、仪器门禁 |
 | [`docs/scheme/long-term-plan.md`](docs/scheme/long-term-plan.md) | 现行长期计划（WASI 0.3 · wasi:webgpu · Wasmtime） |
 | [`docs/scheme/non-goals.md`](docs/scheme/non-goals.md) | 非目标（勿静默替换轨 A 等） |
@@ -16,10 +16,25 @@
 ## 工作流（摘要）
 
 1. Fork（外部）或从最新 `main` 拉短命分支：`docs/…` / `feat/…` / `fix/…` / `chore/…`。  
-2. **一 PR 一事**；文档与行为变更同车；更新 `CHANGELOG.md` Unreleased。  
+2. **一 PR 一事**；文档与行为变更同车。用户可见变更写 **新文件** [`changelog/unreleased/<yyyy-mm-dd>-<slug>.md`](changelog/unreleased/README.md)，**不要**改根 `CHANGELOG.md`。  
 3. 推送分支并开 PR（目标 `main`）；通过 CI 后再合并。  
 4. 合并策略：维护者默认 **squash merge**；合入后删除头部分支。  
 5. **禁止**常驻多长期 `feature/*` 分叉后大爆炸合并。
+
+## 枢纽冻结（避免并行短 PR 冲突）
+
+下列文件是**共享枢纽**：几乎每条短刀都会改同一行，squash merge 时必撞。功能 PR **默认不要碰**；只在「改政策 / 改工作流结构 / 维护者滚 Changelog」时单开 `chore/` 或 `docs/` PR。
+
+| 枢纽 | 功能 PR | 替代 |
+|------|---------|------|
+| [`CHANGELOG.md`](CHANGELOG.md) | **禁止**往 Unreleased 插行 | 新增 `changelog/unreleased/<date>-<slug>.md`；维护者 `.\scripts\roll-changelog.ps1` |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | **禁止**为新测试追加 `--test` | 把集成测试放进 `native/tests/<name>.rs`；CI 已 `cargo test --locked --tests` |
+| 本文件 `CONTRIBUTING.md` | **禁止**同步抄测试名 / 命令清单 | 下文只描述 job 意图 |
+| [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) | **禁止**随切片改示例命令 | 模板保持稳定 |
+| [`README.md`](README.md) / [`README.en.md`](README.en.md) | **禁止**为每一刀加文档索引行或「当前交付」子弹 | 切片文档挂到主题页（`wasi-p3-surface` / `roadmap-wasi-webgpu` / mapping） |
+| [`docs/scheme/vcs-workflow.md`](docs/scheme/vcs-workflow.md) 实操清单 | **禁止**追加「已推进短命切片」 | 进度看主题页与 `changelog/unreleased/` |
+
+主题页（差距表、WASI 表面、webgpu 路线图）只改**本切片自己的行/节**；不要在同一 PR 里改「下一刀」总表，除非这就是该 PR 的主题。
 
 ## CI
 
@@ -27,20 +42,22 @@ Pull Request 与 `main` 推送会跑 GitHub Actions 工作流 **CI**（见 [`.gi
 
 | Job | 内容 |
 |-----|------|
-| `native (cargo test)` | `native/` 下 `cargo test --locked --test m2_async_get --test p3_stream_read --test p3_stream_write --test wasi_random_u64 --test wasi_monotonic_now --test wasi_cli_stdout --test wasi_cli_stderr --test wasi_cli_stdin --test wasi_monotonic_wait_for --test wasi_monotonic_wait_until --test wasi_system_now --test wasi_webgpu_request_adapter --test wasi_webgpu_request_device`（CI 限并行以防 OOM） |
+| `native (cargo test)` | `native/` 下 `cargo test --locked --tests`（全部 `native/tests/*.rs`；CI 限编译并行以防 OOM；**不要**用 `--all-targets`） |
 | `jvm (runtime-api compile)` | `:runtime-api:compileKotlin`（不依赖轨 A / Android SDK） |
 
 本地建议：
 
 ```powershell
 cd native
-cargo test --all-targets
+cargo test --locked --tests
 
 # 可选：纯 API 编译
 .\gradlew.bat :runtime-api:compileKotlin
 ```
 
 触及 `native/` 的变更：合入前至少保证上述 cargo 测试绿。Android 仪器 / 双 ABI 构建仍按 [`docs/contribute.md`](docs/contribute.md) 与 [`docs/build.md`](docs/build.md) 在设备或本机复现。
+
+新集成测试：只新增 `native/tests/<name>.rs`（及对应 fixture）。**不必**改 `ci.yml`、本页或 PR 模板。
 
 ## 权限与协作模型
 
