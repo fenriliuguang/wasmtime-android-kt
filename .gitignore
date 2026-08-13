@@ -2,6 +2,8 @@
 *.iml
 .gradle/
 build/
+# Eclipse / Red Hat Java (JDT LS) copies .kt sources here as "resources".
+**/bin/
 local.properties
 .DS_Store
 *.so
