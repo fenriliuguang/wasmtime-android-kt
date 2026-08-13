@@ -1,0 +1,21 @@
+# Wasmtime-only: patch/minor PRs. Major still needs the upgrade RFC in
+# docs/scheme/wasmtime-tracking.md §4.1 (this file ignores semver-major).
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /native
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: scope
+    labels:
+      - dependencies
+    allow:
+      - dependency-name: wasmtime
+    ignore:
+      - dependency-name: wasmtime
+        update-types:
+          - version-update:semver-major

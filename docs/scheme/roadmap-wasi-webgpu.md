@@ -49,6 +49,8 @@
 
 ## 4. 切片堆叠（建议序）
 
+活状态（Todo / In Progress / Done）见 GitHub Project [wasmtime-android-kt progress](https://github.com/users/fenriliuguang/projects/1)，**不要**在本页枚举每一刀。本节只定切片**定义与硬序**。
+
 ```text
 W0  钉版与差距表（文档）
     提案 WIT 版本 · 与 Wasmtime / wit-bindgen 对齐说明 · gap 表
@@ -106,5 +108,5 @@ Wasmtime 追踪（版本含 CM async / 必要时 stream）
 
 ## 7. 修订
 
-- W 切片增删、WIT 钉版变更：更新本页对应节 + `changelog/unreleased/` 碎片 +（若有）gap 表。不要为「下一刀」去改根 README 或 `vcs-workflow` 清单。  
+- W 切片增删、WIT 钉版变更：更新本页对应节 + `changelog/unreleased/` 碎片 +（若有）gap 表。不要为「下一刀」去改根 README 或 `vcs-workflow` 清单；活状态改 Project 卡片。  
 - 将 wasi-gfx 升为与本页同级：长期计划修订 RFC。  

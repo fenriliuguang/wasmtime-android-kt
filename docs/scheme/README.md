@@ -12,7 +12,7 @@
 | **文档立项 / 章程** | **完成**（2026-08-10） |
 | **短期 M0–M5 薄 L1** | **已归档**（2026-08-11）→ [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) |
 | **长期计划（文档期）** | **现行**（2026-08-11）→ [`long-term-plan.md`](long-term-plan.md) |
-| **长期 L1+ 代码切片** | **进行中**（进度见 [`wasi-p3-surface.md`](wasi-p3-surface.md) · [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) · [`changelog/unreleased/`](../../changelog/unreleased/)；**不要**在本格枚举每一刀） |
+| **长期 L1+ 代码切片** | **进行中**（活状态：[Project](https://github.com/users/fenriliuguang/projects/1)；规格见 [`wasi-p3-surface.md`](wasi-p3-surface.md) · [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)；已合行为见 [`changelog/unreleased/`](../../changelog/unreleased/)；**不要**在本格枚举每一刀） |
 
 ## 文档
 
