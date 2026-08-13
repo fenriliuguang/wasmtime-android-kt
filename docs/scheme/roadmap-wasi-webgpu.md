@@ -63,6 +63,7 @@ W2  真 async 主链（硬闸门；adapter + device 已交付）
 
 W3  队列与缓冲关键面（resource 面史诗仍在进行）
     `device-get-queue` 过渡扁平 sync 已交付（非 `[method]gpu-device.queue`）
+    `device-create-command-encoder` 过渡扁平 sync 已交付（非 `[method]gpu-device.create-command-encoder`）
     按差距表选高频 async/sync 方法切片；每片独立 DoD
 
 W4  呈现路径策略
