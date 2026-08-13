@@ -29,7 +29,7 @@ Host: `wasi:cli/stdout@0.3.0#write-via-stream`（`CollectConsumer` 管道；钉 
 
 **过渡签名：** `func(data: stream<u8>) -> future<u32>`（与根 import `take` 同形）。官方 WIT 为 `future<result<_, error-code>>`；手写 WAT 枚举结果另切片。
 
-成功：guest 写入 `OUT\n`（4 字节）后 `run` 返回 `4`。本切片不含 stdin / `wasi:cli/command`。
+成功：guest 写入 `OUT\n`（4 字节）后 `run` 返回 `4`。stdin 见下节；`wasi:cli/command` 另切片。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_stdout.wat -o fixtures/wasi/cli_stdout.wasm
@@ -42,7 +42,7 @@ Host: `wasi:cli/stderr@0.3.0#write-via-stream`（与 stdout 共用 `CollectConsu
 
 **过渡签名：** `func(data: stream<u8>) -> future<u32>`（与 stdout / 根 `take` 同形）。官方 WIT 为 `future<result<_, error-code>>`；手写 WAT 枚举结果另切片。
 
-成功：guest 写入 `ERR\n`（4 字节）后 `run` 返回 `4`。stdin / `wasi:cli/command` 另切片。
+成功：guest 写入 `ERR\n`（4 字节）后 `run` 返回 `4`。stdin 见文末；`wasi:cli/command` 另切片。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_stderr.wat -o fixtures/wasi/cli_stderr.wasm
@@ -82,4 +82,18 @@ Host: `wasi:clocks/monotonic-clock@0.3.0#wait-until`（与 `#now` 共享 `Instan
 ```powershell
 wasm-tools parse fixtures/wasi/monotonic_wait_until.wat -o fixtures/wasi/monotonic_wait_until.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/monotonic_wait_until.wasm
+```
+
+## `wasi:cli` — `stdin.read-via-stream`
+
+Guest export: `run: func() -> u32`（字节数）  
+Host: `wasi:cli/stdin@0.3.0#read-via-stream`（`StreamReader::new` 产出 `IN\n`；钉 `@0.3.0`）
+
+**过渡签名：** `func() -> stream<u8>`。官方 WIT 为 `tuple<stream<u8>, future<result<_, error-code>>>`；tuple / `result` 另切片。
+
+成功：guest `stream.read` 后 `run` 返回 `3`。`wasi:cli/command` 另切片。
+
+```powershell
+wasm-tools parse fixtures/wasi/cli_stdin.wat -o fixtures/wasi/cli_stdin.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdin.wasm
 ```

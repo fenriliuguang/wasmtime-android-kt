@@ -4,6 +4,13 @@ All notable planning and code changes for this experimental Android-first Wasm r
 
 ## Unreleased
 
+### Code — WASI 0.3 wasi:cli stdin read-via-stream smoke (2026-08-13)
+
+- Register `wasi:cli/stdin@0.3.0#read-via-stream` (host `StreamReader` produces `IN\n`)
+- **Transitional** signature: `func() -> stream<u8>` (not official `tuple<stream<u8>, future<result<_, error-code>>>`)
+- Fixture `fixtures/wasi/cli_stdin`; native `wasi_cli_stdin`; instrument `WasiCliStdinInstrumentedTest`
+- CI includes `--test wasi_cli_stdin`; `wasi:cli/command` / official tuple+result deferred
+
 ### Code — W2 true-async wasi:webgpu request-adapter (2026-08-12)
 
 - Convert proposal-instance transitional flat `wasi:webgpu/webgpu@0.3.0-rc.2#request-adapter` from sync `func_wrap` to **true CM async** `func_wrap_concurrent` (oneshot + helper-thread yield → L2 `exp_request_adapter`); **forbid Latch fake-async**
