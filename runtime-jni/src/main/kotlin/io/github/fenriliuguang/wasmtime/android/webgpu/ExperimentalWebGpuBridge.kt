@@ -84,6 +84,31 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /** W3 slice: adapter + device + queue + encoder + finish + submit1 (proposal-name sync submit uses these L2 callbacks). */
+    fun attachQueueSubmit1(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun commandEncoderFinish(encoder: Int): Int =
+                    bindings.commandEncoderFinish(encoder)
+
+                override fun queueSubmit1(queue: Int, commandBuffer: Int) {
+                    bindings.queueSubmit1(queue, commandBuffer)
+                }
+            },
+        )
+    }
+
     /** M4: clear→present subset for dedicated render smoke Guest. */
     fun attachRenderSmoke(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
