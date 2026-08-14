@@ -16,6 +16,10 @@ import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
  * Flat u32-rep imports (M3/M4); not full WIT resource method names.
  */
 object ExperimentalWebGpuBridge {
+    /**
+     * W1/W2 flat `request-adapter` and W3 `[method]gpu.request-adapter` share this
+     * L2 callback. `get-gpu` is host-only (no Kotlin).
+     */
     fun attachRequestAdapter(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(

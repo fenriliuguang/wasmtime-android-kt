@@ -3,7 +3,7 @@
 use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_link, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
-use crate::host::{HostState, Widget};
+use crate::host::{Gpu, HostState, Widget};
 use crate::jvm;
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -462,11 +462,52 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // yield); W3 `device-get-queue`, `device-create-command-encoder`,
     // `command-encoder-finish`, `queue-submit1`,
     // `command-encoder-begin-render-pass-clear`, and `render-pass-end` are sync
-    // `func_wrap` (same L2 as experimental). Experimental stays sync. Not final
-    // `[method]gpu.*` / option / resource / list (later W3).
+    // `func_wrap` (same L2 as experimental). W3 also registers WIT `gpu` +
+    // `get-gpu` + `[method]gpu.request-adapter` (async; still returns u32, not
+    // option<gpu-adapter>). Experimental stays sync. Not full option / list.
     {
         let mut webgpu = linker
             .instance("wasi:webgpu/webgpu@0.3.0-rc.2")
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource("gpu", ResourceType::host::<Gpu>(), |mut store, rep| {
+                let resource = Resource::<Gpu>::new_own(rep);
+                store.data_mut().table.delete(resource)?;
+                Ok(())
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-gpu", |mut store, ()| {
+                let resource = store.data_mut().table.push(Gpu)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap_concurrent(
+                "[method]gpu.request-adapter",
+                |accessor, (gpu,): (Resource<Gpu>,)| {
+                    Box::pin(async move {
+                        let cb = accessor.with(|mut access| {
+                            let _ = access.data_mut().table.get(&gpu)?;
+                            access
+                                .data_mut()
+                                .experimental_host_cb
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    wasmtime::Error::msg("experimental host callback not set")
+                                })
+                                .cloned()
+                        })?;
+                        let (tx, rx) = oneshot::channel::<()>();
+                        std::thread::spawn(move || {
+                            let _ = tx.send(());
+                        });
+                        let _ = rx.await;
+                        let rep = jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        Ok((rep,))
+                    })
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap_concurrent("request-adapter", |accessor, ()| {
