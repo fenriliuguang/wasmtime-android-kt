@@ -9,7 +9,8 @@
 > **W3 首片：** 已双注册过渡扁平 `device-get-queue`（**sync** getter，同 L2 u32）。终态 `[method]gpu-device.queue` / resource 表仍属后续 W3。  
 > **W3：** 已双注册过渡扁平 `device-create-command-encoder`（**sync**，同 L2 u32）。终态 `[method]gpu-device.create-command-encoder` 仍属后续 W3。  
 > **W3：** 已双注册过渡扁平 `command-encoder-finish`（**sync**，同 L2 u32）。终态 `[method]gpu-command-encoder.finish` 仍属后续 W3。  
-> **W3 本片：** 已双注册过渡扁平 `queue-submit1`（**sync** void，同 L2 单 buffer u32）。终态 `[method]gpu-queue.submit` / 提案 `list` 仍属后续 W3。
+> **W3：** 已双注册过渡扁平 `queue-submit1`（**sync** void，同 L2 单 buffer u32）。终态 `[method]gpu-queue.submit` / 提案 `list` 仍属后续 W3。  
+> **W3 本片：** 已双注册过渡扁平 `command-encoder-begin-render-pass-clear`（**sync**，同 L2 u32）。终态 `[method]gpu-command-encoder.begin-render-pass` 仍属后续 W3。
 
 ## 1. 目的
 
@@ -37,7 +38,7 @@ W1 **不是**合规面、**不是**真 async、**不是**完整 resource 表。
 | W1 提案名（过渡） | `wasi:webgpu/webgpu@0.3.0-rc.2` | `request-adapter`（**非** `[method]gpu.request-adapter`） |
 
 两条路径共享同一 L2 `exp_request_adapter` / u32；**W2 起**提案名路径为 `func_wrap_concurrent`，experimental 仍为 sync `func_wrap`。  
-终态 resource 方法名属 **W3**。扁平 `adapter-request-device` 真 async **已交付**（同提案 instance；L2 `exp_adapter_request_device`）。扁平 `device-get-queue` sync **已交付**（同提案 instance；L2 `exp_device_get_queue`；非 `[method]gpu-device.queue`）。扁平 `device-create-command-encoder` sync **已交付**（同提案 instance；L2 `exp_create_command_encoder`；非 `[method]gpu-device.create-command-encoder`）。扁平 `command-encoder-finish` sync **已交付**（同提案 instance；L2 `exp_command_encoder_finish`；非 `[method]gpu-command-encoder.finish`）。扁平 `queue-submit1` sync **已交付**（同提案 instance；L2 `exp_queue_submit1`；单 buffer u32；非 `[method]gpu-queue.submit`）。
+终态 resource 方法名属 **W3**。扁平 `adapter-request-device` 真 async **已交付**（同提案 instance；L2 `exp_adapter_request_device`）。扁平 `device-get-queue` sync **已交付**（同提案 instance；L2 `exp_device_get_queue`；非 `[method]gpu-device.queue`）。扁平 `device-create-command-encoder` sync **已交付**（同提案 instance；L2 `exp_create_command_encoder`；非 `[method]gpu-device.create-command-encoder`）。扁平 `command-encoder-finish` sync **已交付**（同提案 instance；L2 `exp_command_encoder_finish`；非 `[method]gpu-command-encoder.finish`）。扁平 `queue-submit1` sync **已交付**（同提案 instance；L2 `exp_queue_submit1`；单 buffer u32；非 `[method]gpu-queue.submit`）。扁平 `command-encoder-begin-render-pass-clear` sync **已交付**（同提案 instance；L2 `exp_begin_render_pass_clear`；Guest stub view `23`；非 `[method]gpu-command-encoder.begin-render-pass`）。
 
 ### 3.2 异步边界（硬约束，仍有效）
 
@@ -53,9 +54,9 @@ W1 **不是**合规面、**不是**真 async、**不是**完整 resource 表。
 | 项 | 路径 |
 |----|------|
 | Linker 双注册 | `native/src/cm.rs` |
-| Guest | `fixtures/w1/webgpu_request_adapter.{wat,wasm}` · `webgpu_request_device.{wat,wasm}` · `webgpu_device_get_queue.{wat,wasm}` · `webgpu_create_command_encoder.{wat,wasm}` · `webgpu_command_encoder_finish.{wat,wasm}` · `webgpu_queue_submit.{wat,wasm}` |
-| Native smoke | `native/tests/wasi_webgpu_request_adapter.rs`（stub u32=7）· `wasi_webgpu_request_device.rs`（stub device=11）· `wasi_webgpu_device_get_queue.rs`（stub queue=13）· `wasi_webgpu_create_command_encoder.rs`（stub encoder=17）· `wasi_webgpu_command_encoder_finish.rs`（stub buffer=19）· `wasi_webgpu_queue_submit.rs`（stub submit `(13, 19)`） |
-| 仪器孪生 | `WasiWebGpuRequestAdapterInstrumentedTest` · `WasiWebGpuRequestDeviceInstrumentedTest` · `WasiWebGpuDeviceGetQueueInstrumentedTest` · `WasiWebGpuCreateCommandEncoderInstrumentedTest` · `WasiWebGpuCommandEncoderFinishInstrumentedTest` · `WasiWebGpuQueueSubmitInstrumentedTest` |
+| Guest | `fixtures/w1/webgpu_request_adapter.{wat,wasm}` · `webgpu_request_device.{wat,wasm}` · `webgpu_device_get_queue.{wat,wasm}` · `webgpu_create_command_encoder.{wat,wasm}` · `webgpu_command_encoder_finish.{wat,wasm}` · `webgpu_queue_submit.{wat,wasm}` · `webgpu_begin_render_pass.{wat,wasm}` |
+| Native smoke | `native/tests/wasi_webgpu_request_adapter.rs`（stub u32=7）· `wasi_webgpu_request_device.rs`（stub device=11）· `wasi_webgpu_device_get_queue.rs`（stub queue=13）· `wasi_webgpu_create_command_encoder.rs`（stub encoder=17）· `wasi_webgpu_command_encoder_finish.rs`（stub buffer=19）· `wasi_webgpu_queue_submit.rs`（stub submit `(13, 19)`）· `wasi_webgpu_begin_render_pass.rs`（stub pass=29，view=23） |
+| 仪器孪生 | `WasiWebGpuRequestAdapterInstrumentedTest` · `WasiWebGpuRequestDeviceInstrumentedTest` · `WasiWebGpuDeviceGetQueueInstrumentedTest` · `WasiWebGpuCreateCommandEncoderInstrumentedTest` · `WasiWebGpuCommandEncoderFinishInstrumentedTest` · `WasiWebGpuQueueSubmitInstrumentedTest` · `WasiWebGpuBeginRenderPassInstrumentedTest` |
 | 资产拷贝 | `smoke-app` `copyW1Fixtures` → `androidTest/assets/w1` |
 
 ## 5. 明确不在 W1（历史约束）
@@ -67,5 +68,5 @@ W1 **不是**合规面、**不是**真 async、**不是**完整 resource 表。
 
 ## 6. 修订
 
-- W1 已交付；W2：`request-adapter` + 扁平 `adapter-request-device` 真 async 已交付。W3：扁平 `device-get-queue` + `device-create-command-encoder` + `command-encoder-finish` + `queue-submit1` sync 已交付（非 `[method]`）。  
+- W1 已交付；W2：`request-adapter` + 扁平 `adapter-request-device` 真 async 已交付。W3：扁平 `device-get-queue` + `device-create-command-encoder` + `command-encoder-finish` + `queue-submit1` + `command-encoder-begin-render-pass-clear` sync 已交付（非 `[method]`）。  
 - 改 instance / 过渡名：更新本页 + gap §5 + `changelog/unreleased/` 碎片。
