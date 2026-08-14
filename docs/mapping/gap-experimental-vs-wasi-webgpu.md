@@ -31,13 +31,13 @@
 | 7 | `device-create-command-encoder` | `gpu-device.create-command-encoder` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；experimental 仍 sync | W3 双注册过渡扁平（同 L2 u32）；缺 `option<descriptor>`；`[method]gpu-device.create-command-encoder` 仍属后续 W3 | **W3**（`[method]` 仍后） |
 | 8 | `command-encoder-begin-render-pass-clear` | `begin-render-pass` + clear 附件 | sync | 本仓把 clear 颜色塞进专用扁平 API；提案用完整 descriptor | W3 |
 | 9 | `render-pass-end` | `gpu-render-pass-encoder.end` | sync | resource 方法名 | W3 |
-| 10 | `command-encoder-finish` | `gpu-command-encoder.finish` | sync | 缺 descriptor option | W3 |
+| 10 | `command-encoder-finish` | `gpu-command-encoder.finish` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；experimental 仍 sync | W3 双注册过渡扁平（同 L2 u32）；缺 descriptor option；`[method]gpu-command-encoder.finish` 仍属后续 W3 | **W3**（`[method]` 仍后） |
 | 11 | `queue-submit1` | `gpu-queue.submit` | sync | 提案 `list<borrow<…>>`；本仓单 buffer u32 | W3 |
 | 12 | `surface-present` | **提案无** | — | wasi-gfx / 平台 present | W4 |
 | 13 | `surface-unconfigure` | `gpu-canvas-context.unconfigure` | sync | 对齐较易 | W4 |
 
 注册落点：`native/src/cm.rs` · `ExperimentalHostCallbacks` · `ExperimentalWebGpuBridge`。  
-仪器：`RequestAdapterInstrumentedTest`（#1 experimental）· `WasiWebGpuRequestAdapterInstrumentedTest`（#1 提案名过渡扁平）· `WasiWebGpuRequestDeviceInstrumentedTest`（#2 提案名过渡扁平）· `WasiWebGpuDeviceGetQueueInstrumentedTest`（#3 提案名过渡扁平 sync）· `WasiWebGpuCreateCommandEncoderInstrumentedTest`（#7 提案名过渡扁平 sync）· `DawnRenderSmokeInstrumentedTest`（#1–13 子集）。
+仪器：`RequestAdapterInstrumentedTest`（#1 experimental）· `WasiWebGpuRequestAdapterInstrumentedTest`（#1 提案名过渡扁平）· `WasiWebGpuRequestDeviceInstrumentedTest`（#2 提案名过渡扁平）· `WasiWebGpuDeviceGetQueueInstrumentedTest`（#3 提案名过渡扁平 sync）· `WasiWebGpuCreateCommandEncoderInstrumentedTest`（#7 提案名过渡扁平 sync）· `WasiWebGpuCommandEncoderFinishInstrumentedTest`（#10 提案名过渡扁平 sync）· `DawnRenderSmokeInstrumentedTest`（#1–13 子集）。
 
 ## 3. 提案有、本仓未覆盖（抽样，非全表）
 
