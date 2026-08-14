@@ -104,6 +104,15 @@
 | **仪器** | `attachBeginRenderPassClear` 在拿到 device 后建 Cpu 1×1 离屏 TextureView，替换 Guest stub view；**不**走 experimental surface / present |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方。禁止在泵线程 `AttachCurrentThread` |
 
+## WASI webgpu render-pass-end（W3）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 提案名过渡扁平 `render-pass-end`：`func_wrap` sync void → 同一 L2 u32 |
+| **Guest** | async adapter → async device → sync encoder + begin-clear（stub view `23`）+ end（`fixtures/w1/webgpu_render_pass_end`） |
+| **仪器** | `attachRenderPassEnd` 同 begin-clear 替换 Cpu 离屏 TextureView 后再 `renderPassEnd`；**不**走 experimental surface / present |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方。禁止在泵线程 `AttachCurrentThread` |
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
