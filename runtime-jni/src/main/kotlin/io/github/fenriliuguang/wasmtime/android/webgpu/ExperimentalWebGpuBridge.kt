@@ -136,6 +136,56 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /**
+     * W3 slice: adapter + device + encoder + begin-render-pass-clear + render-pass-end.
+     *
+     * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
+     * Not `[method]gpu-render-pass-encoder.end`; not finish / submit / present.
+     */
+    fun attachRenderPassEnd(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var colorView = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    val device = bindings.adapterRequestDevice(adapter)
+                    val texture =
+                        bindings.deviceCreateTexture(
+                            device,
+                            TextureDescriptor(
+                                size = Extent3D(width = 1, height = 1),
+                                format = GpuTextureFormat.RGBA8_UNORM,
+                                usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                            ),
+                        )
+                    colorView = bindings.textureCreateView(texture)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginRenderPassClear(encoder: Int, view: Int): Int {
+                    val resolved = if (colorView != 0) colorView else view
+                    return bindings.commandEncoderBeginRenderPassClear(
+                        encoder,
+                        resolved,
+                        CLEAR_R,
+                        CLEAR_G,
+                        CLEAR_B,
+                        CLEAR_A,
+                    )
+                }
+
+                override fun renderPassEnd(pass: Int) {
+                    bindings.renderPassEnd(pass)
+                }
+            },
+        )
+    }
+
     /** W3 slice: adapter + device + queue + encoder + finish + submit1 (proposal-name sync submit uses these L2 callbacks). */
     fun attachQueueSubmit1(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
