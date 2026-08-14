@@ -113,6 +113,17 @@
 | **仪器** | `attachRenderPassEnd` 同 begin-clear 替换 Cpu 离屏 TextureView 后再 `renderPassEnd`；**不**走 experimental surface / present |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方。禁止在泵线程 `AttachCurrentThread` |
 
+## WASI webgpu `[method]gpu.request-adapter`（W3）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 提案 instance 注册 `gpu` resource + sync `get-gpu`；`[method]gpu.request-adapter`：`func_wrap_concurrent` + oneshot yield → 同一 L2 u32 |
+| **Guest** | `get-gpu` → `[method]gpu.request-adapter`（borrow self；`fixtures/w1/webgpu_method_request_adapter`） |
+| **仪器** | 复用 `attachRequestAdapter`；扁平 `request-adapter` 仍注册 |
+| **Pump** | 同 M2：`callRunConcurrent` / `run_concurrent` |
+
+禁止 Latch / 假 future 冒充。非 `option<gpu-adapter>` / options record。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。

@@ -1,4 +1,4 @@
-//! Store host state: Kotlin callbacks + u32-rep widget resources.
+//! Store host state: Kotlin callbacks + u32-rep widget / gpu resources.
 
 use jni::objects::GlobalRef;
 use wasmtime::component::ResourceTable;
@@ -7,6 +7,10 @@ use wasmtime::component::ResourceTable;
 pub struct Widget {
     pub rep: u32,
 }
+
+/// Host representation of WIT `resource gpu` (W3 `[method]` slice). No L2 handle.
+#[derive(Debug)]
+pub struct Gpu;
 
 pub struct HostState {
     pub table: ResourceTable,
