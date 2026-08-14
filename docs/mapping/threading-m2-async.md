@@ -52,6 +52,14 @@
 | **Guest** | import → canon `stream.read` → 返回 nbytes（`fixtures/wasi/cli_stdin`） |
 | **Pump** | 同写端：`call_async` / 仪器 `callStreamWrite`（`run` 导出） |
 
+## WASI cli command-shaped async `run`
+
+| 角色 | 职责 |
+|------|------|
+| **Guest** | 根导出 `run: async func() -> u32`（过渡 0=ok）；import 已有 `wasi:cli/stdout@0.3.0#write-via-stream`，写 `CMD\n`（`fixtures/wasi/cli_command`） |
+| **Host consumer** | 与 stdout 相同：`CollectConsumer` / `pipe`；生产路径不改 `cm.rs` |
+| **Pump** | `callRunConcurrent` / `run_concurrent`（与 monotonic `wait-for` 同泵）；stdout consumer 不变 |
+
 ## WASI webgpu request-adapter / request-device（W2）
 
 | 角色 | 职责 |

@@ -146,3 +146,17 @@ Host: `wasi:clocks/system-clock@0.3.0#resolution`（host 返回 `1`；钉 `@0.3.
 wasm-tools parse fixtures/wasi/system_resolution.wat -o fixtures/wasi/system_resolution.wasm
 wasm-tools validate --features=component-model fixtures/wasi/system_resolution.wasm
 ```
+
+## `wasi:cli/command` — async `run`（子集）
+
+Guest export: `run: async func() -> u32`（过渡 **0 = ok**；官方 empty `result` 另切片）  
+Host: 复用已有 `wasi:cli/stdout@0.3.0#write-via-stream`（`CollectConsumer` / `pipe`；钉 `@0.3.0`）
+
+本切片是 **command-shaped** 子集：guest 写 `CMD\n` 后返回 `0`。**不是**完整 `wasi:cli/command` world（无 filesystem / sockets / environment / exit / terminal；timezone 亦不在本 PR）。
+
+成功：`run` 经 `run_concurrent` / `call_async`（仪器 `callRunConcurrent`）返回 `0`。
+
+```powershell
+wasm-tools parse fixtures/wasi/cli_command.wat -o fixtures/wasi/cli_command.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_command.wasm
+```
