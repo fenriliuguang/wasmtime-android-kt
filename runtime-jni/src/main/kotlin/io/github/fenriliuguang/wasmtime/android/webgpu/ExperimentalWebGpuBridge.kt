@@ -1,6 +1,10 @@
 package io.github.fenriliuguang.wasmtime.android.webgpu
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
@@ -80,6 +84,54 @@ object ExperimentalWebGpuBridge {
 
                 override fun commandEncoderFinish(encoder: Int): Int =
                     bindings.commandEncoderFinish(encoder)
+            },
+        )
+    }
+
+    /**
+     * W3 slice: adapter + device + encoder + begin-render-pass-clear.
+     *
+     * Guest passes transitional stub view `23` (not a surface texture). After
+     * [adapterRequestDevice] this attach creates a 1×1 Cpu offscreen color
+     * TextureView and substitutes it so L2 sees a real handle. Not present /
+     * wasi-gfx; not `[method]gpu-command-encoder.begin-render-pass`.
+     */
+    fun attachBeginRenderPassClear(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var colorView = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    val device = bindings.adapterRequestDevice(adapter)
+                    val texture =
+                        bindings.deviceCreateTexture(
+                            device,
+                            TextureDescriptor(
+                                size = Extent3D(width = 1, height = 1),
+                                format = GpuTextureFormat.RGBA8_UNORM,
+                                usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                            ),
+                        )
+                    colorView = bindings.textureCreateView(texture)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginRenderPassClear(encoder: Int, view: Int): Int {
+                    val resolved = if (colorView != 0) colorView else view
+                    return bindings.commandEncoderBeginRenderPassClear(
+                        encoder,
+                        resolved,
+                        CLEAR_R,
+                        CLEAR_G,
+                        CLEAR_B,
+                        CLEAR_A,
+                    )
+                }
             },
         )
     }
