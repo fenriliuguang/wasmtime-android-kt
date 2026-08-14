@@ -71,7 +71,7 @@
 切片**定义**仍见 §2 各行与 [`../scheme/roadmap-wasi-webgpu.md`](../scheme/roadmap-wasi-webgpu.md)。  
 **正在做 / 下一刀** 只维护在 GitHub Project：[wasmtime-android-kt progress](https://github.com/users/fenriliuguang/projects/1)（筛 `Slice` = W3 / W4，`Status` = Todo 或 In Progress）。功能 PR **不要**在本页追加编号清单。
 
-史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸。W3 起按本表高频方法扩面并收敛 `[method]` 名；W4 为呈现策略书面选型。
+史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸。W3 起按本表高频方法扩面并收敛 `[method]` 名；W4 选型已书面落地，见 [`../scheme/w4-present-strategy.md`](../scheme/w4-present-strategy.md)。
 
 ## 6. 钉版与修订
 
