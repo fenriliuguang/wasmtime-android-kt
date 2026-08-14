@@ -54,7 +54,7 @@ World 层（组合）           wasi:cli/command · wasi:http/service · …
 | `wasi:clocks`（`system-clock` / `wait-until` / `wait-for`） | **高** | **`monotonic-clock.now` + `wait-for` + `wait-until` + `system-clock.now` + `monotonic-clock.resolution` + `system-clock.resolution` smoke 已通**（`fixtures/wasi/monotonic_now` · `monotonic_wait_for` · `monotonic_wait_until` · `system_now` · `monotonic_resolution` · `system_resolution`；钉 `@0.3.0`）；`system-clock.now` 为过渡 `u64` unix 秒（非官方 `instant` record）；`system-clock.resolution` 为过渡 `u64` ns（非官方 datetime record）；timezone 另切片 |
 | `wasi:random` | **高** | **`get-random-u64` + `get-random-bytes` smoke 已通**（`fixtures/wasi/random_u64` · `random_bytes`；钉 `@0.3.0`；`get-random-bytes` 为官方 `list<u8>`，host 长度上限 4096） |
 | `wasi:cli` stdio（stream+future） | **中高** | **`stdout` / `stderr.write-via-stream` + `stdin.read-via-stream` smoke 已通**（`fixtures/wasi/cli_stdout` · `cli_stderr` · `cli_stdin`；钉 `@0.3.0`；stdout/stderr 过渡 `future<u32>` 字节数；stdin 过渡 `func() -> stream<u8>`，非官方 tuple+`result`/`error-code`）；`wasi:cli/command` 另切片 |
-| `wasi:cli/command`（`async run`） | **中** | stdio + clocks/random 子集可用 |
+| `wasi:cli/command`（`async run`） | **中** | **`async run` smoke 已通**（`fixtures/wasi/cli_command`；钉 `@0.3.0`；过渡 root `run: async func() -> u32` 0=ok，非官方 empty `result`；仅 import 已有 stdout 子集）。非完整 command world（无 fs/sockets/environment/exit/terminal） |
 | `wasi:filesystem` | **中** | 明确 Guest 阻塞；Android 沙箱路径策略先写文档 |
 | `wasi:sockets` | **中低** | 网络权限与线程模型 RFC |
 | `wasi:http`（`service` / `middleware` / async `handle`） | **中低** | 非 Android 首发叙事；可桌面先 |
