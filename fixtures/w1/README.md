@@ -6,8 +6,9 @@
 | `webgpu_request_device.wasm` | `request-adapter` + `adapter-request-device` → **async** `u32` | `run: async func() -> u32` | adapter then device; returns device rep |
 | `webgpu_device_get_queue.wasm` | `request-adapter` + `adapter-request-device` (async) + **`device-get-queue` sync** `u32` | `run: async func() -> u32` | adapter → device → queue; returns queue rep |
 | `webgpu_create_command_encoder.wasm` | `request-adapter` + `adapter-request-device` (async) + **`device-create-command-encoder` sync** `u32` | `run: async func() -> u32` | adapter → device → encoder; returns encoder rep |
+| `webgpu_command_encoder_finish.wasm` | `request-adapter` + `adapter-request-device` (async) + `device-create-command-encoder` + **`command-encoder-finish` sync** `u32` | `run: async func() -> u32` | adapter → device → encoder → finish; returns command-buffer rep |
 
-**Transitional:** host registers flat names (not `[method]gpu.*`). **W2:** true CM async (`func_wrap_concurrent` + oneshot yield); pump via `run_concurrent` / `callRunConcurrent`. **W3:** `device-get-queue` and `device-create-command-encoder` are **sync** on the same proposal instance (same L2 u32 as experimental). Experimental flat sync path unchanged. Not full option/resource compliance.
+**Transitional:** host registers flat names (not `[method]gpu.*`). **W2:** true CM async (`func_wrap_concurrent` + oneshot yield); pump via `run_concurrent` / `callRunConcurrent`. **W3:** `device-get-queue`, `device-create-command-encoder`, and `command-encoder-finish` are **sync** on the same proposal instance (same L2 u32 as experimental). Experimental flat sync path unchanged. Not full option/resource compliance.
 
 Regenerate:
 
@@ -20,4 +21,6 @@ wasm-tools parse fixtures/w1/webgpu_device_get_queue.wat -o fixtures/w1/webgpu_d
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_device_get_queue.wasm
 wasm-tools parse fixtures/w1/webgpu_create_command_encoder.wat -o fixtures/w1/webgpu_create_command_encoder.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_create_command_encoder.wasm
+wasm-tools parse fixtures/w1/webgpu_command_encoder_finish.wat -o fixtures/w1/webgpu_command_encoder_finish.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_command_encoder_finish.wasm
 ```

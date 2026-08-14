@@ -459,9 +459,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
 
     // W2/W3: proposal instance transitional flat `request-adapter` /
     // `adapter-request-device` as true CM async (`func_wrap_concurrent` + oneshot
-    // yield); W3 `device-get-queue` and `device-create-command-encoder` are sync
-    // `func_wrap` (same L2 as experimental). Experimental stays sync. Not final
-    // `[method]gpu.*` / option / resource (later W3).
+    // yield); W3 `device-get-queue`, `device-create-command-encoder`, and
+    // `command-encoder-finish` are sync `func_wrap` (same L2 as experimental).
+    // Experimental stays sync. Not final `[method]gpu.*` / option / resource
+    // (later W3).
     {
         let mut webgpu = linker
             .instance("wasi:webgpu/webgpu@0.3.0-rc.2")
@@ -531,6 +532,19 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                     .cloned()?;
                 let rep = jvm::exp_create_command_encoder(&cb, device)
+                    .map_err(wasmtime::Error::msg)?;
+                Ok((rep,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("command-encoder-finish", |caller, (encoder,): (u32,)| {
+                let cb = caller
+                    .data()
+                    .experimental_host_cb
+                    .as_ref()
+                    .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                    .cloned()?;
+                let rep = jvm::exp_command_encoder_finish(&cb, encoder)
                     .map_err(wasmtime::Error::msg)?;
                 Ok((rep,))
             })
