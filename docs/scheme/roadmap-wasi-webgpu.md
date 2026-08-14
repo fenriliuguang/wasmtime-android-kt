@@ -68,10 +68,11 @@ W3  队列与缓冲关键面（resource 面史诗仍在进行）
     `device-create-command-encoder` 过渡扁平 sync 已交付（非 `[method]gpu-device.create-command-encoder`）
     按差距表选高频 async/sync 方法切片；每片独立 DoD
 
-W4  呈现路径策略
-    选项 A：继续轨 A experimental surface（过渡）
-    选项 B：引入 wasi-gfx 最小胶水（须单独 RFC，默认不升 P0）
-    选项 C：headless compute-only 演示（降低上屏耦合）
+W4  呈现路径策略（选型已立；文档）
+    近端默认选项 A：继续轨 A experimental surface（过渡）
+    选项 B：引入 wasi-gfx 最小胶水（须单独 RFC，默认不升 P0；= DG-6 / NG-9）
+    选项 C：headless compute-only 演示（后期可选，不替换 A）
+    见 [`w4-present-strategy.md`](w4-present-strategy.md)
 
 W5  提案反馈与可选 CTS 子集
     文档化 Android/Dawn 特有问题；可选上游 issue；CTS 子集不挡 W2
@@ -110,3 +111,4 @@ Wasmtime 追踪（版本含 CM async / 必要时 stream）
 
 - W 切片增删、WIT 钉版变更：更新本页对应节 + `changelog/unreleased/` 碎片 +（若有）gap 表。不要为「下一刀」去改根 README 或 `vcs-workflow` 清单；活状态改 Project 卡片。  
 - 将 wasi-gfx 升为与本页同级：长期计划修订 RFC。  
+- W4 呈现路径已书面选型（近端 A）：见 [`w4-present-strategy.md`](w4-present-strategy.md)。  
