@@ -232,6 +232,17 @@
 
 非 Guest `option<gpu-sampler-descriptor>` / `gpu-sampler` resource。
 
+## WASI webgpu `[method]gpu-device.create-shader-module`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-device` / `get-device`；`[method]gpu-device.create-shader-module`：`func_wrap` sync → L2 adapter/device + host-fixed stub WGSL |
+| **Guest** | `get-device` → create-shader-module（`fixtures/w1/webgpu_method_create_shader_module`） |
+| **仪器** | `attachCreateShaderModule` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非 Guest `gpu-shader-module-descriptor` / `gpu-shader-module` resource。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
