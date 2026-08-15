@@ -29,7 +29,12 @@ object ExperimentalWebGpuBridge {
         )
     }
 
-    /** W2 remainder: adapter + device (proposal-name async path still uses these L2 callbacks). */
+    /**
+     * W2 remainder: adapter + device (proposal-name async path still uses these
+     * L2 callbacks). W3 `[method]gpu-adapter.request-device` shares this attach:
+     * `get-adapter` is host-only (no Kotlin); the method then calls L2
+     * `requestAdapter` + `adapterRequestDevice`.
+     */
     fun attachRequestDevice(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(

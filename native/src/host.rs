@@ -12,6 +12,12 @@ pub struct Widget {
 #[derive(Debug)]
 pub struct Gpu;
 
+/// Host representation of WIT `resource gpu-adapter` (W3 `[method]` slice).
+/// No L2 handle yet; `[method]gpu-adapter.request-device` calls L2
+/// `request-adapter` then `adapter-request-device`.
+#[derive(Debug)]
+pub struct GpuAdapter;
+
 pub struct HostState {
     pub table: ResourceTable,
     pub add_cb: Option<GlobalRef>,
