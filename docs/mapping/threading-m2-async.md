@@ -177,6 +177,17 @@
 | **仪器** | 复用 `attachRenderPassEnd` |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
 
+## WASI webgpu `[method]gpu-command-encoder.finish`（W3）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-command-encoder` / `get-encoder`；`[method]gpu-command-encoder.finish`：`func_wrap` sync → L2 adapter/device/encoder/finish |
+| **Guest** | `get-encoder` → finish（`fixtures/w1/webgpu_method_command_encoder_finish`） |
+| **仪器** | 复用 `attachCommandEncoderFinish` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非 `option<command-buffer-descriptor>`。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
