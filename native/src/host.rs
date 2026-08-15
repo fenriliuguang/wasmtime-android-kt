@@ -29,6 +29,10 @@ pub struct GpuDevice;
 #[derive(Debug)]
 pub struct GpuCommandEncoder;
 
+/// Host representation of WIT `resource gpu-render-pass-encoder` (W3 `[method]`).
+#[derive(Debug)]
+pub struct GpuRenderPassEncoder;
+
 pub struct HostState {
     pub table: ResourceTable,
     pub add_cb: Option<GlobalRef>,

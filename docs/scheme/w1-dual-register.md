@@ -11,7 +11,7 @@
 > **W3：** 已双注册过渡扁平 `command-encoder-finish`（**sync**，同 L2 u32）。终态 `[method]gpu-command-encoder.finish` 仍属后续 W3。  
 > **W3：** 已双注册过渡扁平 `queue-submit1`（**sync** void，同 L2 单 buffer u32）。终态 `[method]gpu-queue.submit` / 提案 `list` 仍属后续 W3。  
 > **W3：** 已双注册过渡扁平 `command-encoder-begin-render-pass-clear`（**sync**，同 L2 u32）。终态 `[method]gpu-command-encoder.begin-render-pass` **已交付**（stub view `23`；非完整 descriptor）。  
-> **W3：** 已双注册过渡扁平 `render-pass-end`（**sync** void，同 L2 u32）。终态 `[method]gpu-render-pass-encoder.end` 仍属后续 W3。  
+> **W3：** 已双注册过渡扁平 `render-pass-end`（**sync** void，同 L2 u32）。终态 `[method]gpu-render-pass-encoder.end` **已交付**。  
 > **W3：** 已注册 WIT `gpu` + `get-gpu` + **`[method]gpu.request-adapter`**（真 async，resource self；返回仍为过渡 u32，非 `option<gpu-adapter>`）。扁平 `request-adapter` 仍保留。  
 > **W3 本片：** 已注册 WIT `gpu-device` + `get-device` + **`[method]gpu-device.queue`**（**sync** getter，resource self；返回仍为过渡 u32，非 `gpu-queue` resource）。扁平 `device-get-queue` 仍保留。
 
