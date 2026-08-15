@@ -18,6 +18,12 @@ pub struct Gpu;
 #[derive(Debug)]
 pub struct GpuAdapter;
 
+/// Host representation of WIT `resource gpu-device` (W3 `[method]` slice).
+/// No L2 handle yet; `[method]gpu-device.queue` calls L2 `request-adapter` then
+/// `adapter-request-device` then `device-get-queue`.
+#[derive(Debug)]
+pub struct GpuDevice;
+
 pub struct HostState {
     pub table: ResourceTable,
     pub add_cb: Option<GlobalRef>,
