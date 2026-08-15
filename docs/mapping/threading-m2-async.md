@@ -210,6 +210,17 @@
 
 非 Guest `gpu-buffer-descriptor` / `gpu-buffer` resource。
 
+## WASI webgpu `[method]gpu-device.create-texture`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-device` / `get-device`；`[method]gpu-device.create-texture`：`func_wrap` sync → L2 adapter/device + host-fixed 1×1 RGBA8 RENDER_ATTACHMENT |
+| **Guest** | `get-device` → create-texture（`fixtures/w1/webgpu_method_create_texture`） |
+| **仪器** | `attachCreateTexture` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非 Guest `gpu-texture-descriptor` / `gpu-texture` resource。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。

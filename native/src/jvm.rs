@@ -224,6 +224,15 @@ pub fn exp_create_buffer(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     )
 }
 
+pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateTexture",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 pub fn exp_begin_render_pass_clear(
     cb: &GlobalRef,
     encoder: u32,
