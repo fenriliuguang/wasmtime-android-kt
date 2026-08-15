@@ -286,6 +286,15 @@ pub fn exp_queue_submit1(cb: &GlobalRef, queue: u32, commands: u32) -> Result<()
     )
 }
 
+pub fn exp_queue_write_buffer(cb: &GlobalRef, queue: u32, buffer: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "queueWriteBuffer",
+        "(II)V",
+        vec![HostArg::Int(queue as i32), HostArg::Int(buffer as i32)],
+    )
+}
+
 pub fn exp_surface_present(cb: &GlobalRef, surface: u32) -> Result<(), String> {
     call_void(
         cb,

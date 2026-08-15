@@ -54,6 +54,11 @@ interface ExperimentalHostCallbacks {
         unsupported("queueSubmit1")
     }
 
+    /** W3+: host-fixed 4-byte write (offset 0; buffer u32 from Guest is ignored by JNI). */
+    fun queueWriteBuffer(queue: Int, buffer: Int) {
+        unsupported("queueWriteBuffer")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }
