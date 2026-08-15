@@ -112,6 +112,25 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /**
+     * W3+: adapter + device + create-sampler. Host-fixed default sampler
+     * (no Guest record). `[method]gpu-device.create-sampler`.
+     */
+    fun attachCreateSampler(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateSampler(device: Int): Int =
+                    bindings.deviceCreateSampler(device)
+            },
+        )
+    }
+
     /** W3: adapter + device + encoder. Shared by flat `device-create-command-encoder` and `[method]gpu-device.create-command-encoder`. */
     fun attachCreateCommandEncoder(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
