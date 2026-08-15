@@ -47,7 +47,7 @@ object ExperimentalWebGpuBridge {
         )
     }
 
-    /** W3 first slice: adapter + device + queue (proposal-name sync getter uses these L2 callbacks). */
+    /** W3: adapter + device + queue. Shared by flat `device-get-queue` and `[method]gpu-device.queue` (`get-device` is host-only). */
     fun attachDeviceGetQueue(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(

@@ -3,7 +3,7 @@
 use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_link, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
-use crate::host::{Gpu, GpuAdapter, HostState, Widget};
+use crate::host::{Gpu, GpuAdapter, GpuDevice, HostState, Widget};
 use crate::jvm;
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -464,9 +464,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // `command-encoder-finish`, `queue-submit1`,
     // `command-encoder-begin-render-pass-clear`, and `render-pass-end` are sync
     // `func_wrap` (same L2 as experimental). W3 also registers WIT `gpu` +
-    // `get-gpu` + `[method]gpu.request-adapter` and `gpu-adapter` + `get-adapter`
+    // `get-gpu` + `[method]gpu.request-adapter`, `gpu-adapter` + `get-adapter`
     // + `[method]gpu-adapter.request-device` (async; still return u32, not
-    // option<gpu-adapter> / result<gpu-device>). Experimental stays sync.
+    // option<gpu-adapter> / result<gpu-device>), and `gpu-device` + `get-device`
+    // + `[method]gpu-device.queue` (sync getter; still u32, not `gpu-queue`
+    // resource). Experimental stays sync.
     // Not full option / list.
     {
         let mut webgpu = linker
@@ -556,6 +558,44 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .map_err(wasmtime::Error::msg)?;
                         Ok((rep,))
                     })
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-device",
+                ResourceType::host::<GpuDevice>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuDevice>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-device", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuDevice)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.queue",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let rep = jvm::exp_device_get_queue(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((rep,))
                 },
             )
             .map_err(|e| e.to_string())?;

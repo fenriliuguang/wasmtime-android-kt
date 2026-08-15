@@ -135,6 +135,17 @@
 
 禁止 Latch / 假 future 冒充。非 `result<gpu-device, request-device-error>` / descriptor。
 
+## WASI webgpu `[method]gpu-device.queue`（W3）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 提案 instance 注册 `gpu-device` resource + sync `get-device`；`[method]gpu-device.queue`：`func_wrap` sync → L2 `request-adapter` 再 `adapter-request-device` 再 `device-get-queue`（同 u32） |
+| **Guest** | `get-device` → `[method]gpu-device.queue`（borrow self；`fixtures/w1/webgpu_method_device_queue`） |
+| **仪器** | 复用 `attachDeviceGetQueue`；扁平 `device-get-queue` 仍注册 |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方。禁止在泵线程 `AttachCurrentThread` |
+
+非 `gpu-queue` resource / getter 终态类型。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
