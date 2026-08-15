@@ -29,6 +29,9 @@ interface ExperimentalHostCallbacks {
 
     fun deviceCreateCommandEncoder(device: Int): Int = unsupported("deviceCreateCommandEncoder")
 
+    /** W3+: host-fixed buffer descriptor (size/usage not from Guest). */
+    fun deviceCreateBuffer(device: Int): Int = unsupported("deviceCreateBuffer")
+
     /** Host picks a fixed clear color (smoke). */
     fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")
 

@@ -472,7 +472,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // option<gpu-adapter> / result<gpu-device>), and `gpu-device` + `get-device`
     // + `[method]gpu-device.queue` (sync getter; still u32, not `gpu-queue`
     // resource) and `[method]gpu-device.create-command-encoder` (sync; still
-    // u32, not option<descriptor>). Experimental stays sync.
+    // u32, not option<descriptor>) and `[method]gpu-device.create-buffer`
+    // (sync; host-fixed descriptor, still u32). Experimental stays sync.
     // Not full option / list.
     {
         let mut webgpu = linker
@@ -619,6 +620,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
                     let rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((rep,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.create-buffer",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let rep = jvm::exp_create_buffer(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((rep,))
                 },

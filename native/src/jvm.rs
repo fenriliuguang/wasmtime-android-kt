@@ -215,6 +215,15 @@ pub fn exp_create_command_encoder(cb: &GlobalRef, device: u32) -> Result<u32, St
     )
 }
 
+pub fn exp_create_buffer(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateBuffer",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 pub fn exp_begin_render_pass_clear(
     cb: &GlobalRef,
     encoder: u32,

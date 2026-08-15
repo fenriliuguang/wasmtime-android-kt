@@ -18,8 +18,9 @@
 | `webgpu_method_render_pass_end.wasm` | `get-pass` + **`[method]gpu-render-pass-encoder.end` sync** void | `run: async func() -> u32` | construct pass → end; returns stub 29 |
 | `webgpu_method_command_encoder_finish.wasm` | `get-encoder` + **`[method]gpu-command-encoder.finish` sync** `u32` | `run: async func() -> u32` | construct encoder → finish; returns command-buffer rep |
 | `webgpu_method_queue_submit.wasm` | `get-queue` + **`[method]gpu-queue.submit` sync** void | `run: async func() -> u32` | construct queue → submit(stub 19); returns 19 |
+| `webgpu_method_create_buffer.wasm` | `get-device` + **`[method]gpu-device.create-buffer` sync** `u32` | `run: async func() -> u32` | construct device → create-buffer (host-fixed descriptor); returns buffer rep |
 
-**Transitional:** host still registers flat names. **W2:** true CM async (`func_wrap_concurrent` + oneshot yield); pump via `run_concurrent` / `callRunConcurrent`. **W3:** `device-get-queue`, `device-create-command-encoder`, `command-encoder-finish`, `queue-submit1`, `command-encoder-begin-render-pass-clear`, and `render-pass-end` are **sync** on the same proposal instance (same L2 u32 as experimental; submit is single-buffer, not proposal `list`; begin-clear / end use stub view `23`, instrument substitutes Cpu offscreen TextureView). **W3 `[method]`:** `get-gpu` + `[method]gpu.request-adapter` (resource self; still u32, not `option<gpu-adapter>`), `get-adapter` + `[method]gpu-adapter.request-device` (resource self; still u32, not `result<gpu-device, …>`), and `get-device` + `[method]gpu-device.queue` (resource self; still u32, not `gpu-queue`) and `[method]gpu-device.create-command-encoder` (resource self; still u32, no descriptor). Experimental flat sync path unchanged. Not full option/resource compliance.
+**Transitional:** host still registers flat names. **W2:** true CM async (`func_wrap_concurrent` + oneshot yield); pump via `run_concurrent` / `callRunConcurrent`. **W3:** `device-get-queue`, `device-create-command-encoder`, `command-encoder-finish`, `queue-submit1`, `command-encoder-begin-render-pass-clear`, and `render-pass-end` are **sync** on the same proposal instance (same L2 u32 as experimental; submit is single-buffer, not proposal `list`; begin-clear / end use stub view `23`, instrument substitutes Cpu offscreen TextureView). **W3 `[method]`:** `get-gpu` + `[method]gpu.request-adapter` (resource self; still u32, not `option<gpu-adapter>`), `get-adapter` + `[method]gpu-adapter.request-device` (resource self; still u32, not `result<gpu-device, …>`), and `get-device` + `[method]gpu-device.queue` (resource self; still u32, not `gpu-queue`) and `[method]gpu-device.create-command-encoder` (resource self; still u32, no descriptor) and `[method]gpu-device.create-buffer` (resource self; still u32, host-fixed descriptor). Experimental flat sync path unchanged. Not full option/resource compliance.
 
 Regenerate:
 
@@ -56,4 +57,6 @@ wasm-tools parse fixtures/w1/webgpu_method_command_encoder_finish.wat -o fixture
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_command_encoder_finish.wasm
 wasm-tools parse fixtures/w1/webgpu_method_queue_submit.wat -o fixtures/w1/webgpu_method_queue_submit.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_queue_submit.wasm
+wasm-tools parse fixtures/w1/webgpu_method_create_buffer.wat -o fixtures/w1/webgpu_method_create_buffer.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_create_buffer.wasm
 ```
