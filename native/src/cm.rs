@@ -4,7 +4,8 @@ use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_link, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
-    Gpu, GpuAdapter, GpuCommandEncoder, GpuDevice, GpuQueue, GpuRenderPassEncoder, HostState,
+    Gpu, GpuAdapter, GpuCommandEncoder, GpuDevice, GpuQueue, GpuRenderPassEncoder, GpuTexture,
+    HostState,
     Widget,
 };
 use crate::jvm;
@@ -477,7 +478,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // `[method]gpu-device.create-texture` (sync; host-fixed 1x1, still u32) and
     // `[method]gpu-device.create-sampler` (sync; host-fixed descriptor, still u32)
     // and `[method]gpu-device.create-shader-module` (sync; host-fixed WGSL, still u32)
-    // and `[method]gpu-queue.write-buffer` (sync void; host-fixed bytes, single buffer u32).
+    // and `[method]gpu-queue.write-buffer` (sync void; host-fixed bytes, single buffer u32)
+    // and `gpu-texture` + `get-texture` + `[method]gpu-texture.create-view` (sync; still u32).
     // Experimental stays sync.
     // Not full option / list.
     {
@@ -667,6 +669,46 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
                     let rep = jvm::exp_create_texture(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((rep,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-texture",
+                ResourceType::host::<GpuTexture>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuTexture>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-texture", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuTexture)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.create-view",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let texture_rep = jvm::exp_create_texture(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let rep = jvm::exp_texture_create_view(&cb, texture_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((rep,))
                 },

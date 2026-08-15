@@ -295,6 +295,15 @@ pub fn exp_queue_write_buffer(cb: &GlobalRef, queue: u32, buffer: u32) -> Result
     )
 }
 
+pub fn exp_texture_create_view(cb: &GlobalRef, texture: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "textureCreateView",
+        "(I)I",
+        vec![HostArg::Int(texture as i32)],
+    )
+}
+
 pub fn exp_surface_present(cb: &GlobalRef, surface: u32) -> Result<(), String> {
     call_void(
         cb,
