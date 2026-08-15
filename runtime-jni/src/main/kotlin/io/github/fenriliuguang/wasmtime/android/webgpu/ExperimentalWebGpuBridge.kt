@@ -62,7 +62,7 @@ object ExperimentalWebGpuBridge {
         )
     }
 
-    /** W3 slice: adapter + device + encoder (proposal-name sync create uses these L2 callbacks). */
+    /** W3: adapter + device + encoder. Shared by flat `device-create-command-encoder` and `[method]gpu-device.create-command-encoder`. */
     fun attachCreateCommandEncoder(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(

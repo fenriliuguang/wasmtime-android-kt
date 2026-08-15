@@ -28,7 +28,7 @@
 | 4 | `create-surface-from-native-window` | **提案无**（平台 / wasi-gfx） | — | 轨 A Dawn 胶水；非 wasi:webgpu 范围 | W4 策略 |
 | 5 | `surface-configure` | `gpu-canvas-context.configure` | sync | 需完整 `gpu-canvas-configuration` record | W4 |
 | 6 | `surface-get-current-texture-view` | `get-current-texture` → 再取 view | sync | 提案返回 `gpu-texture`，非直接 view；多一步 | W3/W4 |
-| 7 | `device-create-command-encoder` | `gpu-device.create-command-encoder` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；experimental 仍 sync | W3 双注册过渡扁平（同 L2 u32）；缺 `option<descriptor>`；`[method]gpu-device.create-command-encoder` 仍属后续 W3 | **W3**（`[method]` 仍后） |
+| 7 | `device-create-command-encoder` | `gpu-device.create-command-encoder` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；**W3** `[method]gpu-device.create-command-encoder` sync（`get-device` + resource self） | 扁平名仍注册；`[method]` 仍返回过渡 u32；缺 `option<descriptor>` | **W3**（descriptor 仍后） |
 | 8 | `command-encoder-begin-render-pass-clear` | `begin-render-pass` + clear 附件 | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；experimental 仍 sync | W3 双注册过渡扁平（同 L2 u32；clear 色仍 host 固定）；Guest 过渡 stub view `23`；仪器用 Cpu 离屏 TextureView 替换（非 surface）；`[method]gpu-command-encoder.begin-render-pass` 仍属后续 W3 | **W3**（`[method]` 仍后） |
 | 9 | `render-pass-end` | `gpu-render-pass-encoder.end` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；experimental 仍 sync | W3 双注册过渡扁平（同 L2 void u32）；Guest stub view `23` 后 end；仪器用 Cpu 离屏 TextureView 替换（非 surface）；`[method]gpu-render-pass-encoder.end` 仍属后续 W3 | **W3**（`[method]` 仍后） |
 | 10 | `command-encoder-finish` | `gpu-command-encoder.finish` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；experimental 仍 sync | W3 双注册过渡扁平（同 L2 u32）；缺 descriptor option；`[method]gpu-command-encoder.finish` 仍属后续 W3 | **W3**（`[method]` 仍后） |
@@ -37,7 +37,7 @@
 | 13 | `surface-unconfigure` | `gpu-canvas-context.unconfigure` | sync | 对齐较易 | W4 |
 
 注册落点：`native/src/cm.rs` · `ExperimentalHostCallbacks` · `ExperimentalWebGpuBridge`。  
-仪器：`RequestAdapterInstrumentedTest`（#1 experimental）· `WasiWebGpuRequestAdapterInstrumentedTest`（#1 提案名过渡扁平）· `WasiWebGpuMethodRequestAdapterInstrumentedTest`（#1 `[method]gpu.request-adapter`）· `WasiWebGpuRequestDeviceInstrumentedTest`（#2 提案名过渡扁平）· `WasiWebGpuMethodRequestDeviceInstrumentedTest`（#2 `[method]gpu-adapter.request-device`）· `WasiWebGpuDeviceGetQueueInstrumentedTest`（#3 提案名过渡扁平 sync）· `WasiWebGpuMethodDeviceQueueInstrumentedTest`（#3 `[method]gpu-device.queue`）· `WasiWebGpuCreateCommandEncoderInstrumentedTest`（#7 提案名过渡扁平 sync）· `WasiWebGpuBeginRenderPassInstrumentedTest`（#8 提案名过渡扁平 sync）· `WasiWebGpuRenderPassEndInstrumentedTest`（#9 提案名过渡扁平 sync）· `WasiWebGpuCommandEncoderFinishInstrumentedTest`（#10 提案名过渡扁平 sync）· `WasiWebGpuQueueSubmitInstrumentedTest`（#11 提案名过渡扁平 sync）· `DawnRenderSmokeInstrumentedTest`（#1–13 子集）。
+仪器：`RequestAdapterInstrumentedTest`（#1 experimental）· `WasiWebGpuRequestAdapterInstrumentedTest`（#1 提案名过渡扁平）· `WasiWebGpuMethodRequestAdapterInstrumentedTest`（#1 `[method]gpu.request-adapter`）· `WasiWebGpuRequestDeviceInstrumentedTest`（#2 提案名过渡扁平）· `WasiWebGpuMethodRequestDeviceInstrumentedTest`（#2 `[method]gpu-adapter.request-device`）· `WasiWebGpuDeviceGetQueueInstrumentedTest`（#3 提案名过渡扁平 sync）· `WasiWebGpuMethodDeviceQueueInstrumentedTest`（#3 `[method]gpu-device.queue`）· `WasiWebGpuCreateCommandEncoderInstrumentedTest`（#7 提案名过渡扁平 sync）· `WasiWebGpuMethodCreateCommandEncoderInstrumentedTest`（#7 `[method]gpu-device.create-command-encoder`）· `WasiWebGpuBeginRenderPassInstrumentedTest`（#8 提案名过渡扁平 sync）· `WasiWebGpuRenderPassEndInstrumentedTest`（#9 提案名过渡扁平 sync）· `WasiWebGpuCommandEncoderFinishInstrumentedTest`（#10 提案名过渡扁平 sync）· `WasiWebGpuQueueSubmitInstrumentedTest`（#11 提案名过渡扁平 sync）· `DawnRenderSmokeInstrumentedTest`（#1–13 子集）。
 
 ## 3. 提案有、本仓未覆盖（抽样，非全表）
 
@@ -59,10 +59,10 @@
 
 | 横切 | 现状 | 目标（长期） |
 |------|------|----------------|
-| WIT resource + `[method]` 名 | 扁平函数 + u32；**W3** 已挂 `gpu` + `get-gpu` + `[method]gpu.request-adapter`、`gpu-adapter` + `get-adapter` + `[method]gpu-adapter.request-device` 与 `gpu-device` + `get-device` + `[method]gpu-device.queue`（返回仍 u32） | 提案 resource 表；rep 仍可 u32 对齐 L2 |
+| WIT resource + `[method]` 名 | 扁平函数 + u32；**W3** 已挂 `gpu` + `get-gpu` + `[method]gpu.request-adapter`、`gpu-adapter` + `get-adapter` + `[method]gpu-adapter.request-device` 与 `gpu-device` + `get-device` + `[method]gpu-device.queue` / `[method]gpu-device.create-command-encoder`（返回仍 u32） | 提案 resource 表；rep 仍可 u32 对齐 L2 |
 | Descriptor / list / string 编组 | 几乎无 | 有限集编解码（tech-stack §2.1） |
 | 真 CM async 接 GPU | M2 `get`；**W2** 提案名 `request-adapter` + `adapter-request-device` concurrent；experimental 仍 sync | 更多 GPU async；`[method]` resource |
-| Package 字符串 | experimental + W1 双注册 `wasi:webgpu/webgpu@0.3.0-rc.2`（过渡扁平 + **W3** `[method]gpu.request-adapter` / `[method]gpu-adapter.request-device` / `[method]gpu-device.queue`） | 收敛到更多 `[method]gpu.*` resource 名 |
+| Package 字符串 | experimental + W1 双注册 `wasi:webgpu/webgpu@0.3.0-rc.2`（过渡扁平 + **W3** `[method]gpu.request-adapter` / `[method]gpu-adapter.request-device` / `[method]gpu-device.queue` / `[method]gpu-device.create-command-encoder`） | 收敛到更多 `[method]gpu.*` resource 名 |
 | 测试 Guest | `fixtures/m3` · `fixtures/w1` · `m4/render_smoke` | 提案 WIT 生成或手写更多 `[method]` Guest |
 | 合规 / CTS | 无 | 另 RFC（NG-5） |
 
