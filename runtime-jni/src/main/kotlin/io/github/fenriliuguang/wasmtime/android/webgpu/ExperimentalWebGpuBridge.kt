@@ -131,6 +131,25 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /**
+     * W3+: adapter + device + create-shader-module. Host-fixed stub WGSL
+     * (no Guest string). `[method]gpu-device.create-shader-module`.
+     */
+    fun attachCreateShaderModule(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateShaderModule(device: Int): Int =
+                    bindings.deviceCreateShaderModule(device, STUB_WGSL)
+            },
+        )
+    }
+
     /** W3: adapter + device + encoder. Shared by flat `device-create-command-encoder` and `[method]gpu-device.create-command-encoder`. */
     fun attachCreateCommandEncoder(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -356,4 +375,5 @@ object ExperimentalWebGpuBridge {
     private const val CLEAR_B = 0.72f
     private const val CLEAR_A = 1.0f
     private const val STUB_BUFFER_SIZE = 4L
+    private const val STUB_WGSL = "@compute @workgroup_size(1) fn main() {}"
 }
