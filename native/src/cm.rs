@@ -474,7 +474,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // resource) and `[method]gpu-device.create-command-encoder` (sync; still
     // u32, not option<descriptor>) and `[method]gpu-device.create-buffer`
     // (sync; host-fixed descriptor, still u32) and
-    // `[method]gpu-device.create-texture` (sync; host-fixed 1x1, still u32).
+    // `[method]gpu-device.create-texture` (sync; host-fixed 1x1, still u32) and
+    // `[method]gpu-device.create-sampler` (sync; host-fixed descriptor, still u32).
     // Experimental stays sync.
     // Not full option / list.
     {
@@ -664,6 +665,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
                     let rep = jvm::exp_create_texture(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((rep,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.create-sampler",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let rep = jvm::exp_create_sampler(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((rep,))
                 },

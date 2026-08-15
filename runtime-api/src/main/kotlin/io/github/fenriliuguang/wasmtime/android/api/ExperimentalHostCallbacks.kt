@@ -35,6 +35,9 @@ interface ExperimentalHostCallbacks {
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 
+    /** W3+: host-fixed sampler descriptor (not from Guest). */
+    fun deviceCreateSampler(device: Int): Int = unsupported("deviceCreateSampler")
+
     /** Host picks a fixed clear color (smoke). */
     fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")
 
