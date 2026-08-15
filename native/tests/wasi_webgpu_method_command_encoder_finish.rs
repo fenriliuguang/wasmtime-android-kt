@@ -1,0 +1,102 @@
+//! W3: `get-encoder` + `[method]gpu-command-encoder.finish` (sync). Stub buffer 19.
+
+use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::{Config, Engine, Store};
+
+#[derive(Debug)]
+struct GpuCommandEncoder;
+
+struct TestHost {
+    table: ResourceTable,
+}
+
+fn register_method_finish(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
+    let mut webgpu = linker.instance("wasi:webgpu/webgpu@0.3.0-rc.2")?;
+    webgpu.resource(
+        "gpu-command-encoder",
+        ResourceType::host::<GpuCommandEncoder>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuCommandEncoder>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
+    webgpu.func_wrap("get-encoder", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuCommandEncoder)?;
+        Ok((resource,))
+    })?;
+    webgpu.func_wrap(
+        "[method]gpu-command-encoder.finish",
+        |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
+            caller.data_mut().table.get(&encoder).map(|_| ())?;
+            Ok((19u32,))
+        },
+    )?;
+    Ok(())
+}
+
+fn new_store(engine: &Engine) -> Store<TestHost> {
+    Store::new(
+        engine,
+        TestHost {
+            table: ResourceTable::new(),
+        },
+    )
+}
+
+#[test]
+fn wasi_webgpu_method_command_encoder_finish_smoke() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/w1/webgpu_method_command_encoder_finish.wasm"
+    ))?;
+    let component = Component::new(&engine, bytes)?;
+
+    let mut linker: Linker<TestHost> = Linker::new(&engine);
+    register_method_finish(&mut linker)?;
+
+    let mut store = new_store(&engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let v = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })?;
+    assert_eq!(v, 19, "guest run must return stub buffer rep via [method]");
+    Ok(())
+}
+
+#[test]
+fn wasi_webgpu_method_command_encoder_finish_call_async() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/w1/webgpu_method_command_encoder_finish.wasm"
+    ))?;
+    let component = Component::new(&engine, bytes)?;
+
+    let mut linker: Linker<TestHost> = Linker::new(&engine);
+    register_method_finish(&mut linker)?;
+
+    let mut store = new_store(&engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
+    let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
+    assert_eq!(
+        v, 19,
+        "guest run must return stub buffer rep via [method] call_async"
+    );
+    Ok(())
+}

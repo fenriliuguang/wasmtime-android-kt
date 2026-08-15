@@ -664,6 +664,29 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.finish",
+                |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let rep = jvm::exp_command_encoder_finish(&cb, encoder_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((rep,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .resource(
                 "gpu-render-pass-encoder",
                 ResourceType::host::<GpuRenderPassEncoder>(),

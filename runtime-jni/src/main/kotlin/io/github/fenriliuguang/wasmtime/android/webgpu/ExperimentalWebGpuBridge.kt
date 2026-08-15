@@ -78,7 +78,7 @@ object ExperimentalWebGpuBridge {
         )
     }
 
-    /** W3 slice: adapter + device + encoder + finish (proposal-name sync finish uses these L2 callbacks). */
+    /** W3: adapter + device + encoder + finish. Shared by flat `command-encoder-finish` and `[method]gpu-command-encoder.finish`. */
     fun attachCommandEncoderFinish(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(
