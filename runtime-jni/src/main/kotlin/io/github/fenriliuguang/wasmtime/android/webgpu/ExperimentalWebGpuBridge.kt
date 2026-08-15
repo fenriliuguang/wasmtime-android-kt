@@ -196,7 +196,7 @@ object ExperimentalWebGpuBridge {
         )
     }
 
-    /** W3 slice: adapter + device + queue + encoder + finish + submit1 (proposal-name sync submit uses these L2 callbacks). */
+    /** W3: adapter + device + queue + encoder + finish + submit1. Shared by flat `queue-submit1` and `[method]gpu-queue.submit`. */
     fun attachQueueSubmit1(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(

@@ -188,6 +188,17 @@
 
 非 `option<command-buffer-descriptor>`。
 
+## WASI webgpu `[method]gpu-queue.submit`（W3）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | `gpu-queue` + `get-queue`；`[method]gpu-queue.submit`：`func_wrap` sync void → L2 queue + encoder/finish + submit1（单 buffer u32） |
+| **Guest** | `get-queue` → submit(stub 19)；返回 19（`fixtures/w1/webgpu_method_queue_submit`） |
+| **仪器** | 复用 `attachQueueSubmit1` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非提案 `list<borrow<gpu-command-buffer>>`。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
