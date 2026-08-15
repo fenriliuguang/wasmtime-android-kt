@@ -24,6 +24,11 @@ pub struct GpuAdapter;
 #[derive(Debug)]
 pub struct GpuDevice;
 
+/// Host representation of WIT `resource gpu-command-encoder` (W3 `[method]`).
+/// No L2 handle yet; begin-render-pass / finish chain L2 from adapter.
+#[derive(Debug)]
+pub struct GpuCommandEncoder;
+
 pub struct HostState {
     pub table: ResourceTable,
     pub add_cb: Option<GlobalRef>,

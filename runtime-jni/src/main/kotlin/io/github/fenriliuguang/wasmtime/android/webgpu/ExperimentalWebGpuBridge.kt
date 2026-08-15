@@ -102,8 +102,9 @@ object ExperimentalWebGpuBridge {
      *
      * Guest passes transitional stub view `23` (not a surface texture). After
      * [adapterRequestDevice] this attach creates a 1×1 Cpu offscreen color
-     * TextureView and substitutes it so L2 sees a real handle. Not present /
-     * wasi-gfx; not `[method]gpu-command-encoder.begin-render-pass`.
+     * TextureView and substitutes it so L2 sees a real handle. Shared by flat
+     * `command-encoder-begin-render-pass-clear` and
+     * `[method]gpu-command-encoder.begin-render-pass`. Not present / wasi-gfx.
      */
     fun attachBeginRenderPassClear(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)

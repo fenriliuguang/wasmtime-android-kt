@@ -157,6 +157,17 @@
 
 非 `option<command-encoder-descriptor>`。
 
+## WASI webgpu `[method]gpu-command-encoder.begin-render-pass`（W3）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | `gpu-command-encoder` + `get-encoder`；`[method]gpu-command-encoder.begin-render-pass`：`func_wrap` sync → L2 adapter/device/encoder/begin-clear（view u32） |
+| **Guest** | `get-encoder` → begin（stub view `23`；`fixtures/w1/webgpu_method_begin_render_pass`） |
+| **仪器** | 复用 `attachBeginRenderPassClear`（Cpu 离屏 TextureView 替换 stub） |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非完整 `gpu-render-pass-descriptor`。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
