@@ -243,6 +243,17 @@
 
 非 Guest `gpu-shader-module-descriptor` / `gpu-shader-module` resource。
 
+## WASI webgpu `[method]gpu-queue.write-buffer`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-queue` / `get-queue`；`[method]gpu-queue.write-buffer`：`func_wrap` sync void → L2 adapter/device/queue + host-fixed create-buffer + 4-byte write |
+| **Guest** | `get-queue` → write-buffer(stub 31)；返回 31（`fixtures/w1/webgpu_method_write_buffer`） |
+| **仪器** | `attachWriteBuffer` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非提案 `list<u8>` / `borrow<gpu-buffer>`。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。

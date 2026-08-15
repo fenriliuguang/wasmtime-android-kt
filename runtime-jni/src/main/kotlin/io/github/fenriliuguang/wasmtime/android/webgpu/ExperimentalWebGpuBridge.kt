@@ -309,6 +309,36 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /**
+     * W3+: adapter + device + queue + host-fixed create-buffer + write-buffer.
+     * Guest passes stub buffer `31`; JNI ignores it and writes 4 host bytes.
+     * `[method]gpu-queue.write-buffer` only (not proposal `list<u8>`).
+     */
+    fun attachWriteBuffer(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
+
+                override fun deviceCreateBuffer(device: Int): Int =
+                    bindings.deviceCreateBuffer(
+                        device,
+                        size = STUB_BUFFER_SIZE,
+                        usage = GpuBufferUsage.COPY_DST or GpuBufferUsage.VERTEX,
+                    )
+
+                override fun queueWriteBuffer(queue: Int, buffer: Int) {
+                    bindings.queueWriteBuffer(queue, buffer, 0L, STUB_BUFFER_BYTES)
+                }
+            },
+        )
+    }
+
     /** M4: clear→present subset for dedicated render smoke Guest. */
     fun attachRenderSmoke(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -375,5 +405,6 @@ object ExperimentalWebGpuBridge {
     private const val CLEAR_B = 0.72f
     private const val CLEAR_A = 1.0f
     private const val STUB_BUFFER_SIZE = 4L
+    private val STUB_BUFFER_BYTES = byteArrayOf(1, 2, 3, 4)
     private const val STUB_WGSL = "@compute @workgroup_size(1) fn main() {}"
 }
