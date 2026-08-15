@@ -86,6 +86,32 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /**
+     * W3+: adapter + device + create-texture. Host-fixed 1×1 RGBA8
+     * RENDER_ATTACHMENT (no Guest record). `[method]gpu-device.create-texture`.
+     */
+    fun attachCreateTexture(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateTexture(device: Int): Int =
+                    bindings.deviceCreateTexture(
+                        device,
+                        TextureDescriptor(
+                            size = Extent3D(width = 1, height = 1),
+                            format = GpuTextureFormat.RGBA8_UNORM,
+                            usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                        ),
+                    )
+            },
+        )
+    }
+
     /** W3: adapter + device + encoder. Shared by flat `device-create-command-encoder` and `[method]gpu-device.create-command-encoder`. */
     fun attachCreateCommandEncoder(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)

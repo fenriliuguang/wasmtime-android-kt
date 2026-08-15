@@ -32,6 +32,9 @@ interface ExperimentalHostCallbacks {
     /** W3+: host-fixed buffer descriptor (size/usage not from Guest). */
     fun deviceCreateBuffer(device: Int): Int = unsupported("deviceCreateBuffer")
 
+    /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
+    fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
+
     /** Host picks a fixed clear color (smoke). */
     fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")
 
