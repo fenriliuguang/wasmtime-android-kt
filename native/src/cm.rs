@@ -3,7 +3,9 @@
 use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_link, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
-use crate::host::{Gpu, GpuAdapter, GpuCommandEncoder, GpuDevice, HostState, Widget};
+use crate::host::{
+    Gpu, GpuAdapter, GpuCommandEncoder, GpuDevice, GpuRenderPassEncoder, HostState, Widget,
+};
 use crate::jvm;
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -658,6 +660,48 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, view)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((rep,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-render-pass-encoder",
+                ResourceType::host::<GpuRenderPassEncoder>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuRenderPassEncoder>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-pass", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuRenderPassEncoder)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.end",
+                |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let pass_rep =
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_render_pass_end(&cb, pass_rep).map_err(wasmtime::Error::msg)?;
+                    Ok(())
                 },
             )
             .map_err(|e| e.to_string())?;

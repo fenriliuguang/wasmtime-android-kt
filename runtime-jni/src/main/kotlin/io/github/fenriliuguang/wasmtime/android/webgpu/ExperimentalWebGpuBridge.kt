@@ -150,7 +150,7 @@ object ExperimentalWebGpuBridge {
      * W3 slice: adapter + device + encoder + begin-render-pass-clear + render-pass-end.
      *
      * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Not `[method]gpu-render-pass-encoder.end`; not finish / submit / present.
+     * Shared by flat `render-pass-end` and `[method]gpu-render-pass-encoder.end`.
      */
     fun attachRenderPassEnd(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)

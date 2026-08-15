@@ -67,6 +67,7 @@ W3  队列与缓冲关键面（resource 面史诗仍在进行）
     `device-get-queue` 过渡扁平 sync 已交付；**`[method]gpu-device.queue`** sync 已交付（仍 u32，非 `gpu-queue` resource）
     `device-create-command-encoder` 过渡扁平 sync 已交付；**`[method]gpu-device.create-command-encoder`** sync 已交付（仍 u32，无 descriptor）
     `command-encoder-begin-render-pass-clear` 过渡扁平 sync 已交付；**`[method]gpu-command-encoder.begin-render-pass`** sync 已交付（stub view `23`）
+    `render-pass-end` 过渡扁平 sync 已交付；**`[method]gpu-render-pass-encoder.end`** sync void 已交付
     按差距表选高频 async/sync 方法切片；每片独立 DoD
 
 W4  呈现路径策略（选型已立；文档）
