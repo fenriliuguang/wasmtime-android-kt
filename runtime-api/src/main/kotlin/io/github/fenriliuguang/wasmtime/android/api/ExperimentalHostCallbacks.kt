@@ -59,6 +59,9 @@ interface ExperimentalHostCallbacks {
         unsupported("queueWriteBuffer")
     }
 
+    /** W3+: texture view from host-created texture (no Guest descriptor). */
+    fun textureCreateView(texture: Int): Int = unsupported("textureCreateView")
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

@@ -310,6 +310,35 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * W3+: adapter + device + host-fixed 1×1 texture + create-view.
+     * `[method]gpu-texture.create-view` (no Guest descriptor).
+     */
+    fun attachCreateTextureView(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateTexture(device: Int): Int =
+                    bindings.deviceCreateTexture(
+                        device,
+                        TextureDescriptor(
+                            size = Extent3D(width = 1, height = 1),
+                            format = GpuTextureFormat.RGBA8_UNORM,
+                            usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                        ),
+                    )
+
+                override fun textureCreateView(texture: Int): Int =
+                    bindings.textureCreateView(texture)
+            },
+        )
+    }
+
+    /**
      * W3+: adapter + device + queue + host-fixed create-buffer + write-buffer.
      * Guest passes stub buffer `31`; JNI ignores it and writes 4 host bytes.
      * `[method]gpu-queue.write-buffer` only (not proposal `list<u8>`).

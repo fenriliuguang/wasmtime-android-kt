@@ -37,6 +37,10 @@ pub struct GpuRenderPassEncoder;
 #[derive(Debug)]
 pub struct GpuQueue;
 
+/// Host representation of WIT `resource gpu-texture` (W3+ `[method]`).
+#[derive(Debug)]
+pub struct GpuTexture;
+
 pub struct HostState {
     pub table: ResourceTable,
     pub add_cb: Option<GlobalRef>,
