@@ -42,8 +42,8 @@ impl StreamConsumer<()> for CollectConsumer {
             if finish {
                 return Poll::Ready(Ok(StreamResult::Cancelled));
             }
-            // Match cm.rs: avoid Completed-on-empty sync reentry (Android stack).
-            cx.waker().wake_by_ref();
+            // Match cm.rs: Pending without self-wake (self-wake reenters on Android).
+            let _ = cx;
             return Poll::Pending;
         }
         let n = chunk.len();

@@ -52,11 +52,12 @@ impl StreamConsumer<HostState> for CollectConsumer {
             if finish {
                 return Poll::Ready(Ok(StreamResult::Cancelled));
             }
-            // Zero-length readiness probe (component-model#561). Returning
-            // Completed here can sync-reenter poll_consume until Android's
-            // smaller JNI stack overflows (seen on Vivo/arm64 opt-level=0).
-            // Pending + wake yields so guest stream.write can progress.
-            cx.waker().wake_by_ref();
+            // Zero-length readiness probe (component-model#561). Completed-on-empty
+            // traps. Do not wake_by_ref: that marks the task runnable while guest
+            // stream.write is still on the stack, so the executor re-polls until
+            // ART's ~1MiB instrument thread overflows (Vivo SIGSEGV).
+            // Wasmtime keeps the waker and polls again when the guest writes.
+            let _ = cx;
             return Poll::Pending;
         }
         let n = chunk.len();
@@ -1175,22 +1176,30 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         throw(&mut env, "null store/instance handle");
         return 0;
     }
-    let store = unsafe { from_handle::<HostStore>(store) };
-    let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
-
-    // Drive with run_concurrent (same as M2 / wait-for). Plain call_async can
-    // sync-reenter StreamConsumer on Android until the JNI stack overflows.
-    let result = pollster::block_on(async {
-        store
-            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
-                let func = accessor.with(|mut access| {
-                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
-                })?;
-                let (n,) = func.call_concurrent(accessor, ()).await?;
-                Ok(n)
-            })
-            .await?
-    });
+    // Same 8MiB pump as nativeCallRunConcurrent: ART instrument threads are
+    // ~1MiB; run_concurrent + StreamConsumer on that stack crashes the
+    // instrumentation process (Vivo). Do not AttachCurrentThread on the pump.
+    let result = match jvm::run_on_cm_pump(&mut env, CM_PUMP_STACK_BYTES, move || {
+        let store = unsafe { from_handle::<HostStore>(store) };
+        let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
+        pollster::block_on(async {
+            store
+                .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                    let func = accessor.with(|mut access| {
+                        instance.get_typed_func::<(), (u32,)>(&mut access, "run")
+                    })?;
+                    let (n,) = func.call_concurrent(accessor, ()).await?;
+                    Ok(n)
+                })
+                .await?
+        })
+    }) {
+        Ok(inner) => inner,
+        Err(e) => {
+            throw(&mut env, e);
+            return 0;
+        }
+    };
 
     match result {
         Ok(v) => v as jint,

@@ -1,7 +1,6 @@
 package io.github.fenriliuguang.wasmtime.android.smoke
 
 import android.app.Activity
-import android.content.Intent
 import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
@@ -24,6 +23,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.FileInputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -107,11 +107,15 @@ class DawnRenderSmokeInstrumentedTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
 
-        val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra(MainActivity.EXTRA_SKIP_DEMO_AUTORUN, true)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        }
-        context.startActivity(intent)
+        wakeDeviceForSurface()
+        // targetContext.startActivity is treated as a background launch on
+        // Android 16 / Vivo and never reaches RESUMED. Shell am start -W is
+        // privileged (same path as adb) and waits until the activity is shown.
+        val pkg = context.packageName
+        shellCommand(
+            "am start -W -n $pkg/.MainActivity " +
+                "-f 0x10008000 --ez ${MainActivity.EXTRA_SKIP_DEMO_AUTORUN} true",
+        )
 
         val activity = waitForResumedMainActivity(timeoutMs = 30_000)
         instrumentation.runOnMainSync {
@@ -211,6 +215,21 @@ class DawnRenderSmokeInstrumentedTest {
             Thread.sleep(50)
         }
         error("MainActivity not RESUMED within ${timeoutMs}ms")
+    }
+
+    private fun wakeDeviceForSurface() {
+        shellCommand("input keyevent KEYCODE_WAKEUP")
+        shellCommand("wm dismiss-keyguard")
+    }
+
+    private fun shellCommand(cmd: String) {
+        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(cmd).use { pfd ->
+            FileInputStream(pfd.fileDescriptor).use { ins ->
+                while (ins.read() != -1) {
+                    // Drain so the shell command is not killed early.
+                }
+            }
+        }
     }
 
     companion object {

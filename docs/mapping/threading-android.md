@@ -37,6 +37,7 @@ Rust async rt   ：只做 Wasmtime 调度；回呼 Java 经线程安全队列
 
 - 仪器 `DawnRenderSmokeInstrumentedTest`：CM instantiate / host 回调 / Dawn present **均在同一 GpuThread**（匿名后台线程）。  
 - UI 线程只做 Surface 生命周期与 Activity 启停；`windowFromSurface` 在 GpuThread 上调用。  
+- 仪器启动 `MainActivity` 前须亮屏 / 去锁屏，并用特权 `am start -W`（`targetContext.startActivity` 在 Android 16 / Vivo 上视为后台启动，到不了 `RESUMED`）。  
 - M4 首片仍为 sync-compat（无第二 CM async 泵）；与 M2 `run_concurrent` 路径隔离。
 
 ## 4. 与轨 A 的差异

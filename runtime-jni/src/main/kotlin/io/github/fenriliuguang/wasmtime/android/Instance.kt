@@ -78,7 +78,8 @@ class Instance internal constructor(internal var handle: Long) : AutoCloseable {
 
     /**
      * P3-PRIM-5: guest `stream.write` (`P3WR`) → host `take` / `StreamConsumer`.
-     * Returns consumed byte count (4).
+     * Returns consumed byte count (4). Native pump is the same 8MiB pthread as
+     * [callRunConcurrent] (ART instrument threads overflow otherwise).
      */
     fun callStreamWrite(store: Store): Int {
         require(handle != 0L) { "instance closed" }

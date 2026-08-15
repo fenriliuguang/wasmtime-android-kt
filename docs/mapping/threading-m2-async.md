@@ -32,9 +32,9 @@
 |------|------|
 | **Host consumer** | 根 import `take(stream<u8>) -> future<u32>`：`StreamReader::pipe` + `StreamConsumer`；`FutureReader` 在 consumer drop 时完成字节数 |
 | **Guest** | `stream.new` → `take` → canon `stream.write` → `drop-writable` → `future.read`（`fixtures/p3/stream_write`） |
-| **Pump** | 同读端：`call_async` + `pollster::block_on`；须单 Store |
+| **Pump** | 同 M2：`nativeCallStreamWrite` 走 8MiB pthread `run_concurrent` / `call_concurrent`（ART 仪器线程 ~1MiB 会栈溢出崩进程） |
 
-约束：stream / future 未完成时勿丢弃 `Store`；stdio 等 package 应复用同一 consumer 模式。见 [`../scheme/wasi-p3-surface.md`](../scheme/wasi-p3-surface.md) P3-PRIM-3/4/5。
+约束：stream / future 未完成时勿丢弃 `Store`；stdio 等 package 应复用同一 consumer 模式。空探针 `poll_consume` 只返回 `Pending`，禁止 `wake_by_ref`（会在 guest `stream.write` 栈上同步重入）。见 [`../scheme/wasi-p3-surface.md`](../scheme/wasi-p3-surface.md) P3-PRIM-3/4/5。
 
 ## WASI cli stdout（复用写端 consumer）
 
@@ -42,7 +42,7 @@
 |------|------|
 | **Host** | `wasi:cli/stdout@0.3.0#write-via-stream`：与根 `take` 共用 `CollectConsumer` / `pipe`；过渡返回 `future<u32>` 字节数 |
 | **Guest** | 同写端流程，import 包名不同（`fixtures/wasi/cli_stdout`；载荷 `OUT\n`） |
-| **Pump** | 同写端：`call_async` + `pollster::block_on`（仪器侧复用 `callStreamWrite`） |
+| **Pump** | 同写端：仪器 `callStreamWrite`（8MiB pthread `run_concurrent`） |
 
 ## WASI cli stdin（复用读端 producer）
 
@@ -50,7 +50,7 @@
 |------|------|
 | **Host producer** | `wasi:cli/stdin@0.3.0#read-via-stream`：`StreamReader::new(store, b"IN\n")`；过渡 `func() -> stream<u8>` |
 | **Guest** | import → canon `stream.read` → 返回 nbytes（`fixtures/wasi/cli_stdin`） |
-| **Pump** | 同写端：`call_async` / 仪器 `callStreamWrite`（`run` 导出） |
+| **Pump** | 同写端：`callStreamWrite`（8MiB pthread） |
 
 ## WASI cli command-shaped async `run`
 
