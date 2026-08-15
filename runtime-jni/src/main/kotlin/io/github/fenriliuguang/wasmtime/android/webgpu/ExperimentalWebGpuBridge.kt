@@ -2,6 +2,7 @@ package io.github.fenriliuguang.wasmtime.android.webgpu
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuBufferUsage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
@@ -58,6 +59,29 @@ object ExperimentalWebGpuBridge {
                     bindings.adapterRequestDevice(adapter)
 
                 override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
+            },
+        )
+    }
+
+    /**
+     * W3+: adapter + device + create-buffer. Host-fixed 4-byte COPY_DST|VERTEX
+     * descriptor (no Guest record). `[method]gpu-device.create-buffer` only.
+     */
+    fun attachCreateBuffer(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateBuffer(device: Int): Int =
+                    bindings.deviceCreateBuffer(
+                        device,
+                        size = STUB_BUFFER_SIZE,
+                        usage = GpuBufferUsage.COPY_DST or GpuBufferUsage.VERTEX,
+                    )
             },
         )
     }
@@ -286,4 +310,5 @@ object ExperimentalWebGpuBridge {
     private const val CLEAR_G = 0.28f
     private const val CLEAR_B = 0.72f
     private const val CLEAR_A = 1.0f
+    private const val STUB_BUFFER_SIZE = 4L
 }

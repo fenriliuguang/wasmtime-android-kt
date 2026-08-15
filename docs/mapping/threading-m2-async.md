@@ -199,6 +199,17 @@
 
 非提案 `list<borrow<gpu-command-buffer>>`。
 
+## WASI webgpu `[method]gpu-device.create-buffer`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-device` / `get-device`；`[method]gpu-device.create-buffer`：`func_wrap` sync → L2 adapter/device 再 host 固定 `device-create-buffer`（4 字节 COPY_DST\|VERTEX） |
+| **Guest** | `get-device` → create-buffer（`fixtures/w1/webgpu_method_create_buffer`） |
+| **仪器** | `attachCreateBuffer` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非 Guest `gpu-buffer-descriptor` / `gpu-buffer` resource。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
