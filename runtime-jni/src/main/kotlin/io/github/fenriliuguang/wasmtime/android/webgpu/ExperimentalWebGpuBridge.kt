@@ -1,9 +1,11 @@
 package io.github.fenriliuguang.wasmtime.android.webgpu
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuBufferUsage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
@@ -192,6 +194,36 @@ object ExperimentalWebGpuBridge {
                         device,
                         PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
                     )
+            },
+        )
+    }
+
+    /**
+     * W3+: adapter + device + empty BGL then empty bind-group.
+     * `[method]gpu-device.create-bind-group` (no Guest descriptor).
+     */
+    fun attachCreateBindGroup(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateBindGroup(device: Int): Int {
+                    val layout = bindings.deviceCreateBindGroupLayout(
+                        device,
+                        BindGroupLayoutDescriptor(entries = emptyList()),
+                    )
+                    return bindings.deviceCreateBindGroup(
+                        device,
+                        BindGroupDescriptor(
+                            layout = GpuHandle(layout),
+                            entries = emptyList(),
+                        ),
+                    )
+                }
             },
         )
     }
