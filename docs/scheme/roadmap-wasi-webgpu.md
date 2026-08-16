@@ -84,6 +84,7 @@ W3  队列与缓冲关键面（resource 面史诗仍在进行）
     **W3+** `[method]gpu-queue.write-texture` sync 已交付（host 固定 1×1 COPY_DST，单 texture u32）
     **W3+** `[method]gpu-command-encoder.begin-compute-pass` sync 已交付（无 descriptor，仍 u32）
     **W3+** `[method]gpu-compute-pass-encoder.end` sync void 已交付
+    **W3+** `[method]gpu-command-encoder.copy-buffer-to-buffer` sync void 已交付（host 固定 4 字节 copy，stub src/dst u32）
     按差距表选高频 async/sync 方法切片；每片独立 DoD
 
 W4  呈现路径策略（选型已立；文档）

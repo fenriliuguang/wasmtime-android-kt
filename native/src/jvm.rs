@@ -326,6 +326,15 @@ pub fn exp_compute_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(cb, "computePassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
 }
 
+pub fn exp_copy_buffer_to_buffer(cb: &GlobalRef, encoder: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderCopyBufferToBuffer",
+        "(I)V",
+        vec![HostArg::Int(encoder as i32)],
+    )
+}
+
 pub fn exp_command_encoder_finish(cb: &GlobalRef, encoder: u32) -> Result<u32, String> {
     call_i(
         cb,

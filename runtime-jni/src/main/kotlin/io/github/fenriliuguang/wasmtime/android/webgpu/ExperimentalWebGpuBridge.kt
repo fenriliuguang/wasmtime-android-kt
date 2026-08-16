@@ -347,6 +347,52 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * W3+: adapter + device + encoder + host-fixed 4-byte copy-buffer-to-buffer.
+     * Guest passes stub source/destination `31`; JNI ignores them.
+     * `[method]gpu-command-encoder.copy-buffer-to-buffer`.
+     */
+    fun attachCopyBufferToBuffer(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var device = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    device = bindings.adapterRequestDevice(adapter)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun commandEncoderCopyBufferToBuffer(encoder: Int) {
+                    val source =
+                        bindings.deviceCreateBuffer(
+                            device,
+                            size = STUB_BUFFER_SIZE,
+                            usage = GpuBufferUsage.COPY_SRC,
+                        )
+                    val destination =
+                        bindings.deviceCreateBuffer(
+                            device,
+                            size = STUB_BUFFER_SIZE,
+                            usage = GpuBufferUsage.COPY_DST,
+                        )
+                    bindings.commandEncoderCopyBufferToBuffer(
+                        encoder,
+                        source,
+                        0L,
+                        destination,
+                        0L,
+                        STUB_BUFFER_SIZE,
+                    )
+                }
+            },
+        )
+    }
+
+    /**
      * W3+: adapter + device + encoder + begin-compute-pass + compute-pass-end.
      * `[method]gpu-compute-pass-encoder.end` (Guest stub pass ignored).
      */

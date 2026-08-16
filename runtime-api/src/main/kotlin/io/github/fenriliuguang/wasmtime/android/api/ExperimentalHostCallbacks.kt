@@ -71,6 +71,11 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassEnd")
     }
 
+    /** W3+: JNI ignores Guest stub buffers; host creates two buffers then copy. */
+    fun commandEncoderCopyBufferToBuffer(encoder: Int) {
+        unsupported("commandEncoderCopyBufferToBuffer")
+    }
+
     fun commandEncoderFinish(encoder: Int): Int = unsupported("commandEncoderFinish")
 
     fun queueSubmit1(queue: Int, commandBuffer: Int) {

@@ -353,6 +353,17 @@
 
 不复用 `get-pass`（那是 render-pass）。Cpu `computePassEnd` 会 drop handle。
 
+## WASI webgpu `[method]gpu-command-encoder.copy-buffer-to-buffer`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-command-encoder` / `get-encoder`；`[method]gpu-command-encoder.copy-buffer-to-buffer`：`func_wrap` sync void → L2 adapter/device/encoder + host 建 COPY_SRC/COPY_DST buffer 再 copy 4 字节（忽略 Guest stub src/dst） |
+| **Guest** | `get-encoder` → copy(stub 31, 31)；返回 stub 31（`fixtures/w1/webgpu_method_copy_buffer_to_buffer`） |
+| **仪器** | `attachCopyBufferToBuffer` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非提案 offsets / size 从 Guest 传入。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
