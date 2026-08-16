@@ -31,13 +31,13 @@
 | **JNI 入口** | `NativeBridge` `external` 方法（含签名） | 视同公开 API；改名/改参 = 破坏 |
 | **experimental host 桥** | `ExperimentalWebGpuBridge`；扁平 import 名 | **最不稳定**；可随 M4 差距清单大改；仍写 CHANGELOG |
 | **Guest fixture / 仪器** | `fixtures/m*`、`*InstrumentedTest` | 不构成库 API；改动不强制升版 |
-| **轨 A L2 依赖** | `host-api` / `host-webgpu` / `abi-cm` | 跟随轨 A experimental 坐标；轨 B 升版说明「跟到哪一版」 |
+| **轨 A L2 依赖** | `host-api` / `host-webgpu` / `abi-cm` | **后端库**坐标；升版说明钉到哪一版。Guest WIT 形状 **不**跟随 experimental 扁平面（见 RFC） |
 
 ## 4. 与轨 A 的版本关系
 
-- 轨 B **不**与轨 A 锁同一 semver 数字。  
-- L2 接口变更：**轨 A 先改** → 轨 B 跟依赖版本 → 本仓 CHANGELOG 记 `wasiWebgpu` 坐标（见 [`dual-track.md`](dual-track.md) §7）。  
-- Guest WIT / `experimental:webgpu-cm@0.8.0` 字符串与轨 A 对齐；分叉须在差距文档写明。
+- 本仓 **不**与轨 A 锁同一 semver 数字。  
+- Dawn / Host **库**版本：本仓 CHANGELOG 记所钉 `host-webgpu` 坐标。Host 能力缺口可在本仓调用层或轨 A 库补丁解决，**不是**「轨 A 先改扁平 ABI、本仓跟随」（见 [`dual-track.md`](dual-track.md) §7 · RFC）。  
+- 产品 Guest 钉 `wasi:webgpu@0.3.0-rc.2`。`experimental:webgpu-cm@0.8.0` 仅遗留 / Demo；分叉写在差距文档。
 
 ## 5. 何时考虑 `1.0.0`
 

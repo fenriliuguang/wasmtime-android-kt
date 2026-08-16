@@ -1,80 +1,74 @@
-# 双轨契约（轨 A ↔ 轨 B）
+# 与轨 A 的边界（轨 A = 展示 Demo）
 
 **中文** | [English](dual-track.en.md)
 
-> 与章程 [`charter.md`](charter.md) 配套。约束两仓如何并行而不互相拖垮。  
-> 轨 B 现行产品主线：[`long-term-plan.md`](long-term-plan.md)（短期 M0–M5 已归档）。
+> **2026-08-16 修订：** 结束「两仓并行推进产品线」。权威决策见 [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)。  
+> 本页只保留 **边界**：轨 A 仍锁死 sync-compat；本仓不静默替换它的 Demo；Host 可当库用。  
+> 本仓产品主线：[`long-term-plan.md`](long-term-plan.md) · wasi:webgpu 形状：[`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)。
 
-## 1. 角色
+## 1. 角色（现行）
 
-| 轨 | 仓库路径 | 一句话 |
-|----|----------|--------|
-| **A** | `d:\projects\wasi-webgpu-jvm-mvp` | experimental wasi:webgpu Host MVP；**L1=wasmtime4j**；**async=sync-compat（锁死）** |
-| **B** | `d:\projects\wasmtime-android-kt` | Android-first JVM Wasm runtime；**L1=官方 Wasmtime 自研薄绑定**；目标真 CM async |
+| 仓 | 路径 | 一句话 |
+|----|------|--------|
+| **轨 A** | `d:\projects\wasi-webgpu-jvm-mvp` | **展示用简单 Demo**：experimental CM cube + wasmtime4j + **sync-compat**。不是本仓 ABI 上游。 |
+| **本仓** | `d:\projects\wasmtime-android-kt` | Android-first JVM Component 运行时；**唯一**推进官方 `wasi:webgpu` Guest 形状的地方。引擎 = 官方 Wasmtime。 |
 
-## 2. 锁死条款（轨 A）
+不再排期「轨 A 先改 L2 扁平面，本仓跟随」。
 
-自 2026-08-10 起，轨 A **明确锁死**：
+## 2. 轨 A 锁死条款（仍有效）
 
-1. 默认与主验收路径保持 **sync-compat**（`requestAdapter` / `requestDevice` / `mapAsync` 等可继续内部等待）。  
-2. **不再**为「真 CM async」改 `DawnWasiWebGpuHost` 主回调路径、`WasmtimeCmLinker` 主链 future、或迁仪器到 async Guest。  
+自 2026-08-10 起，轨 A **自己的**主路径仍锁死（本仓不要求它为 wasi:webgpu 形状改 Linker）：
+
+1. 默认与主验收路径保持 **sync-compat**。  
+2. **不再**为「真 CM async」改 `DawnWasiWebGpuHost` 主回调、`WasmtimeCmLinker` 主链 future、或迁仪器到 async Guest。  
 3. 真 CM async 闸门归档保持有效：[`archive-true-cm-async-dod.md`](../../../wasi-webgpu-jvm-mvp/docs/scheme/archive-true-cm-async-dod.md)。  
-4. 轨 A 可继续：稳性、缺口矩阵非 async 项、文档、工程债、**不依赖** 4j future writer 的增强。  
-5. 若未来切换 L1 到轨 B，必须单独 RFC + 双轨绿灯，**不得**静默替换。
+4. 轨 A 可继续：稳性、文档、Demo 体验、**不依赖** 4j future writer 的修补。  
+5. 若未来把轨 A Demo **默认 runtime** 切到本仓，必须单独 RFC，**不得**静默替换（NG-1）。
 
 ## 3. 共享面（允许）
 
 | 资产 | 方式 |
 |------|------|
-| L2 `host-api` / `host-webgpu` | 轨 B 以 **依赖**（mavenLocal / composite / 源码路径）消费；不复制 Dawn 逻辑 |
-| `abi-cm` / `abi-wasi` 常量与结果形状 | 依赖或生成同源；避免分叉字符串 |
-| Guest `cube_cm.wasm` / WIT | 只读引用轨 A 路径或复制字节并注明来源版本 |
-| 映射文档（threading / errors / gap） | 轨 B 可链到轨 A；差异写在本仓 `docs/mapping` |
-| 补丁**经验**（JNI_VERSION、TBI、resource↔u32） | 文字迁移到轨 B native 设计；**不是**依赖 4j `.so` |
+| L2 `host-api` / `host-webgpu` | 本仓以 **后端库**（mavenLocal / composite / 源码路径）调用 Dawn / Cpu；**不**复制 Dawn |
+| 补丁**经验**（JNI_VERSION、TBI、resource↔u32） | 文字迁移到本仓 native；**不是**依赖 4j `.so` |
+| Guest `cube_cm.wasm` | 仅 Demo / 遗留 smoke；**不是**规范形状门禁 |
+| 映射文档 | 本仓 `docs/mapping` 自洽；可链到轨 A 史实 |
+
+**不再共享为「同源 ABI」：** experimental 扁平函数名、过渡 u32 返回值。Guest 形状由本仓按钉版 WIT 拥有（RFC §5–§6）。
 
 ## 4. 隔离面（禁止混用）
 
 | 禁止 | 原因 |
 |------|------|
-| 轨 B runtime 依赖 `ai.tegmentum:wasmtime4j` | 双轨意义丧失 |
-| 轨 A CI 强制构建轨 B native | 拖慢主验收 |
-| 未成熟时把轨 A Demo 默认切到轨 B | 破坏真机基线 |
-| 在轨 A 内嵌整份轨 B 源码树当子模块「临时」 | 边界模糊；应用独立仓 + 明确版本 |
-| 用 sync-compat「冒充」轨 B 的真 async DoD | 重复闸门失败模式 |
+| 本仓 runtime 依赖 `ai.tegmentum:wasmtime4j` | 引擎政策 |
+| 轨 A CI 强制构建本仓 native | 拖慢 Demo 验收 |
+| 未成熟时把轨 A Demo 默认切到本仓 | NG-1 |
+| 在轨 A 内嵌整份本仓源码树当子模块 | 边界模糊 |
+| 用 sync-compat「冒充」本仓真 async DoD | NG-8 |
+| 以轨 A 扁平面是否已有某回调，作为本仓是否开切片的门禁 | RFC：形状由 WIT 定 |
 
-## 5. 集成策略（代码期）
+## 5. 集成策略（现行）
 
-### 5.1 短期（M1–M3）
+- 本仓自带 smoke / 仪器；需要 GPU 时 **显式依赖** 轨 A engineered artifacts。  
+- 轨 A `android-demo` **可以**继续只用 4j。可选「本仓 runtime」入口永远是 feature flag，默认仍 4j。  
+- 本仓仪器 **不以**「与轨 A cube 对等」为扩面门禁。  
+- 后端若缺能力：优先在本仓编组层表达 WIT；必要时对轨 A 提 **仅 Host 能力** 补丁（库维护，不是双产品线）。
 
-- 轨 B 自带 smoke；可选 Android 空壳 Activity。  
-- 与 L2 联调用 **显式依赖** 轨 A engineered artifacts（`publishEngineeredToMavenLocal`）或 Gradle `includeBuild`。  
-
-### 5.2 中期（M4）
-
-- 轨 A `android-demo` 可增加 **可选**「轨 B runtime」入口（feature / BuildConfig），默认仍 4j。  
-- 仪器：轨 B 用例 **独立** class / 脚本；**不**替换 `run-android-instrumented.ps1` 主门禁。  
-
-### 5.3 长期（切换 RFC）
-
-切换条件草案：
-
-1. M4 DoD 连续绿（约定设备）  
-2. 线程 / 生命周期文档完整  
-3. 与轨 A cube 对等的最小回归清单通过  
-4. 书面 RFC：回滚方案、版本钉死、谁维护 natives  
+长期「把轨 A Demo 默认切到本仓」仍须独立 RFC（回滚、版本钉死、谁维护 natives）。**那不是本仓推进 wasi:webgpu 的前置条件。**
 
 ## 6. 沟通口径
 
-- 对外谈「wasi-webgpu Android Demo」→ **轨 A**。  
-- 对外谈「Android JVM 上跑官方 Wasmtime CM async」→ **轨 B**。  
-- 禁止把轨 B 计划进度写成轨 A「已支持真 async」。  
+- 谈「可演示的 experimental WebGPU cube」→ **轨 A**。  
+- 谈「Android JVM 上推进官方形状的 wasi:webgpu + WASI 0.3」→ **本仓**。  
+- 禁止把本仓计划进度写成轨 A「已支持真 async」或「已合规 wasi:webgpu」。  
+- 禁止再说「两仓并行推进同一条 Guest ABI」。
 
 ## 7. 变更流程
 
 | 变更 | 落点 |
 |------|------|
-| sync-compat 行为 / cube 验收 | 仅轨 A |
-| Wasmtime 版本、JNI、future API | 仅轨 B |
-| L2 接口变更 | 轨 A 先改；轨 B 跟随；保持 semver/experimental 标注 |
-| 轨 B 公共 API / 版本号 | 见 [`api-stability.md`](api-stability.md) |
-| 双轨契约本身 | 两仓文档同步改（本页 + 轨 A 索引） |
+| cube / sync-compat / 4j Demo | 仅轨 A |
+| Wasmtime 版本、JNI、CM 编组、wasi:webgpu Guest 形状 | **仅本仓** |
+| Dawn / Host **能力**（新 GPU 操作） | 本仓可提需求；实现可在本仓调用层或轨 A Host 库 |
+| 本仓公共 API / 版本号 | 见 [`api-stability.md`](api-stability.md) |
+| 本页契约 | 本仓文档 PR；不要求轨 A 同步改排期看板 |

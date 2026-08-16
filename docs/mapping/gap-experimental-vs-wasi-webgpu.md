@@ -3,7 +3,8 @@
 **中文** | （暂无 EN）
 
 > 长期计划 W0（[`../scheme/roadmap-wasi-webgpu.md`](../scheme/roadmap-wasi-webgpu.md)）。  
-> 本仓现状：`experimental:webgpu-cm/host@0.8.0` 扁平 sync import（M3–M4）。  
+> **2026-08-16：** 过渡 `[method]`（u32 / host-fixed）**冻结扩面**；现行切片为 RFC **S 系列**（规范形状）。见 [`../scheme/rfc-wasi-webgpu-canonical-shape.md`](../scheme/rfc-wasi-webgpu-canonical-shape.md)。  
+> 本表 §2 各行是 **史实对照**（experimental 名 ↔ 提案名 ↔ 已挂过渡 `[method]`），不再作为「下一刀挂 host-fixed」的看板。  
 > 提案钉版（核查日 2026-08-12）：[WebAssembly/wasi-webgpu](https://github.com/WebAssembly/wasi-webgpu) **`wasi:webgpu@0.3.0-rc.2`**（tag `v0.3.0-rc.2` → commit `6a776bada0b66d3dbf9da304a49ff2947ce4e1f8`；Phase 2；`wit/webgpu.wit`）。  
 > **不**宣称合规；上屏 / window 属 wasi-gfx，见 NG-9。
 
@@ -69,10 +70,10 @@
 
 ## 5. 下一刀（活状态在看板）
 
-切片**定义**仍见 §2 各行与 [`../scheme/roadmap-wasi-webgpu.md`](../scheme/roadmap-wasi-webgpu.md)。  
-**正在做 / 下一刀** 只维护在 GitHub Project：[wasmtime-android-kt progress](https://github.com/users/fenriliuguang/projects/1)（筛 `Slice` = W3 / W4，`Status` = Todo 或 In Progress）。功能 PR **不要**在本页追加编号清单。
+切片**定义**见 [`../scheme/rfc-wasi-webgpu-canonical-shape.md`](../scheme/rfc-wasi-webgpu-canonical-shape.md) **S 系列** 与 [`../scheme/roadmap-wasi-webgpu.md`](../scheme/roadmap-wasi-webgpu.md)。  
+**正在做 / 下一刀** 只维护在 GitHub Project：[wasmtime-android-kt progress](https://github.com/users/fenriliuguang/projects/1)（筛 `Slice` = S1…，`Status` = Todo 或 In Progress）。功能 PR **不要**在本页追加编号清单。
 
-史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸。W3 起按本表高频方法扩面并收敛 `[method]` 名；W4 选型已书面落地，见 [`../scheme/w4-present-strategy.md`](../scheme/w4-present-strategy.md)。
+史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸；**W3 host-fixed `[method]` 冻结**（本表 §2 为对照，不是扩面看板）。W4 分层见 [`../scheme/w4-present-strategy.md`](../scheme/w4-present-strategy.md)。**下一刀代码：S1**（`gpu-device.queue` → `own<gpu-queue>`）。
 
 ## 6. 钉版与修订
 

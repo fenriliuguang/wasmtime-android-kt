@@ -2,10 +2,11 @@
 
 **中文** | （暂无 EN）
 
-> 配套 [`long-term-plan.md`](long-term-plan.md) **P0**。  
+> 配套 [`long-term-plan.md`](long-term-plan.md) **P0** · **形状 RFC：** [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)（2026-08-16 **Accepted**）。  
 > 提案仓库：[WebAssembly/wasi-webgpu](https://github.com/WebAssembly/wasi-webgpu)（撰写时 **Phase 2**）。  
-> 生态旁证：`wasi-webgpu-wasmtime`（wgpu-core Host，跟 Wasmtime 代际）· [wasi-gfx 与 wasi:webgpu 分工](https://wasi-gfx.dev/blog/posts/future-of-wasi-gfx/)。  
-> 本仓背景：轨 A 因 wasmtime4j 无 future writer 无法走真 CM async；轨 B 为打开 **提案所需的 async WIT** 而存在。
+> 钉版：`wasi:webgpu@0.3.0-rc.2`（tag `v0.3.0-rc.2`）。  
+> **现行切片：S 系列。** W0–W2 史实保留；**W3 / W3+ host-fixed 过渡面冻结，不再扩。**  
+> 轨 A 现为展示 Demo，不是本仓 ABI 上游。
 
 ## 1. 为什么是 P0
 
@@ -22,18 +23,19 @@
 |----|------|
 | WG-1 | 钉一份提案 WIT 坐标（版本 / commit / RC 标签），与 Guest 工具链一致 |
 | WG-2 | 经本仓 L1 **真 CM async** 注册提案中的关键 `async func`（禁止 sync-compat 冒充） |
-| WG-3 | Host 实现继续走 **轨 A L2**（Dawn / Cpu）；本仓只做 linker / resource / async 边界 |
-| WG-4 | Android 仪器主链：`requestAdapter` / `requestDevice`（或提案等价名）→ 可观测成功 |
+| WG-3 | GPU Host 继续走 **轨 A `host-api` / `host-webgpu` 当库**（Dawn / Cpu）；本仓拥有 linker / resource / **规范编组** |
+| WG-4 | Android 仪器主链：`gpu.request-adapter` / `gpu-adapter.request-device` **WIT 形状**（`option` / `result` / `own`）→ 可观测成功 |
 | WG-5 | 向提案 / 生态提供可引用的差距与线程契约（本仓 `docs/mapping`） |
-| WG-6 | （中期）渲染或 compute 切片；明确与 `wasi-gfx` 边界（上屏仍可暂用轨 A experimental surface 路径） |
+| WG-6 | （中期）渲染或 compute 切片；明确与 `wasi-gfx` 边界（上屏：遗留 experimental surface **或** 提案 `gpu-canvas-context`） |
 
 ### 2.2 非目标（本路线图）
 
 - 宣称 **合规 wasi:webgpu 产品** 或通过完整 WebGPU CTS（未另开合规 RFC 前）  
-- 在本仓实现 **第二套** GPU Host（NG-7）  
+- 在本仓实现 **第二套** GPU Host（NG-7）；允许把轨 A Host **当库**  
 - 把 **wasi-gfx / 多 window** 升为与 webgpu 同级短期目标（NG-9）  
-- 静默替换轨 A cube 主验收（NG-1）  
-- 以桌面 `wasi-webgpu-wasmtime`+wgpu **替换** Android Dawn 主路径（可作对照实验，不作门禁替换）
+- 静默替换轨 A cube **默认** runtime（NG-1）  
+- 以桌面 `wasi-webgpu-wasmtime`+wgpu **替换** Android Dawn 主路径  
+- 再开 **host-fixed + 过渡 u32** 的 W3+ 功能 PR（NG-12）
 
 ## 3. 与现状的差距（起点）
 
@@ -63,80 +65,79 @@ W2  真 async 主链（硬闸门；adapter + device 已交付）
     request-adapter / adapter-request-device（提案名过渡扁平）`func_wrap_concurrent` + 仪器 `callRunConcurrent`
     禁止 Latch 冒充；非合规宣称；`[method]` 终态名属 W3
 
-W3  队列与缓冲关键面（resource 面史诗仍在进行）
-    `device-get-queue` 过渡扁平 sync 已交付；**`[method]gpu-device.queue`** sync 已交付（仍 u32，非 `gpu-queue` resource）
-    `device-create-command-encoder` 过渡扁平 sync 已交付；**`[method]gpu-device.create-command-encoder`** sync 已交付（仍 u32，无 descriptor）
-    `command-encoder-begin-render-pass-clear` 过渡扁平 sync 已交付；**`[method]gpu-command-encoder.begin-render-pass`** sync 已交付（stub view `23`）
-    `render-pass-end` 过渡扁平 sync 已交付；**`[method]gpu-render-pass-encoder.end`** sync void 已交付
-    `command-encoder-finish` 过渡扁平 sync 已交付；**`[method]gpu-command-encoder.finish`** sync 已交付
-    `queue-submit1` 过渡扁平 sync 已交付；**`[method]gpu-queue.submit`** sync 已交付（单 buffer u32，非提案 `list`）
-    **W3+** `[method]gpu-device.create-buffer` sync 已交付（host 固定 descriptor，仍 u32）
-    **W3+** `[method]gpu-device.create-texture` sync 已交付（host 固定 1×1，仍 u32）
-    **W3+** `[method]gpu-device.create-sampler` sync 已交付（host 固定 default sampler，仍 u32）
-    **W3+** `[method]gpu-device.create-shader-module` sync 已交付（host 固定 stub WGSL，仍 u32）
-    **W3+** `[method]gpu-queue.write-buffer` sync 已交付（host 固定 4 字节，单 buffer u32）
-    **W3+** `[method]gpu-texture.create-view` sync 已交付（host 固定 1×1 texture，仍 u32）
-    **W3+** `[method]gpu-device.create-bind-group-layout` sync 已交付（host 固定空 entries，仍 u32）
-    **W3+** `[method]gpu-device.create-pipeline-layout` sync 已交付（host 固定空 bind-group-layouts，仍 u32）
-    **W3+** `[method]gpu-device.create-bind-group` sync 已交付（host 固定空 BGL + 空 entries，仍 u32）
-    **W3+** `[method]gpu-device.create-render-pipeline` sync 已交付（host 固定 stub shader + triangle，仍 u32）
-    **W3+** `[method]gpu-device.create-compute-pipeline` sync 已交付（host 固定 stub shader + 空 pipeline-layout，仍 u32）
-    **W3+** `[method]gpu-queue.write-texture` sync 已交付（host 固定 1×1 COPY_DST，单 texture u32）
-    **W3+** `[method]gpu-command-encoder.begin-compute-pass` sync 已交付（无 descriptor，仍 u32）
-    **W3+** `[method]gpu-compute-pass-encoder.end` sync void 已交付
-    **W3+** `[method]gpu-command-encoder.copy-buffer-to-buffer` sync void 已交付（host 固定 4 字节 copy，stub src/dst u32）
-    **W3+** `[method]gpu-compute-pass-encoder.set-pipeline` sync void 已交付（host 固定 stub compute pipeline）
-    **W3+** `[method]gpu-compute-pass-encoder.dispatch-workgroups` sync void 已交付（host 固定 1×1×1，先 set-pipeline + 空 bind-group）
-    **W3+** `[method]gpu-render-pass-encoder.set-pipeline` sync void 已交付（host 固定 triangle pipeline）
-    **W3+** `[method]gpu-render-pass-encoder.draw` sync void 已交付（host 固定 vertexCount 3）
-    **W3+** `[method]gpu-compute-pass-encoder.set-bind-group` sync void 已交付（host 固定空 bind-group index 0）
-    **W3+** `[method]gpu-render-pass-encoder.set-bind-group` sync void 已交付（host 固定空 bind-group index 0）
-    **W3+** `[method]gpu-render-pass-encoder.set-vertex-buffer` sync void 已交付（host 固定 VERTEX buffer slot 0）
-    **W3+** `[method]gpu-buffer.map-async` 真 async void 已交付（host 固定 MAP_READ）
-    **W3+** `[method]gpu-buffer.unmap` sync void 已交付（host 先 map 再 unmap）
-    按差距表选高频 async/sync 方法切片；每片独立 DoD
+W3  队列与缓冲关键面（**过渡史诗已收口，2026-08-16 冻结扩面**）
+    下列 `[method]` 已挂名，但 Guest 仍见 **u32 / void**，descriptor/`list`/`option` 由 host 固定——**史实，不是合格形状**。
+    完整清单保留于本页 Git 历史与 gap 表；**禁止**再开同类 host-fixed 刀。
+    替换走下方 **S 系列**（先形状、再语义）。
 
 W4  呈现路径策略（选型已立；文档）
-    近端默认选项 A：继续轨 A experimental surface（过渡）
-    选项 B：引入 wasi-gfx 最小胶水（须单独 RFC，默认不升 P0；= DG-6 / NG-9）
-    选项 C：headless compute-only 演示（后期可选，不替换 A）
+    遗留 Demo 上屏：experimental surface（选项 A）
+    产品形状：提案 `gpu-canvas-context`（须编组后再切；≠ 立刻 wasi-gfx）
+    选项 B：wasi-gfx 最小胶水（须单独 RFC，默认不升 P0；= DG-6 / NG-9）
+    选项 C：headless compute-only 演示（后期可选）
     见 [`w4-present-strategy.md`](w4-present-strategy.md)
 
 W5  提案反馈与可选 CTS 子集
-    文档化 Android/Dawn 特有问题；可选上游 issue；CTS 子集不挡 W2
+    文档化 Android/Dawn 特有问题；可选上游 issue；CTS 子集不挡 S2
 ```
 
-**硬闸门：** W2 失败 ⇒ 停止扩大 WIT 表面，先修 L1 async / 线程泵（与当年 M2 同构）。
+### 4.1 现行硬序：S 系列（规范形状）
+
+权威定义与 DoD：[`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md) §9。摘要：
+
+```text
+S0  本 RFC（文档）——结束双轨并行；冻结 host-fixed 扩面
+
+S1  编组脊柱 + `[method]gpu-device.queue`
+    (borrow<gpu-device>) -> own<gpu-queue>   禁止再返回过渡 u32
+
+S2  `[method]gpu.request-adapter`
+    async → option<own<gpu-adapter>>         真 concurrent；禁止 Latch
+
+S3  `[method]gpu-adapter.request-device`
+    async → result<own<gpu-device>, …>
+
+S4  第一个规范 record 入参（如 create-buffer + gpu-buffer-descriptor）
+
+S5  第一个规范 list（如 queue.submit 的 list<borrow<command-buffer>>）
+
+S6+ 按 WIT 替换其余已冻结过渡方法；一 method 一 PR
+```
+
+**硬闸门：** S2 若不能真 async ⇒ 停止扩大 option/result 表面，先修 L1 泵（同 W2 / M2）。  
+**禁止：** 再开 W3+ host-fixed u32 功能 PR。
 
 ## 5. 依赖关系
 
 ```text
 Wasmtime 追踪（版本含 CM async / 必要时 stream）
     → WASI 0.3 原语（尤其 future；stream 若提案缓冲需要）
-        → 本路线图 W0–W2
-            → 轨 A L2 接口跟随（轨 A 先改，本仓跟）
+        → S0 RFC → S1 编组脊柱 → S2 async option → S3 result → S4 record → S5 list
+            → 轨 A Host 仅当后端库（不等扁平面）
 ```
 
 上游生态对照（**非**运行时依赖）：
 
 | 资产 | 用法 |
 |------|------|
-| `wasi-webgpu` WIT | 钉版来源 |
+| `wasi-webgpu` WIT | 钉版来源；Guest 形状以它为准 |
 | `wasi-webgpu-wasmtime` | API 形状 / 宿主经验对照；**不**作 Android 默认 `.so` |
-| 轨 A `host-api` / `host-webgpu` | **实际** Android Host |
-| 轨 A `guest/cube-cm` | 过渡 Guest；逐步换提案坐标 Guest |
+| 轨 A `host-api` / `host-webgpu` | **后端库**（Dawn / Cpu） |
+| 轨 A `guest/cube-cm` | **Demo / 遗留** Guest；规范路径换提案坐标 Guest |
 
 ## 6. 沟通口径
 
 | 场合 | 说法 |
 |------|------|
-| 谈本仓使命 | Android JVM 上推进 **wasi:webgpu（提案）** + WASI 0.3 原语，底座为官方 Wasmtime |
-| 谈轨 A Demo | 仍是 experimental CM cube + sync-compat |
+| 谈本仓使命 | Android JVM 上推进 **官方形状的 wasi:webgpu（提案）** + WASI 0.3，底座为官方 Wasmtime |
+| 谈轨 A | **展示用简单 Demo**（experimental cube / sync-compat）；不是本仓上游 |
+| 谈「已实现某方法」 | 必须能回答：Guest 看到 WIT 类型，还是过渡 u32 |
 | 谈合规 | 未宣布前 **不是** 合规 wasi:webgpu 实现 |
 | 谈 wasi-gfx | 显示 / window 另册；本仓不把它当近端 P0 |
 
 ## 7. 修订
 
-- W 切片增删、WIT 钉版变更：更新本页对应节 + `changelog/unreleased/` 碎片 +（若有）gap 表。不要为「下一刀」去改根 README 或 `vcs-workflow` 清单；活状态改 Project 卡片。  
+- S 切片增删、WIT 钉版变更：更新 RFC / 本页对应节 + `changelog/unreleased/` 碎片 +（若有）gap 表。不要为「下一刀」去改根 README 或 `vcs-workflow` 清单；活状态改 Project 卡片。  
 - 将 wasi-gfx 升为与本页同级：长期计划修订 RFC。  
-- W4 呈现路径已书面选型（近端 A）：见 [`w4-present-strategy.md`](w4-present-strategy.md)。  
+- W4 呈现：遗留 experimental surface vs 规范 `gpu-canvas-context` 分层，见 [`w4-present-strategy.md`](w4-present-strategy.md)。  
+- 2026-08-16：W3 过渡收口；现行硬序改为 S 系列。  

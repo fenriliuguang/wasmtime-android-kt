@@ -2,24 +2,26 @@
 
 **中文** | [English](non-goals.en.md)
 
-> 写死「做什么」之外的边界，防止双轨并行时范围爆炸。  
-> **长期阶段（2026-08-11+）** 与 [`long-term-plan.md`](long-term-plan.md) 对齐；短期 M0–M5 已归档。
+> 写死「做什么」之外的边界。  
+> **长期阶段** 与 [`long-term-plan.md`](long-term-plan.md) 对齐。  
+> **2026-08-16：** 结束双轨并行产品线；见 [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)。
 
 ## 绝对非目标（直至新 RFC）
 
 | ID | 项 |
 |----|-----|
-| NG-1 | 用本仓 **静默替换** 轨 A 主验收 / 默认 Demo runtime |
+| NG-1 | 用本仓 **静默替换** 轨 A **默认 Demo runtime**（轨 A 可继续当展示） |
 | NG-2 | 以 **wasmtime4j** 作为本仓运行时依赖（含传递依赖跑 CM） |
 | NG-3 | 重造完整 **Kotlin WebGPU 客户端 API**（三方图形引擎式） |
 | NG-4 | 以「实现 **全部** WASI 0.3 worlds」或「一次过完 **全量** wasi-testsuite P3」为单一关门 / 对外 KPI（**主推已批准 P3 切片**见 [`wasi-p3-surface.md`](wasi-p3-surface.md)，≠ 全量套件承诺） |
 | NG-5 | 在未另开合规 / 发布 RFC 前，宣传 **合规 wasi:webgpu 产品** 或「生产级 Android Wasm runtime」 |
 | NG-6 | 默认 **对外 Maven Central 发布** |
-| NG-7 | 在本仓实现 **第二套 Dawn Host**（应复用轨 A L2） |
+| NG-7 | 在本仓实现 **第二套 Dawn Host**（应把轨 A L2 **当库**复用；**不**等于 Guest ABI 跟随扁平面） |
 | NG-8 | 以 sync-compat **冒充** 真 CM async / WASI 0.3 异步 DoD |
 | NG-9 | 将 **wasi-gfx / 多 window** 升为与 `wasi:webgpu` 同级的近端 P0（显示面另 RFC） |
-| NG-10 | 要求轨 A 为轨 B 修改而破坏 sync-compat 锁死条款 |
+| NG-10 | 要求轨 A 为了本仓 **破坏** sync-compat 锁死条款（本仓也不再等它的扁平 ABI） |
 | NG-11 | 以非官方引擎或 4j 绑定替换「追踪官方 Wasmtime」政策（见 [`wasmtime-tracking.md`](wasmtime-tracking.md)） |
+| NG-12 | 以「host 固定 descriptor + 过渡 u32 / void」作为 wasi:webgpu **新切片**的验收形态（W3 过渡面冻结；见 RFC） |
 
 ## 延期非目标（可另开 RFC）
 
@@ -39,5 +41,6 @@
 | 参考 4j 源码 / 补丁 | 学习可以；依赖不行 |
 | 桌面 `.so` 开发构建 | 便利可以；门禁仍 Android-first |
 | WASI 0.3 **已批准** package 子集 | **主推**（clocks/random/cli/… 按表面优先级）；不作「完整套件」宣称 |
-| `wasi:webgpu` **提案**实现与反馈 | **P0**；推进 ≠ 合规宣称（NG-5） |
-| 对照 `wasi-webgpu-wasmtime` 等上游宿主 | 形状/经验对照可以；不替代轨 A Dawn 主路径 |
+| `wasi:webgpu` **提案**实现与反馈 | **P0**；Guest **规范形状**（RFC）；推进 ≠ 合规宣称（NG-5） |
+| 对照 `wasi-webgpu-wasmtime` 等上游宿主 | 形状/经验对照可以；不替代轨 A Dawn **后端** |
+| 把轨 A Host 当库调用 | 允许；本仓拥有编组 |

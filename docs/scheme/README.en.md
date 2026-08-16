@@ -3,6 +3,7 @@
 [中文](README.md) | **English**
 
 **Current plan:** [`long-term-plan.md`](long-term-plan.md) (WASI 0.3 · wasi:webgpu · upstream Wasmtime).  
+**2026-08-16:** Parallel tracks ended; canonical wasi:webgpu shape — ZH RFC [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md).  
 **VCS / PRs:** [`vcs-workflow.md`](vcs-workflow.md) (short-lived branches; no long-lived parallel feature lines).  
 **Archived short path:** [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) (M0–M5 thin L1).
 

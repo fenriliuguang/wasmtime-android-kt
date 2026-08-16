@@ -4,26 +4,28 @@
 
 [中文](README.md) | **English**
 
-> **Status: short-term M0–M5 archived; long-term plan chartered (2026-08-11, docs-only).**  
-> **Current plan:** WASI 0.3 + **wasi:webgpu (P0)** + track upstream Wasmtime → [`docs/scheme/long-term-plan.md`](docs/scheme/long-term-plan.md) (ZH).  
+> **Status: short-term M0–M5 archived; long-term plan current.**  
+> **2026-08-16:** Parallel tracks ended; this repo moves toward canonical `wasi:webgpu` shape → ZH [`docs/scheme/rfc-wasi-webgpu-canonical-shape.md`](docs/scheme/rfc-wasi-webgpu-canonical-shape.md).  
+> **Current plan:** WASI 0.3 + **wasi:webgpu (P0, canonical WIT)** + track upstream Wasmtime → [`docs/scheme/long-term-plan.md`](docs/scheme/long-term-plan.md) (ZH).  
 > Archive: [`docs/scheme/archive/m0-m5-thin-l1.md`](docs/scheme/archive/m0-m5-thin-l1.md).  
-> Sister project (Track A): [`../wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) — **locked sync-compat** + wasmtime4j; device acceptance remains CM cube.  
+> Sister project (Track A): [`../wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) — **simple demo** (experimental cube + wasmtime4j + locked sync-compat).  
 > Full charter: [`docs/scheme/charter.en.md`](docs/scheme/charter.en.md) / ZH [`charter.md`](docs/scheme/charter.md).  
 > **Build guide:** [`docs/build.md`](docs/build.md) (Chinese; commands are OS-agnostic).
 
 ## One-liner
 
-**Long-term:** Android-first Java/Kotlin Component runtime — prioritize **ratified WASI 0.3**, proposal focus **wasi:webgpu**, engine = **upstream Wasmtime** only.  
-**Validated base (archived):** thin JNI L1 plugs into Track A L2 (Dawn) with true CM async.
+**Long-term:** Android-first Java/Kotlin Component runtime — prioritize **ratified WASI 0.3**, proposal focus **canonical wasi:webgpu**, engine = **upstream Wasmtime** only.  
+**Validated base (archived):** thin JNI L1 can call Track A Dawn Host as a backend, with true CM async.  
+**Track A** is a demo only; this repo is the sole place advancing wasi:webgpu guest shape.
 
-## Dual-track
+## Track A vs this repo
 
 | Track | Repo | Runtime | Async | Role |
 |-------|------|---------|-------|------|
-| **A** | `wasi-webgpu-jvm-mvp` | wasmtime4j + in-repo patches | **locked sync-compat** | Demo / CI / CM cube acceptance |
-| **B** | **this repo** `wasmtime-android-kt` | upstream Wasmtime + custom JNI | true CM async (goal) | Android-first; does not block A |
+| **A** | `wasi-webgpu-jvm-mvp` | wasmtime4j + patches | **locked sync-compat** | **Simple demo** (experimental cube) |
+| **B** | **this repo** | upstream Wasmtime + custom JNI | true CM async | Android-first; **owns** wasi:webgpu WIT shape |
 
-Hard rule: **L2 must not depend on L1**; share Host/ABI constants; isolate natives and CI gates.
+Hard rule: **do not** reimplement Dawn; **do not** silently replace Track A’s default runtime; **do not** advance the same guest ABI in parallel.
 
 ## Quick start (M0)
 
@@ -51,23 +53,24 @@ Pinned versions: NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1` — see [`docs/
 | Doc | Notes |
 |-----|--------|
 | [Contributing](CONTRIBUTING.md) | PR / CI / hub-freeze (ZH) |
+| [Plan-change RFC](docs/scheme/rfc-wasi-webgpu-canonical-shape.md) | **Accepted** (ZH): end parallel tracks; canonical shape; S-series |
 | [Long-term plan](docs/scheme/long-term-plan.md) | **Current** (ZH): WASI 0.3 · wasi:webgpu · Wasmtime |
 | [Scheme index](docs/scheme/README.en.md) | Stage table |
 | [Charter](docs/scheme/charter.en.md) | Vision / risks (EN may lag ZH) |
 | [M0–M5 archive](docs/scheme/archive/m0-m5-thin-l1.md) | Short-term thin L1 close-out |
 | [Milestones (historical)](docs/scheme/milestones.en.md) | Frozen M0–M5 DoD |
 | [Build](docs/build.md) | Repro steps |
-| [Dual-track](docs/scheme/dual-track.en.md) | Contract with Track A |
+| [Dual-track / boundary](docs/scheme/dual-track.en.md) | Track A = demo; this repo owns shape |
 | [Changelog](CHANGELOG.md) | Rolled-up history; in-flight: [`changelog/unreleased/`](changelog/unreleased/) |
 
 > Do **not** add a row here for every short PR. Slice docs belong on topic pages (`wasi-p3-surface`, `roadmap-wasi-webgpu`, scheme index).
 
 ## Delivered now
 
-- **Long-term planning docs** (no new code required in this tranche)
-- **Archived** M0–M5 thin L1 base (sync CM, true CM async, experimental webgpu→L2, Dawn smoke)
-- **No** wasmtime4j dependency; **no** silent replace of Track A acceptance
-- Slice progress lives on topic docs and `changelog/unreleased/`, not this page
+- **Plan change (2026-08-16):** Track A is demo-only; this repo moves toward canonical wasi:webgpu  
+- **Archived** M0–M5 thin L1 base  
+- **No** wasmtime4j dependency; **no** silent replace of Track A’s default Demo  
+- Slice progress lives on the RFC / roadmap and `changelog/unreleased/`, not this page
 
 ## License
 

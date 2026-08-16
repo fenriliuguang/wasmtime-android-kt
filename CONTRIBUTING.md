@@ -10,8 +10,9 @@
 |------|------|
 | [`docs/scheme/vcs-workflow.md`](docs/scheme/vcs-workflow.md) | 分支命名、PR 规则、**枢纽冻结**、Ruleset / 开源就绪 |
 | [`docs/contribute.md`](docs/contribute.md) | 本地构建、桌面开发壳、仪器门禁 |
+| [`docs/scheme/rfc-wasi-webgpu-canonical-shape.md`](docs/scheme/rfc-wasi-webgpu-canonical-shape.md) | **Accepted：** 结束双轨并行；规范 wasi:webgpu 形状；S 系列 |
 | [`docs/scheme/long-term-plan.md`](docs/scheme/long-term-plan.md) | 现行长期计划（WASI 0.3 · wasi:webgpu · Wasmtime） |
-| [`docs/scheme/non-goals.md`](docs/scheme/non-goals.md) | 非目标（勿静默替换轨 A 等） |
+| [`docs/scheme/non-goals.md`](docs/scheme/non-goals.md) | 非目标（勿静默替换轨 A Demo；勿再扩 host-fixed u32） |
 
 ## 工作流（摘要）
 
@@ -71,7 +72,7 @@ cargo test --locked --tests
 
 - 外人**不必**、也**不应**被授予直接推 `main` 的权限。  
 - Write 仍可能在无 Ruleset 时直推分支；保护靠 **Ruleset 强制 PR**（见 `vcs-workflow.md`）。  
-- 轨 A（`wasi-webgpu-jvm-mvp`）另仓；本仓 PR **不得**要求轨 A 破坏 sync-compat 锁死条款。
+- 轨 A（`wasi-webgpu-jvm-mvp`）另仓，现为 **展示 Demo**；本仓 PR **不得**要求轨 A 破坏 sync-compat，也 **不得**再开 host-fixed 过渡 u32 的 wasi:webgpu 功能切片（见 RFC）。
 
 ## 行为准则（简）
 

@@ -4,32 +4,33 @@
 
 **中文** | [English](README.en.md)
 
-> **状态：短期 M0–M5 已归档；长期规划已立（2026-08-11，文档期）。**  
-> **现行主线：** WASI 0.3 正式面 + **wasi:webgpu 提案（P0）** + 追踪官方 Wasmtime → [`docs/scheme/long-term-plan.md`](docs/scheme/long-term-plan.md)。  
+> **状态：短期 M0–M5 已归档；长期规划现行。**  
+> **2026-08-16：** 结束与轨 A 并行排期；本仓靠拢官方 `wasi:webgpu` 形状 → [`docs/scheme/rfc-wasi-webgpu-canonical-shape.md`](docs/scheme/rfc-wasi-webgpu-canonical-shape.md)。  
+> **现行主线：** WASI 0.3 正式面 + **wasi:webgpu 提案（P0，规范 WIT 形状）** + 追踪官方 Wasmtime → [`docs/scheme/long-term-plan.md`](docs/scheme/long-term-plan.md)。  
 > 短期薄 L1 归档：[`docs/scheme/archive/m0-m5-thin-l1.md`](docs/scheme/archive/m0-m5-thin-l1.md)。  
-> 姊妹项目（轨 A）：[`../wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) — 锁死 **sync-compat** + wasmtime4j；真机验收仍为 CM cube。  
+> 姊妹项目（轨 A）：[`../wasi-webgpu-jvm-mvp`](../wasi-webgpu-jvm-mvp) — **展示用简单 Demo**（experimental cube + wasmtime4j + sync-compat）。  
 > 详细章程：[`docs/scheme/charter.md`](docs/scheme/charter.md)。  
 > **构建说明：** [`docs/build.md`](docs/build.md)。
 
 ## 一句话
 
-**长期**：Android-first 的 Java/Kotlin Component 运行时——主推 **WASI 0.3** 已批准能力，提案面优先 **wasi:webgpu**，引擎只跟 **官方 Wasmtime**。  
-**已验证底座（已归档）**：自研薄 L1（JNI）可插轨 A L2（Dawn），并具备真 CM async。
+**长期**：Android-first 的 Java/Kotlin Component 运行时——主推 **WASI 0.3** 已批准能力，提案面优先 **官方形状的 wasi:webgpu**，引擎只跟 **官方 Wasmtime**。  
+**已验证底座（已归档）**：自研薄 L1（JNI）可插轨 A Dawn Host 当后端，并具备真 CM async。  
+**轨 A** 只作展示 Demo；本仓是 wasi:webgpu Guest 形状的唯一推进面。
 
-## 双轨关系
+## 与轨 A
 
-| 轨 | 仓库 | Runtime | Async | 角色 |
+| 仓 | 仓库 | Runtime | Async | 角色 |
 |----|------|---------|-------|------|
-| **A** | `wasi-webgpu-jvm-mvp` | wasmtime4j + 本仓补丁 | **锁死 sync-compat** | 可演示 / CI / 真机 cube 主验收 |
-| **B** | **本仓** `wasmtime-android-kt` | 官方 Wasmtime + 自研 JNI | 目标真 CM async | Android-first；不阻塞轨 A |
+| **A** | `wasi-webgpu-jvm-mvp` | wasmtime4j + 补丁 | **锁死 sync-compat** | **展示用简单 Demo**（experimental cube） |
+| **本仓** | `wasmtime-android-kt` | 官方 Wasmtime + 自研 JNI | 真 CM async | Android-first；**拥有** wasi:webgpu WIT 形状 |
 
 ```text
-轨 A：Guest ──► wasmtime4j ──► WasmtimeCmLinker ──► L2 ──► Dawn
-轨 B：Guest ──► 本仓薄 L1（官方 Wasmtime）──► 同一 L2 ──► Dawn   （短期）
-      远期可演进为更完整的 Android JVM Wasm runtime
+轨 A（Demo）：Guest ──► wasmtime4j ──► experimental 扁平面 ──► L2 ──► Dawn
+本仓（产品路径）：Guest（钉版 wasi:webgpu WIT）──► 本仓 L1 + 规范编组 ──► Host 库 ──► Dawn
 ```
 
-硬约束：**L2 不依赖 L1**；两轨共享 Host / ABI 常量，**隔离** native 与 CI 门禁。
+硬约束：**不重造 Dawn**；**不**静默替换轨 A 默认 runtime；**不再**并行推进同一条 Guest ABI。
 
 ## 快速开始（M0）
 
@@ -64,9 +65,10 @@
 
 | 文档 | 说明 |
 |------|------|
+| [计划变更 RFC](docs/scheme/rfc-wasi-webgpu-canonical-shape.md) | **Accepted：** 结束双轨并行；规范形状；S 系列 |
 | [长期计划](docs/scheme/long-term-plan.md) | **现行**主线：WASI 0.3 · wasi:webgpu · Wasmtime |
 | [WASI 0.3 表面](docs/scheme/wasi-p3-surface.md) | 正式特性优先级 / 切片门禁 |
-| [wasi:webgpu 路线图](docs/scheme/roadmap-wasi-webgpu.md) | 提案推进（P0） |
+| [wasi:webgpu 路线图](docs/scheme/roadmap-wasi-webgpu.md) | 提案推进（P0；现行 **S 系列**） |
 | [Wasmtime 追踪](docs/scheme/wasmtime-tracking.md) | 钉版 / 升级 / 回归 |
 | [贡献指南](CONTRIBUTING.md) | PR / CI / 枢纽冻结；链到 VCS 与构建文档 |
 | [版本控制工作流](docs/scheme/vcs-workflow.md) | 短命分支 + PR；Ruleset 清单 |
@@ -77,7 +79,7 @@
 | [API 稳定性](docs/scheme/api-stability.md) | experimental `0.x` SemVer |
 | [如何构建](docs/build.md) | NDK / cargo-ndk / Gradle |
 | [贡献者 / 桌面壳](docs/contribute.md) | 可选宿主 native + JVM 冒烟 |
-| [双轨契约](docs/scheme/dual-track.md) | 与轨 A 边界 |
+| [与轨 A 的边界](docs/scheme/dual-track.md) | 轨 A = Demo；本仓拥有形状 |
 | [技术栈](docs/scheme/tech-stack.md) | Wasmtime / NDK / JDK |
 | [里程碑史实](docs/scheme/milestones.md) | M0–M5 冻结 DoD |
 | [非目标](docs/scheme/non-goals.md) | 明确不做 |
@@ -86,10 +88,11 @@
 
 ## 当前交付
 
-- **长期规划文档已立**（无新代码要求）：见上「长期计划」四件套  
-- **短期底座已归档**：M0–M5 薄 L1（同步 CM、真 CM async、experimental webgpu→L2、Dawn smoke、错误/ABI/API 政策）  
-- **不**依赖 wasmtime4j；**不**默认对外发布；**不**替换轨 A 主验收  
-- 切片进度不写在本页：见 WASI 表面 / webgpu 路线图 / `changelog/unreleased/`  
+- **计划变更已立**（2026-08-16）：轨 A 仅 Demo；本仓靠拢官方 wasi:webgpu 形状  
+- **长期规划文档**：见上「长期计划」  
+- **短期底座已归档**：M0–M5 薄 L1  
+- **不**依赖 wasmtime4j；**不**默认对外发布；**不**替换轨 A 默认 Demo runtime  
+- 切片进度不写在本页：见 RFC / webgpu 路线图 / `changelog/unreleased/`  
 
 ## 许可
 

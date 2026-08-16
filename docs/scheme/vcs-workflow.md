@@ -66,16 +66,16 @@
   B  WASI 0.3 stream 原语（JNI/Kotlin）——合并优先级高于依赖 stream 的 package
 
 逻辑串行硬闸门：
-  webgpu W2（真 async adapter/device）失败 ⇒ 停 W3 扩面
+  webgpu S2（规范 async option）失败 ⇒ 停扩 option/result 表面
   stream 未就绪 ⇒ 不开 cli stdio / 大型流式 world
+  **禁止**再开 W3+ host-fixed u32 功能 PR（见 RFC）
 ```
 
 | 切片 | 可否与其它短 PR 并行 | 备注 |
 |------|----------------------|------|
 | 文档 / 钉版 / tracking | **是** | 随时合 |
 | `feat/…-stream-…` | **优先单线** 占有 `native/` 热点 | 合入后再开 stdio |
-| webgpu W0–W1 | **是**（相对 stream / clocks） | 勿回退 sync-compat |
-| webgpu W2 | 依赖 L1 future 泵稳定；与 stream **可部分并行** 但勿抢同一 JNI 文件无协调 | 闸门 |
+| webgpu S 系列 | **单线优先**（相对其它 webgpu 刀） | 规范形状；见 RFC |
 | clocks / random | **是** | 小面 |
 | cli stdio / fs 流 | **否**（等 stream） | |
 
@@ -100,7 +100,7 @@
 | 动作 | 决定 |
 |------|------|
 | 是否新建 `feature/stream`、`feature/webgpu`、`feature/clocks` 等长期线 | **不新建** |
-| 已合切片 / 下一刀 | **不在本页追加清单**（并行 PR 改同一表格必冲突）。活状态：[Project](https://github.com/users/fenriliuguang/projects/1)；规格与缺口见 [`wasi-p3-surface.md`](wasi-p3-surface.md)、[`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)；已合行为见 [`changelog/unreleased/`](../../changelog/unreleased/) |
+| 已合切片 / 下一刀 | **不在本页追加清单**。活状态：[Project](https://github.com/users/fenriliuguang/projects/1)；规格见 [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)、[`wasi-p3-surface.md`](wasi-p3-surface.md)、[`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)；已合行为见 [`changelog/unreleased/`](../../changelog/unreleased/) |
 | 热点文件 | 同一时刻仍避免两条 PR 无协调地改同一 `native/` 源文件（尤其 linker 注册）；文档/CI 枢纽按 §4 冻结 |
 
 ## 8. 修订

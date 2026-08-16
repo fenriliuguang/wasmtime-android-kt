@@ -3,7 +3,8 @@
 **中文** | [English](README.en.md)
 
 本仓方案以章程为中心；根 README 给一句话与双轨表。  
-**现行主线：** [`long-term-plan.md`](long-term-plan.md)（WASI 0.3 · wasi:webgpu · 官方 Wasmtime）。
+**现行主线：** [`long-term-plan.md`](long-term-plan.md)（WASI 0.3 · wasi:webgpu · 官方 Wasmtime）。  
+**2026-08-16 计划变更：** 结束与轨 A 并行排期；Guest 靠拢官方 wasi:webgpu 形状 → [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)。
 
 ## 阶段
 
@@ -12,7 +13,7 @@
 | **文档立项 / 章程** | **完成**（2026-08-10） |
 | **短期 M0–M5 薄 L1** | **已归档**（2026-08-11）→ [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) |
 | **长期计划（文档期）** | **现行**（2026-08-11）→ [`long-term-plan.md`](long-term-plan.md) |
-| **长期 L1+ 代码切片** | **进行中**（活状态：[Project](https://github.com/users/fenriliuguang/projects/1)；规格见 [`wasi-p3-surface.md`](wasi-p3-surface.md) · [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)；已合行为见 [`changelog/unreleased/`](../../changelog/unreleased/)；**不要**在本格枚举每一刀） |
+| **长期 L1+ 代码切片** | **进行中**（活状态：[Project](https://github.com/users/fenriliuguang/projects/1)；规格见 RFC · [`wasi-p3-surface.md`](wasi-p3-surface.md) · [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)；已合行为见 [`changelog/unreleased/`](../../changelog/unreleased/)；**不要**在本格枚举每一刀） |
 
 ## 文档
 
@@ -20,9 +21,10 @@
 
 | 文档 | 说明 |
 |------|------|
+| [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md) | **Accepted：** 结束双轨并行；规范形状 / 编组；S 系列硬序 |
 | [`long-term-plan.md`](long-term-plan.md) | 长期战略；L0–L5；P0/P1/P2 硬序 |
 | [`wasi-p3-surface.md`](wasi-p3-surface.md) | WASI 0.3 正式特性优先级与切片门禁 |
-| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | wasi:webgpu 提案推进（P0） |
+| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | wasi:webgpu 提案推进（P0；W3 过渡收口 → S 系列） |
 | [`w1-dual-register.md`](w1-dual-register.md) | W1 双注册切面（进度写在该页，不在本索引追加） |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | 官方 Wasmtime 钉版 / 升级 / 回归 |
 | [`vcs-workflow.md`](vcs-workflow.md) | 短命分支 + PR；枢纽冻结 / Ruleset / CI |
@@ -33,7 +35,7 @@
 | 文档 | 说明 |
 |------|------|
 | [`charter.md`](charter.md) | 背景、愿景、原则、风险 |
-| [`dual-track.md`](dual-track.md) | 与轨 A 锁死 / 共享 / 隔离 |
+| [`dual-track.md`](dual-track.md) | 轨 A = Demo；本仓拥有 WIT 形状；不静默替换 Demo |
 | [`tech-stack.md`](tech-stack.md) | Wasmtime / JNI / NDK / 依赖 |
 | [`api-stability.md`](api-stability.md) | experimental semver / 破坏性约定 |
 | [`non-goals.md`](non-goals.md) | 非目标硬表（长期修订） |
@@ -55,5 +57,6 @@
 2. Android-first；真 CM async / WASI 0.3 异步走官方 Wasmtime API。  
 3. 不依赖 wasmtime4j；追踪官方 Wasmtime。  
 4. 主推 WASI 0.3 **已批准切片** + **wasi:webgpu 提案**；不作全量套件 / 合规空喊。  
-5. 不阻塞、不替换轨 A sync-compat 主验收（直至独立 RFC）。  
+5. 不静默替换轨 A Demo 默认 runtime（NG-1）；**不再**与轨 A 并行推进 Guest ABI。  
 6. experimental；不默认对外发布。  
+7. wasi:webgpu **新切片**必须是钉版 WIT 形状（RFC）；禁止再扩 host-fixed 过渡 u32。  

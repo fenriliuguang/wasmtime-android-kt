@@ -2,8 +2,8 @@
 
 [中文](charter.md) | **English**
 
-> **Status: short-term M0–M5 archived; long-term plan current (2026-08-11).** Authoritative ZH: [`charter.md`](charter.md) · [`long-term-plan.md`](long-term-plan.md).  
-> Sister Track A: [`wasi-webgpu-jvm-mvp`](../../../wasi-webgpu-jvm-mvp) — **locked sync-compat**.  
+> **Status: short-term M0–M5 archived; long-term plan current.** Authoritative ZH: [`charter.md`](charter.md) · [`long-term-plan.md`](long-term-plan.md) · RFC [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md).  
+> Sister Track A: [`wasi-webgpu-jvm-mvp`](../../../wasi-webgpu-jvm-mvp) — **demo** (locked sync-compat cube). **2026-08-16:** parallel product tracks ended; this repo owns canonical wasi:webgpu shape.  
 > Index: [`README.en.md`](README.en.md) · [`dual-track.en.md`](dual-track.en.md) · [`milestones.en.md`](milestones.en.md) · [`non-goals.en.md`](non-goals.en.md)
 
 ## 1. Background
