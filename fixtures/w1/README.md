@@ -34,6 +34,7 @@
 | `webgpu_method_compute_pass_end.wasm` | `get-compute-pass` + **`[method]gpu-compute-pass-encoder.end` sync** void | `run: async func() -> u32` | construct compute-pass → end; returns 79 |
 | `webgpu_method_copy_buffer_to_buffer.wasm` | `get-encoder` + **`[method]gpu-command-encoder.copy-buffer-to-buffer` sync** void | `run: async func() -> u32` | construct encoder → copy(stub 31, 31); returns 31 |
 | `webgpu_method_compute_pass_set_pipeline.wasm` | `get-compute-pass` + **`[method]gpu-compute-pass-encoder.set-pipeline` sync** void | `run: async func() -> u32` | construct compute-pass → set-pipeline(stub 73); returns 73 |
+| `webgpu_method_compute_pass_set_bind_group.wasm` | `get-compute-pass` + **`[method]gpu-compute-pass-encoder.set-bind-group` sync** void | `run: async func() -> u32` | construct compute-pass → set-bind-group(stub 67); returns 67 |
 | `webgpu_method_compute_pass_dispatch_workgroups.wasm` | `get-compute-pass` + **`[method]gpu-compute-pass-encoder.dispatch-workgroups` sync** void | `run: async func() -> u32` | construct compute-pass → dispatch(1,1,1); returns 79 |
 | `webgpu_method_render_pass_set_pipeline.wasm` | `get-pass` + **`[method]gpu-render-pass-encoder.set-pipeline` sync** void | `run: async func() -> u32` | construct pass → set-pipeline(stub 71); returns 71 |
 | `webgpu_method_render_pass_draw.wasm` | `get-pass` + **`[method]gpu-render-pass-encoder.draw` sync** void | `run: async func() -> u32` | construct pass → draw(3); returns 29 |
@@ -107,6 +108,8 @@ wasm-tools parse fixtures/w1/webgpu_method_copy_buffer_to_buffer.wat -o fixtures
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_copy_buffer_to_buffer.wasm
 wasm-tools parse fixtures/w1/webgpu_method_compute_pass_set_pipeline.wat -o fixtures/w1/webgpu_method_compute_pass_set_pipeline.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_compute_pass_set_pipeline.wasm
+wasm-tools parse fixtures/w1/webgpu_method_compute_pass_set_bind_group.wat -o fixtures/w1/webgpu_method_compute_pass_set_bind_group.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_compute_pass_set_bind_group.wasm
 wasm-tools parse fixtures/w1/webgpu_method_compute_pass_dispatch_workgroups.wat -o fixtures/w1/webgpu_method_compute_pass_dispatch_workgroups.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_compute_pass_dispatch_workgroups.wasm
 wasm-tools parse fixtures/w1/webgpu_method_render_pass_set_pipeline.wat -o fixtures/w1/webgpu_method_render_pass_set_pipeline.wasm

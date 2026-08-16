@@ -89,6 +89,7 @@ W3  队列与缓冲关键面（resource 面史诗仍在进行）
     **W3+** `[method]gpu-compute-pass-encoder.dispatch-workgroups` sync void 已交付（host 固定 1×1×1，先 set-pipeline + 空 bind-group）
     **W3+** `[method]gpu-render-pass-encoder.set-pipeline` sync void 已交付（host 固定 triangle pipeline）
     **W3+** `[method]gpu-render-pass-encoder.draw` sync void 已交付（host 固定 vertexCount 3）
+    **W3+** `[method]gpu-compute-pass-encoder.set-bind-group` sync void 已交付（host 固定空 bind-group index 0）
     按差距表选高频 async/sync 方法切片；每片独立 DoD
 
 W4  呈现路径策略（选型已立；文档）
