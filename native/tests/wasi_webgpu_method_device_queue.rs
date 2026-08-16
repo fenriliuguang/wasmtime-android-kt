@@ -1,11 +1,18 @@
-//! W3 slice: wasi:webgpu/webgpu@0.3.0-rc.2 `get-device` + `[method]gpu-device.queue`
-//! (resource self, sync getter). Stub: get-device pushes a host `GpuDevice`; method returns 13.
+//! S1: wasi:webgpu/webgpu@0.3.0-rc.2 `get-device` + `[method]gpu-device.queue`
+//! WIT: `(borrow<gpu-device>) -> own<gpu-queue>`. Stub pushes a host `GpuQueue`;
+//! guest drops the own handle and `run` returns 1 (harness, not the method shape).
 
 use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
 struct GpuDevice;
+
+#[derive(Debug)]
+struct GpuQueue {
+    #[allow(dead_code)]
+    rep: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -22,6 +29,15 @@ fn register_method_device_queue(linker: &mut Linker<TestHost>) -> wasmtime::Resu
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-queue",
+        ResourceType::host::<GpuQueue>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuQueue>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-device", |mut store, ()| {
         let resource = store.data_mut().table.push(GpuDevice)?;
         Ok((resource,))
@@ -30,7 +46,8 @@ fn register_method_device_queue(linker: &mut Linker<TestHost>) -> wasmtime::Resu
         "[method]gpu-device.queue",
         |mut caller, (device,): (Resource<GpuDevice>,)| {
             caller.data_mut().table.get(&device).map(|_| ())?;
-            Ok((13u32,))
+            let resource = caller.data_mut().table.push(GpuQueue { rep: 13 })?;
+            Ok((resource,))
         },
     )?;
     Ok(())
@@ -72,7 +89,10 @@ fn wasi_webgpu_method_device_queue_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 13, "guest run must return stub queue rep via [method]");
+    assert_eq!(
+        v, 1,
+        "guest run must drop own<gpu-queue> and return harness 1"
+    );
     Ok(())
 }
 
@@ -96,8 +116,8 @@ fn wasi_webgpu_method_device_queue_call_async() -> wasmtime::Result<()> {
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
     assert_eq!(
-        v, 13,
-        "guest run must return stub queue rep via [method] call_async"
+        v, 1,
+        "guest run must drop own<gpu-queue> and return harness 1 via call_async"
     );
     Ok(())
 }

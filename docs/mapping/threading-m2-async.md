@@ -135,16 +135,16 @@
 
 禁止 Latch / 假 future 冒充。非 `result<gpu-device, request-device-error>` / descriptor。
 
-## WASI webgpu `[method]gpu-device.queue`（W3）
+## WASI webgpu `[method]gpu-device.queue`（S1）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | 提案 instance 注册 `gpu-device` resource + sync `get-device`；`[method]gpu-device.queue`：`func_wrap` sync → L2 `request-adapter` 再 `adapter-request-device` 再 `device-get-queue`（同 u32） |
-| **Guest** | `get-device` → `[method]gpu-device.queue`（borrow self；`fixtures/w1/webgpu_method_device_queue`） |
+| **Host** | 提案 instance：`gpu-device` + `gpu-queue` resource；sync `get-device`（测试构造器）；`[method]gpu-device.queue`：`func_wrap` → L2 adapter/device/queue，**返回 `own<gpu-queue>`**（表内 `GpuQueue.rep` = L2 u32） |
+| **Guest** | `get-device` → `[method]gpu-device.queue`（borrow self → own queue）→ `[resource-drop]gpu-queue`；`run` 返回 harness `1` |
 | **仪器** | 复用 `attachDeviceGetQueue`；扁平 `device-get-queue` 仍注册 |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方。禁止在泵线程 `AttachCurrentThread` |
 
-非 `gpu-queue` resource / getter 终态类型。
+形状与钉版 WIT `queue: func() -> gpu-queue` 同构。非合规宣称。
 
 ## WASI webgpu `[method]gpu-device.create-command-encoder`（W3）
 
