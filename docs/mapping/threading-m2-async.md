@@ -397,6 +397,17 @@ Cpu 要求 pipeline 与 bind-group index 0 均已 set。
 
 非 Guest `gpu-render-pipeline` resource。
 
+## WASI webgpu `[method]gpu-render-pass-encoder.draw`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-render-pass-encoder` / `get-pass`；`[method]gpu-render-pass-encoder.draw`：`func_wrap` sync void → L2 adapter/device/encoder + begin-render-pass-clear（Cpu 离屏 view）+ host-fixed triangle set-pipeline + draw(3)（忽略 Guest vertexCount） |
+| **Guest** | `get-pass` → draw(3)；返回 stub 29（`fixtures/w1/webgpu_method_render_pass_draw`） |
+| **仪器** | `attachRenderPassDraw` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+Cpu 只校验 `vertexCount >= 0`。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。

@@ -492,6 +492,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-compute-pass-encoder.set-pipeline` (sync void; host-fixed compute pipeline, stub pipeline u32)
     // and `[method]gpu-compute-pass-encoder.dispatch-workgroups` (sync void; host-fixed 1x1x1 after set-pipeline + empty bind-group)
     // and `[method]gpu-render-pass-encoder.set-pipeline` (sync void; host-fixed triangle pipeline, stub pipeline u32)
+    // and `[method]gpu-render-pass-encoder.draw` (sync void; host-fixed vertexCount 3 after set-pipeline)
     // and `[method]gpu-command-encoder.copy-buffer-to-buffer` (sync void; host-fixed 4-byte copy, stub src/dst u32).
     // Experimental stays sync.
     // Not full option / list.
@@ -1141,6 +1142,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .map_err(wasmtime::Error::msg)?;
                     jvm::exp_render_pass_set_pipeline(&cb, pass_rep)
                         .map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.draw",
+                |mut caller, (pass, _vertex_count): (Resource<GpuRenderPassEncoder>, u32)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let pass_rep =
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_render_pass_draw(&cb, pass_rep).map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
