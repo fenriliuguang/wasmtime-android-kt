@@ -465,6 +465,65 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * W3+: adapter + device + encoder + begin-compute-pass + host-fixed
+     * set-pipeline + empty bind-group + dispatch(1,1,1).
+     * Guest workgroup counts ignored. Cpu requires pipeline and bind-group 0.
+     * `[method]gpu-compute-pass-encoder.dispatch-workgroups`.
+     */
+    fun attachComputePassDispatchWorkgroups(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var device = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    device = bindings.adapterRequestDevice(adapter)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginComputePass(encoder: Int): Int =
+                    bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun computePassDispatchWorkgroups(pass: Int) {
+                    val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                    val layout = bindings.deviceCreatePipelineLayout(
+                        device,
+                        PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                    )
+                    val pipeline = bindings.deviceCreateComputePipeline(
+                        device,
+                        ComputePipelineDescriptor(
+                            layout = GpuHandle(layout),
+                            compute = ProgrammableStage(
+                                module = GpuHandle(shader),
+                                entryPoint = "main",
+                            ),
+                        ),
+                    )
+                    val bgl = bindings.deviceCreateBindGroupLayout(
+                        device,
+                        BindGroupLayoutDescriptor(entries = emptyList()),
+                    )
+                    val bindGroup = bindings.deviceCreateBindGroup(
+                        device,
+                        BindGroupDescriptor(
+                            layout = GpuHandle(bgl),
+                            entries = emptyList(),
+                        ),
+                    )
+                    bindings.computePassSetPipeline(pass, pipeline)
+                    bindings.computePassSetBindGroup(pass, 0, bindGroup)
+                    bindings.computePassDispatchWorkgroups(pass, 1, 1, 1)
+                }
+            },
+        )
+    }
+
+    /**
      * W3 slice: adapter + device + encoder + begin-render-pass-clear.
      *
      * Guest passes transitional stub view `23` (not a surface texture). After
