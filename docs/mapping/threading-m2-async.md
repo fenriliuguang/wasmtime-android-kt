@@ -276,6 +276,17 @@
 
 非 Guest `gpu-bind-group-layout-descriptor` / `gpu-bind-group-layout` resource。
 
+## WASI webgpu `[method]gpu-device.create-pipeline-layout`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-device` / `get-device`；`[method]gpu-device.create-pipeline-layout`：`func_wrap` sync → L2 adapter/device + host-fixed empty bind-group-layouts |
+| **Guest** | `get-device` → create-pipeline-layout（`fixtures/w1/webgpu_method_create_pipeline_layout`） |
+| **仪器** | `attachCreatePipelineLayout` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非 Guest `option<gpu-pipeline-layout-descriptor>` / `gpu-pipeline-layout` resource。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
