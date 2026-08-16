@@ -844,6 +844,63 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /**
+     * W3+: adapter + device + encoder + begin-render-pass-clear + host-fixed
+     * VERTEX buffer at slot 0.
+     * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
+     * Guest passes stub buffer `31`; JNI ignores it.
+     * `[method]gpu-render-pass-encoder.set-vertex-buffer`.
+     */
+    fun attachRenderPassSetVertexBuffer(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var colorView = 0
+        var device = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    device = bindings.adapterRequestDevice(adapter)
+                    val texture =
+                        bindings.deviceCreateTexture(
+                            device,
+                            TextureDescriptor(
+                                size = Extent3D(width = 1, height = 1),
+                                format = GpuTextureFormat.RGBA8_UNORM,
+                                usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                            ),
+                        )
+                    colorView = bindings.textureCreateView(texture)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginRenderPassClear(encoder: Int, view: Int): Int {
+                    val resolved = if (colorView != 0) colorView else view
+                    return bindings.commandEncoderBeginRenderPassClear(
+                        encoder,
+                        resolved,
+                        CLEAR_R,
+                        CLEAR_G,
+                        CLEAR_B,
+                        CLEAR_A,
+                    )
+                }
+
+                override fun renderPassSetVertexBuffer(pass: Int) {
+                    val buffer = bindings.deviceCreateBuffer(
+                        device,
+                        size = STUB_BUFFER_SIZE,
+                        usage = GpuBufferUsage.VERTEX,
+                    )
+                    bindings.renderPassSetVertexBuffer(pass, 0, buffer, 0, STUB_BUFFER_SIZE)
+                }
+            },
+        )
+    }
+
     /** W3: adapter + device + queue + encoder + finish + submit1. Shared by flat `queue-submit1` and `[method]gpu-queue.submit`. */
     fun attachQueueSubmit1(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
