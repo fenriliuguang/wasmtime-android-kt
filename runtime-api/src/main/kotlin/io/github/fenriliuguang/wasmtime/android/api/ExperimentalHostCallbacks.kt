@@ -56,6 +56,9 @@ interface ExperimentalHostCallbacks {
     /** W3+: host-fixed stub shader + explicit empty pipeline-layout (not from Guest). */
     fun deviceCreateComputePipeline(device: Int): Int = unsupported("deviceCreateComputePipeline")
 
+    /** W3+: host-default compute-pass descriptor (not from Guest). */
+    fun beginComputePass(encoder: Int): Int = unsupported("beginComputePass")
+
     /** Host picks a fixed clear color (smoke). */
     fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")
 

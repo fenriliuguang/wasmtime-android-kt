@@ -331,6 +331,17 @@
 
 非提案 `gpu-texel-copy-texture-info` / `list<u8>`；不复用 RENDER_ATTACHMENT `create-texture`。
 
+## WASI webgpu `[method]gpu-command-encoder.begin-compute-pass`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-command-encoder` / `get-encoder`；`[method]gpu-command-encoder.begin-compute-pass`：`func_wrap` sync → L2 adapter/device/encoder + host-default compute-pass descriptor |
+| **Guest** | `get-encoder` → begin-compute-pass；返回 pass rep（`fixtures/w1/webgpu_method_begin_compute_pass`） |
+| **仪器** | `attachBeginComputePass` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非 Guest `gpu-compute-pass-descriptor` / `gpu-compute-pass-encoder` resource。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
