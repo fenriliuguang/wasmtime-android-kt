@@ -375,6 +375,17 @@
 
 非 Guest `gpu-compute-pipeline` resource。
 
+## WASI webgpu `[method]gpu-compute-pass-encoder.dispatch-workgroups`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-compute-pass-encoder` / `get-compute-pass`；`[method]gpu-compute-pass-encoder.dispatch-workgroups`：`func_wrap` sync void → L2 adapter/device/encoder + begin-compute-pass + host-fixed set-pipeline + empty bind-group 0 + dispatch(1,1,1)（忽略 Guest counts） |
+| **Guest** | `get-compute-pass` → dispatch(1,1,1)；返回 stub 79（`fixtures/w1/webgpu_method_compute_pass_dispatch_workgroups`） |
+| **仪器** | `attachComputePassDispatchWorkgroups` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+Cpu 要求 pipeline 与 bind-group index 0 均已 set。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
