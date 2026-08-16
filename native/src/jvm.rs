@@ -251,6 +251,15 @@ pub fn exp_create_shader_module(cb: &GlobalRef, device: u32) -> Result<u32, Stri
     )
 }
 
+pub fn exp_create_bind_group_layout(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateBindGroupLayout",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 pub fn exp_begin_render_pass_clear(
     cb: &GlobalRef,
     encoder: u32,
