@@ -353,6 +353,15 @@ pub fn exp_compute_pass_set_pipeline(cb: &GlobalRef, pass: u32) -> Result<(), St
     )
 }
 
+pub fn exp_compute_pass_set_bind_group(cb: &GlobalRef, pass: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassSetBindGroup",
+        "(I)V",
+        vec![HostArg::Int(pass as i32)],
+    )
+}
+
 pub fn exp_compute_pass_dispatch_workgroups(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
         cb,

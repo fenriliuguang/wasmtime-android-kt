@@ -86,6 +86,11 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassSetPipeline")
     }
 
+    /** W3+: JNI ignores Guest stub bind-group; host creates empty bind-group then set index 0. */
+    fun computePassSetBindGroup(pass: Int) {
+        unsupported("computePassSetBindGroup")
+    }
+
     /** W3+: JNI ignores Guest counts; host set-pipeline + empty bind-group then dispatch. */
     fun computePassDispatchWorkgroups(pass: Int) {
         unsupported("computePassDispatchWorkgroups")

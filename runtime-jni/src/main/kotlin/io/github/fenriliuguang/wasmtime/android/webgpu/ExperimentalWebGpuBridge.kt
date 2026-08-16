@@ -466,6 +466,49 @@ object ExperimentalWebGpuBridge {
 
     /**
      * W3+: adapter + device + encoder + begin-compute-pass + host-fixed
+     * empty bind-group at index 0.
+     * Guest passes stub bind-group `67`; JNI ignores it.
+     * Cpu only accepts bind-group index 0.
+     * `[method]gpu-compute-pass-encoder.set-bind-group`.
+     */
+    fun attachComputePassSetBindGroup(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var device = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    device = bindings.adapterRequestDevice(adapter)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginComputePass(encoder: Int): Int =
+                    bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun computePassSetBindGroup(pass: Int) {
+                    val bgl = bindings.deviceCreateBindGroupLayout(
+                        device,
+                        BindGroupLayoutDescriptor(entries = emptyList()),
+                    )
+                    val bindGroup = bindings.deviceCreateBindGroup(
+                        device,
+                        BindGroupDescriptor(
+                            layout = GpuHandle(bgl),
+                            entries = emptyList(),
+                        ),
+                    )
+                    bindings.computePassSetBindGroup(pass, 0, bindGroup)
+                }
+            },
+        )
+    }
+
+    /**
+     * W3+: adapter + device + encoder + begin-compute-pass + host-fixed
      * set-pipeline + empty bind-group + dispatch(1,1,1).
      * Guest workgroup counts ignored. Cpu requires pipeline and bind-group 0.
      * `[method]gpu-compute-pass-encoder.dispatch-workgroups`.
