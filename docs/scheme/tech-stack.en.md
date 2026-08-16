@@ -10,7 +10,9 @@ Upstream `wasmtime` **47.x** preferred (align with Track A’s Wasmtime generati
 
 ## Binding
 
-Rust `cdylib` → JNI (`jni` crate) → Kotlin/Java minimal API. `JNI_OnLoad` ART-safe (`JNI_VERSION_1_6` lesson from Track A). **No Panama** in phase 1. Prefer explicit JNI/typed marshalling over unbounded JSON (avoid unsigned-u64 traps). Resources: **u32 rep** like Track A L2.
+Rust `cdylib` → JNI (`jni` crate) → Kotlin/Java minimal API. `JNI_OnLoad` ART-safe (`JNI_VERSION_1_6` lesson from Track A). **No Panama** in phase 1.  
+
+**Guest marshalling (2026-08-16):** canonical CM lowering per ZH RFC [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md) §6 — `own`/`borrow`/record/`option`/`result`/`list`. Host-fixed u32 slices are frozen. Dawn handles may stay u32 **reps**; guests must not see bare u32 as the product return shape.
 
 ## Android
 
@@ -18,7 +20,7 @@ ABI: **arm64-v8a** primary, **x86_64** emulator secondary. NDK aligned with Trac
 
 ## Host / guests
 
-M3+: depend on Track A `host-api` / `host-webgpu` / abi constants — **do not** reimplement Dawn here. Guests: M1 sync toy, M2 async smoke, M4 reuse `cube-cm` as needed.
+M3+: depend on Track A `host-api` / `host-webgpu` as a **backend library** — **do not** reimplement Dawn here. Canonical guests follow `wasi:webgpu@0.3.0-rc.2` WIT; `cube-cm` is demo/legacy only.
 
 ## Non-dependencies
 

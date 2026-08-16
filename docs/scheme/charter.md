@@ -3,7 +3,8 @@
 **中文** | [English](charter.en.md)
 
 > **状态：短期 M0–M5 已归档（2026-08-11）；现行见 [`long-term-plan.md`](long-term-plan.md)。**  
-> 姊妹轨 A：[`wasi-webgpu-jvm-mvp`](../../../wasi-webgpu-jvm-mvp) — **锁死 sync-compat**。  
+> **2026-08-16：** 结束双轨并行排期；轨 A = 展示 Demo；本仓靠拢官方 wasi:webgpu 形状 → [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)。  
+> 姊妹仓轨 A：[`wasi-webgpu-jvm-mvp`](../../../wasi-webgpu-jvm-mvp) — **锁死 sync-compat** 的 experimental cube Demo。  
 > 索引：[`README.md`](../../README.md) · [`../build.md`](../build.md) · [`dual-track.md`](dual-track.md) · [`tech-stack.md`](tech-stack.md) · [`long-term-plan.md`](long-term-plan.md) · [`non-goals.md`](non-goals.md)
 
 ---
@@ -33,9 +34,9 @@
 ### 1.2 为什么另开轨 B
 
 1. **4j 缺口是绑定层问题**，不是「Android 不能跑官方 Wasmtime CM async」。  
-2. 轨 A 必须保持 **可演示、可回归**；不宜把主验收绑在未验证的新 runtime 上。  
+2. 轨 A 必须保持 **可演示**（现为简单 Demo）；不宜把它的默认验收绑在未验证的新 runtime 上。  
 3. 官方 Wasmtime 已提供 `FutureProducer` / `FutureReader`、`func_wrap_concurrent`、`run_concurrent` 等 API，适合作为 Android 薄 L1 的底座。  
-4. 长期需要的是 **Android-first 的 JVM 侧 Wasm runtime**，而不仅是给 wasi:webgpu 打补丁——轨 B 以此为产品愿景，短期仍以薄 L1 验证路径。
+4. 长期需要的是 **Android-first 的 JVM 侧 Wasm runtime**，而不仅是给 wasi:webgpu 打补丁——本仓以此为产品愿景。**Guest 形状以钉版 `wasi:webgpu` WIT 为准，不再跟随轨 A experimental 扁平面。**
 
 ### 1.3 设计隐喻（继承轨 A）
 
@@ -79,8 +80,8 @@
 L0  底座冻结与 Wasmtime 追踪机制
 L1  WASI 0.3 原语完备（含 stream）
 L2  WASI 0.3 核心 package 子集（按需）
-L3  wasi:webgpu 提案主链（P0；真 async）
-L4  双轨可选合流准备
+L3  wasi:webgpu 提案主链（P0；**规范 WIT 形状**；真 async）
+L4  （可选）轨 A Demo 换默认 runtime——独立 RFC，非 L3 前置
 L5  运行时产品化门槛
 ```
 
@@ -91,8 +92,8 @@ L5  运行时产品化门槛
 | 阶段 | 成功长什么样 |
 |------|----------------|
 | 短期成功（已达成） | Android 上真 async host import e2e 绿灯；轨 A CI/cube **零回归** |
-| 中期成功 | WASI 0.3 原语（含 stream）可承载；`wasi:webgpu` 提案主链真 async 仪器绿灯 |
-| 长期成功 | 第三方以「Android 上跟官方 Wasmtime / WASI 0.3、优先 wasi:webgpu」理解本仓，而不必先理解 wasmtime4j |
+| 中期成功 | WASI 0.3 原语（含 stream）可承载；`wasi:webgpu` **Guest 为钉版 WIT 类型**，真 async 仪器绿灯 |
+| 长期成功 | 第三方以「Android 上跟官方 Wasmtime / WASI 0.3、优先官方形状 wasi:webgpu」理解本仓，而不必先理解 wasmtime4j 或轨 A 扁平面 |
 
 ---
 
@@ -100,12 +101,14 @@ L5  运行时产品化门槛
 
 完整表见 [`non-goals.md`](non-goals.md)。要点：
 
-- **不**静默替换轨 A 主验收 / Demo  
+- **不**静默替换轨 A Demo 默认 runtime  
 - **不**以 wasmtime4j 为运行时依赖；**只**追踪官方 Wasmtime  
 - **不**重造完整 Kotlin WebGPU 客户端 API / 第二套 Dawn  
 - **不**以「全量 WASI 0.3 套件 / 全量 testsuite」为单一 KPI（**主推**已批准 P3 **切片** + **wasi:webgpu 提案**）  
 - **不**在未达标前宣传合规 wasi:webgpu / 生产级 runtime；**不**默认对外发布  
 - **不**用 sync-compat 冒充真 CM async / WASI 0.3 异步  
+- **不**再以 host-fixed 过渡 u32 作为 wasi:webgpu 新切片验收形态（NG-12）  
+- **不再**与轨 A 并行推进同一条 Guest ABI  
 
 ---
 
@@ -115,9 +118,10 @@ L5  运行时产品化门槛
 2. **Android-first**：桌面仅作开发便利；门禁与设计以真机为准。  
 3. **薄绑定**：Java API 暴露「引擎 / store / linker / instance / future / resource」最小集；避免过早模仿 4j 全表面。  
 4. **官方语义优先**：async 走 `func_wrap_concurrent` + `FutureProducer`/`FutureReader`，禁止再发明 sync-compat 当「真异步」。  
-5. **双轨隔离**：独立 git 仓、独立 CI；轨 A 锁 sync-compat 的文档口径不变。  
+5. **轨 A = Demo**：独立 git 仓、独立 CI；不静默替换其默认 runtime；本仓 **拥有** wasi:webgpu 编组。  
 6. **共享知识、隔离产物**：可参考轨 A 的补丁经验（JNI_VERSION、TBI、resource↔u32），但 **不**把 4j jar 当运行时依赖。  
-7. **线程诚实**：Dawn `processEvents`、Surface、CM event loop 的同线程契约写进 [`threading-android.md`](../mapping/threading-android.md)。
+7. **线程诚实**：Dawn `processEvents`、Surface、CM event loop 的同线程契约写进 [`threading-android.md`](../mapping/threading-android.md)。  
+8. **形状合格**：新 `[method]` 与钉版 WIT 同构（RFC）；禁止再扩 host-fixed u32。
 
 ### 4.1 模块切分（M0 已建）
 
@@ -132,12 +136,12 @@ wasmtime-android-kt/
   docs/                 # 章程 + build.md
 ```
 
-与轨 A 的集成形态（后期）：
+与轨 A 的集成形态（可选，非产品主线）：
 
 - **选项 α**：轨 A `runtime-wasmtime` 旁路依赖本仓 AAR（feature flag）  
 - **选项 β**：轨 A 仅通过接口适配器调用，本仓保持独立 Demo  
 
-章程默认倾向 **α（可选依赖）**，但 **切主验收前必须双轨并行绿**。
+章程默认倾向 **α（可选依赖）**。**切轨 A 默认 runtime 前必须单独 RFC**；这 **不是** 本仓推进规范 wasi:webgpu 的前置。
 
 ---
 
@@ -151,8 +155,8 @@ wasmtime-android-kt/
 | 语言桥 | Rust cdylib + JNI | 首期不做 Panama（Android ART 主路径是 JNI） |
 | JVM | JDK 17+ 构建；Android minSdk 与轨 A Demo 对齐（待代码期钉死） | |
 | Android NDK | 与轨 A `build-wasmtime4j-android.ps1` 经验对齐 | Bionic；注意 `JNI_OnLoad` 版本 |
-| Host（短期） | 依赖轨 A 已发布/本地的 `host-api` / `host-webgpu`（experimental） | **不**把 Dawn 重新实现进本仓 |
-| Guest | 新建最小 async smoke；cube 复用轨 A `guest/cube-cm`（只读依赖） | |
+| Host（现行） | 依赖轨 A `host-api` / `host-webgpu` 当 **后端库**（experimental） | **不**把 Dawn 重新实现进本仓；**编组由本仓拥有** |
+| Guest | 规范路径：与钉版 `wasi:webgpu` WIT 同构；cube 仅 Demo / 遗留 | |
 | 构建 | Gradle + cargo-ndk | [`../build.md`](../build.md)；`scripts/build-native-android.ps1` |
 
 ---
@@ -174,11 +178,11 @@ wasmtime-android-kt/
 
 | 项 | 约定 |
 |----|------|
-| 轨 A async | **锁死 sync-compat**；不再为真 CM async 改 Linker/L2 |
-| 轨 A 主验收 | 仍 `run-android-instrumented.ps1` + CM cube |
-| 共享 | L2 API、ABI 常量、映射文档、Guest wasm 字节（只读） |
-| 不共享 | wasmtime4j jar、4j 补丁构建产物作为轨 B 运行时 |
-| 升级 | 轨 B 成熟后，轨 A **可选**切换 L1；切换是独立 RFC，不是默认 |
+| 轨 A | **展示 Demo**；async **锁死 sync-compat**；不再为真 CM async 改 Linker/L2 |
+| 轨 A 默认 runtime | 仍 4j + CM cube；切换须独立 RFC（NG-1） |
+| 共享 | Host **库**、补丁经验、映射史实 |
+| 不共享 | wasmtime4j；experimental 扁平 ABI 作为本仓目标形状 |
+| 形状 | 本仓按 `wasi:webgpu@0.3.0-rc.2` WIT；见 RFC |
 
 ---
 
@@ -189,7 +193,7 @@ wasmtime-android-kt/
 | Concurrent host + JNI 线程模型难 | 高 | M2 单测先桌面/JVM；Android 仪器第二；契约文档先写 |
 | Resource ↔ u32 再踩 4j 同类坑 | 高 | 直接吸收轨 A cm-resources 设计；从第一天走 rep 模型 |
 | ART / TBI / JNI_VERSION | 中 | 复用轨 A android patch 经验清单 |
-| 双轨人力稀释 | 中 | 轨 A 只做稳性/文档；轨 B 固定里程碑，禁止无 DoD 扩张 |
+| 双轨人力稀释 | 中 | **已结束并行产品线**：轨 A 只作 Demo；本仓按 RFC S 系列推进 |
 | Wasmtime 大版本 API 晃动 | 中 | 钉 crate 版本；changelog 跟踪 `component` concurrent |
 | 范围膨胀成「完整 WASI 套件」 | 高 | [`non-goals.md`](non-goals.md) NG-4；按 [`wasi-p3-surface.md`](wasi-p3-surface.md) 切片 |
 | Wasmtime major 晃动 | 中 | [`wasmtime-tracking.md`](wasmtime-tracking.md) 升级 RFC |
@@ -219,7 +223,7 @@ wasmtime-android-kt/
 
 ## 11. 链接
 
-- 长期计划：[`long-term-plan.md`](long-term-plan.md)  
+- 计划变更 RFC：[`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)  
 - WASI 0.3 表面：[`wasi-p3-surface.md`](wasi-p3-surface.md)  
 - wasi:webgpu 路线：[`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)  
 - Wasmtime 追踪：[`wasmtime-tracking.md`](wasmtime-tracking.md)  

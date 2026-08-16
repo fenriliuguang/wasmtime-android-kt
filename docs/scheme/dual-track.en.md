@@ -1,29 +1,28 @@
-# Dual-track contract (A ↔ B)
+# Boundary with Track A (Track A = demo)
 
 [中文](dual-track.md) | **English**
 
+> **2026-08-16:** Parallel product tracks are over. Authoritative RFC (ZH): [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md).  
+> This page is a short EN pointer; ZH is source of truth.
+
 ## Roles
 
-| Track | Path | Role |
-|-------|------|------|
-| **A** | `wasi-webgpu-jvm-mvp` | wasi:webgpu Host MVP; L1=wasmtime4j; **async locked sync-compat** |
-| **B** | `wasmtime-android-kt` | Android-first JVM Wasm runtime; L1=upstream Wasmtime thin bind; true CM async goal |
+| Track | Role |
+|-------|------|
+| **A** `wasi-webgpu-jvm-mvp` | **Simple demo**: experimental CM cube + wasmtime4j + locked sync-compat. **Not** this repo’s ABI upstream. |
+| **B** (this repo) | Android-first JVM Component runtime. **Sole** place that advances canonical `wasi:webgpu` guest shape on official Wasmtime. |
 
-## Track A lock (from 2026-08-10)
+Do **not** schedule “A changes flat L2 first, B follows.”
 
-1. Keep **sync-compat** on default / acceptance paths.  
-2. **Do not** rework Dawn await path / Linker futures / move instrumentation to async Guest for “true CM async”.  
-3. Gate archive remains authoritative.  
-4. Track A may still do stability/docs/non-async work.  
-5. Switching L1 to Track B requires a separate RFC + dual green — never silent.
+## Still true
 
-## Share vs isolate
+- Do not silently replace Track A’s default Demo runtime (NG-1).  
+- Do not break Track A’s sync-compat lock for this repo’s convenience (NG-10).  
+- Do not depend on wasmtime4j here.  
+- Dawn Host may be consumed as a **library**; **WIT marshalling is owned here**.
 
-**Share:** L2 artifacts, ABI constants, guest bytes (read-only), mapping docs, patch *lessons*.  
-**Isolate:** no wasmtime4j as Track B runtime; no forcing Track A CI to build B; no replacing A’s default Demo; no sync-compat as B’s M2 DoD.
+## Talk track
 
-## Integration
-
-M1–M3: B self-smoke; depend on A engineered Maven locally if needed.  
-M4: optional A Demo entry behind flag; separate instrumented cases; **do not** replace A’s primary script.  
-Later: RFC with rollback before flipping acceptance.
+- Demo cube → Track A.  
+- Canonical wasi:webgpu + WASI 0.3 on Android JVM → this repo.  
+- Host-fixed u32 `[method]` slices are frozen; next code slice is S1 in the RFC.

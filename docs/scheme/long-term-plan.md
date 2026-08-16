@@ -2,8 +2,8 @@
 
 **中文** | （暂无 EN）
 
-> **状态：现行规划（文档期，2026-08-11）。** 本阶段 **不**要求立刻改代码。  
-> 短期薄 L1 已归档：[`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md)。  
+> **状态：现行规划。** 短期薄 L1 已归档：[`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md)。  
+> **2026-08-16：** 结束与轨 A 并行排期；wasi:webgpu Guest **靠拢钉版 WIT 形状** → [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)。  
 > 配套：[`wasi-p3-surface.md`](wasi-p3-surface.md) · [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) · [`wasmtime-tracking.md`](wasmtime-tracking.md)。
 
 ## 1. 转向一句话
@@ -12,10 +12,11 @@
 → 建设 **Android-first JVM Component runtime**，以：
 
 1. **WASI 0.3（WASI P3）已批准正式面** 为主推能力底座；  
-2. **`wasi:webgpu` 提案** 为首发场景与提案推进优先项（本仓存在的核心触发点）；  
+2. **`wasi:webgpu` 提案（钉版 WIT 形状）** 为首发场景（本仓是该形状的 **唯一推进面**）；  
 3. **官方 Wasmtime** 为唯一引擎依赖，建立可追踪的版本与特性跟进机制。
 
-仍为 **experimental**；**不**默认对外发布；**不**静默替换轨 A 主验收（见 [`dual-track.md`](dual-track.md)）。
+仍为 **experimental**；**不**默认对外发布；**不**静默替换轨 A Demo（见 [`dual-track.md`](dual-track.md)）。  
+轨 A 现为 **展示用简单 Demo**；本仓 **不再**跟随其 experimental 扁平面排期。
 
 ## 2. 战略优先级（硬序）
 
@@ -45,7 +46,7 @@ P2  官方 Wasmtime 版本 / feature 追踪与升级闸门
 |----------------|--------------|
 | 假 world / experimental 扁平 webgpu-cm | 对齐 / 收敛到提案 `wasi:webgpu` WIT（见专章） |
 | 单条 future smoke（M2） | WASI 0.3：`async func` + `future` + **`stream`** 一等支持 |
-| 接轨 A L2 smoke（M3–M4） | 继续 **复用** 轨 A L2 / Dawn；推动 L2 与提案 WIT 对齐，而非重造第二套 Dawn |
+| 接轨 A L2 smoke（M3–M4） | **复用** 轨 A Host / Dawn 当后端库；**Guest 形状由本仓按 WIT 拥有**，不等轨 A 先改扁平名 |
 | 「更多 world 有条件再说」（旧 RFC） | **主推已批准 P3 面**；提案面以 webgpu 为先 |
 | M0–M5 编号 | 新堆叠 **L0–L5**（下节）；旧号冻结 |
 
@@ -66,12 +67,14 @@ L2  WASI 0.3 核心 imports 子集（按需切片）
     见 wasi-p3-surface.md §「world / package」
 
 L3  wasi:webgpu 提案主链（P0）
-    标准 WIT 坐标（钉提案版本）· 真 async 方法 · 经 L1→轨 A L2
-    Android 仪器：adapter/device 主链 → 渲染 / compute 切片
-    见 roadmap-wasi-webgpu.md
+    钉版 WIT **规范形状**（resource / async / record / list / option / result）
+    真 async；经本仓编组 → 轨 A Host（库）→ Dawn
+    切片硬序：RFC **S 系列**（W3 host-fixed 过渡面已冻结）
+    见 roadmap-wasi-webgpu.md · rfc-wasi-webgpu-canonical-shape.md
 
-L4  双轨可选合流准备
-    与轨 A cube / 提案 Guest 差距清单收敛；切换 RFC 草案（不自动切主验收）
+L4  （可选）轨 A Demo 换插座
+    仅当要改轨 A **默认** runtime；独立 RFC；**不是** L3 前置
+    日常：轨 A 继续当展示 Demo
 
 L5  运行时产品化门槛
     API 冻结候选、多 ABI CI、错误/线程契约稳定、是否对外发布的单独 RFC
@@ -84,19 +87,20 @@ L5  运行时产品化门槛
 | 阶段 | 成功长什么样 |
 |------|----------------|
 | 近端 | 文档与追踪机制就位；Wasmtime 跟踪表可回答「我们钉哪、缺啥」 |
-| 中端 | JNI/Kotlin 面能承载 WASI 0.3 `stream` + 至少一条正式 package 子集；`wasi:webgpu` 提案主链在 Android 上真 async 跑通（非仅 experimental 扁平名） |
-| 远端 | 第三方以「Android 上跟 Wasmtime / WASI 0.3、优先 wasi:webgpu」理解本仓；轨 A 切换 L1 具备可评审 RFC |
+| 中端 | JNI/Kotlin 面能承载 WASI 0.3 `stream` + 至少一条正式 package 子集；`wasi:webgpu` **Guest 所见为钉版 WIT 类型**（非过渡 u32），真 async 主链在 Android 上跑通 |
+| 远端 | 第三方以「Android 上跟 Wasmtime / WASI 0.3、优先官方形状 wasi:webgpu」理解本仓；轨 A 仍可作 Demo，换默认 runtime 另 RFC |
 
 ## 5. 架构原则（继承 + 修订）
 
 继承 [`charter.md`](charter.md) §4，并强调：
 
-1. **L2 不依赖 L1** — Host / Dawn 仍优先轨 A；本仓不实现第二套 Dawn（NG-7）。  
+1. **L2 不依赖 L1** — Host / Dawn 仍作后端库；本仓不实现第二套 Dawn（NG-7）。**ABI / 编组由本仓拥有。**  
 2. **官方语义优先** — WASI 0.3 / CM async 走 Wasmtime 上游；禁止再发明 pollable 时代的兼容层当「真异步」。  
 3. **提案推进 ≠ 合规宣称** — 可为 `wasi:webgpu` 提反馈、对齐 WIT、跑 CTS 子集；未达标前不宣传合规产品。  
 4. **P3 正式面主推、提案切片化** — 已批准 package 按表面文档优先级；提案只把 webgpu 放 P0，其它提案默认旁路。  
 5. **Android-first** — 桌面壳仅开发便利；门禁以真机为准。  
-6. **双轨隔离** — 直至独立合流 RFC，轨 A sync-compat 主验收不变。
+6. **轨 A = Demo** — 不静默替换其默认 runtime；本仓 **不再**与它并行推进 Guest ABI（RFC）。  
+7. **形状合格才算交付** — 新 wasi:webgpu 切片必须 WIT 同构（NG-12）；禁止 host-fixed 过渡 u32 当验收形态。
 
 ## 6. 非目标（长期阶段修订摘要）
 
@@ -108,7 +112,7 @@ L5  运行时产品化门槛
 | rfc-wasi-worlds：标准 WASI 默认不做 | 正式 P3 package **按优先级切片做**；未批准提案除 webgpu 外默认不做 |
 | wasi:webgpu 合规 = P2 另开 RFC | **实现与提案跟进升为 P0**；**合规认证 / 产品宣称**仍另开门槛 |
 
-仍绝对禁止：静默替换轨 A、依赖 wasmtime4j、重造完整 Kotlin WebGPU 客户端 API、默认 Central 发布、用 sync-compat 冒充实 async。
+仍绝对禁止：静默替换轨 A Demo、依赖 wasmtime4j、重造完整 Kotlin WebGPU 客户端 API、默认 Central 发布、用 sync-compat 冒充实 async、以 host-fixed u32 作为新切片验收形态。
 
 ## 7. 文档地图（现行）
 
@@ -116,12 +120,13 @@ L5  运行时产品化门槛
 |------|------|
 | **本页** | 长期战略与 L0–L5 堆叠 |
 | [`wasi-p3-surface.md`](wasi-p3-surface.md) | WASI 0.3 正式特性：优先级与切片门禁 |
-| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | wasi:webgpu 提案推进路线 |
+| [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md) | 结束双轨并行；规范形状与 S 硬序 |
+| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | wasi:webgpu 提案推进路线（W 史实 + S 系列） |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | 官方 Wasmtime 依赖追踪与升级流程 |
 | [`vcs-workflow.md`](vcs-workflow.md) | 短命分支 + PR；并行矩阵；开源接 PR |
 | [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) | 短期阶段归档 |
 | [`milestones.md`](milestones.md) | M0–M5 **冻结史实** |
-| [`dual-track.md`](dual-track.md) | 与轨 A 契约（仍有效） |
+| [`dual-track.md`](dual-track.md) | 轨 A = Demo；Host 当库 |
 | [`api-stability.md`](api-stability.md) | `0.x-experimental`（仍有效） |
 
 ### 7.1 并行与分支（摘要）
@@ -130,7 +135,7 @@ L5  运行时产品化门槛
 
 - 默认：`main` + 短命 `docs/`·`feat/` 分支 + PR  
 - **不**建常驻 `feature/stream` / `feature/webgpu` 第二主干  
-- 可同时开少量短 PR（文档 ‖ webgpu W0–W1 ‖ clocks/random）；**stream 单线优先合入**后再开 stdio  
+- 可同时开少量短 PR（文档 ‖ webgpu **S 系列单线** ‖ clocks/random）；**stream 单线优先合入**后再开 stdio  
 
 ## 8. 近端文档期 DoD（本批，无代码）
 
@@ -148,3 +153,4 @@ L5  运行时产品化门槛
 
 - 小修订（链接 / 措辞）：PR + `changelog/unreleased/` 碎片。  
 - 改变 P0/P1/P2 硬序或 L0–L5 关门语义：新开 RFC，本页标注修订历史。  
+- 2026-08-16：L3 改为规范 WIT 形状；L4 降为可选 Demo 换插座；见 [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)。  

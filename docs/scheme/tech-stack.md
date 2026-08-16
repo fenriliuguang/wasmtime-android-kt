@@ -37,13 +37,24 @@
 | Java API | 手写 Kotlin/Java | 最小类型；避免 JSON 编组为主路径（4j ConcurrentCallCodec 覆辙） |
 | Panama | **首期不做** | Android 主路径是 JNI；桌面若以后加 Panama 不得挡 Android |
 
-### 2.1 编组策略（初订）
+### 2.1 编组策略（2026-08-16 起以 RFC 为准）
 
-**优先：** 对热点路径用 **定长/显式 JNI 参数** 或 **有限集 ComponentVal 专用编解码**（Kotlin 侧），减少「任意 JSON ↔ Val」。  
+权威：[`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md) §6。
 
-**可接受：** 启动期/冷路径用结构化字节（flatbuffer/cbor）——须有 schema，禁止无符号 u64 十进制陷阱。  
+**Guest 边界（硬）：** 走 Component Model 规范 lowering。`own` / `borrow` / record / `option` / `result` / `list` / `string` 与钉版 WIT 同构。禁止再把「host 固定 descriptor + 过渡 u32」当新切片目标。
 
-Resource：guest↔host 一律 **u32 rep**；表在 L2；native 负责 ResourceAny ↔ U32（吸收轨 A cm-resources 思路）。
+**实现分层：**
+
+| 层 | 职责 |
+|----|------|
+| `native/` Linker | 按 WIT 注册；Rust 签名与 WIT 同构 |
+| 编解码（S1 起有限集） | 只为当前切片用到的 WIT 类型 lowering |
+| Kotlin L2 回调 | 接已解码参数或后端句柄 |
+| L2 / Dawn 句柄 | **rep 仍可 u32**；表在 native / Host |
+
+**禁止：** 无 schema 的 JSON 作为主路径（4j ConcurrentCallCodec 覆辙）；「成功才返回 u32、失败 panic」冒充 `result`。
+
+Resource：guest↔host 的 **rep** 仍可 u32（对齐 Dawn `GpuHandle.raw`）；**Guest 所见**必须是 resource，不是裸 u32 返回值。
 
 ## 3. Android / NDK
 
@@ -79,11 +90,11 @@ Rust (scripts/build-native-android.ps1 / cargo ndk)
 
 | Artifact（轨 A） | 轨 B 用法 |
 |------------------|-----------|
-| `host-api` | M3+ 编译依赖；接口面 |
+| `host-api` | 编译依赖；**后端**接口面（不是 Guest ABI 源） |
 | `host-webgpu` | Android Dawn 实现；仪器联调 |
-| `abi-cm` / `abi-wasi` | 函数名 / resource 名常量 |
+| `abi-cm` / `abi-wasi` | 可参考常量；**产品 import 名以钉版 WIT 为准** |
 | `runtime-wasmtime` | **不**依赖 |
-| `android-demo` | 可选后期联调；不反向依赖本仓 |
+| `android-demo` | 展示 Demo；不反向依赖本仓 |
 
 轨 A 本地发布：`publishEngineeredToMavenLocal`（见轨 A `docs/maven-local.md`）。
 
@@ -93,7 +104,8 @@ Rust (scripts/build-native-android.ps1 / cargo ndk)
 |------|--------|
 | M1 | 自制最小 sync component（可 wat/wit-bindgen） |
 | M2 | 自制最小 **async** import smoke |
-| M4 | 复用轨 A `guest/cube-cm` 或裁剪子集；版本钉 `@0.8.0` experimental |
+| 规范路径（S1+） | 与 `wasi:webgpu@0.3.0-rc.2` WIT **同构** 的 component（wit-bindgen 或手写 wat） |
+| 遗留 | `experimental:webgpu-cm@0.8.0` / 轨 A `cube-cm`：Demo 与冻结过渡回归，**不**再扩面 |
 
 工具链：`wit-bindgen`、`wasm-tools`；版本写入锁文件。
 
@@ -103,7 +115,7 @@ Rust (scripts/build-native-android.ps1 / cargo ndk)
 |------|------|------|
 | 单元 | 桌面 JVM + 桌面 `.so`（可选） | API / future complete |
 | 仪器 | 真机 arm64 | M0 加载；M2 async；M4 上屏 |
-| 回归 | 轨 A 脚本 | **证明未破坏** sync-compat 门禁 |
+| 回归 | 轨 A 脚本（仅当要证明没碰 4j Demo） | **不是**本仓扩面门禁 |
 
 ## 8. 明确不依赖
 
