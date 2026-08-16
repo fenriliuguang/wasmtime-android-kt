@@ -55,7 +55,7 @@ object ExperimentalWebGpuBridge {
         )
     }
 
-    /** W3: adapter + device + queue. Shared by flat `device-get-queue` and `[method]gpu-device.queue` (`get-device` is host-only). */
+    /** Adapter + device + queue. Shared by flat `device-get-queue` and S1 `[method]gpu-device.queue` (`get-device` is test-only). */
     fun attachDeviceGetQueue(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(

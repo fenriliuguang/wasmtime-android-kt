@@ -472,8 +472,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // `get-gpu` + `[method]gpu.request-adapter`, `gpu-adapter` + `get-adapter`
     // + `[method]gpu-adapter.request-device` (async; still return u32, not
     // option<gpu-adapter> / result<gpu-device>), and `gpu-device` + `get-device`
-    // + `[method]gpu-device.queue` (sync getter; still u32, not `gpu-queue`
-    // resource) and `[method]gpu-device.create-command-encoder` (sync; still
+    // + `[method]gpu-device.queue` (S1: sync getter → `own<gpu-queue>`)
+    // and `[method]gpu-device.create-command-encoder` (sync; still
     // u32, not option<descriptor>) and `[method]gpu-device.create-buffer`
     // (sync; host-fixed descriptor, still u32) and
     // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (true async void; host-fixed MAP_READ then map)
@@ -610,6 +610,17 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?;
         webgpu
+            .resource(
+                "gpu-queue",
+                ResourceType::host::<GpuQueue>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuQueue>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap(
                 "[method]gpu-device.queue",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
@@ -624,9 +635,13 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_device_get_queue(&cb, device_rep)
+                    let queue_rep = jvm::exp_device_get_queue(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuQueue { rep: queue_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1063,19 +1078,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
-            .resource(
-                "gpu-queue",
-                ResourceType::host::<GpuQueue>(),
-                |mut store, rep| {
-                    let resource = Resource::<GpuQueue>::new_own(rep);
-                    store.data_mut().table.delete(resource)?;
-                    Ok(())
-                },
-            )
-            .map_err(|e| e.to_string())?;
-        webgpu
             .func_wrap("get-queue", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuQueue)?;
+                let resource = store.data_mut().table.push(GpuQueue { rep: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
