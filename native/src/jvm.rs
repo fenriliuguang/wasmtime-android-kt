@@ -296,6 +296,15 @@ pub fn exp_create_compute_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, S
     )
 }
 
+pub fn exp_begin_compute_pass(cb: &GlobalRef, encoder: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "beginComputePass",
+        "(I)I",
+        vec![HostArg::Int(encoder as i32)],
+    )
+}
+
 pub fn exp_begin_render_pass_clear(
     cb: &GlobalRef,
     encoder: u32,
