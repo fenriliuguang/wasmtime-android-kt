@@ -44,6 +44,9 @@ interface ExperimentalHostCallbacks {
     /** W3+: host-fixed empty bind-group-layout (not from Guest). */
     fun deviceCreateBindGroupLayout(device: Int): Int = unsupported("deviceCreateBindGroupLayout")
 
+    /** W3+: host-fixed empty pipeline-layout (not from Guest). */
+    fun deviceCreatePipelineLayout(device: Int): Int = unsupported("deviceCreatePipelineLayout")
+
     /** Host picks a fixed clear color (smoke). */
     fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")
 
