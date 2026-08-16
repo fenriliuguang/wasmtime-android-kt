@@ -1,12 +1,45 @@
-//! W3 slice: wasi:webgpu/webgpu@0.3.0-rc.2 `get-gpu` + `[method]gpu.request-adapter`
-//! (resource self, true CM async). Stub: get-gpu pushes a host `Gpu`; method returns 7.
+//! S2: `get-gpu` + `[method]gpu.request-adapter`
+//! WIT: async (borrow<gpu>, option<gpu-request-adapter-options>) -> option<own<gpu-adapter>>
+//! Guest passes none; drops own adapter; `run` returns harness 1.
 
 use futures::channel::oneshot;
-use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
 struct Gpu;
+
+#[derive(Debug)]
+struct GpuAdapter {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum GpuPowerPreference {
+    #[component(name = "low-power")]
+    LowPower,
+    #[component(name = "high-performance")]
+    HighPerformance,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GpuRequestAdapterOptions {
+    #[component(name = "feature-level")]
+    feature_level: Option<String>,
+    #[component(name = "power-preference")]
+    power_preference: Option<GpuPowerPreference>,
+    #[component(name = "force-fallback-adapter")]
+    force_fallback_adapter: Option<bool>,
+    #[component(name = "xr-compatible")]
+    xr_compatible: Option<bool>,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -19,13 +52,22 @@ fn register_method_request_adapter(linker: &mut Linker<TestHost>) -> wasmtime::R
         store.data_mut().table.delete(resource)?;
         Ok(())
     })?;
+    webgpu.resource(
+        "gpu-adapter",
+        ResourceType::host::<GpuAdapter>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuAdapter>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-gpu", |mut store, ()| {
         let resource = store.data_mut().table.push(Gpu)?;
         Ok((resource,))
     })?;
     webgpu.func_wrap_concurrent(
         "[method]gpu.request-adapter",
-        |accessor, (gpu,): (Resource<Gpu>,)| {
+        |accessor, (gpu, _options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
             Box::pin(async move {
                 accessor.with(|mut access| access.data_mut().table.get(&gpu).map(|_| ()))?;
                 let (tx, rx) = oneshot::channel::<()>();
@@ -33,7 +75,10 @@ fn register_method_request_adapter(linker: &mut Linker<TestHost>) -> wasmtime::R
                     let _ = tx.send(());
                 });
                 let _ = rx.await;
-                Ok((7u32,))
+                let resource = accessor.with(|mut access| {
+                    access.data_mut().table.push(GpuAdapter { rep: 7 })
+                })?;
+                Ok((Some(resource),))
             })
         },
     )?;
@@ -76,7 +121,10 @@ fn wasi_webgpu_method_request_adapter_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 7, "guest run must return stub adapter rep via [method]");
+    assert_eq!(
+        v, 1,
+        "guest run must drop option<own<gpu-adapter>> and return harness 1"
+    );
     Ok(())
 }
 
@@ -100,8 +148,8 @@ fn wasi_webgpu_method_request_adapter_call_async() -> wasmtime::Result<()> {
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
     assert_eq!(
-        v, 7,
-        "guest run must return stub adapter rep via [method] call_async"
+        v, 1,
+        "guest run must drop option<own<gpu-adapter>> and return harness 1 via call_async"
     );
     Ok(())
 }

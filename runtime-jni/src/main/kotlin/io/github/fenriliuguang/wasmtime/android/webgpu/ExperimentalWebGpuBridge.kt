@@ -25,8 +25,8 @@ import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
  */
 object ExperimentalWebGpuBridge {
     /**
-     * W1/W2 flat `request-adapter` and W3 `[method]gpu.request-adapter` share this
-     * L2 callback. `get-gpu` is host-only (no Kotlin).
+     * W1/W2 flat `request-adapter` and S2 `[method]gpu.request-adapter` share this
+     * L2 callback. `get-gpu` is a test constructor (no Kotlin).
      */
     fun attachRequestAdapter(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
