@@ -1,12 +1,114 @@
-//! W3 slice: wasi:webgpu/webgpu@0.3.0-rc.2 `get-adapter` + `[method]gpu-adapter.request-device`
-//! (resource self, true CM async). Stub: get-adapter pushes a host `GpuAdapter`; method returns 11.
+//! S3: `get-adapter` + `[method]gpu-adapter.request-device`
+//! WIT: async (borrow<gpu-adapter>, option<gpu-device-descriptor>)
+//!      -> result<own<gpu-device>, request-device-error>
+//! Guest passes none; drops own device on ok; `run` returns harness 1.
 
 use futures::channel::oneshot;
-use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
 struct GpuAdapter;
+
+#[derive(Debug)]
+struct GpuDevice {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug)]
+struct RecordOptionGpuSize64;
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum GpuFeatureName {
+    #[component(name = "core-features-and-limits")]
+    CoreFeaturesAndLimits,
+    #[component(name = "depth-clip-control")]
+    DepthClipControl,
+    #[component(name = "depth32float-stencil8")]
+    Depth32floatStencil8,
+    #[component(name = "texture-compression-bc")]
+    TextureCompressionBc,
+    #[component(name = "texture-compression-bc-sliced3d")]
+    TextureCompressionBcSliced3d,
+    #[component(name = "texture-compression-etc2")]
+    TextureCompressionEtc2,
+    #[component(name = "texture-compression-astc")]
+    TextureCompressionAstc,
+    #[component(name = "texture-compression-astc-sliced3d")]
+    TextureCompressionAstcSliced3d,
+    #[component(name = "timestamp-query")]
+    TimestampQuery,
+    #[component(name = "indirect-first-instance")]
+    IndirectFirstInstance,
+    #[component(name = "shader-f16")]
+    ShaderF16,
+    #[component(name = "rg11b10ufloat-renderable")]
+    Rg11b10ufloatRenderable,
+    #[component(name = "bgra8unorm-storage")]
+    Bgra8unormStorage,
+    #[component(name = "float32-filterable")]
+    Float32Filterable,
+    #[component(name = "float32-blendable")]
+    Float32Blendable,
+    #[component(name = "clip-distances")]
+    ClipDistances,
+    #[component(name = "dual-source-blending")]
+    DualSourceBlending,
+    #[component(name = "subgroups")]
+    Subgroups,
+    #[component(name = "texture-formats-tier1")]
+    TextureFormatsTier1,
+    #[component(name = "texture-formats-tier2")]
+    TextureFormatsTier2,
+    #[component(name = "primitive-index")]
+    PrimitiveIndex,
+    #[component(name = "texture-component-swizzle")]
+    TextureComponentSwizzle,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct GpuQueueDescriptor {
+    label: Option<String>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct GpuDeviceDescriptor {
+    #[component(name = "required-features")]
+    required_features: Option<Vec<GpuFeatureName>>,
+    #[component(name = "required-limits")]
+    required_limits: Option<Resource<RecordOptionGpuSize64>>,
+    #[component(name = "default-queue")]
+    default_queue: Option<GpuQueueDescriptor>,
+    label: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum RequestDeviceErrorKind {
+    #[component(name = "type-error")]
+    TypeError,
+    #[component(name = "operation-error")]
+    OperationError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct RequestDeviceError {
+    kind: RequestDeviceErrorKind,
+    message: String,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -23,13 +125,31 @@ fn register_method_request_device(linker: &mut Linker<TestHost>) -> wasmtime::Re
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "record-option-gpu-size64",
+        ResourceType::host::<RecordOptionGpuSize64>(),
+        |mut store, rep| {
+            let resource = Resource::<RecordOptionGpuSize64>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
+    webgpu.resource(
+        "gpu-device",
+        ResourceType::host::<GpuDevice>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuDevice>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-adapter", |mut store, ()| {
         let resource = store.data_mut().table.push(GpuAdapter)?;
         Ok((resource,))
     })?;
     webgpu.func_wrap_concurrent(
         "[method]gpu-adapter.request-device",
-        |accessor, (adapter,): (Resource<GpuAdapter>,)| {
+        |accessor, (adapter, _descriptor): (Resource<GpuAdapter>, Option<GpuDeviceDescriptor>)| {
             Box::pin(async move {
                 accessor.with(|mut access| access.data_mut().table.get(&adapter).map(|_| ()))?;
                 let (tx, rx) = oneshot::channel::<()>();
@@ -37,7 +157,9 @@ fn register_method_request_device(linker: &mut Linker<TestHost>) -> wasmtime::Re
                     let _ = tx.send(());
                 });
                 let _ = rx.await;
-                Ok((11u32,))
+                let resource = accessor
+                    .with(|mut access| access.data_mut().table.push(GpuDevice { rep: 11 }))?;
+                Ok((Ok::<_, RequestDeviceError>(resource),))
             })
         },
     )?;
@@ -80,7 +202,10 @@ fn wasi_webgpu_method_request_device_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 11, "guest run must return stub device rep via [method]");
+    assert_eq!(
+        v, 1,
+        "guest run must drop result<own<gpu-device>, …> ok and return harness 1"
+    );
     Ok(())
 }
 
@@ -104,8 +229,8 @@ fn wasi_webgpu_method_request_device_call_async() -> wasmtime::Result<()> {
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
     assert_eq!(
-        v, 11,
-        "guest run must return stub device rep via [method] call_async"
+        v, 1,
+        "guest run must drop result ok and return harness 1 via call_async"
     );
     Ok(())
 }

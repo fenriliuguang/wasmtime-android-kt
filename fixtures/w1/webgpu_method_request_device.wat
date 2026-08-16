@@ -1,32 +1,101 @@
-;; W3: wasi:webgpu/webgpu@0.3.0-rc.2 get-adapter + [method]gpu-adapter.request-device
-;; (resource self; true CM async). Transitional: method returns u32 (not
-;; result<gpu-device, request-device-error>); no descriptor. Flat
-;; adapter-request-device stays registered.
+;; S3: wasi:webgpu/webgpu@0.3.0-rc.2 get-adapter + [method]gpu-adapter.request-device
+;; WIT: request-device: async func(descriptor: option<gpu-device-descriptor>)
+;;      -> result<gpu-device, request-device-error>
+;; Guest passes descriptor=none; drops own device on ok; run returns harness 1.
+;; Instance type shape matches `wasm-tools component wit --importize-world`.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
+    (type $gfn (enum "core-features-and-limits" "depth-clip-control" "depth32float-stencil8" "texture-compression-bc" "texture-compression-bc-sliced3d" "texture-compression-etc2" "texture-compression-astc" "texture-compression-astc-sliced3d" "timestamp-query" "indirect-first-instance" "shader-f16" "rg11b10ufloat-renderable" "bgra8unorm-storage" "float32-filterable" "float32-blendable" "clip-distances" "dual-source-blending" "subgroups" "texture-formats-tier1" "texture-formats-tier2" "primitive-index" "texture-component-swizzle"))
+    (export "gpu-feature-name" (type (eq $gfn)))
+    (export "record-option-gpu-size64" (type (sub resource)))
+    (type $opt-str (option string))
+    (type $gqd-def (record (field "label" $opt-str)))
+    (export "gpu-queue-descriptor" (type (eq $gqd-def)))
+    (type $list-gfn (list 1))
+    (type $opt-list-gfn (option $list-gfn))
+    (type $own-limits (own 2))
+    (type $opt-limits (option $own-limits))
+    (type $opt-gqd (option 5))
+    (type $gdd-def (record
+      (field "required-features" $opt-list-gfn)
+      (field "required-limits" $opt-limits)
+      (field "default-queue" $opt-gqd)
+      (field "label" $opt-str)
+    ))
+    (export "gpu-device-descriptor" (type (eq $gdd-def)))
+    (type $rdek-def (variant (case "type-error") (case "operation-error")))
+    (export "request-device-error-kind" (type (eq $rdek-def)))
+    (type $rde-def (record (field "kind" 14) (field "message" string)))
+    (export "request-device-error" (type (eq $rde-def)))
+    (export "gpu-device" (type $gpu-device (sub resource)))
     (export "gpu-adapter" (type $gpu-adapter (sub resource)))
-    (export "get-adapter" (func (result (own $gpu-adapter))))
-    (export "[method]gpu-adapter.request-device"
-      (func async (param "self" (borrow $gpu-adapter)) (result u32)))
+    (type $borrow-adapter (borrow $gpu-adapter))
+    (type $opt-gdd (option 12))
+    (type $own-device (own $gpu-device))
+    (type $result-device (result $own-device (error 16)))
+    (type $request-device-ty (func async
+      (param "self" $borrow-adapter)
+      (param "descriptor" $opt-gdd)
+      (result $result-device)))
+    (export "[method]gpu-adapter.request-device" (func (type $request-device-ty)))
+    (type $own-adapter (own $gpu-adapter))
+    (type $get-adapter-ty (func (result $own-adapter)))
+    (export "get-adapter" (func (type $get-adapter-ty)))
   ))
+  (alias export $webgpu "gpu-device" (type $gpu-device))
   (alias export $webgpu "get-adapter" (func $get-adapter))
   (alias export $webgpu "[method]gpu-adapter.request-device" (func $request-device))
 
-  (core module $m
-    (import "" "get-adapter" (func $get-adapter (result i32)))
-    (import "" "request-device" (func $request-device (param i32) (result i32)))
-    (func (export "run") (result i32)
-      (local $adapter i32)
-      (local.set $adapter (call $get-adapter))
-      (call $request-device (local.get $adapter))
+  (core module $builtins
+    (memory (export "mem") 1)
+    (func (export "realloc") (param i32 i32 i32 i32) (result i32)
+      (i32.const 16)
     )
   )
+  (core instance $builtins (instantiate $builtins))
+
   (core func $ga_lower (canon lower (func $get-adapter)))
-  (core func $rd_lower (canon lower (func $request-device)))
+  (core func $rd_lower
+    (canon lower (func $request-device)
+      (memory $builtins "mem")
+      (realloc (func $builtins "realloc"))))
+  (core func $dd_lower (canon resource.drop $gpu-device))
+
+  (core module $m
+    (import "" "mem" (memory 1))
+    (import "" "get-adapter" (func $get-adapter (result i32)))
+    (import "" "request-device"
+      (func $request-device
+        (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)))
+    (import "" "drop-device" (func $drop-device (param i32)))
+    (func (export "run") (result i32)
+      (local $adapter i32)
+      (local $retptr i32)
+      (local $tag i32)
+      (local $handle i32)
+      (local.set $retptr (i32.const 0))
+      (local.set $adapter (call $get-adapter))
+      (call $request-device
+        (local.get $adapter)
+        (i32.const 0)
+        (i32.const 0) (i32.const 0) (i32.const 0)
+        (i32.const 0) (i32.const 0)
+        (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)
+        (i32.const 0) (i32.const 0) (i32.const 0)
+        (local.get $retptr))
+      (local.set $tag (i32.load (local.get $retptr)))
+      (local.set $handle (i32.load offset=4 (local.get $retptr)))
+      (if (i32.eqz (local.get $tag))
+        (then (call $drop-device (local.get $handle))))
+      (i32.const 1)
+    )
+  )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-adapter" (func $ga_lower))
       (export "request-device" (func $rd_lower))
+      (export "drop-device" (func $dd_lower))
     ))
   ))
   (func (export "run") async (result u32)
