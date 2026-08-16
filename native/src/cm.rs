@@ -484,7 +484,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-device.create-pipeline-layout` (sync; host-fixed empty bind-group-layouts, still u32)
     // and `[method]gpu-device.create-bind-group` (sync; host-fixed empty entries, still u32)
     // and `[method]gpu-device.create-render-pipeline` (sync; host-fixed stub shader + triangle, still u32)
-    // and `[method]gpu-device.create-compute-pipeline` (sync; host-fixed stub shader + empty layout, still u32).
+    // and `[method]gpu-device.create-compute-pipeline` (sync; host-fixed stub shader + empty layout, still u32)
+    // and `[method]gpu-queue.write-texture` (sync void; host-fixed 1×1 texels, single texture u32).
     // Experimental stays sync.
     // Not full option / list.
     {
@@ -993,6 +994,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let buffer_rep = jvm::exp_create_buffer(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
                     jvm::exp_queue_write_buffer(&cb, queue_rep, buffer_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-queue.write-texture",
+                |mut caller, (queue, _texture): (Resource<GpuQueue>, u32)| {
+                    let _ = caller.data_mut().table.get(&queue)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let queue_rep = jvm::exp_device_get_queue(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let texture_rep = jvm::exp_create_texture(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_queue_write_texture(&cb, queue_rep, texture_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },

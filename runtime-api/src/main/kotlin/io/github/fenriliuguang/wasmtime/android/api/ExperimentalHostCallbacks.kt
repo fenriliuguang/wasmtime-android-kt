@@ -74,6 +74,11 @@ interface ExperimentalHostCallbacks {
         unsupported("queueWriteBuffer")
     }
 
+    /** W3+: host-fixed 1×1 write (texture u32 from Guest is ignored by JNI). */
+    fun queueWriteTexture(queue: Int, texture: Int) {
+        unsupported("queueWriteTexture")
+    }
+
     /** W3+: texture view from host-created texture (no Guest descriptor). */
     fun textureCreateView(texture: Int): Int = unsupported("textureCreateView")
 

@@ -507,6 +507,45 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /**
+     * W3+: adapter + device + queue + host-fixed 1×1 COPY_DST texture write.
+     * `[method]gpu-queue.write-texture` (Guest texture u32 ignored).
+     */
+    fun attachWriteTexture(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
+
+                override fun deviceCreateTexture(device: Int): Int =
+                    bindings.deviceCreateTexture(
+                        device,
+                        TextureDescriptor(
+                            size = Extent3D(width = 1, height = 1),
+                            format = GpuTextureFormat.RGBA8_UNORM,
+                            usage = GpuTextureUsage.COPY_DST or GpuTextureUsage.TEXTURE_BINDING,
+                        ),
+                    )
+
+                override fun queueWriteTexture(queue: Int, texture: Int) {
+                    bindings.queueWriteTexture(
+                        queue,
+                        texture,
+                        STUB_TEXTURE_BYTES,
+                        width = 1,
+                        height = 1,
+                        bytesPerRow = 4,
+                    )
+                }
+            },
+        )
+    }
+
     /** M4: clear→present subset for dedicated render smoke Guest. */
     fun attachRenderSmoke(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -574,5 +613,6 @@ object ExperimentalWebGpuBridge {
     private const val CLEAR_A = 1.0f
     private const val STUB_BUFFER_SIZE = 4L
     private val STUB_BUFFER_BYTES = byteArrayOf(1, 2, 3, 4)
+    private val STUB_TEXTURE_BYTES = byteArrayOf(1, 2, 3, 4)
     private const val STUB_WGSL = "@compute @workgroup_size(1) fn main() {}"
 }

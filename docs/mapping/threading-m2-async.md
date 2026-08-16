@@ -320,6 +320,17 @@
 
 非 Guest `gpu-compute-pipeline-descriptor` / `gpu-compute-pipeline` resource；Cpu 要求显式 layout。
 
+## WASI webgpu `[method]gpu-queue.write-texture`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-queue` / `get-queue`；`[method]gpu-queue.write-texture`：`func_wrap` sync void → L2 adapter/device/queue + host-fixed 1×1 COPY_DST texture + 4-byte write |
+| **Guest** | `get-queue` → write-texture(stub 37)；返回 37（`fixtures/w1/webgpu_method_write_texture`） |
+| **仪器** | `attachWriteTexture` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非提案 `gpu-texel-copy-texture-info` / `list<u8>`；不复用 RENDER_ATTACHMENT `create-texture`。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
