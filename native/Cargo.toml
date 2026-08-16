@@ -28,5 +28,5 @@ wasmtime = { version = "47.0.2", default-features = false, features = [
 [profile.release]
 lto = false
 codegen-units = 16
-# On Windows hosts, scripts/build-native-android.ps1 may force opt-level=0
-# (rustc ACCESS_VIOLATION workaround when cross-compiling to Android).
+# scripts/build-native-android.ps1 defaults Windows Android cross to opt-level=2
+# (stream.write instrument); set CARGO_PROFILE_RELEASE_OPT_LEVEL=0 if rustc ACCESS_VIOLATION.

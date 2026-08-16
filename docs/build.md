@@ -59,9 +59,8 @@ android/jniLibs/build-info.json
 
 - `JNI_OnLoad` 返回 **`JNI_VERSION_1_6`**（ART 拒 1_8）。
 - Bionic 无 `libpthread`：脚本用 `native/link-stubs/libpthread.so` → `INPUT(-lc)`。
-- Windows 交叉编译默认 `CARGO_PROFILE_RELEASE_OPT_LEVEL=0`（规避 rustc ACCESS_VIOLATION），再用 `llvm-strip`。  
-  该变量覆盖 Cargo **release** 配置的 `opt-level`（`0`=不优化、帧大；`1`/`2`/`3`/`s`/`z` 见 [Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html#opt-level)）。  
-  真机跑 **stream / cli stdout** 仪器时，若遇 JNI 栈溢出，可临时：`$env:CARGO_PROFILE_RELEASE_OPT_LEVEL="2"; .\scripts\build-native-android.ps1 -Targets arm64-v8a`（缩小栈帧；本机 rustc 若再 ACCESS_VIOLATION 则另排查）。
+- Windows 交叉编译默认 `CARGO_PROFILE_RELEASE_OPT_LEVEL=2`（缩小 `stream.write` / cli stdio 仪器栈帧），再用 `llvm-strip`。若 rustc `ACCESS_VIOLATION`，设 `$env:CARGO_PROFILE_RELEASE_OPT_LEVEL="0"` 后重编。  
+  该变量覆盖 Cargo **release** 配置的 `opt-level`（`0`=不优化、帧大；`1`/`2`/`3`/`s`/`z` 见 [Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html#opt-level)）。
 - 构建结束写入 `build-info.json` 并对本次 `-Targets` 跑校验。
 
 ## 2. 编译 JVM / Android 模块
