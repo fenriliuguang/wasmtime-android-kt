@@ -269,6 +269,15 @@ pub fn exp_create_pipeline_layout(cb: &GlobalRef, device: u32) -> Result<u32, St
     )
 }
 
+pub fn exp_create_bind_group(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateBindGroup",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 pub fn exp_begin_render_pass_clear(
     cb: &GlobalRef,
     encoder: u32,
