@@ -66,6 +66,11 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassEnd")
     }
 
+    /** W3+: JNI ignores Guest stub pipeline; host creates triangle pipeline then set. */
+    fun renderPassSetPipeline(pass: Int) {
+        unsupported("renderPassSetPipeline")
+    }
+
     /** W3+: JNI ignores Guest stub pass; host begins then ends a compute pass. */
     fun computePassEnd(pass: Int) {
         unsupported("computePassEnd")
