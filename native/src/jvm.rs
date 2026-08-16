@@ -326,6 +326,15 @@ pub fn exp_compute_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(cb, "computePassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
 }
 
+pub fn exp_compute_pass_set_pipeline(cb: &GlobalRef, pass: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassSetPipeline",
+        "(I)V",
+        vec![HostArg::Int(pass as i32)],
+    )
+}
+
 pub fn exp_copy_buffer_to_buffer(cb: &GlobalRef, encoder: u32) -> Result<(), String> {
     call_void(
         cb,

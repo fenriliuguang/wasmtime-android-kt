@@ -71,6 +71,11 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassEnd")
     }
 
+    /** W3+: JNI ignores Guest stub pipeline; host creates compute pipeline then set. */
+    fun computePassSetPipeline(pass: Int) {
+        unsupported("computePassSetPipeline")
+    }
+
     /** W3+: JNI ignores Guest stub buffers; host creates two buffers then copy. */
     fun commandEncoderCopyBufferToBuffer(encoder: Int) {
         unsupported("commandEncoderCopyBufferToBuffer")
