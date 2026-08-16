@@ -76,6 +76,11 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassDraw")
     }
 
+    /** W3+: JNI ignores Guest stub bind-group; host creates empty bind-group then set index 0. */
+    fun renderPassSetBindGroup(pass: Int) {
+        unsupported("renderPassSetBindGroup")
+    }
+
     /** W3+: JNI ignores Guest stub pass; host begins then ends a compute pass. */
     fun computePassEnd(pass: Int) {
         unsupported("computePassEnd")

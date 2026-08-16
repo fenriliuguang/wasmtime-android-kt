@@ -419,6 +419,17 @@ Cpu 只校验 `vertexCount >= 0`。
 
 Cpu 只接受 bind-group index 0。非提案 `option` / `list` / `result`。
 
+## WASI webgpu `[method]gpu-render-pass-encoder.set-bind-group`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-render-pass-encoder` / `get-pass`；`[method]gpu-render-pass-encoder.set-bind-group`：`func_wrap` sync void → L2 adapter/device/encoder + begin-render-pass-clear（Cpu 离屏 view）+ host-fixed empty bind-group index 0（忽略 Guest stub bind-group） |
+| **Guest** | `get-pass` → set-bind-group(stub 67)；返回 stub 67（`fixtures/w1/webgpu_method_render_pass_set_bind_group`） |
+| **仪器** | `attachRenderPassSetBindGroup` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+Cpu 只校验 bind-group handle 与 `index >= 0`。非提案 `option` / `list` / `result`。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
