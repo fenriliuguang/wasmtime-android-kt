@@ -322,6 +322,15 @@ pub fn exp_render_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(cb, "renderPassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
 }
 
+pub fn exp_render_pass_set_pipeline(cb: &GlobalRef, pass: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassSetPipeline",
+        "(I)V",
+        vec![HostArg::Int(pass as i32)],
+    )
+}
+
 pub fn exp_compute_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(cb, "computePassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
 }
