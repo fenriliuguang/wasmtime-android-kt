@@ -45,6 +45,10 @@ pub struct GpuQueue;
 #[derive(Debug)]
 pub struct GpuTexture;
 
+/// Host representation of WIT `resource gpu-buffer` (W3+ `[method]`).
+#[derive(Debug)]
+pub struct GpuBuffer;
+
 pub struct HostState {
     pub table: ResourceTable,
     pub add_cb: Option<GlobalRef>,

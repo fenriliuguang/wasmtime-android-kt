@@ -224,6 +224,15 @@ pub fn exp_create_buffer(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     )
 }
 
+pub fn exp_buffer_map_async(cb: &GlobalRef, buffer: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "bufferMapAsync",
+        "(I)V",
+        vec![HostArg::Int(buffer as i32)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
