@@ -3,7 +3,9 @@ package io.github.fenriliuguang.wasmtime.android.webgpu
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupLayoutDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuBufferUsage
@@ -247,6 +249,40 @@ object ExperimentalWebGpuBridge {
                         device,
                         shader,
                         GpuTextureFormat.RGBA8_UNORM,
+                    )
+                }
+            },
+        )
+    }
+
+    /**
+     * W3+: adapter + device + stub shader + empty pipeline-layout + compute pipeline.
+     * `[method]gpu-device.create-compute-pipeline` (no Guest descriptor; explicit layout).
+     */
+    fun attachCreateComputePipeline(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateComputePipeline(device: Int): Int {
+                    val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                    val layout = bindings.deviceCreatePipelineLayout(
+                        device,
+                        PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                    )
+                    return bindings.deviceCreateComputePipeline(
+                        device,
+                        ComputePipelineDescriptor(
+                            layout = GpuHandle(layout),
+                            compute = ProgrammableStage(
+                                module = GpuHandle(shader),
+                                entryPoint = "main",
+                            ),
+                        ),
                     )
                 }
             },
