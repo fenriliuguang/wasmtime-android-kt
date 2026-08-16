@@ -37,6 +37,11 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferMapAsync")
     }
 
+    /** W3+: JNI ignores Guest stub buffer; host maps then unmaps a MAP_READ buffer. */
+    fun bufferUnmap(buffer: Int) {
+        unsupported("bufferUnmap")
+    }
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 

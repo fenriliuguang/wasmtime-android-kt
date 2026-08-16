@@ -477,6 +477,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // u32, not option<descriptor>) and `[method]gpu-device.create-buffer`
     // (sync; host-fixed descriptor, still u32) and
     // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (true async void; host-fixed MAP_READ then map)
+    // and `[method]gpu-buffer.unmap` (sync void; host-fixed map then unmap)
     // and `[method]gpu-device.create-texture` (sync; host-fixed 1x1, still u32) and
     // `[method]gpu-device.create-sampler` (sync; host-fixed descriptor, still u32)
     // and `[method]gpu-device.create-shader-module` (sync; host-fixed WGSL, still u32)
@@ -780,6 +781,28 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .map_err(wasmtime::Error::msg)?;
                         Ok(())
                     })
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-buffer.unmap",
+                |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let buffer_rep = jvm::exp_create_buffer(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_buffer_unmap(&cb, buffer_rep).map_err(wasmtime::Error::msg)?;
+                    Ok(())
                 },
             )
             .map_err(|e| e.to_string())?;

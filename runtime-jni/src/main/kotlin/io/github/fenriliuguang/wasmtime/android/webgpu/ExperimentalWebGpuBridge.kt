@@ -127,6 +127,39 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * W3+: adapter + device + host-fixed MAP_READ buffer + map then unmap.
+     * Guest stub buffer ignored. `[method]gpu-buffer.unmap`.
+     */
+    fun attachBufferUnmap(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateBuffer(device: Int): Int =
+                    bindings.deviceCreateBuffer(
+                        device,
+                        size = STUB_BUFFER_SIZE,
+                        usage = GpuBufferUsage.MAP_READ or GpuBufferUsage.COPY_DST,
+                    )
+
+                override fun bufferUnmap(buffer: Int) {
+                    bindings.bufferMapAsync(
+                        buffer,
+                        GpuMapMode.READ,
+                        0,
+                        STUB_BUFFER_SIZE,
+                    )
+                    bindings.bufferUnmap(buffer)
+                }
+            },
+        )
+    }
+
+    /**
      * W3+: adapter + device + create-texture. Host-fixed 1×1 RGBA8
      * RENDER_ATTACHMENT (no Guest record). `[method]gpu-device.create-texture`.
      */
