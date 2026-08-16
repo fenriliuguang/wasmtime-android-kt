@@ -419,6 +419,52 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * W3+: adapter + device + encoder + begin-compute-pass + host-fixed
+     * compute pipeline set-pipeline.
+     * Guest passes stub pipeline `73`; JNI ignores it.
+     * `[method]gpu-compute-pass-encoder.set-pipeline`.
+     */
+    fun attachComputePassSetPipeline(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var device = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    device = bindings.adapterRequestDevice(adapter)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginComputePass(encoder: Int): Int =
+                    bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun computePassSetPipeline(pass: Int) {
+                    val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                    val layout = bindings.deviceCreatePipelineLayout(
+                        device,
+                        PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                    )
+                    val pipeline = bindings.deviceCreateComputePipeline(
+                        device,
+                        ComputePipelineDescriptor(
+                            layout = GpuHandle(layout),
+                            compute = ProgrammableStage(
+                                module = GpuHandle(shader),
+                                entryPoint = "main",
+                            ),
+                        ),
+                    )
+                    bindings.computePassSetPipeline(pass, pipeline)
+                }
+            },
+        )
+    }
+
+    /**
      * W3 slice: adapter + device + encoder + begin-render-pass-clear.
      *
      * Guest passes transitional stub view `23` (not a surface texture). After

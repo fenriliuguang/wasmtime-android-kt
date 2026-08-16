@@ -364,6 +364,17 @@
 
 非提案 offsets / size 从 Guest 传入。
 
+## WASI webgpu `[method]gpu-compute-pass-encoder.set-pipeline`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-compute-pass-encoder` / `get-compute-pass`；`[method]gpu-compute-pass-encoder.set-pipeline`：`func_wrap` sync void → L2 adapter/device/encoder + begin-compute-pass + host-fixed stub shader / empty layout compute pipeline（忽略 Guest stub pipeline） |
+| **Guest** | `get-compute-pass` → set-pipeline(stub 73)；返回 stub 73（`fixtures/w1/webgpu_method_compute_pass_set_pipeline`） |
+| **仪器** | `attachComputePassSetPipeline` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非 Guest `gpu-compute-pipeline` resource。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
