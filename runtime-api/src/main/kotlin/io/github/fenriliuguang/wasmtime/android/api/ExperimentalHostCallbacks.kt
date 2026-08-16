@@ -66,6 +66,11 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassEnd")
     }
 
+    /** W3+: JNI ignores Guest stub pass; host begins then ends a compute pass. */
+    fun computePassEnd(pass: Int) {
+        unsupported("computePassEnd")
+    }
+
     fun commandEncoderFinish(encoder: Int): Int = unsupported("commandEncoderFinish")
 
     fun queueSubmit1(queue: Int, commandBuffer: Int) {

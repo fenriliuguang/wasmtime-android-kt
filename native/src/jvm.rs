@@ -322,6 +322,10 @@ pub fn exp_render_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(cb, "renderPassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
 }
 
+pub fn exp_compute_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
+    call_void(cb, "computePassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
+}
+
 pub fn exp_command_encoder_finish(cb: &GlobalRef, encoder: u32) -> Result<u32, String> {
     call_i(
         cb,

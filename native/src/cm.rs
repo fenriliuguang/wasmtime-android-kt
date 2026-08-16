@@ -4,7 +4,8 @@ use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_link, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
-    Gpu, GpuAdapter, GpuCommandEncoder, GpuDevice, GpuQueue, GpuRenderPassEncoder, GpuTexture,
+    Gpu, GpuAdapter, GpuCommandEncoder, GpuComputePassEncoder, GpuDevice, GpuQueue,
+    GpuRenderPassEncoder, GpuTexture,
     HostState,
     Widget,
 };
@@ -486,7 +487,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-device.create-render-pipeline` (sync; host-fixed stub shader + triangle, still u32)
     // and `[method]gpu-device.create-compute-pipeline` (sync; host-fixed stub shader + empty layout, still u32)
     // and `[method]gpu-queue.write-texture` (sync void; host-fixed 1×1 texels, single texture u32)
-    // and `[method]gpu-command-encoder.begin-compute-pass` (sync; no descriptor, still u32).
+    // and `[method]gpu-command-encoder.begin-compute-pass` (sync; no descriptor, still u32)
+    // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void).
     // Experimental stays sync.
     // Not full option / list.
     {
@@ -1086,6 +1088,47 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
                             .map_err(wasmtime::Error::msg)?;
                     jvm::exp_render_pass_end(&cb, pass_rep).map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-compute-pass-encoder",
+                ResourceType::host::<GpuComputePassEncoder>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuComputePassEncoder>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-compute-pass", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuComputePassEncoder)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pass-encoder.end",
+                |mut caller, (pass,): (Resource<GpuComputePassEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let pass_rep = jvm::exp_begin_compute_pass(&cb, encoder_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_compute_pass_end(&cb, pass_rep).map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
