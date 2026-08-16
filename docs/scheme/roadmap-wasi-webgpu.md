@@ -93,6 +93,7 @@ W3  队列与缓冲关键面（resource 面史诗仍在进行）
     **W3+** `[method]gpu-render-pass-encoder.set-bind-group` sync void 已交付（host 固定空 bind-group index 0）
     **W3+** `[method]gpu-render-pass-encoder.set-vertex-buffer` sync void 已交付（host 固定 VERTEX buffer slot 0）
     **W3+** `[method]gpu-buffer.map-async` 真 async void 已交付（host 固定 MAP_READ）
+    **W3+** `[method]gpu-buffer.unmap` sync void 已交付（host 先 map 再 unmap）
     按差距表选高频 async/sync 方法切片；每片独立 DoD
 
 W4  呈现路径策略（选型已立；文档）

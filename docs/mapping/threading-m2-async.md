@@ -452,6 +452,17 @@ Cpu 只校验 buffer handle 与 `slot/offset/size >= 0`。非提案 `option` slo
 
 禁止 Latch 冒充。非提案 `mode` / `offset` / `result<_, map-async-error>`。
 
+## WASI webgpu `[method]gpu-buffer.unmap`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 复用 `gpu-buffer` / `get-buffer`；`[method]gpu-buffer.unmap`：`func_wrap` sync void → L2 adapter/device + host-fixed MAP_READ buffer 先 map 再 unmap（忽略 Guest stub buffer） |
+| **Guest** | `get-buffer` → unmap；返回 stub 31（`fixtures/w1/webgpu_method_buffer_unmap`） |
+| **仪器** | `attachBufferUnmap` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+非提案 `result<_, unmap-error>`。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。
