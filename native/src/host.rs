@@ -12,11 +12,13 @@ pub struct Widget {
 #[derive(Debug)]
 pub struct Gpu;
 
-/// Host representation of WIT `resource gpu-adapter` (W3 `[method]` slice).
-/// No L2 handle yet; `[method]gpu-adapter.request-device` calls L2
-/// `request-adapter` then `adapter-request-device`.
+/// Host representation of WIT `resource gpu-adapter`.
+/// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
 #[derive(Debug)]
-pub struct GpuAdapter;
+pub struct GpuAdapter {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
 
 /// Host representation of WIT `resource gpu-device`.
 /// S1 test constructor `get-device` still pushes an empty device; L2 handles

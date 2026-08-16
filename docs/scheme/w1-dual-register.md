@@ -6,7 +6,7 @@
 > 差距表：[`../mapping/gap-experimental-vs-wasi-webgpu.md`](../mapping/gap-experimental-vs-wasi-webgpu.md)。  
 > **状态：已交付**（`feat/webgpu-w1-request-adapter`）。  
 > **W2 进度：** `request-adapter` 与扁平 `adapter-request-device` 真 async **均已交付**（`feat/webgpu-w2-async-request-adapter` · `feat/webgpu-w2-async-request-device`）。  
-> **W3 首片：** 已双注册过渡扁平 `device-get-queue`（**sync** getter，同 L2 u32）。**S1：** `[method]gpu-device.queue` 返回 **`own<gpu-queue>`**（不再是过渡 u32）。  
+> **W3 首片：** 已双注册过渡扁平 `device-get-queue`（**sync** getter，同 L2 u32）。**S1：** `[method]gpu-device.queue` 返回 **`own<gpu-queue>`**。**S2：** `[method]gpu.request-adapter` 返回 **`option<own<gpu-adapter>>`**（真 async；options=none）。  
 > **W3：** 已双注册过渡扁平 `device-create-command-encoder`（**sync**，同 L2 u32）。终态 `[method]gpu-device.create-command-encoder` **已交付**（仍 u32，无 descriptor）。  
 > **W3：** 已双注册过渡扁平 `command-encoder-finish`（**sync**，同 L2 u32）。终态 `[method]gpu-command-encoder.finish` **已交付**（无 descriptor）。  
 > **W3：** 已双注册过渡扁平 `queue-submit1`（**sync** void，同 L2 单 buffer u32）。终态 `[method]gpu-queue.submit` **已交付**（仍单 u32，非提案 `list`）。  

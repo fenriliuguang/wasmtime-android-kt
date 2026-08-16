@@ -23,7 +23,7 @@
 
 | # | experimental 扁平名（`cm.rs`） | 提案大致对应 | async? | 形状差距 | 优先级 |
 |---|-------------------------------|--------------|--------|----------|--------|
-| 1 | `request-adapter` | `gpu.request-adapter` | 提案 **async**；**W2** 扁平名真 async；**W3** `[method]gpu.request-adapter` 真 async（`get-gpu` + resource self） | 扁平名仍注册；`[method]` 仍返回过渡 u32（非 `option<gpu-adapter>`）；缺 options | **W3**（`option` / adapter resource 仍后） |
+| 1 | `request-adapter` | `gpu.request-adapter` | 提案 **async**；**S2** `[method]gpu.request-adapter`：`async (borrow gpu, option<gpu-request-adapter-options>) -> option<own gpu-adapter>` | 扁平名仍注册；`get-gpu` 仍为测试构造器；Guest 传 options=none | **S2 已交付** |
 | 2 | `adapter-request-device` | `gpu-adapter.request-device` | 提案 **async**；**W2** 扁平名真 async；**W3** `[method]gpu-adapter.request-device` 真 async（`get-adapter` + resource self） | 扁平名仍注册；`[method]` 仍返回过渡 u32（非 `result<gpu-device, …>`）；缺 descriptor | **W3**（`result` / device resource 仍后） |
 | 3 | `device-get-queue` | `gpu-device.queue`（getter） | 提案 **sync**；**S1** `[method]gpu-device.queue`：`(borrow gpu-device) -> own gpu-queue` | 扁平名仍注册；`get-device` 仍为测试构造器 | **S1 已交付**（规范 `own`；descriptor 无关） |
 | 4 | `create-surface-from-native-window` | **提案无**（平台 / wasi-gfx） | — | 轨 A Dawn 胶水；非 wasi:webgpu 范围 | W4 策略 |
@@ -73,7 +73,7 @@
 切片**定义**见 [`../scheme/rfc-wasi-webgpu-canonical-shape.md`](../scheme/rfc-wasi-webgpu-canonical-shape.md) **S 系列** 与 [`../scheme/roadmap-wasi-webgpu.md`](../scheme/roadmap-wasi-webgpu.md)。  
 **正在做 / 下一刀** 只维护在 GitHub Project：[wasmtime-android-kt progress](https://github.com/users/fenriliuguang/projects/1)（筛 `Slice` = S1…，`Status` = Todo 或 In Progress）。功能 PR **不要**在本页追加编号清单。
 
-史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸；**W3 host-fixed `[method]` 冻结**（本表 §2 为对照，不是扩面看板）。W4 分层见 [`../scheme/w4-present-strategy.md`](../scheme/w4-present-strategy.md)。**S1 已交付**（`gpu-device.queue` → `own<gpu-queue>`）。**下一刀代码：S2**（`gpu.request-adapter` → `option<own<gpu-adapter>>`）。
+史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸；**W3 host-fixed `[method]` 冻结**（本表 §2 为对照，不是扩面看板）。W4 分层见 [`../scheme/w4-present-strategy.md`](../scheme/w4-present-strategy.md)。**S1 已交付**（`gpu-device.queue` → `own<gpu-queue>`）。**S2 已交付**（`gpu.request-adapter` → `option<own<gpu-adapter>>`）。**下一刀代码：S3**（`gpu-adapter.request-device` → `result<own<gpu-device>, …>`）。
 
 ## 6. 钉版与修订
 

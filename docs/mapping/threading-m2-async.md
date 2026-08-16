@@ -113,16 +113,16 @@
 | **仪器** | `attachRenderPassEnd` 同 begin-clear 替换 Cpu 离屏 TextureView 后再 `renderPassEnd`；**不**走 experimental surface / present |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方。禁止在泵线程 `AttachCurrentThread` |
 
-## WASI webgpu `[method]gpu.request-adapter`（W3）
+## WASI webgpu `[method]gpu.request-adapter`（S2）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | 提案 instance 注册 `gpu` resource + sync `get-gpu`；`[method]gpu.request-adapter`：`func_wrap_concurrent` + oneshot yield → 同一 L2 u32 |
-| **Guest** | `get-gpu` → `[method]gpu.request-adapter`（borrow self；`fixtures/w1/webgpu_method_request_adapter`） |
+| **Host** | 提案 instance：`gpu` + `gpu-adapter` resource；sync `get-gpu`（测试构造器）；`[method]gpu.request-adapter`：`func_wrap_concurrent` + oneshot yield → L2 `request-adapter`，返回 `option<own<gpu-adapter>>`（表内 `GpuAdapter.rep` = L2 u32） |
+| **Guest** | `get-gpu` → `[method]gpu.request-adapter`(self, none) → drop own adapter；`run` 返回 harness `1` |
 | **仪器** | 复用 `attachRequestAdapter`；扁平 `request-adapter` 仍注册 |
 | **Pump** | 同 M2：`callRunConcurrent` / `run_concurrent` |
 
-禁止 Latch / 假 future 冒充。非 `option<gpu-adapter>` / options record。
+禁止 Latch / 假 future 冒充。形状与钉版 WIT `request-adapter: async func(options: option<gpu-request-adapter-options>) -> option<gpu-adapter>` 同构。非合规宣称。
 
 ## WASI webgpu `[method]gpu-adapter.request-device`（W3）
 

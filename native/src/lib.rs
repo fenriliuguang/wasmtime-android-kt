@@ -10,6 +10,7 @@ mod error;
 mod handles;
 mod host;
 mod jvm;
+mod webgpu_abi;
 
 use jni::objects::JClass;
 use jni::sys::{jint, jstring, JNI_VERSION_1_6, JavaVM};
