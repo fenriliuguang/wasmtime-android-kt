@@ -50,6 +50,9 @@ interface ExperimentalHostCallbacks {
     /** W3+: host-fixed empty bind-group (not from Guest). */
     fun deviceCreateBindGroup(device: Int): Int = unsupported("deviceCreateBindGroup")
 
+    /** W3+: host-fixed stub shader + triangle pipeline (not from Guest). */
+    fun deviceCreateRenderPipeline(device: Int): Int = unsupported("deviceCreateRenderPipeline")
+
     /** Host picks a fixed clear color (smoke). */
     fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")
 
