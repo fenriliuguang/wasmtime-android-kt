@@ -9,7 +9,10 @@ use crate::host::{
     HostState,
     Widget,
 };
-use crate::webgpu_abi::GpuRequestAdapterOptions;
+use crate::webgpu_abi::{
+    GpuDeviceDescriptor, GpuRequestAdapterOptions, RecordOptionGpuSize64, RequestDeviceError,
+    RequestDeviceErrorKind,
+};
 use crate::jvm;
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -473,8 +476,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // `get-gpu` + `[method]gpu.request-adapter` (S2: async
     // option<own<gpu-adapter>> + option<gpu-request-adapter-options>), `gpu-adapter`
     // + `get-adapter`
-    // + `[method]gpu-adapter.request-device` (async; still return u32, not
-    // option<gpu-adapter> / result<gpu-device>), and `gpu-device` + `get-device`
+    // + `[method]gpu-adapter.request-device` (S3: async
+    // result<own<gpu-device>, request-device-error> + option<gpu-device-descriptor>),
+    // and `gpu-device` + `get-device`
     // + `[method]gpu-device.queue` (S1: sync getter → `own<gpu-queue>`)
     // and `[method]gpu-device.create-command-encoder` (sync; still
     // u32, not option<descriptor>) and `[method]gpu-device.create-buffer`
@@ -576,32 +580,13 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?;
         webgpu
-            .func_wrap_concurrent(
-                "[method]gpu-adapter.request-device",
-                |accessor, (adapter,): (Resource<GpuAdapter>,)| {
-                    Box::pin(async move {
-                        let cb = accessor.with(|mut access| {
-                            let _ = access.data_mut().table.get(&adapter)?;
-                            access
-                                .data_mut()
-                                .experimental_host_cb
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    wasmtime::Error::msg("experimental host callback not set")
-                                })
-                                .cloned()
-                        })?;
-                        let (tx, rx) = oneshot::channel::<()>();
-                        std::thread::spawn(move || {
-                            let _ = tx.send(());
-                        });
-                        let _ = rx.await;
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        let rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?;
-                        Ok((rep,))
-                    })
+            .resource(
+                "record-option-gpu-size64",
+                ResourceType::host::<RecordOptionGpuSize64>(),
+                |mut store, rep| {
+                    let resource = Resource::<RecordOptionGpuSize64>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -617,8 +602,57 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap_concurrent(
+                "[method]gpu-adapter.request-device",
+                |accessor, (adapter, _descriptor): (
+                    Resource<GpuAdapter>,
+                    Option<GpuDeviceDescriptor>,
+                )| {
+                    Box::pin(async move {
+                        let (cb, adapter_rep) = accessor.with(|mut access| {
+                            let adapter_rep = access.data_mut().table.get(&adapter)?.rep;
+                            let cb = access
+                                .data_mut()
+                                .experimental_host_cb
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    wasmtime::Error::msg("experimental host callback not set")
+                                })
+                                .cloned()?;
+                            Ok::<_, wasmtime::Error>((cb, adapter_rep))
+                        })?;
+                        let (tx, rx) = oneshot::channel::<()>();
+                        std::thread::spawn(move || {
+                            let _ = tx.send(());
+                        });
+                        let _ = rx.await;
+                        let l2_adapter = if adapter_rep == 0 {
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                        } else {
+                            adapter_rep
+                        };
+                        let device_rep = jvm::exp_adapter_request_device(&cb, l2_adapter)
+                            .map_err(wasmtime::Error::msg)?;
+                        if device_rep == 0 {
+                            return Ok((Err(RequestDeviceError {
+                                kind: RequestDeviceErrorKind::OperationError,
+                                message: "adapter-request-device returned 0".into(),
+                            }),));
+                        }
+                        let resource = accessor.with(|mut access| {
+                            access
+                                .data_mut()
+                                .table
+                                .push(GpuDevice { rep: device_rep })
+                        })?;
+                        Ok((Ok(resource),))
+                    })
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap("get-device", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuDevice)?;
+                let resource = store.data_mut().table.push(GpuDevice { rep: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;

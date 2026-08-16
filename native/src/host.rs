@@ -21,10 +21,14 @@ pub struct GpuAdapter {
 }
 
 /// Host representation of WIT `resource gpu-device`.
-/// S1 test constructor `get-device` still pushes an empty device; L2 handles
-/// are obtained inside `[method]gpu-device.queue`.
+/// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
+/// S1 `get-device` still pushes `{ rep: 0 }`; L2 handles for that path are
+/// obtained inside later methods. S3 `request-device` stores the real L2 rep.
 #[derive(Debug)]
-pub struct GpuDevice;
+pub struct GpuDevice {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
 
 /// Host representation of WIT `resource gpu-command-encoder` (W3 `[method]`).
 /// No L2 handle yet; begin-render-pass / finish chain L2 from adapter.

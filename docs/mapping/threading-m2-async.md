@@ -124,16 +124,16 @@
 
 禁止 Latch / 假 future 冒充。形状与钉版 WIT `request-adapter: async func(options: option<gpu-request-adapter-options>) -> option<gpu-adapter>` 同构。非合规宣称。
 
-## WASI webgpu `[method]gpu-adapter.request-device`（W3）
+## WASI webgpu `[method]gpu-adapter.request-device`（S3）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | 提案 instance 注册 `gpu-adapter` resource + sync `get-adapter`；`[method]gpu-adapter.request-device`：`func_wrap_concurrent` + oneshot yield → L2 `request-adapter` 再 `adapter-request-device`（同 u32） |
-| **Guest** | `get-adapter` → `[method]gpu-adapter.request-device`（borrow self；`fixtures/w1/webgpu_method_request_device`） |
+| **Host** | 提案 instance：`gpu-adapter` + `gpu-device` + `record-option-gpu-size64` resource；sync `get-adapter`（测试构造器）；`[method]gpu-adapter.request-device`：`func_wrap_concurrent` + oneshot yield → L2 `adapter-request-device`，返回 `result<own<gpu-device>, request-device-error>`（表内 `GpuDevice.rep` = L2 u32） |
+| **Guest** | `get-adapter` → `[method]gpu-adapter.request-device`(self, none) → drop own device on ok；`run` 返回 harness `1` |
 | **仪器** | 复用 `attachRequestDevice`；扁平 `adapter-request-device` 仍注册 |
 | **Pump** | 同 M2：`callRunConcurrent` / `run_concurrent` |
 
-禁止 Latch / 假 future 冒充。非 `result<gpu-device, request-device-error>` / descriptor。
+禁止 Latch / 假 future 冒充。形状与钉版 WIT `request-device: async func(descriptor: option<gpu-device-descriptor>) -> result<gpu-device, request-device-error>` 同构。非合规宣称。Guest 本刀传 descriptor=none（S4 才填真实 record）。
 
 ## WASI webgpu `[method]gpu-device.queue`（S1）
 
