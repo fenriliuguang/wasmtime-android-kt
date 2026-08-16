@@ -349,6 +349,15 @@ pub fn exp_render_pass_set_bind_group(cb: &GlobalRef, pass: u32) -> Result<(), S
     )
 }
 
+pub fn exp_render_pass_set_vertex_buffer(cb: &GlobalRef, pass: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassSetVertexBuffer",
+        "(I)V",
+        vec![HostArg::Int(pass as i32)],
+    )
+}
+
 pub fn exp_compute_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(cb, "computePassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
 }

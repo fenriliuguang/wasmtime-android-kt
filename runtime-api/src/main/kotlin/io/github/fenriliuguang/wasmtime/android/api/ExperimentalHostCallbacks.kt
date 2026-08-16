@@ -81,6 +81,11 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassSetBindGroup")
     }
 
+    /** W3+: JNI ignores Guest stub buffer; host creates VERTEX buffer then set slot 0. */
+    fun renderPassSetVertexBuffer(pass: Int) {
+        unsupported("renderPassSetVertexBuffer")
+    }
+
     /** W3+: JNI ignores Guest stub pass; host begins then ends a compute pass. */
     fun computePassEnd(pass: Int) {
         unsupported("computePassEnd")
