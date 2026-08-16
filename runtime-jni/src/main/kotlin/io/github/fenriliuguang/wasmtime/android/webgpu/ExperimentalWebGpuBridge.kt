@@ -9,6 +9,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuBufferUsage
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuMapMode
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
@@ -88,6 +89,39 @@ object ExperimentalWebGpuBridge {
                         size = STUB_BUFFER_SIZE,
                         usage = GpuBufferUsage.COPY_DST or GpuBufferUsage.VERTEX,
                     )
+            },
+        )
+    }
+
+    /**
+     * W3+: adapter + device + host-fixed MAP_READ buffer + map-async.
+     * Guest stub buffer ignored. True CM async (`func_wrap_concurrent`).
+     * `[method]gpu-buffer.map-async`.
+     */
+    fun attachBufferMapAsync(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateBuffer(device: Int): Int =
+                    bindings.deviceCreateBuffer(
+                        device,
+                        size = STUB_BUFFER_SIZE,
+                        usage = GpuBufferUsage.MAP_READ or GpuBufferUsage.COPY_DST,
+                    )
+
+                override fun bufferMapAsync(buffer: Int) {
+                    bindings.bufferMapAsync(
+                        buffer,
+                        GpuMapMode.READ,
+                        0,
+                        STUB_BUFFER_SIZE,
+                    )
+                }
             },
         )
     }
