@@ -1,6 +1,7 @@
 package io.github.fenriliuguang.wasmtime.android.webgpu
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuBufferUsage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
@@ -146,6 +147,28 @@ object ExperimentalWebGpuBridge {
 
                 override fun deviceCreateShaderModule(device: Int): Int =
                     bindings.deviceCreateShaderModule(device, STUB_WGSL)
+            },
+        )
+    }
+
+    /**
+     * W3+: adapter + device + host-fixed empty bind-group-layout.
+     * `[method]gpu-device.create-bind-group-layout` (no Guest descriptor).
+     */
+    fun attachCreateBindGroupLayout(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateBindGroupLayout(device: Int): Int =
+                    bindings.deviceCreateBindGroupLayout(
+                        device,
+                        BindGroupLayoutDescriptor(entries = emptyList()),
+                    )
             },
         )
     }

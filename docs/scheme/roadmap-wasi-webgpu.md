@@ -76,6 +76,7 @@ W3  队列与缓冲关键面（resource 面史诗仍在进行）
     **W3+** `[method]gpu-device.create-shader-module` sync 已交付（host 固定 stub WGSL，仍 u32）
     **W3+** `[method]gpu-queue.write-buffer` sync 已交付（host 固定 4 字节，单 buffer u32）
     **W3+** `[method]gpu-texture.create-view` sync 已交付（host 固定 1×1 texture，仍 u32）
+    **W3+** `[method]gpu-device.create-bind-group-layout` sync 已交付（host 固定空 entries，仍 u32）
     按差距表选高频 async/sync 方法切片；每片独立 DoD
 
 W4  呈现路径策略（选型已立；文档）
