@@ -287,6 +287,15 @@ pub fn exp_create_render_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, St
     )
 }
 
+pub fn exp_create_compute_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateComputePipeline",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 pub fn exp_begin_render_pass_clear(
     cb: &GlobalRef,
     encoder: u32,

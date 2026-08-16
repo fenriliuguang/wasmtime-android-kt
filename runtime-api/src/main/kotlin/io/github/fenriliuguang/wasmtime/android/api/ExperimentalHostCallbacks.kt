@@ -53,6 +53,9 @@ interface ExperimentalHostCallbacks {
     /** W3+: host-fixed stub shader + triangle pipeline (not from Guest). */
     fun deviceCreateRenderPipeline(device: Int): Int = unsupported("deviceCreateRenderPipeline")
 
+    /** W3+: host-fixed stub shader + explicit empty pipeline-layout (not from Guest). */
+    fun deviceCreateComputePipeline(device: Int): Int = unsupported("deviceCreateComputePipeline")
+
     /** Host picks a fixed clear color (smoke). */
     fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")
 
