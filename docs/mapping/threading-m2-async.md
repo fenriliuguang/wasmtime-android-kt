@@ -342,6 +342,17 @@
 
 非 Guest `gpu-compute-pass-descriptor` / `gpu-compute-pass-encoder` resource。
 
+## WASI webgpu `[method]gpu-compute-pass-encoder.end`（W3+）
+
+| 角色 | 职责 |
+|------|------|
+| **Host** | 新 `gpu-compute-pass-encoder` / `get-compute-pass`；`[method]gpu-compute-pass-encoder.end`：`func_wrap` sync void → L2 adapter/device/encoder + begin-compute-pass + end（忽略 Guest stub） |
+| **Guest** | `get-compute-pass` → end；返回 stub 79（`fixtures/w1/webgpu_method_compute_pass_end`） |
+| **仪器** | `attachComputePassEnd` |
+| **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
+
+不复用 `get-pass`（那是 render-pass）。Cpu `computePassEnd` 会 drop handle。
+
 ## 与轨 A 文档关系
 
 更广的 Dawn / Surface 契约见 [`threading-android.md`](threading-android.md)。M2 仅覆盖 L1 async 泵；接 L2 后不得在 Gpu 线程上嵌套第二个 Store 泵。

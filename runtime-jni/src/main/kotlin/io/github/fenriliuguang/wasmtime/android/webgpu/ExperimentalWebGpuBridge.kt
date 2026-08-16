@@ -347,6 +347,32 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * W3+: adapter + device + encoder + begin-compute-pass + compute-pass-end.
+     * `[method]gpu-compute-pass-encoder.end` (Guest stub pass ignored).
+     */
+    fun attachComputePassEnd(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginComputePass(encoder: Int): Int =
+                    bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun computePassEnd(pass: Int) {
+                    bindings.computePassEnd(pass)
+                }
+            },
+        )
+    }
+
+    /**
      * W3 slice: adapter + device + encoder + begin-render-pass-clear.
      *
      * Guest passes transitional stub view `23` (not a surface texture). After

@@ -33,6 +33,10 @@ pub struct GpuCommandEncoder;
 #[derive(Debug)]
 pub struct GpuRenderPassEncoder;
 
+/// Host representation of WIT `resource gpu-compute-pass-encoder` (W3+ `[method]`).
+#[derive(Debug)]
+pub struct GpuComputePassEncoder;
+
 /// Host representation of WIT `resource gpu-queue` (W3 `[method]`).
 #[derive(Debug)]
 pub struct GpuQueue;
