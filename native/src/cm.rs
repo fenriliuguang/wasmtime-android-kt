@@ -482,7 +482,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `gpu-texture` + `get-texture` + `[method]gpu-texture.create-view` (sync; still u32)
     // and `[method]gpu-device.create-bind-group-layout` (sync; host-fixed empty layout, still u32)
     // and `[method]gpu-device.create-pipeline-layout` (sync; host-fixed empty bind-group-layouts, still u32)
-    // and `[method]gpu-device.create-bind-group` (sync; host-fixed empty entries, still u32).
+    // and `[method]gpu-device.create-bind-group` (sync; host-fixed empty entries, still u32)
+    // and `[method]gpu-device.create-render-pipeline` (sync; host-fixed stub shader + triangle, still u32).
     // Experimental stays sync.
     // Not full option / list.
     {
@@ -817,6 +818,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
                     let rep = jvm::exp_create_bind_group(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((rep,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.create-render-pipeline",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let rep = jvm::exp_create_render_pipeline(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((rep,))
                 },
