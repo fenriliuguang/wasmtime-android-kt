@@ -71,6 +71,11 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassSetPipeline")
     }
 
+    /** W3+: JNI ignores Guest vertexCount; host set-pipeline then draw(3). */
+    fun renderPassDraw(pass: Int) {
+        unsupported("renderPassDraw")
+    }
+
     /** W3+: JNI ignores Guest stub pass; host begins then ends a compute pass. */
     fun computePassEnd(pass: Int) {
         unsupported("computePassEnd")
