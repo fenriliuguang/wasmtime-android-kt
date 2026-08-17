@@ -68,16 +68,16 @@ interface ExperimentalHostCallbacks {
     /** W3+: host-fixed sampler descriptor (not from Guest). */
     fun deviceCreateSampler(device: Int): Int = unsupported("deviceCreateSampler")
 
-    /** W3+: host-fixed WGSL (not from Guest). */
+    /** S6+: guest `gpu-shader-module-descriptor`; L2 still host-fixed WGSL. */
     fun deviceCreateShaderModule(device: Int): Int = unsupported("deviceCreateShaderModule")
 
-    /** W3+: host-fixed empty bind-group-layout (not from Guest). */
+    /** S6+: guest `gpu-bind-group-layout-descriptor`; L2 still host-fixed empty entries. */
     fun deviceCreateBindGroupLayout(device: Int): Int = unsupported("deviceCreateBindGroupLayout")
 
-    /** W3+: host-fixed empty pipeline-layout (not from Guest). */
+    /** S6+: guest `gpu-pipeline-layout-descriptor`; L2 still host-fixed empty bind-group-layouts. */
     fun deviceCreatePipelineLayout(device: Int): Int = unsupported("deviceCreatePipelineLayout")
 
-    /** W3+: host-fixed empty bind-group (not from Guest). */
+    /** S6+: guest `gpu-bind-group-descriptor`; L2 still host-fixed empty BGL + empty entries. */
     fun deviceCreateBindGroup(device: Int): Int = unsupported("deviceCreateBindGroup")
 
     /** W3+: host-fixed stub shader + triangle pipeline (not from Guest). */

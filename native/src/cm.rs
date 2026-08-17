@@ -4,17 +4,19 @@ use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_err, throw_link};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
-    Gpu, GpuAdapter, GpuBuffer, GpuCommandBuffer, GpuCommandEncoder, GpuComputePassEncoder,
-    GpuDevice, GpuQueue, GpuRenderPassEncoder, GpuSampler, GpuTexture, GpuTextureView, HostState,
+    Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
+    GpuCommandEncoder, GpuComputePassEncoder, GpuDevice, GpuPipelineLayout, GpuQueue,
+    GpuRenderPassEncoder, GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState,
     Widget,
 };
 use crate::jvm;
 use crate::webgpu_abi::{
-    GpuBufferDescriptor, GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor,
-    GpuComputePassDescriptor, GpuDeviceDescriptor, GpuMapMode, GpuQuerySet,
-    GpuRenderPassDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor, GpuTextureDescriptor,
-    GpuTextureViewDescriptor, MapAsyncError, RecordOptionGpuSize64, RequestDeviceError,
-    RequestDeviceErrorKind,
+    GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferDescriptor,
+    GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor, GpuComputePassDescriptor,
+    GpuDeviceDescriptor, GpuMapMode, GpuPipelineLayoutDescriptor, GpuQuerySet,
+    GpuRenderPassDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
+    GpuShaderModuleDescriptor, GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError,
+    RecordOptionGpuSize64, RequestDeviceError, RequestDeviceErrorKind,
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -480,14 +482,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-buffer.unmap` (sync void; host-fixed map then unmap)
     // and `[method]gpu-device.create-texture` (S6+: sync (borrow, gpu-texture-descriptor) -> own<gpu-texture>) and
     // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
-    // and `[method]gpu-device.create-shader-module` (sync; host-fixed WGSL, still u32)
+    // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 still host-fixed WGSL)
     // and `[method]gpu-queue.write-buffer` (sync void; host-fixed bytes, single buffer u32)
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>)
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
-    // and `[method]gpu-device.create-bind-group-layout` (sync; host-fixed empty layout, still u32)
-    // and `[method]gpu-device.create-pipeline-layout` (sync; host-fixed empty bind-group-layouts, still u32)
-    // and `[method]gpu-device.create-bind-group` (sync; host-fixed empty entries, still u32)
+    // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 still host-fixed empty entries)
+    // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 still host-fixed empty bind-group-layouts)
+    // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 still host-fixed empty BGL + empty entries)
     // and `[method]gpu-device.create-render-pipeline` (sync; host-fixed stub shader + triangle, still u32)
     // and `[method]gpu-device.create-compute-pipeline` (sync; host-fixed stub shader + empty layout, still u32)
     // and `[method]gpu-queue.write-texture` (sync void; host-fixed 1×1 texels, single texture u32)
@@ -1013,86 +1015,198 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
-            .func_wrap(
-                "[method]gpu-device.create-shader-module",
-                |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_create_shader_module(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+            .resource(
+                "gpu-pipeline-layout",
+                ResourceType::host::<GpuPipelineLayout>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuPipelineLayout>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-shader-module",
+                ResourceType::host::<GpuShaderModule>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuShaderModule>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
-                "[method]gpu-device.create-bind-group-layout",
-                |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                "[method]gpu-device.create-shader-module",
+                |mut caller, (device, _descriptor): (
+                    Resource<GpuDevice>,
+                    GpuShaderModuleDescriptor,
+                )| {
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let shader_rep = jvm::exp_create_shader_module(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_create_bind_group_layout(&cb, device_rep)
+                    if shader_rep == 0 {
+                        return Err(wasmtime::Error::msg(
+                            "device-create-shader-module returned 0",
+                        ));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuShaderModule { rep: shader_rep })?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-bind-group-layout",
+                ResourceType::host::<GpuBindGroupLayout>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuBindGroupLayout>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-bind-group-layout", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuBindGroupLayout { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.create-bind-group-layout",
+                |mut caller, (device, _descriptor): (
+                    Resource<GpuDevice>,
+                    GpuBindGroupLayoutDescriptor,
+                )| {
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let layout_rep = jvm::exp_create_bind_group_layout(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    if layout_rep == 0 {
+                        return Err(wasmtime::Error::msg(
+                            "device-create-bind-group-layout returned 0",
+                        ));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuBindGroupLayout { rep: layout_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-pipeline-layout",
-                |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                |mut caller, (device, _descriptor): (
+                    Resource<GpuDevice>,
+                    GpuPipelineLayoutDescriptor,
+                )| {
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let layout_rep = jvm::exp_create_pipeline_layout(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_create_pipeline_layout(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    if layout_rep == 0 {
+                        return Err(wasmtime::Error::msg(
+                            "device-create-pipeline-layout returned 0",
+                        ));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuPipelineLayout { rep: layout_rep })?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-bind-group",
+                ResourceType::host::<GpuBindGroup>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuBindGroup>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-bind-group",
-                |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                |mut caller, (device, _descriptor): (
+                    Resource<GpuDevice>,
+                    GpuBindGroupDescriptor,
+                )| {
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let bg_rep = jvm::exp_create_bind_group(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_create_bind_group(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    if bg_rep == 0 {
+                        return Err(wasmtime::Error::msg("device-create-bind-group returned 0"));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuBindGroup { rep: bg_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;

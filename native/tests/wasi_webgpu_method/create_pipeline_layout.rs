@@ -1,10 +1,39 @@
-//! W3+ slice: `get-device` + `[method]gpu-device.create-pipeline-layout`. Stub returns 61.
+//! S6+: `get-device` + `[method]gpu-device.create-pipeline-layout`
+//! WIT: `(borrow<gpu-device>, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>`.
+//! Guest passes empty bind-group-layouts; drops own; `run` returns harness 1.
 
-use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuDevice;
+struct GpuDevice {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug)]
+struct GpuBindGroupLayout {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug)]
+struct GpuPipelineLayout {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GpuPipelineLayoutDescriptor {
+    #[component(name = "bind-group-layouts")]
+    bind_group_layouts: Vec<Option<Resource<GpuBindGroupLayout>>>,
+    #[component(name = "immediate-size")]
+    immediate_size: Option<u32>,
+    label: Option<String>,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -21,22 +50,55 @@ fn register_method_create_pipeline_layout(linker: &mut Linker<TestHost>) -> wasm
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-bind-group-layout",
+        ResourceType::host::<GpuBindGroupLayout>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuBindGroupLayout>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
+    webgpu.resource(
+        "gpu-pipeline-layout",
+        ResourceType::host::<GpuPipelineLayout>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuPipelineLayout>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-device", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuDevice)?;
+        let resource = store.data_mut().table.push(GpuDevice { rep: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
         "[method]gpu-device.create-pipeline-layout",
-        |mut caller, (device,): (Resource<GpuDevice>,)| {
+        |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuPipelineLayoutDescriptor)| {
             caller.data_mut().table.get(&device).map(|_| ())?;
-            Ok((61u32,))
+            assert!(
+                descriptor.bind_group_layouts.is_empty(),
+                "guest must pass empty bind-group-layouts this slice"
+            );
+            assert!(descriptor.immediate_size.is_none());
+            assert!(descriptor.label.is_none());
+            let resource = caller
+                .data_mut()
+                .table
+                .push(GpuPipelineLayout { rep: 61 })?;
+            Ok((resource,))
         },
     )?;
     Ok(())
 }
 
 fn new_store(engine: &Engine) -> Store<TestHost> {
-    Store::new(engine, TestHost { table: ResourceTable::new() })
+    Store::new(
+        engine,
+        TestHost {
+            table: ResourceTable::new(),
+        },
+    )
 }
 
 #[test]
@@ -64,7 +126,10 @@ fn wasi_webgpu_method_create_pipeline_layout_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 61, "guest run must return stub pipeline-layout rep via [method]");
+    assert_eq!(
+        v, 1,
+        "guest run must drop own<gpu-pipeline-layout> and return harness 1"
+    );
     Ok(())
 }
 
@@ -85,6 +150,9 @@ fn wasi_webgpu_method_create_pipeline_layout_call_async() -> wasmtime::Result<()
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 61, "guest run must return stub pipeline-layout rep via [method] call_async");
+    assert_eq!(
+        v, 1,
+        "guest run must drop own<gpu-pipeline-layout> and return harness 1 via call_async"
+    );
     Ok(())
 }

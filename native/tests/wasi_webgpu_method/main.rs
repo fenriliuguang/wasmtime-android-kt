@@ -32,5 +32,6 @@ mod render_pass_set_vertex_buffer;
 mod request_adapter;
 mod request_device;
 mod texture_create_view;
+mod texture_format;
 mod write_buffer;
 mod write_texture;

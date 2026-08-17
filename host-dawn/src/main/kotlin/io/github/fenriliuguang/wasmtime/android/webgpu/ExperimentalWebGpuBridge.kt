@@ -219,8 +219,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + create-shader-module. Host-fixed stub WGSL
-     * (no Guest string). `[method]gpu-device.create-shader-module`.
+     * W3+: adapter + device + create-shader-module. Guest passes
+     * `gpu-shader-module-descriptor`; L2 still host-fixed stub WGSL.
+     * `[method]gpu-device.create-shader-module`.
      */
     fun attachCreateShaderModule(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -238,8 +239,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + host-fixed empty bind-group-layout.
-     * `[method]gpu-device.create-bind-group-layout` (no Guest descriptor).
+     * W3+: adapter + device + empty bind-group-layout.
+     * Guest passes `gpu-bind-group-layout-descriptor`; L2 still host-fixed empty entries.
+     * `[method]gpu-device.create-bind-group-layout`.
      */
     fun attachCreateBindGroupLayout(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -260,8 +262,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + host-fixed empty pipeline-layout.
-     * `[method]gpu-device.create-pipeline-layout` (no Guest descriptor).
+     * W3+: adapter + device + empty pipeline-layout.
+     * Guest passes `gpu-pipeline-layout-descriptor`; L2 still host-fixed empty bind-group-layouts.
+     * `[method]gpu-device.create-pipeline-layout`.
      */
     fun attachCreatePipelineLayout(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -283,7 +286,8 @@ object ExperimentalWebGpuBridge {
 
     /**
      * W3+: adapter + device + empty BGL then empty bind-group.
-     * `[method]gpu-device.create-bind-group` (no Guest descriptor).
+     * Guest passes `gpu-bind-group-descriptor`; L2 still host-fixed empty BGL + empty entries.
+     * `[method]gpu-device.create-bind-group`.
      */
     fun attachCreateBindGroup(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
