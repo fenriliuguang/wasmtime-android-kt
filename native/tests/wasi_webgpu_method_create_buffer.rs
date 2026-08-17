@@ -1,12 +1,58 @@
-//! W3+ slice: wasi:webgpu/webgpu@0.3.0-rc.2 `get-device` +
-//! `[method]gpu-device.create-buffer` (resource self, sync).
-//! Stub: get-device pushes a host `GpuDevice`; method returns 31.
+//! S4: wasi:webgpu/webgpu@0.3.0-rc.2 `get-device` + `[method]gpu-device.create-buffer`
+//! WIT: `(borrow<gpu-device>, gpu-buffer-descriptor) -> own<gpu-buffer>`.
+//! Guest passes size=4, usage=COPY_DST|VERTEX; drops own; `run` returns harness 1.
 
-use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuDevice;
+struct GpuDevice {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug)]
+struct GpuBuffer {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+flags! {
+    GpuBufferUsage {
+        #[component(name = "map-read")]
+        const MAP_READ;
+        #[component(name = "map-write")]
+        const MAP_WRITE;
+        #[component(name = "copy-src")]
+        const COPY_SRC;
+        #[component(name = "copy-dst")]
+        const COPY_DST;
+        #[component(name = "index")]
+        const INDEX;
+        #[component(name = "vertex")]
+        const VERTEX;
+        #[component(name = "uniform")]
+        const UNIFORM;
+        #[component(name = "storage")]
+        const STORAGE;
+        #[component(name = "indirect")]
+        const INDIRECT;
+        #[component(name = "query-resolve")]
+        const QUERY_RESOLVE;
+    }
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GpuBufferDescriptor {
+    size: u64,
+    usage: GpuBufferUsage,
+    #[component(name = "mapped-at-creation")]
+    mapped_at_creation: Option<bool>,
+    label: Option<String>,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -23,15 +69,36 @@ fn register_method_create_buffer(linker: &mut Linker<TestHost>) -> wasmtime::Res
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-buffer",
+        ResourceType::host::<GpuBuffer>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuBuffer>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-device", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuDevice)?;
+        let resource = store.data_mut().table.push(GpuDevice { rep: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
         "[method]gpu-device.create-buffer",
-        |mut caller, (device,): (Resource<GpuDevice>,)| {
+        |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuBufferDescriptor)| {
             caller.data_mut().table.get(&device).map(|_| ())?;
-            Ok((31u32,))
+            assert_eq!(descriptor.size, 4, "guest must pass record size=4");
+            assert!(
+                descriptor.usage.contains(GpuBufferUsage::COPY_DST),
+                "guest must pass COPY_DST"
+            );
+            assert!(
+                descriptor.usage.contains(GpuBufferUsage::VERTEX),
+                "guest must pass VERTEX"
+            );
+            assert!(descriptor.mapped_at_creation.is_none());
+            assert!(descriptor.label.is_none());
+            let resource = caller.data_mut().table.push(GpuBuffer { rep: 31 })?;
+            Ok((resource,))
         },
     )?;
     Ok(())
@@ -73,7 +140,10 @@ fn wasi_webgpu_method_create_buffer_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 31, "guest run must return stub buffer rep via [method]");
+    assert_eq!(
+        v, 1,
+        "guest run must drop own<gpu-buffer> and return harness 1"
+    );
     Ok(())
 }
 
@@ -97,8 +167,8 @@ fn wasi_webgpu_method_create_buffer_call_async() -> wasmtime::Result<()> {
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
     assert_eq!(
-        v, 31,
-        "guest run must return stub buffer rep via [method] call_async"
+        v, 1,
+        "guest run must drop own<gpu-buffer> and return harness 1 via call_async"
     );
     Ok(())
 }

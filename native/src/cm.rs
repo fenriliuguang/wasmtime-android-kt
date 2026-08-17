@@ -10,8 +10,8 @@ use crate::host::{
     Widget,
 };
 use crate::webgpu_abi::{
-    GpuDeviceDescriptor, GpuRequestAdapterOptions, RecordOptionGpuSize64, RequestDeviceError,
-    RequestDeviceErrorKind,
+    GpuBufferDescriptor, GpuDeviceDescriptor, GpuRequestAdapterOptions, RecordOptionGpuSize64,
+    RequestDeviceError, RequestDeviceErrorKind,
 };
 use crate::jvm;
 use futures::channel::oneshot;
@@ -482,7 +482,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // + `[method]gpu-device.queue` (S1: sync getter → `own<gpu-queue>`)
     // and `[method]gpu-device.create-command-encoder` (sync; still
     // u32, not option<descriptor>) and `[method]gpu-device.create-buffer`
-    // (sync; host-fixed descriptor, still u32) and
+    // (S4: sync (borrow, gpu-buffer-descriptor) -> own<gpu-buffer>) and
     // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (true async void; host-fixed MAP_READ then map)
     // and `[method]gpu-buffer.unmap` (sync void; host-fixed map then unmap)
     // and `[method]gpu-device.create-texture` (sync; host-fixed 1x1, still u32) and
@@ -716,21 +716,37 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-buffer",
-                |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuBufferDescriptor)| {
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_create_buffer(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let buffer_rep = jvm::exp_create_buffer_described(
+                        &cb,
+                        l2_device,
+                        descriptor.size,
+                        descriptor.usage.to_webgpu_u32(),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    if buffer_rep == 0 {
+                        return Err(wasmtime::Error::msg("device-create-buffer returned 0"));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuBuffer { rep: buffer_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -808,7 +824,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-buffer", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuBuffer)?;
+                let resource = store.data_mut().table.push(GpuBuffer { rep: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;

@@ -48,7 +48,7 @@
 |------|------|------|
 | Adapter 元数据 | `features` / `limits` / `info` | W3+ |
 | Device 生命周期 | `destroy`、lost、错误作用域 | W3+ |
-| Buffer / Texture / Sampler | 创建、map（**async** map 相关） | **W3** `[method]gpu-device.create-buffer` / `[method]gpu-device.create-texture` / `[method]gpu-device.create-sampler` / `[method]gpu-texture.create-view` sync 已交付（host 固定 descriptor，仍 u32）；**W3** `[method]gpu-buffer.map-async` 真 async 已交付（host 固定 MAP_READ）；**W3** `[method]gpu-buffer.unmap` sync 已交付；`get-mapped-range` 仍后 |
+| Buffer / Texture / Sampler | 创建、map（**async** map 相关） | **S4** `[method]gpu-device.create-buffer` 已交付（Guest `gpu-buffer-descriptor` → `own<gpu-buffer>`）；**W3** `[method]gpu-device.create-texture` / `[method]gpu-device.create-sampler` / `[method]gpu-texture.create-view` sync 已交付（host 固定 descriptor，仍 u32）；**W3** `[method]gpu-buffer.map-async` 真 async 已交付（host 固定 MAP_READ）；**W3** `[method]gpu-buffer.unmap` sync 已交付；`get-mapped-range` 仍后 |
 | Pipeline / Bind group | render/compute pipeline | **W3** `[method]gpu-device.create-bind-group-layout` / `[method]gpu-device.create-pipeline-layout` / `[method]gpu-device.create-bind-group` / `[method]gpu-device.create-render-pipeline` / `[method]gpu-device.create-compute-pipeline` sync 已交付（host 固定空 entries / stub shader，仍 u32）；descriptor / list 仍后 |
 | Shader module | WGSL 模块 | **W3** `[method]gpu-device.create-shader-module` sync 已交付（host 固定 WGSL，仍 u32） |
 | Queue 写入 | `write-buffer` / `write-texture` / `on-submitted-work-done`（async） | **W3** `[method]gpu-queue.write-buffer` / `[method]gpu-queue.write-texture` sync 已交付（host 固定 4 字节 / 1×1，单 buffer/texture u32）；async 仍后 |
@@ -73,7 +73,7 @@
 切片**定义**见 [`../scheme/rfc-wasi-webgpu-canonical-shape.md`](../scheme/rfc-wasi-webgpu-canonical-shape.md) **S 系列** 与 [`../scheme/roadmap-wasi-webgpu.md`](../scheme/roadmap-wasi-webgpu.md)。  
 **正在做 / 下一刀** 只维护在 GitHub Project：[wasmtime-android-kt progress](https://github.com/users/fenriliuguang/projects/1)（筛 `Slice` = S1…，`Status` = Todo 或 In Progress）。功能 PR **不要**在本页追加编号清单。
 
-史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸；**W3 host-fixed `[method]` 冻结**（本表 §2 为对照，不是扩面看板）。W4 分层见 [`../scheme/w4-present-strategy.md`](../scheme/w4-present-strategy.md)。**S1 已交付**（`gpu-device.queue` → `own<gpu-queue>`）。**S2 已交付**（`gpu.request-adapter` → `option<own<gpu-adapter>>`）。**S3 已交付**（`gpu-adapter.request-device` → `result<own<gpu-device>, …>`）。**下一刀代码：S4**（`gpu-device.create-buffer` + 真实 `gpu-buffer-descriptor`）。
+史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸；**W3 host-fixed `[method]` 冻结**（本表 §2 为对照，不是扩面看板）。W4 分层见 [`../scheme/w4-present-strategy.md`](../scheme/w4-present-strategy.md)。**S1 已交付**（`gpu-device.queue` → `own<gpu-queue>`）。**S2 已交付**（`gpu.request-adapter` → `option<own<gpu-adapter>>`）。**S3 已交付**（`gpu-adapter.request-device` → `result<own<gpu-device>, …>`）。**S4 已交付**（`gpu-device.create-buffer` + 真实 `gpu-buffer-descriptor` → `own<gpu-buffer>`）。**下一刀代码：S5**（`gpu-queue.submit` + `list<borrow<gpu-command-buffer>>`）。
 
 ## 6. 钉版与修订
 

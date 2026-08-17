@@ -199,16 +199,16 @@
 
 非提案 `list<borrow<gpu-command-buffer>>`。
 
-## WASI webgpu `[method]gpu-device.create-buffer`（W3+）
+## WASI webgpu `[method]gpu-device.create-buffer`（S4）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | 复用 `gpu-device` / `get-device`；`[method]gpu-device.create-buffer`：`func_wrap` sync → L2 adapter/device 再 host 固定 `device-create-buffer`（4 字节 COPY_DST\|VERTEX） |
-| **Guest** | `get-device` → create-buffer（`fixtures/w1/webgpu_method_create_buffer`） |
-| **仪器** | `attachCreateBuffer` |
+| **Host** | 复用 `gpu-device` / `get-device`；`[method]gpu-device.create-buffer`：`func_wrap` sync `(borrow, gpu-buffer-descriptor) -> own<gpu-buffer>` → L2 adapter/device 再按 Guest size/usage 建 buffer |
+| **Guest** | `get-device` → create-buffer（size=4，COPY_DST\|VERTEX，mapped/label=none）→ drop own；`run` 返回 1（`fixtures/w1/webgpu_method_create_buffer`） |
+| **仪器** | `attachCreateBuffer`（转发 Guest size/usage） |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
 
-非 Guest `gpu-buffer-descriptor` / `gpu-buffer` resource。
+形状与钉版 WIT `create-buffer: func(descriptor: gpu-buffer-descriptor) -> gpu-buffer` 同构。mapped-at-creation / label 本刀传 none。非合规宣称。
 
 ## WASI webgpu `[method]gpu-device.create-texture`（W3+）
 

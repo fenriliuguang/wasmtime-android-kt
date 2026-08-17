@@ -72,8 +72,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + create-buffer. Host-fixed 4-byte COPY_DST|VERTEX
-     * descriptor (no Guest record). `[method]gpu-device.create-buffer` only.
+     * S4: adapter + device + `[method]gpu-device.create-buffer` with Guest
+     * `gpu-buffer-descriptor` size/usage forwarded to L2 (mapped/label unused).
      */
     fun attachCreateBuffer(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -84,12 +84,11 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
-                override fun deviceCreateBuffer(device: Int): Int =
-                    bindings.deviceCreateBuffer(
-                        device,
-                        size = STUB_BUFFER_SIZE,
-                        usage = GpuBufferUsage.COPY_DST or GpuBufferUsage.VERTEX,
-                    )
+                override fun deviceCreateBufferDescribed(
+                    device: Int,
+                    size: Long,
+                    usage: Int,
+                ): Int = bindings.deviceCreateBuffer(device, size = size, usage = usage)
             },
         )
     }
