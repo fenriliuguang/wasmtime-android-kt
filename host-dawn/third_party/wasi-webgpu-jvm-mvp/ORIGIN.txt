@@ -1,0 +1,16 @@
+Vendored Kotlin host mapping from wasi-webgpu-jvm-mvp.
+
+Upstream commit: d4a074ad1e867e1899b3db41111dd5e6eae12d54
+License: MIT (see LICENSE in this directory)
+Do not copy Dawn native libraries from that tree; this module depends on
+published androidx.webgpu:webgpu for libwebgpu_c_bundled.so.
+
+Copied into host-dawn/src/main/kotlin/…/experimental/:
+
+  host/*.kt          (host-api)
+  dawn/DawnWasiWebGpuHost.kt
+  abicm/*.kt         (AbiCm + AbiCmHostBindings)
+
+Packages stay io.github.fenriliuguang.wasi.webgpu.experimental.* so the first
+copy keeps existing call sites. WasiWebGpuHost is an implementation detail of
+:host-dawn, not this repo’s public SPI (WebGpuBackend).

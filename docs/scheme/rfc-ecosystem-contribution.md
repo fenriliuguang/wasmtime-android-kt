@@ -66,6 +66,6 @@ When an S-series cluster lands (resource/`option`/`result`/`list`/`async`):
 - Promoting `wasi-gfx` to P0  
 - Host-fixed transitional `u32` as acceptance for new slices  
 
-## 7. Blocked: unpublished GPU host artifacts
+## 7. GPU host (vendored)
 
-Instrument tests still compile against **unpublished** Maven-local artifacts **inside `:host-dawn`** until the vendor PR copies mvp Host Kotlin into this repo. Dawn `.so` will come from `androidx.webgpu`, not git. Form: [`../blocked-gpu-host.md`](../blocked-gpu-host.md).
+Instrument tests compile against Host Kotlin **inside `:host-dawn`**. Dawn `.so` is published `androidx.webgpu`, not git. Form: [`../blocked-gpu-host.md`](../blocked-gpu-host.md).

@@ -4,6 +4,6 @@
 
 真 CM async：Guest 可挂起，Host 稍后 complete future。Dawn / `ANativeWindow` 仍须在 **单一 GpuThread** 上使用。禁止在 ART 主线程做重 compile/instantiate。
 
-今日 GPU 对象来自未发布 Host 库（[`../blocked-gpu-host.md`](../blocked-gpu-host.md)）；无论后端是谁，上述线程规则仍适用。
+今日 GPU 对象来自仓内 `:host-dawn` + `androidx.webgpu`（[`../blocked-gpu-host.md`](../blocked-gpu-host.md)）；无论后端是谁，上述线程规则仍适用。
 
 细节与 M4 钉死以英文正文为准。

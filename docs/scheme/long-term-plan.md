@@ -44,7 +44,7 @@ L5  Productization RFC (API freeze / publish-or-not)
 
 | Stage | Looks like |
 |-------|------------|
-| Near | Docs IA: English front door; archive history; Dawn default bundle accepted; unpublished host still blocked in code |
+| Near | Docs IA: English front door; archive history; Dawn default bundle; Host Kotlin vendored in `:host-dawn`; Dawn via `androidx.webgpu` |
 | Mid | JNI/Kotlin can carry WASI 0.3 `stream` + a small package subset; guests see pinned WIT types (not transitional `u32`); true async on device; **third party can reproduce and cite**; default test APK includes Dawn; at least one upstream-shaped note |
 | Far | Outsiders describe this repo as Android + Wasmtime + canonical wasi:webgpu without a second ABI story |
 

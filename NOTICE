@@ -4,4 +4,10 @@ Copyright 2026 焚日流光
 This product includes software developed at Bytecode Alliance
 (https://bytecodealliance.org/), including Wasmtime and Cranelift,
 licensed under the Apache License 2.0 with LLVM Exceptions.
-See THIRD_PARTY_NOTICES.md for a summary of third-party licenses.
+
+This product vendors a Kotlin GPU host mapping originally published in
+wasi-webgpu-jvm-mvp under the MIT License (copyright 焚日流光 2026).
+See host-dawn/third_party/wasi-webgpu-jvm-mvp/.
+
+This product depends on androidx.webgpu (Apache-2.0), which bundles
+Dawn native code. See THIRD_PARTY_NOTICES.md.

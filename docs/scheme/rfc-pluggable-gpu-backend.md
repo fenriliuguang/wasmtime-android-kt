@@ -6,7 +6,7 @@
 > Amends [`charter.md`](charter.md), [`tech-stack.md`](tech-stack.md), [`non-goals.md`](non-goals.md), [`guest-shape.md`](guest-shape.md).  
 > Guest probe: [`gpu.request-adapter`](guest-shape.md) → `option<own<gpu-adapter>>` (`none` = no usable adapter).  
 > Does **not** change P0 WIT shape or true CM async.  
-> Unpublished Maven-local coordinates are transitional until the **vendor** PR ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)).
+> Host Kotlin is vendored in `:host-dawn`; Dawn `.so` is published `androidx.webgpu` ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)).
 
 ## 1. Decision
 
@@ -59,7 +59,7 @@ Android still **packages** native libraries at **app build** time. Backends are 
 
 **Opt-out:** depend on `:android` only; register your own backend, or register nothing.
 
-Until Central exists, the same graph is Gradle `include` + `project()` deps. The Kotlin host mapping is **vendored into this repo** ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)); Dawn `.so` comes from published `androidx.webgpu`. Do not put `host-api` / `host-webgpu` on `:runtime-jni`.
+Until Central exists, the same graph is Gradle `include` + `project()` deps. The Kotlin host mapping is **vendored in `:host-dawn`** ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)); Dawn `.so` comes from published `androidx.webgpu`. Do not put Dawn types on `:runtime-jni`.
 
 ## 4. Runtime SPI
 
@@ -165,9 +165,7 @@ store.setWebGpuBackend(MyBackend())
 
 ## 8. Follow-up code
 
-Landed: `:host-dawn` / `:android-webgpu`; `ExperimentalWebGpuBridge` moved out of `:runtime-jni`; unwired `request-adapter` → `none`; `smoke-app` depends on the Dawn bundle.
-
-**Vendor path (decided):** copy mvp `host-api` + `DawnWasiWebGpuHost` + `AbiCmHostBindings` into this repo; depend on `androidx.webgpu` for Dawn `.so`; delete mavenLocal `experimental:*` from `:host-dawn`. Form: [`../blocked-gpu-host.md`](../blocked-gpu-host.md).
+Landed: `:host-dawn` / `:android-webgpu`; `ExperimentalWebGpuBridge` moved out of `:runtime-jni`; unwired `request-adapter` → `none`; `smoke-app` depends on the Dawn bundle; Host Kotlin vendored; `androidx.webgpu` for Dawn `.so` (no mavenLocal `experimental:*`).
 
 ## 9. Revisions
 

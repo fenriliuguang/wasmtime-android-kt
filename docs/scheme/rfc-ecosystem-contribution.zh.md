@@ -24,6 +24,6 @@ L4 可引用 Host（本 RFC）：复现 + 引用 + 上游笔记
 L5 产品化 RFC（另开）
 ```
 
-## 3. 代码依赖（未在本 RFC 解除）
+## 3. 代码依赖
 
-仪器与 `ExperimentalWebGpuBridge` 在 vendor PR 前仍走 `:host-dawn` 的 mavenLocal。已拍板：拷 Host Kotlin；Dawn `.so` 用 `androidx.webgpu`。见 [`../blocked-gpu-host.md`](../blocked-gpu-host.md)。
+仪器与 `ExperimentalWebGpuBridge` 走仓内 `:host-dawn`。Dawn `.so` 用 `androidx.webgpu`。见 [`../blocked-gpu-host.md`](../blocked-gpu-host.md)。
