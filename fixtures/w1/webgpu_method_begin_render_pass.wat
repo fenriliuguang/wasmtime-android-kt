@@ -1,31 +1,130 @@
-;; W3: get-encoder + [method]gpu-command-encoder.begin-render-pass
-;; (resource self; sync; transitional view u32, stub 23). Flat
-;; command-encoder-begin-render-pass-clear stays registered.
+;; S6+: wasi:webgpu/webgpu@0.3.0-rc.2 get-encoder +
+;; [method]gpu-command-encoder.begin-render-pass
+;; WIT: begin-render-pass: func(descriptor: gpu-render-pass-descriptor)
+;;      -> gpu-render-pass-encoder
+;; Guest passes empty color-attachments and option fields none; drops own pass;
+;; run returns harness 1. L2 still host-fixed offscreen view.
+;; Flattened params exceed 16, so canon lower spills args through memory.
+;; get-encoder is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
+    (export "gpu-texture-view" (type $gpu-texture-view (sub resource)))
+    (export "gpu-query-set" (type $gpu-query-set (sub resource)))
+    (type $borrow-view (borrow $gpu-texture-view))
+    (type $borrow-qs (borrow $gpu-query-set))
+    (type $load (enum "load" "clear"))
+    (export "gpu-load-op" (type (eq $load)))
+    (type $storeop (enum "store" "discard"))
+    (export "gpu-store-op" (type (eq $storeop)))
+    (type $color (record
+      (field "r" f64)
+      (field "g" f64)
+      (field "b" f64)
+      (field "a" f64)
+    ))
+    (export "gpu-color" (type (eq $color)))
+    (type $opt-u32 (option u32))
+    (type $opt-view (option $borrow-view))
+    (type $opt-color (option 9))
+    (type $color-att (record
+      (field "view" $borrow-view)
+      (field "depth-slice" $opt-u32)
+      (field "resolve-target" $opt-view)
+      (field "clear-value" $opt-color)
+      (field "load-op" 5)
+      (field "store-op" 7)
+    ))
+    (export "gpu-render-pass-color-attachment" (type (eq $color-att)))
+    (type $opt-color-att (option 14))
+    (type $list-opt-ca (list $opt-color-att))
+    (type $opt-bool (option bool))
+    (type $opt-f32 (option f32))
+    (type $opt-load (option 5))
+    (type $opt-store (option 7))
+    (type $ds-att (record
+      (field "view" $borrow-view)
+      (field "depth-clear-value" $opt-f32)
+      (field "depth-load-op" $opt-load)
+      (field "depth-store-op" $opt-store)
+      (field "depth-read-only" $opt-bool)
+      (field "stencil-clear-value" $opt-u32)
+      (field "stencil-load-op" $opt-load)
+      (field "stencil-store-op" $opt-store)
+      (field "stencil-read-only" $opt-bool)
+    ))
+    (export "gpu-render-pass-depth-stencil-attachment" (type (eq $ds-att)))
+    (type $ts-def (record
+      (field "query-set" $borrow-qs)
+      (field "beginning-of-pass-write-index" $opt-u32)
+      (field "end-of-pass-write-index" $opt-u32)
+    ))
+    (export "gpu-render-pass-timestamp-writes" (type (eq $ts-def)))
+    (type $opt-str (option string))
+    (type $opt-ds (option 22))
+    (type $opt-qs (option $borrow-qs))
+    (type $opt-ts (option 24))
+    (type $opt-u64 (option u64))
+    (type $desc-def (record
+      (field "color-attachments" $list-opt-ca)
+      (field "depth-stencil-attachment" $opt-ds)
+      (field "occlusion-query-set" $opt-qs)
+      (field "timestamp-writes" $opt-ts)
+      (field "max-draw-count" $opt-u64)
+      (field "label" $opt-str)
+    ))
+    (export "gpu-render-pass-descriptor" (type (eq $desc-def)))
+    (export "gpu-render-pass-encoder" (type $gpu-render-pass-encoder (sub resource)))
     (export "gpu-command-encoder" (type $gpu-command-encoder (sub resource)))
-    (export "get-encoder" (func (result (own $gpu-command-encoder))))
-    (export "[method]gpu-command-encoder.begin-render-pass"
-      (func (param "self" (borrow $gpu-command-encoder)) (param "view" u32) (result u32)))
+    (type $borrow-encoder (borrow $gpu-command-encoder))
+    (type $own-pass (own $gpu-render-pass-encoder))
+    (type $begin-ty (func
+      (param "self" $borrow-encoder)
+      (param "descriptor" 31)
+      (result $own-pass)))
+    (export "[method]gpu-command-encoder.begin-render-pass" (func (type $begin-ty)))
+    (type $own-encoder (own $gpu-command-encoder))
+    (export "get-encoder" (func (result $own-encoder)))
   ))
+  (alias export $webgpu "gpu-render-pass-encoder" (type $gpu-render-pass-encoder))
   (alias export $webgpu "get-encoder" (func $get-encoder))
   (alias export $webgpu "[method]gpu-command-encoder.begin-render-pass" (func $begin))
 
-  (core module $m
-    (import "" "get-encoder" (func $get-encoder (result i32)))
-    (import "" "begin" (func $begin (param i32 i32) (result i32)))
-    (func (export "run") (result i32)
-      (local $encoder i32)
-      (local.set $encoder (call $get-encoder))
-      (call $begin (local.get $encoder) (i32.const 23))
+  (core module $builtins
+    (memory (export "mem") 1)
+    (func (export "realloc") (param i32 i32 i32 i32) (result i32)
+      (i32.const 256)
     )
   )
+  (core instance $builtins (instantiate $builtins))
+
   (core func $ge_lower (canon lower (func $get-encoder)))
-  (core func $b_lower (canon lower (func $begin)))
+  (core func $b_lower
+    (canon lower (func $begin)
+      (memory $builtins "mem")
+      (realloc (func $builtins "realloc"))))
+  (core func $dp_lower (canon resource.drop $gpu-render-pass-encoder))
+
+  (core module $m
+    (import "" "mem" (memory 1))
+    (import "" "get-encoder" (func $get-encoder (result i32)))
+    (import "" "begin" (func $begin (param i32) (result i32)))
+    (import "" "drop-pass" (func $drop-pass (param i32)))
+    (func (export "run") (result i32)
+      (local $encoder i32)
+      (local $pass i32)
+      (local.set $encoder (call $get-encoder))
+      (i32.store (i32.const 0) (local.get $encoder))
+      (local.set $pass (call $begin (i32.const 0)))
+      (call $drop-pass (local.get $pass))
+      (i32.const 1)
+    )
+  )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-encoder" (func $ge_lower))
       (export "begin" (func $b_lower))
+      (export "drop-pass" (func $dp_lower))
     ))
   ))
   (func (export "run") async (result u32)

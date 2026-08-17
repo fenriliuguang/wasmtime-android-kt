@@ -50,9 +50,14 @@ pub struct GpuCommandEncoder {
     pub rep: u32,
 }
 
-/// Host representation of WIT `resource gpu-render-pass-encoder` (W3 `[method]`).
+/// Host representation of WIT `resource gpu-render-pass-encoder`.
+/// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
+/// `get-pass` still pushes `{ rep: 0 }`; S6+ `begin-render-pass` stores the real L2 rep.
 #[derive(Debug)]
-pub struct GpuRenderPassEncoder;
+pub struct GpuRenderPassEncoder {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
 
 /// Host representation of WIT `resource gpu-compute-pass-encoder`.
 /// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
@@ -74,7 +79,7 @@ pub struct GpuQueue {
 }
 
 /// Host representation of WIT `resource gpu-texture` (W3+ `[method]`).
-/// `get-texture` still pushes `{ rep: 0 }`; create-texture still returns u32.
+/// `get-texture` still pushes `{ rep: 0 }`; S6+ `create-texture` stores the real L2 rep.
 #[derive(Debug)]
 pub struct GpuTexture {
     #[allow(dead_code)]

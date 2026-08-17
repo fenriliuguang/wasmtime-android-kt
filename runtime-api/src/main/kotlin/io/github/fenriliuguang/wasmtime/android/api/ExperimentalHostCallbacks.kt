@@ -37,9 +37,24 @@ interface ExperimentalHostCallbacks {
     fun deviceCreateBufferDescribed(device: Int, size: Long, usage: Int): Int =
         unsupported("deviceCreateBufferDescribed")
 
+    /** S6+: Guest-decoded `gpu-texture-descriptor` size/format/usage (Dawn format int). */
+    fun deviceCreateTextureDescribed(
+        device: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+        format: Int,
+        usage: Int,
+    ): Int = unsupported("deviceCreateTextureDescribed")
+
     /** W3+: JNI ignores Guest stub buffer; host creates MAP_READ buffer then map-async. */
     fun bufferMapAsync(buffer: Int) {
         unsupported("bufferMapAsync")
+    }
+
+    /** S6+: Guest `gpu-map-mode` + optional offset/size. */
+    fun bufferMapAsyncDescribed(buffer: Int, mode: Int, offset: Long, size: Long) {
+        unsupported("bufferMapAsyncDescribed")
     }
 
     /** W3+: JNI ignores Guest stub buffer; host maps then unmaps a MAP_READ buffer. */

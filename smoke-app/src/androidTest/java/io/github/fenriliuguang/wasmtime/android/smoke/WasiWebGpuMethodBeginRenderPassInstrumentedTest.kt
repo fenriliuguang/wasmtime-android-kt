@@ -8,15 +8,15 @@ import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.webgpu.ExperimentalWebGpuBridge
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3 `[method]` slice: `get-encoder` then
- * `[method]gpu-command-encoder.begin-render-pass` (sync; stub view 23;
- * instrument substitutes Cpu offscreen TextureView) via
+ * S6+ `[method]` slice: `get-encoder` then
+ * `[method]gpu-command-encoder.begin-render-pass`
+ * (`gpu-render-pass-descriptor` with empty color-attachments; drops own;
+ * `run` returns 1). Instrument still substitutes Cpu offscreen TextureView via
  * [ExperimentalWebGpuBridge.attachBeginRenderPassClear] + [callRunConcurrent].
  * Flat `command-encoder-begin-render-pass-clear` remains. Not compliance.
  */
@@ -38,9 +38,12 @@ class WasiWebGpuMethodBeginRenderPassInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachBeginRenderPassClear(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertNotEquals("pass rep must be non-zero", 0, rep)
-                                assertTrue("pass rep should be positive", rep > 0)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals(
+                                    "guest must drop own pass and return harness 1",
+                                    1,
+                                    harness,
+                                )
                             }
                         }
                     }

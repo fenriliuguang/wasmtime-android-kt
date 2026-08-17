@@ -11,8 +11,9 @@ use crate::host::{
 use crate::jvm;
 use crate::webgpu_abi::{
     GpuBufferDescriptor, GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor,
-    GpuComputePassDescriptor, GpuDeviceDescriptor, GpuQuerySet, GpuRequestAdapterOptions,
-    GpuSamplerDescriptor, GpuTextureViewDescriptor, RecordOptionGpuSize64, RequestDeviceError,
+    GpuComputePassDescriptor, GpuDeviceDescriptor, GpuMapMode, GpuQuerySet,
+    GpuRenderPassDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor, GpuTextureDescriptor,
+    GpuTextureViewDescriptor, MapAsyncError, RecordOptionGpuSize64, RequestDeviceError,
     RequestDeviceErrorKind,
 };
 use futures::channel::oneshot;
@@ -474,9 +475,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-device.create-command-encoder` (S6: sync
     // (borrow, option<gpu-command-encoder-descriptor>) -> own<gpu-command-encoder>) and `[method]gpu-device.create-buffer`
     // (S4: sync (borrow, gpu-buffer-descriptor) -> own<gpu-buffer>) and
-    // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (true async void; host-fixed MAP_READ then map)
+    // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (S6+: true async
+    // result<_, map-async-error>; guest mode/offset/size; L2 still host-fixed MAP_READ buffer)
     // and `[method]gpu-buffer.unmap` (sync void; host-fixed map then unmap)
-    // and `[method]gpu-device.create-texture` (sync; host-fixed 1x1, still u32) and
+    // and `[method]gpu-device.create-texture` (S6+: sync (borrow, gpu-texture-descriptor) -> own<gpu-texture>) and
     // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
     // and `[method]gpu-device.create-shader-module` (sync; host-fixed WGSL, still u32)
     // and `[method]gpu-queue.write-buffer` (sync void; host-fixed bytes, single buffer u32)
@@ -490,6 +492,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-device.create-compute-pipeline` (sync; host-fixed stub shader + empty layout, still u32)
     // and `[method]gpu-queue.write-texture` (sync void; host-fixed 1×1 texels, single texture u32)
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>)
+    // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 still host-fixed view)
     // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void)
     // and `[method]gpu-compute-pass-encoder.set-pipeline` (sync void; host-fixed compute pipeline, stub pipeline u32)
     // and `[method]gpu-compute-pass-encoder.set-bind-group` (sync void; host-fixed empty bind-group index 0, stub bind-group u32)
@@ -766,27 +769,6 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
-            .func_wrap(
-                "[method]gpu-device.create-texture",
-                |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let rep =
-                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
-                },
-            )
-            .map_err(|e| e.to_string())?;
-        webgpu
             .resource(
                 "gpu-texture",
                 ResourceType::host::<GpuTexture>(),
@@ -794,6 +776,49 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let resource = Resource::<GpuTexture>::new_own(rep);
                     store.data_mut().table.delete(resource)?;
                     Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.create-texture",
+                |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuTextureDescriptor)| {
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let width = descriptor.size.width;
+                    let height = descriptor.size.height.unwrap_or(1);
+                    let depth = descriptor.size.depth_or_array_layers.unwrap_or(1);
+                    let texture_rep = jvm::exp_create_texture_described(
+                        &cb,
+                        l2_device,
+                        width,
+                        height,
+                        depth,
+                        descriptor.format.to_dawn_u32(),
+                        descriptor.usage.to_webgpu_u32(),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    if texture_rep == 0 {
+                        return Err(wasmtime::Error::msg("device-create-texture returned 0"));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuTexture { rep: texture_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -871,32 +896,50 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap_concurrent(
                 "[method]gpu-buffer.map-async",
-                |accessor, (buffer,): (Resource<GpuBuffer>,)| {
+                |accessor,
+                 (buffer, mode, offset, size): (
+                    Resource<GpuBuffer>,
+                    GpuMapMode,
+                    Option<u64>,
+                    Option<u64>,
+                )| {
                     Box::pin(async move {
-                        let cb = accessor.with(|mut access| {
-                            let _ = access.data_mut().table.get(&buffer)?;
-                            access
-                                .data_mut()
-                                .experimental_host_cb
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    wasmtime::Error::msg("experimental host callback not set")
-                                })
-                                .cloned()
-                        })?;
+                        let (cb, buffer_rep) =
+                            accessor.with(|mut access| -> wasmtime::Result<_> {
+                                let buffer_rep = access.data_mut().table.get(&buffer)?.rep;
+                                let cb = access
+                                    .data_mut()
+                                    .experimental_host_cb
+                                    .as_ref()
+                                    .ok_or_else(|| {
+                                        wasmtime::Error::msg("experimental host callback not set")
+                                    })
+                                    .cloned()?;
+                                Ok((cb, buffer_rep))
+                            })?;
                         let (tx, rx) = oneshot::channel::<()>();
                         std::thread::spawn(move || {
                             let _ = tx.send(());
                         });
                         let _ = rx.await;
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?;
-                        let buffer_rep = jvm::exp_create_buffer(&cb, device_rep)
-                            .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_buffer_map_async(&cb, buffer_rep).map_err(wasmtime::Error::msg)?;
-                        Ok(())
+                        let l2_buffer = if buffer_rep == 0 {
+                            let adapter_rep =
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                            let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                .map_err(wasmtime::Error::msg)?;
+                            jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        } else {
+                            buffer_rep
+                        };
+                        jvm::exp_buffer_map_async_described(
+                            &cb,
+                            l2_buffer,
+                            mode.to_webgpu_u32(),
+                            offset.unwrap_or(0),
+                            size.unwrap_or(4),
+                        )
+                        .map_err(wasmtime::Error::msg)?;
+                        Ok((Ok::<(), MapAsyncError>(()),))
                     })
                 },
             )
@@ -1102,29 +1145,6 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?;
         webgpu
-            .func_wrap(
-                "[method]gpu-command-encoder.begin-render-pass",
-                |mut caller, (encoder, view): (Resource<GpuCommandEncoder>, u32)| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, view)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
-                },
-            )
-            .map_err(|e| e.to_string())?;
-        webgpu
             .resource(
                 "gpu-query-set",
                 ResourceType::host::<GpuQuerySet>(),
@@ -1132,6 +1152,54 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let resource = Resource::<GpuQuerySet>::new_own(rep);
                     store.data_mut().table.delete(resource)?;
                     Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-render-pass-encoder",
+                ResourceType::host::<GpuRenderPassEncoder>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuRenderPassEncoder>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.begin-render-pass",
+                |mut caller, (encoder, descriptor): (Resource<GpuCommandEncoder>, GpuRenderPassDescriptor)| {
+                    let _ = descriptor.color_attachments.len();
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    // L2 still host-fixed offscreen view (JNI substitutes a real view).
+                    let pass_rep =
+                        jvm::exp_begin_render_pass_clear(&cb, l2_encoder, 23)
+                            .map_err(wasmtime::Error::msg)?;
+                    if pass_rep == 0 {
+                        return Err(wasmtime::Error::msg("begin-render-pass returned 0"));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuRenderPassEncoder { rep: pass_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1352,19 +1420,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
-            .resource(
-                "gpu-render-pass-encoder",
-                ResourceType::host::<GpuRenderPassEncoder>(),
-                |mut store, rep| {
-                    let resource = Resource::<GpuRenderPassEncoder>::new_own(rep);
-                    store.data_mut().table.delete(resource)?;
-                    Ok(())
-                },
-            )
-            .map_err(|e| e.to_string())?;
-        webgpu
             .func_wrap("get-pass", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuRenderPassEncoder)?;
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(GpuRenderPassEncoder { rep: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -1602,8 +1662,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap_concurrent("request-adapter", |accessor, ()| {
                 Box::pin(async move {
-                    let cb = accessor
-                        .with(|mut access| access.data_mut().experimental_host_cb.clone());
+                    let cb =
+                        accessor.with(|mut access| access.data_mut().experimental_host_cb.clone());
                     // Yield so this is true concurrent (not sync wrap / Latch fake-async).
                     let (tx, rx) = oneshot::channel::<()>();
                     std::thread::spawn(move || {

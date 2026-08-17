@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-buffer` then
- * `[method]gpu-buffer.map-async` (true CM async; stub buffer 31;
- * host-fixed MAP_READ then map) via
+ * S6+ `[method]` slice: `get-buffer` then
+ * `[method]gpu-buffer.map-async` (true CM async result; mode=READ,
+ * offset/size=none; L2 still host-fixed MAP_READ) via
  * [ExperimentalWebGpuBridge.attachBufferMapAsync] + [callRunConcurrent].
  * Not compliance.
  */
@@ -37,8 +37,12 @@ class WasiWebGpuMethodBufferMapAsyncInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachBufferMapAsync(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub buffer 31 after map-async", 31, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals(
+                                    "guest must return harness 1 after map-async ok",
+                                    1,
+                                    harness,
+                                )
                             }
                         }
                     }
