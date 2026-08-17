@@ -8,18 +8,17 @@ import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.webgpu.ExperimentalWebGpuBridge
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3 `[method]` slice: guest imports `get-device` then
- * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-device.create-command-encoder`
- * (sync; resource self; still u32, no descriptor) via
+ * S6 `[method]` slice: guest imports `get-device` then
+ * `[method]gpu-device.create-command-encoder`
+ * (`option<gpu-command-encoder-descriptor>` = none → `own<gpu-command-encoder>`;
+ * drops the own; `run` returns 1) via
  * [ExperimentalWebGpuBridge.attachCreateCommandEncoder] + [callRunConcurrent].
- * Flat `device-create-command-encoder` remains registered. Not full wasi:webgpu
- * compliance.
+ * Flat `device-create-command-encoder` remains registered. Not compliance.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodCreateCommandEncoderInstrumentedTest {
@@ -39,9 +38,12 @@ class WasiWebGpuMethodCreateCommandEncoderInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachCreateCommandEncoder(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertNotEquals("encoder rep must be non-zero", 0, rep)
-                                assertTrue("encoder rep should be positive", rep > 0)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals(
+                                    "guest must drop owns and return harness 1",
+                                    1,
+                                    harness,
+                                )
                             }
                         }
                     }
