@@ -142,8 +142,10 @@ S5  第一个规范 list
     以及（可后一刀）`get-mapped-range-get-with-copy` → `result<list<u8>, …>`
 
 S6+ 按 WIT 高频路径替换其余已冻结过渡方法
-    （encoder / pass / map-async 正式 result 等）
-    一律先形状、再语义加深；每刀独立可 revert
+    （S8 已把剩余 `option<descriptor>=none → own` 三件切完：
+     create-sampler / texture.create-view / begin-compute-pass）
+    下一刀：begin-render-pass 完整 record / create-texture descriptor / map-async 正式 result 等
+    一律先形状、再语义加深；前期可同形状一批，每刀独立可 revert
 ```
 
 **每刀 DoD（S1 起）：**

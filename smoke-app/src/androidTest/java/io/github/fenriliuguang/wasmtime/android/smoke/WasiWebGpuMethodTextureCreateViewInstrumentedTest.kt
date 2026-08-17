@@ -8,12 +8,18 @@ import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.webgpu.ExperimentalWebGpuBridge
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** W3+ `[method]gpu-texture.create-view` via [ExperimentalWebGpuBridge.attachCreateTextureView]. */
+/**
+ * S8 `[method]` slice: guest imports `get-texture` then
+ * `[method]gpu-texture.create-view`
+ * (`option<gpu-texture-view-descriptor>` = none → `own<gpu-texture-view>`;
+ * drops the own; `run` returns 1) via
+ * [ExperimentalWebGpuBridge.attachCreateTextureView] + [callRunConcurrent].
+ * Flat names remain registered. Not compliance.
+ */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodTextureCreateViewInstrumentedTest {
     @Test
@@ -32,9 +38,12 @@ class WasiWebGpuMethodTextureCreateViewInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachCreateTextureView(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertNotEquals("view rep must be non-zero", 0, rep)
-                                assertTrue("view rep should be positive", rep > 0)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals(
+                                    "guest must drop owns and return harness 1",
+                                    1,
+                                    harness,
+                                )
                             }
                         }
                     }

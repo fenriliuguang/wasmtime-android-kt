@@ -221,16 +221,16 @@
 
 非 Guest `gpu-texture-descriptor` / `gpu-texture` resource。
 
-## WASI webgpu `[method]gpu-device.create-sampler`（W3+）
+## WASI webgpu `[method]gpu-device.create-sampler`（S8）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | 复用 `gpu-device` / `get-device`；`[method]gpu-device.create-sampler`：`func_wrap` sync → L2 adapter/device + host-fixed default sampler |
-| **Guest** | `get-device` → create-sampler（`fixtures/w1/webgpu_method_create_sampler`） |
+| **Host** | 复用 `gpu-device` / `get-device`；注册 `gpu-sampler`；`[method]gpu-device.create-sampler`：`func_wrap` sync `(borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>`；Guest none；L2 仍 host-fixed default sampler |
+| **Guest** | `get-device` → create-sampler(none) → drop own；harness 1（`fixtures/w1/webgpu_method_create_sampler`） |
 | **仪器** | `attachCreateSampler` |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
 
-非 Guest `option<gpu-sampler-descriptor>` / `gpu-sampler` resource。
+Guest 已同构 `option<gpu-sampler-descriptor>` / `own<gpu-sampler>`；L2 仍 host-fixed。
 
 ## WASI webgpu `[method]gpu-device.create-shader-module`（W3+）
 
@@ -254,16 +254,16 @@
 
 非提案 `list<u8>` / `borrow<gpu-buffer>`。
 
-## WASI webgpu `[method]gpu-texture.create-view`（W3+）
+## WASI webgpu `[method]gpu-texture.create-view`（S8）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | `gpu-texture` + `get-texture`；`[method]gpu-texture.create-view`：`func_wrap` sync → L2 adapter/device + host-fixed 1×1 texture + create-view |
-| **Guest** | `get-texture` → create-view（`fixtures/w1/webgpu_method_texture_create_view`） |
+| **Host** | `gpu-texture` + `get-texture`；注册 `gpu-texture-view`；`[method]gpu-texture.create-view`：`func_wrap` sync `(borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>`；Guest none；L2 仍 host-fixed 1×1 + create-view |
+| **Guest** | `get-texture` → create-view(none) → drop own；harness 1（`fixtures/w1/webgpu_method_texture_create_view`） |
 | **仪器** | `attachCreateTextureView` |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
 
-非 Guest `option<gpu-texture-view-descriptor>` / `gpu-texture-view` resource。
+Guest 已同构 `option<gpu-texture-view-descriptor>` / `own<gpu-texture-view>`；L2 仍 host-fixed。
 
 ## WASI webgpu `[method]gpu-device.create-bind-group-layout`（W3+）
 
@@ -331,16 +331,16 @@
 
 非提案 `gpu-texel-copy-texture-info` / `list<u8>`；不复用 RENDER_ATTACHMENT `create-texture`。
 
-## WASI webgpu `[method]gpu-command-encoder.begin-compute-pass`（W3+）
+## WASI webgpu `[method]gpu-command-encoder.begin-compute-pass`（S8）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | 复用 `gpu-command-encoder` / `get-encoder`；`[method]gpu-command-encoder.begin-compute-pass`：`func_wrap` sync → L2 adapter/device/encoder + host-default compute-pass descriptor |
-| **Guest** | `get-encoder` → begin-compute-pass；返回 pass rep（`fixtures/w1/webgpu_method_begin_compute_pass`） |
+| **Host** | 复用 `gpu-command-encoder` / `get-encoder`；`[method]gpu-command-encoder.begin-compute-pass`：`func_wrap` sync `(borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>`；Guest none；L2 仍 host-default compute-pass |
+| **Guest** | `get-encoder` → begin-compute-pass(none) → drop own；harness 1（`fixtures/w1/webgpu_method_begin_compute_pass`） |
 | **仪器** | `attachBeginComputePass` |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
 
-非 Guest `gpu-compute-pass-descriptor` / `gpu-compute-pass-encoder` resource。
+Guest 已同构 `option<gpu-compute-pass-descriptor>` / `own<gpu-compute-pass-encoder>`；L2 仍 host-fixed。
 
 ## WASI webgpu `[method]gpu-compute-pass-encoder.end`（W3+）
 

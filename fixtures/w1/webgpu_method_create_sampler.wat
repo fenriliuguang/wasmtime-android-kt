@@ -1,31 +1,94 @@
-;; W3+: wasi:webgpu/webgpu@0.3.0-rc.2 get-device +
-;; [method]gpu-device.create-sampler (resource self; sync).
-;; Transitional: method returns u32 (host-fixed default descriptor).
+;; S8: wasi:webgpu/webgpu@0.3.0-rc.2 get-device +
+;; [method]gpu-device.create-sampler
+;; WIT: create-sampler: func(descriptor: option<gpu-sampler-descriptor>)
+;;      -> gpu-sampler
+;; Guest passes descriptor=none; drops own sampler; run returns harness 1.
+;; Flattened params exceed 16, so canon lower spills args through memory.
+;; get-device is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
+    (type $addr (enum "clamp-to-edge" "repeat" "mirror-repeat"))
+    (export "gpu-address-mode" (type (eq $addr)))
+    (type $filt (enum "nearest" "linear"))
+    (export "gpu-filter-mode" (type (eq $filt)))
+    (type $mip (enum "nearest" "linear"))
+    (export "gpu-mipmap-filter-mode" (type (eq $mip)))
+    (type $cmp (enum "never" "less" "equal" "less-equal" "greater" "not-equal" "greater-equal" "always"))
+    (export "gpu-compare-function" (type (eq $cmp)))
+    (type $opt-str (option string))
+    (type $opt-addr (option 1))
+    (type $opt-filt (option 3))
+    (type $opt-mip (option 5))
+    (type $opt-f32 (option f32))
+    (type $opt-cmp (option 7))
+    (type $opt-u16 (option u16))
+    (type $desc-def (record
+      (field "address-mode-u" $opt-addr)
+      (field "address-mode-v" $opt-addr)
+      (field "address-mode-w" $opt-addr)
+      (field "mag-filter" $opt-filt)
+      (field "min-filter" $opt-filt)
+      (field "mipmap-filter" $opt-mip)
+      (field "lod-min-clamp" $opt-f32)
+      (field "lod-max-clamp" $opt-f32)
+      (field "compare" $opt-cmp)
+      (field "max-anisotropy" $opt-u16)
+      (field "label" $opt-str)
+    ))
+    (export "gpu-sampler-descriptor" (type (eq $desc-def)))
+    (export "gpu-sampler" (type $gpu-sampler (sub resource)))
     (export "gpu-device" (type $gpu-device (sub resource)))
-    (export "get-device" (func (result (own $gpu-device))))
-    (export "[method]gpu-device.create-sampler"
-      (func (param "self" (borrow $gpu-device)) (result u32)))
+    (type $borrow-device (borrow $gpu-device))
+    (type $opt-desc (option 16))
+    (type $own-sampler (own $gpu-sampler))
+    (type $create-ty (func
+      (param "self" $borrow-device)
+      (param "descriptor" $opt-desc)
+      (result $own-sampler)))
+    (export "[method]gpu-device.create-sampler" (func (type $create-ty)))
+    (type $own-device (own $gpu-device))
+    (export "get-device" (func (result $own-device)))
   ))
+  (alias export $webgpu "gpu-sampler" (type $gpu-sampler))
   (alias export $webgpu "get-device" (func $get-device))
   (alias export $webgpu "[method]gpu-device.create-sampler" (func $create-sampler))
 
-  (core module $m
-    (import "" "get-device" (func $get-device (result i32)))
-    (import "" "create-sampler" (func $create-sampler (param i32) (result i32)))
-    (func (export "run") (result i32)
-      (local $device i32)
-      (local.set $device (call $get-device))
-      (call $create-sampler (local.get $device))
+  (core module $builtins
+    (memory (export "mem") 1)
+    (func (export "realloc") (param i32 i32 i32 i32) (result i32)
+      (i32.const 16)
     )
   )
+  (core instance $builtins (instantiate $builtins))
+
   (core func $gd_lower (canon lower (func $get-device)))
-  (core func $cs_lower (canon lower (func $create-sampler)))
+  (core func $cs_lower
+    (canon lower (func $create-sampler)
+      (memory $builtins "mem")
+      (realloc (func $builtins "realloc"))))
+  (core func $ds_lower (canon resource.drop $gpu-sampler))
+
+  (core module $m
+    (import "" "mem" (memory 1))
+    (import "" "get-device" (func $get-device (result i32)))
+    (import "" "create-sampler" (func $create-sampler (param i32) (result i32)))
+    (import "" "drop-sampler" (func $drop-sampler (param i32)))
+    (func (export "run") (result i32)
+      (local $device i32)
+      (local $sampler i32)
+      (local.set $device (call $get-device))
+      (i32.store (i32.const 0) (local.get $device))
+      (local.set $sampler (call $create-sampler (i32.const 0)))
+      (call $drop-sampler (local.get $sampler))
+      (i32.const 1)
+    )
+  )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-device" (func $gd_lower))
       (export "create-sampler" (func $cs_lower))
+      (export "drop-sampler" (func $ds_lower))
     ))
   ))
   (func (export "run") async (result u32)
