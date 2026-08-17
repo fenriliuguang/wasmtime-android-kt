@@ -1,46 +1,37 @@
-# 非目标（轨 B）
+# Non-goals
 
-**中文** | [English](non-goals.en.md)
+**English** | [中文](non-goals.zh.md)
 
-> 写死「做什么」之外的边界。  
-> **长期阶段** 与 [`long-term-plan.md`](long-term-plan.md) 对齐。  
-> **2026-08-16：** 结束双轨并行产品线；见 [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)。
+Hard boundaries until a new RFC.
 
-## 绝对非目标（直至新 RFC）
+| ID | Do not |
+|----|--------|
+| NG-2 | Depend on **wasmtime4j** as the runtime (including transitive CM execution) |
+| NG-3 | Reimplement a full **Kotlin WebGPU client API** (engine-shaped) |
+| NG-4 | Treat “all WASI 0.3 worlds” or “full wasi-testsuite P3” as the single KPI |
+| NG-5 | Claim a **compliant wasi:webgpu product** or production Android Wasm runtime before a dedicated RFC |
+| NG-6 | Default **Maven Central** publish |
+| NG-7 | Implement a **second Dawn renderer** in this repo (packaging / adapting one Dawn as `:host-dawn` is allowed; see [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)) |
+| NG-8 | Treat Latch / sync-compat as **true** CM async / WASI 0.3 async DoD |
+| NG-9 | Promote **wasi-gfx / multi-window** to the same near-term P0 as `wasi:webgpu` |
+| NG-11 | Replace “track upstream Wasmtime” with a non-official engine |
+| NG-12 | Accept **host-fixed descriptor + transitional u32** as the DoD for **new** wasi:webgpu slices |
 
-| ID | 项 |
-|----|-----|
-| NG-1 | 用本仓 **静默替换** 轨 A **默认 Demo runtime**（轨 A 可继续当展示） |
-| NG-2 | 以 **wasmtime4j** 作为本仓运行时依赖（含传递依赖跑 CM） |
-| NG-3 | 重造完整 **Kotlin WebGPU 客户端 API**（三方图形引擎式） |
-| NG-4 | 以「实现 **全部** WASI 0.3 worlds」或「一次过完 **全量** wasi-testsuite P3」为单一关门 / 对外 KPI（**主推已批准 P3 切片**见 [`wasi-p3-surface.md`](wasi-p3-surface.md)，≠ 全量套件承诺） |
-| NG-5 | 在未另开合规 / 发布 RFC 前，宣传 **合规 wasi:webgpu 产品** 或「生产级 Android Wasm runtime」 |
-| NG-6 | 默认 **对外 Maven Central 发布** |
-| NG-7 | 在本仓实现 **第二套 Dawn Host**（应把轨 A L2 **当库**复用；**不**等于 Guest ABI 跟随扁平面） |
-| NG-8 | 以 sync-compat **冒充** 真 CM async / WASI 0.3 异步 DoD |
-| NG-9 | 将 **wasi-gfx / 多 window** 升为与 `wasi:webgpu` 同级的近端 P0（显示面另 RFC） |
-| NG-10 | 要求轨 A 为了本仓 **破坏** sync-compat 锁死条款（本仓也不再等它的扁平 ABI） |
-| NG-11 | 以非官方引擎或 4j 绑定替换「追踪官方 Wasmtime」政策（见 [`wasmtime-tracking.md`](wasmtime-tracking.md)） |
-| NG-12 | 以「host 固定 descriptor + 过渡 u32 / void」作为 wasi:webgpu **新切片**的验收形态（W3 过渡面冻结；见 RFC） |
+Removed from the living table (historical dual-product policy): silent-replace of an external demo runtime; requiring that demo to break sync-compat. Those files live in [`../archive/`](../archive/README.md).
 
-## 延期非目标（可另开 RFC）
+## Deferred (separate RFC)
 
-| ID | 项 | 最早考虑 |
-|----|-----|----------|
-| DG-1 | Panama 桌面绑定 | 长期 L5 附近 |
-| DG-2 | iOS / 桌面一等公民 | 非 Android-first 阶段 |
-| DG-3 | 完整 WASI 云/CLI 运行时（全 package 产品化） | 产品化后；与 NG-4 切片策略区分 |
-| DG-4 | 字节码解释器后备（无 Cranelift） | 有明确设备需求时 |
-| DG-5 | 与轨 A 合并为单仓 monorepo | 仅当维护成本证明更优 |
-| DG-6 | wasi-gfx 最小上屏胶水 | [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) W4 选项 B |
-
-## 允许的「看起来像非目标但其实要做」
-
-| 项 | 说明 |
+| ID | Item |
 |----|------|
-| 参考 4j 源码 / 补丁 | 学习可以；依赖不行 |
-| 桌面 `.so` 开发构建 | 便利可以；门禁仍 Android-first |
-| WASI 0.3 **已批准** package 子集 | **主推**（clocks/random/cli/… 按表面优先级）；不作「完整套件」宣称 |
-| `wasi:webgpu` **提案**实现与反馈 | **P0**；Guest **规范形状**（RFC）；推进 ≠ 合规宣称（NG-5） |
-| 对照 `wasi-webgpu-wasmtime` 等上游宿主 | 形状/经验对照可以；不替代轨 A Dawn **后端** |
-| 把轨 A Host 当库调用 | 允许；本仓拥有编组 |
+| DG-1 | Panama desktop bindings |
+| DG-2 | iOS / desktop as first-class |
+| DG-3 | Full cloud/CLI WASI distro |
+| DG-4 | Interpreter fallback (no Cranelift) |
+| DG-6 | Minimal wasi-gfx present glue |
+
+## Allowed
+
+- Ratified WASI 0.3 **slices** per [`wasi-p3-surface.md`](wasi-p3-surface.md)  
+- Implementing and feeding back on the **wasi:webgpu proposal** (not a compliance claim)  
+- Comparing with `wasi-webgpu-wasmtime` and other hosts  
+- A **pluggable** GPU backend — default Dawn bundle; core without Dawn ([`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)). Today’s unpublished artifacts: [`../blocked-gpu-host.md`](../blocked-gpu-host.md)

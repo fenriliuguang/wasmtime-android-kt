@@ -75,7 +75,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # runtime-jni / android / smoke-app need Track A mavenLocal or Android SDK — not in this job.
+      # runtime-jni / android / smoke-app need unpublished GPU host (mavenLocal) or Android SDK — not in this job.
       - name: Compile runtime-api
         run: chmod +x gradlew && ./gradlew :runtime-api:compileKotlin --no-daemon
 

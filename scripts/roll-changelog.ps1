@@ -1,4 +1,4 @@
-# Roll changelog/unreleased/*.md (except README.md) into CHANGELOG.md Unreleased.
+# Roll changelog/unreleased/*.md (except README*.md) into CHANGELOG.md Unreleased.
 # Maintainer chore: run on a dedicated short branch, not inside a feature PR.
 param()
 
@@ -15,7 +15,7 @@ if (-not (Test-Path $UnreleasedDir)) {
 }
 
 $fragments = @(Get-ChildItem -Path $UnreleasedDir -Filter "*.md" |
-    Where-Object { $_.Name -ne "README.md" } |
+    Where-Object { $_.Name -notmatch '^README' } |
     Sort-Object Name -Descending)
 
 if ($fragments.Count -eq 0) {

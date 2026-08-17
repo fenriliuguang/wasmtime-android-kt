@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: 方案与里程碑文档
+  - name: Scheme docs
     url: https://github.com/fenriliuguang/wasmtime-android-kt/blob/main/docs/scheme/README.md
-    about: 先查长期计划 / 非目标 / VCS 工作流，再开 issue
+    about: Read the long-term plan / non-goals / VCS workflow before opening an issue

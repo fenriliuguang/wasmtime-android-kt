@@ -4,7 +4,7 @@
 |----------|-------------------------|--------|----------|
 | `render_smoke.wasm` | clear→present subset on `experimental:webgpu-cm/host@0.8.0` | `run-clear: func(u64,u32,u32)->u32` | clear color + present; returns `0` |
 
-Handles are **u32 reps** (M3 style), not WIT `adapter`/`device` resources. Gap vs Track A cube: [`docs/mapping/gap-m4-vs-cube.md`](../../docs/mapping/gap-m4-vs-cube.md).
+Handles are **u32 reps** (M3 style), not WIT `adapter`/`device` resources. Historical on-screen vs cube notes: [`docs/archive/gap-m4-vs-cube.zh.md`](../../docs/archive/gap-m4-vs-cube.zh.md) (archive only). Product shape: [`docs/scheme/guest-shape.md`](../../docs/scheme/guest-shape.md).
 
 ```powershell
 wasm-tools component new fixtures/m4/render_smoke.wat -o fixtures/m4/render_smoke.wasm

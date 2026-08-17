@@ -1,33 +1,32 @@
 ---
 name: Bug report
-about: 缺陷或意外行为
+about: Defect or unexpected behavior
 title: "[bug] "
 labels: ["bug"]
 ---
 
-## 环境
+## Environment
 
-- OS / 设备：
-- 分支或 commit：
-- Rust / NDK（若涉及 native）：
-- 是否 Android 仪器：
+- OS / device:
+- Branch or commit:
+- Rust / NDK (if native):
+- Android instrument?:
 
-## 重现步骤
+## Steps
 
 1.
 2.
 3.
 
-## 期望行为
+## Expected
 
-## 实际行为
+## Actual
 
-## 日志 / 截图
+## Logs / screenshots
 
 ```text
-（粘贴关键输出）
 ```
 
-## 附加
+## Extra
 
-- 是否阻断长期计划切片（stream / wasi:webgpu / …）：
+- Does this block a long-term-plan slice (stream / wasi:webgpu / …)?

@@ -1,20 +1,22 @@
-# 如何构建（轨 B / M0+）
+# How to build
 
-**中文** | 对齐轨 A NDK / AGP / Rust 钉死值。修订须同步 [`scheme/tech-stack.md`](scheme/tech-stack.md) + CHANGELOG。
+**English** | [中文](build.zh.md)
 
-## 前置
+Pins must stay in sync with [`scheme/tech-stack.md`](scheme/tech-stack.md) and a changelog fragment.
 
-| 工具 | 版本（钉死） |
+## Prerequisites
+
+| Tool | Pinned version |
 |------|----------------|
-| JDK | 17+（Gradle Daemon 经 Foojay 用 **21**） |
-| Android SDK | 含 `platforms;android-36` |
+| JDK | 17+ (Gradle Daemon via Foojay uses **21**) |
+| Android SDK | includes `platforms;android-36` |
 | NDK | **28.2.13676358** |
-| Rust | **1.97.1**（`native/rust-toolchain.toml`） |
+| Rust | **1.97.1** (`native/rust-toolchain.toml`) |
 | cargo-ndk | `cargo install cargo-ndk` |
-| Gradle | Wrapper **9.6.1**（仓库自带） |
+| Gradle | Wrapper **9.6.1** (in-repo) |
 
-环境变量（任选其一指向 SDK）：`ANDROID_SDK_ROOT` / `ANDROID_HOME`。  
-或在仓库根创建 gitignored 的 `local.properties`：
+SDK env (either): `ANDROID_SDK_ROOT` / `ANDROID_HOME`.  
+Or gitignored `local.properties` at the repo root:
 
 ```properties
 sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
@@ -26,16 +28,17 @@ rustup toolchain install 1.97.1
 cargo install cargo-ndk
 ```
 
-## 1. 构建 Android `.so`
+GPU-backed instruments also need unpublished Maven-local host artifacts — [`blocked-gpu-host.md`](blocked-gpu-host.md). That is **not** required to compile `:runtime-api` or to build the native `.so`.
 
-正式布局见 [`mapping/artifacts.md`](mapping/artifacts.md)。
+## 1. Android `.so`
+
+Official layout: [`mapping/artifacts.md`](mapping/artifacts.md).
 
 ```powershell
-cd d:\projects\wasmtime-android-kt
 .\scripts\build-native-android.ps1
 ```
 
-默认产出（双 ABI + 元数据）：
+Default (dual ABI + metadata):
 
 ```text
 android/jniLibs/arm64-v8a/libwasmtime_android_kt.so
@@ -43,68 +46,69 @@ android/jniLibs/x86_64/libwasmtime_android_kt.so
 android/jniLibs/build-info.json
 ```
 
-仅 arm64：
+arm64 only:
 
 ```powershell
 .\scripts\build-native-android.ps1 -Targets arm64-v8a
 ```
 
-校验（不编译；`-RequireAll` 要求双 ABI）：
+Verify (no compile; `-RequireAll` wants both ABIs):
 
 ```powershell
 .\scripts\verify-native-android.ps1 -RequireAll
 ```
 
-说明：
+Notes:
 
-- `JNI_OnLoad` 返回 **`JNI_VERSION_1_6`**（ART 拒 1_8）。
-- Bionic 无 `libpthread`：脚本用 `native/link-stubs/libpthread.so` → `INPUT(-lc)`。
-- Windows 交叉编译默认 `CARGO_PROFILE_RELEASE_OPT_LEVEL=2`（缩小 `stream.write` / cli stdio 仪器栈帧），再用 `llvm-strip`。若 rustc `ACCESS_VIOLATION`，设 `$env:CARGO_PROFILE_RELEASE_OPT_LEVEL="0"` 后重编。  
-  该变量覆盖 Cargo **release** 配置的 `opt-level`（`0`=不优化、帧大；`1`/`2`/`3`/`s`/`z` 见 [Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html#opt-level)）。
-- 构建结束写入 `build-info.json` 并对本次 `-Targets` 跑校验。
+- `JNI_OnLoad` returns **`JNI_VERSION_1_6`** (ART rejects 1_8).  
+- Bionic has no `libpthread`: scripts use `native/link-stubs/libpthread.so` → `INPUT(-lc)`.  
+- Windows cross-compile defaults `CARGO_PROFILE_RELEASE_OPT_LEVEL=2` (keeps `stream.write` / cli stdio instrument frames smaller), then `llvm-strip`. If rustc `ACCESS_VIOLATION`, set `$env:CARGO_PROFILE_RELEASE_OPT_LEVEL="0"` and rebuild. That variable overrides Cargo **release** `opt-level` (`0` = no opt, large frames; `1`/`2`/`3`/`s`/`z` — [Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html#opt-level)).  
+- After a successful build: write `build-info.json` and verify the `-Targets` of that run.
 
-## 2. 编译 JVM / Android 模块
+## 2. JVM / Android modules
 
-需先完成步骤 1（否则 `smoke-app` 仪器缺 `.so`）。
+Need step 1 first (otherwise `smoke-app` instruments lack `.so`).
 
 ```powershell
 .\gradlew.bat :runtime-api:compileKotlin :runtime-jni:compileKotlin :android:assembleDebug :smoke-app:assembleDebug
 ```
 
-## 3. M0 仪器（真机 / 模拟器）
+`:runtime-jni` / `:smoke-app` resolve unpublished GPU host artifacts if those modules are compiled — see [`blocked-gpu-host.md`](blocked-gpu-host.md).
 
-设备 ABI 需匹配已产出的 `.so`（真机优先 **arm64-v8a**）。
+## 3. Device / emulator instruments
+
+Device ABI must match the produced `.so` (physical devices prefer **arm64-v8a**).
 
 ```powershell
 .\gradlew.bat :smoke-app:connectedDebugAndroidTest
 ```
 
-用例：`LoadLibraryInstrumentedTest` — `loadLibrary` + `nativeWasmtimeVersion` 非空。
+Includes `LoadLibraryInstrumentedTest` — `loadLibrary` + non-empty `nativeWasmtimeVersion`.
 
-OEM / UTP 竞态时可改用 `adb shell am instrument`（经验同轨 A）。
+OEM / UTP races: `adb shell am instrument` is a known workaround.
 
-## 模块
+## Modules
 
-| 模块 | 角色 |
-|------|------|
-| `runtime-api` | 公共常量 / 将来 Engine API（无 Android 依赖） |
-| `runtime-jni` | `NativeLoader` / JNI 声明 |
+| Module | Role |
+|--------|------|
+| `runtime-api` | Public constants / future Engine API (no Android dependency) |
+| `runtime-jni` | `NativeLoader` / JNI |
 | `android` | AAR + `jniLibs` |
-| `smoke-app` | 最小 Activity + 仪器 |
-| `native/` | Rust cdylib（非 Gradle 子项目） |
+| `smoke-app` | Minimal Activity + instruments |
+| `native/` | Rust cdylib (not a Gradle subproject) |
 
-## 4. 可选：桌面开发壳
+## 4. Optional desktop shell
 
-无 NDK 时可用宿主 cdylib + JVM 冒烟迭代 L1（**非正式门禁**）：
+No NDK: host cdylib + JVM smoke (**not** the formal gate):
 
 ```powershell
 .\scripts\build-native-host.ps1
 .\gradlew.bat :runtime-jni:test
 ```
 
-完整贡献者流程见 [`contribute.md`](contribute.md)。
+Full contributor flow: [`contribute.md`](contribute.md).
 
-## 明确不做
+## Explicitly out of scope
 
-- **不**依赖 `wasmtime4j` / 轨 A `runtime-wasmtime`
-- 桌面壳 **不**替代 Android 仪器门禁（见 [`scheme/milestones.md`](scheme/milestones.md)）
+- **No** wasmtime4j / 4j native as the runtime  
+- Desktop shell **does not** replace Android instruments  
