@@ -534,7 +534,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu.request-adapter",
                 |accessor, (gpu, _options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
                     Box::pin(async move {
-                        let cb = accessor.with(|mut access| {
+                        let cb = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let _ = access.data_mut().table.get(&gpu)?;
                             Ok(access.data_mut().experimental_host_cb.clone())
                         })?;
@@ -1603,7 +1603,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap_concurrent("request-adapter", |accessor, ()| {
                 Box::pin(async move {
                     let cb = accessor
-                        .with(|mut access| Ok(access.data_mut().experimental_host_cb.clone()))?;
+                        .with(|mut access| access.data_mut().experimental_host_cb.clone());
                     // Yield so this is true concurrent (not sync wrap / Latch fake-async).
                     let (tx, rx) = oneshot::channel::<()>();
                     std::thread::spawn(move || {
