@@ -18,4 +18,4 @@ Breaking public Kotlin/JNI/error semantics: at least `0.MINOR+1.0` **and** a cha
 | `ExperimentalWebGpuBridge` / leftover flat imports | Most unstable |
 | Guest fixtures / instruments | Not library API |
 
-Guest product pin: `wasi:webgpu@0.3.0-rc.2`. Public GPU SPI (when landed) lives in `runtime-api`. Until the module-split PR, unpublished host Maven coordinates are listed in [`../blocked-gpu-host.md`](../blocked-gpu-host.md) and must be named in the changelog when bumped.
+Guest product pin: `wasi:webgpu@0.3.0-rc.2`. Public GPU SPI lives in `runtime-api` (`WebGpuBackend`). Unpublished host Maven coordinates are listed in [`../blocked-gpu-host.md`](../blocked-gpu-host.md) (`:host-dawn` only) and must be named in the changelog when bumped.

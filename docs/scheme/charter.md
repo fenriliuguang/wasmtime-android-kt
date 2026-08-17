@@ -18,7 +18,7 @@ Still **experimental** until a separate product RFC. Not a compliant wasi:webgpu
 
 ## Principles
 
-1. **Do not rewrite Dawn** (NG-7). This repo **packages and adapts** Dawn as the default GPU backend; the core runtime AAR omits Dawn so apps can supply another spec-shaped host or none. See [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md). Today’s unpublished coordinates: [`../blocked-gpu-host.md`](../blocked-gpu-host.md).  
+1. **Do not rewrite Dawn** (NG-7). This repo **packages and adapts** Dawn as the default GPU backend; the core runtime AAR omits Dawn so apps can supply another spec-shaped host or none. See [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md). Vendor form: [`../blocked-gpu-host.md`](../blocked-gpu-host.md).  
 2. **Android-first.** Desktop is a contributor convenience.  
 3. **Thin JNI.** Engine / store / linker / instance / future / resource — do not clone a full Java Wasmtime surface early.  
 4. **Official async.** Never treat Latch/`sync-compat` as true CM async.  

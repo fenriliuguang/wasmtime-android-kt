@@ -28,7 +28,7 @@ rustup toolchain install 1.97.1
 cargo install cargo-ndk
 ```
 
-GPU-backed instruments also need unpublished Maven-local host artifacts — [`blocked-gpu-host.md`](blocked-gpu-host.md). That is **not** required to compile `:runtime-api` or to build the native `.so`.
+GPU-backed instruments also need unpublished Maven-local host artifacts — [`blocked-gpu-host.md`](blocked-gpu-host.md). That is **not** required to compile `:runtime-api` or `:runtime-jni`, or to build the native `.so`.
 
 ## 1. Android `.so`
 
@@ -73,7 +73,7 @@ Need step 1 first (otherwise `smoke-app` instruments lack `.so`).
 .\gradlew.bat :runtime-api:compileKotlin :runtime-jni:compileKotlin :android:assembleDebug :smoke-app:assembleDebug
 ```
 
-`:runtime-jni` / `:smoke-app` resolve unpublished GPU host artifacts if those modules are compiled — see [`blocked-gpu-host.md`](blocked-gpu-host.md).
+`:host-dawn` / `:android-webgpu` / `:smoke-app` resolve unpublished GPU host artifacts — see [`blocked-gpu-host.md`](blocked-gpu-host.md). `:runtime-jni` does not.
 
 ## 3. Device / emulator instruments
 
@@ -91,10 +91,12 @@ OEM / UTP races: `adb shell am instrument` is a known workaround.
 
 | Module | Role |
 |--------|------|
-| `runtime-api` | Public constants / future Engine API (no Android dependency) |
-| `runtime-jni` | `NativeLoader` / JNI |
-| `android` | AAR + `jniLibs` |
-| `smoke-app` | Minimal Activity + instruments |
+| `runtime-api` | Public SPI (`WebGpuBackend`) / future Engine API (no Android dependency) |
+| `runtime-jni` | `NativeLoader` / JNI / L1 (no Dawn) |
+| `android` | AAR + Wasmtime `jniLibs` |
+| `host-dawn` | Dawn adapter + unpublished host + Dawn `.so` |
+| `android-webgpu` | Product default bundle (`api(android)` + `api(host-dawn)`) |
+| `smoke-app` | Minimal Activity + instruments (depends on the bundle) |
 | `native/` | Rust cdylib (not a Gradle subproject) |
 
 ## 4. Optional desktop shell

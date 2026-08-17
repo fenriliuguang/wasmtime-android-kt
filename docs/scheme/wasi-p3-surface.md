@@ -69,7 +69,7 @@ Official 0.3 core (from wasi.dev):
 | Work | Lands in |
 |------|----------|
 | Engine config, linker registration, future/stream JNI, scheduler pump | **This repo** |
-| Device (GPU / Surface) | This repo’s pluggable host ([`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)); default Dawn in `:host-dawn`. Today still unpublished — [`../blocked-gpu-host.md`](../blocked-gpu-host.md) |
+| Device (GPU / Surface) | This repo’s pluggable host ([`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)); default Dawn in `:host-dawn`. Unpublished coordinates: [`../blocked-gpu-host.md`](../blocked-gpu-host.md) |
 | Pure-logic WASI (clocks/random/cli subset) | Prefer Kotlin host stubs here; crate split later if needed |
 | Full HTTP / sockets | Separate RFC; evaluate exposing `wasmtime-wasi` via JNI only after Android thread + size review |
 

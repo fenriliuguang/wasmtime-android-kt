@@ -1,13 +1,21 @@
-# 阻断：未发布的 GPU Host 库
+# GPU Host：vendor 路径（Dawn）
 
 [English](blocked-gpu-host.md) | **中文**
 
-本页是停车标志，不是构建指南。仪器测试与 `runtime-jni` 仍依赖 **不属于本仓** 的 mavenLocal 构件：
+**已拍板（2026-08-17）：** 把 mvp 仓的 **Kotlin Host 映射** vendor 进本仓。Dawn **原生库不进 git**，继续用已发布的 `androidx.webgpu:webgpu`。
 
-| Gradle 别名 | 坐标 |
-|-------------|------|
-| `libs.wasi.webgpu.host.api` | `io.github.fenriliuguang.wasi.webgpu.experimental:host-api:0.1.0-experimental` |
-| `libs.wasi.webgpu.host.webgpu` | `…:host-webgpu:0.1.0-experimental`（APK 内 Dawn `.so`） |
-| `libs.wasi.webgpu.abi.cm` | `…:abi-cm:0.1.0-experimental` |
+在 copy PR 落地前，`:host-dawn` 仍走 mavenLocal（仅 GPU 构建的停车标志）。
 
-**文档 PR 不得删除这些依赖。** 目标形态见 [`scheme/rfc-pluggable-gpu-backend.md`](scheme/rfc-pluggable-gpu-backend.md)。Dawn 字节如何进入 `:host-dawn` 仍须拍板：vendor / 发布 / 仅 mavenLocal。
+## 形式
+
+从 `wasi-webgpu-jvm-mvp` 拷入（`:host-dawn-impl` 或并入 `:host-dawn`）：
+
+- `host-api`（`WasiWebGpuHost` / CPU / descriptor）
+- `DawnWasiWebGpuHost`
+- `AbiCmHostBindings`
+
+Dawn `.so` 来自 Google Maven：`androidx.webgpu:webgpu:1.0.0-alpha05`。
+
+**不要：** 新开 Dawn 产品仓；发布 `experimental:*` 当本仓契约；把 `.so` 提交进 git；搬 mvp 整树（4j / cube / abi-mvp）；在外仓实现 `WebGpuBackend`。
+
+对外仍是 `:host-dawn` / `:android-webgpu` / `WebGpuBackend`。细节以英文为准。

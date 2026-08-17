@@ -30,4 +30,6 @@ rootProject.name = "wasmtime-android-kt"
 include(":runtime-api")
 include(":runtime-jni")
 include(":android")
+include(":host-dawn")
+include(":android-webgpu")
 include(":smoke-app")

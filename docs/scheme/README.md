@@ -21,7 +21,7 @@ Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 | [`tech-stack.md`](tech-stack.md) | Wasmtime / JNI / NDK |
 | [`api-stability.md`](api-stability.md) | `0.x-experimental` SemVer |
 | [`vcs-workflow.md`](vcs-workflow.md) | Short-lived branches + PR |
-| [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Unpublished GPU host — **code still depends** |
+| [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Vendor: Host Kotlin in-tree; Dawn via androidx.webgpu |
 | [`../mapping/threading-android.md`](../mapping/threading-android.md) | Thread contract |
 | [`../build.md`](../build.md) | How to build |
 | [`../contribute.md`](../contribute.md) | Contributor shell |

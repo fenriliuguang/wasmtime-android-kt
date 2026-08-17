@@ -1,10 +1,11 @@
 package io.github.fenriliuguang.wasmtime.android.api
 
 /**
- * Flat experimental CM host callbacks for Track B L1 (u32 reps, not WIT resources).
+ * Flat experimental CM host callbacks for L1 (u32 reps, not WIT resources).
  *
- * M3 uses [requestAdapter] only. M4 render smoke wires the clear→present subset.
- * Defaults throw so partial attachments stay explicit.
+ * Product guests use WIT `[method]` names; this table is the JNI lowering.
+ * Unwired `requestAdapter` is handled in native as guest `none` (not a trap).
+ * Other methods default-throw so partial attachments stay explicit.
  */
 interface ExperimentalHostCallbacks {
     fun requestAdapter(): Int = unsupported("requestAdapter")

@@ -14,4 +14,4 @@
 | [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 |
 | [`wasi-p3-surface.md`](wasi-p3-surface.md) | 已批准 WASI 0.3 |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | 引擎钉死 |
-| [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | 未发布 GPU Host——**代码仍依赖** |
+| [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Vendor：Host Kotlin 进仓；Dawn 用 androidx.webgpu |
