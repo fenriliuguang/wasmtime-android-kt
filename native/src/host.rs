@@ -32,8 +32,8 @@ pub struct GpuDevice {
 
 /// Host representation of WIT `resource gpu-command-buffer`.
 /// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
-/// `get-command-buffer` still pushes `{ rep: 0 }`; encoder.finish still returns
-/// transitional u32 until a later S slice.
+/// `get-command-buffer` still pushes `{ rep: 0 }`; S7 `encoder.finish` stores
+/// the real L2 rep.
 #[derive(Debug)]
 pub struct GpuCommandBuffer {
     #[allow(dead_code)]
@@ -43,7 +43,7 @@ pub struct GpuCommandBuffer {
 /// Host representation of WIT `resource gpu-command-encoder`.
 /// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
 /// `get-encoder` still pushes `{ rep: 0 }`; S6 `create-command-encoder` stores
-/// the real L2 rep. finish still returns transitional u32 until a later S slice.
+/// the real L2 rep.
 #[derive(Debug)]
 pub struct GpuCommandEncoder {
     #[allow(dead_code)]

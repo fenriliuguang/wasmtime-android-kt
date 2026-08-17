@@ -177,16 +177,16 @@
 | **仪器** | 复用 `attachRenderPassEnd` |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
 
-## WASI webgpu `[method]gpu-command-encoder.finish`（W3）
+## WASI webgpu `[method]gpu-command-encoder.finish`（S7）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | 复用 `gpu-command-encoder` / `get-encoder`；`[method]gpu-command-encoder.finish`：`func_wrap` sync → L2 adapter/device/encoder/finish |
-| **Guest** | `get-encoder` → finish（`fixtures/w1/webgpu_method_command_encoder_finish`） |
+| **Host** | 复用 `gpu-command-encoder` / `get-encoder`；`[method]gpu-command-encoder.finish`：`func_wrap` sync `(borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>` → encoder.rep≠0 则直接 finish，否则 L2 adapter/device/encoder/finish；table 存 L2 rep |
+| **Guest** | `get-encoder` → finish（descriptor=none）→ drop own；`run` 返回 1（`fixtures/w1/webgpu_method_command_encoder_finish`） |
 | **仪器** | 复用 `attachCommandEncoderFinish` |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
 
-非 `option<command-buffer-descriptor>`。
+形状与钉版 WIT `finish: func(descriptor: option<gpu-command-buffer-descriptor>) -> gpu-command-buffer` 同构。descriptor 本刀传 none。非合规宣称。
 
 ## WASI webgpu `[method]gpu-queue.submit`（S5）
 

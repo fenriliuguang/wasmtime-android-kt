@@ -8,14 +8,15 @@ import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.webgpu.ExperimentalWebGpuBridge
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3 `[method]` slice: `get-encoder` then `[method]gpu-command-encoder.finish`
- * via [ExperimentalWebGpuBridge.attachCommandEncoderFinish] + [callRunConcurrent].
+ * S7 `[method]` slice: `get-encoder` then `[method]gpu-command-encoder.finish`
+ * (`option<gpu-command-buffer-descriptor>` = none → `own<gpu-command-buffer>`;
+ * drops the own; `run` returns 1) via
+ * [ExperimentalWebGpuBridge.attachCommandEncoderFinish] + [callRunConcurrent].
  * Flat `command-encoder-finish` remains. Not compliance.
  */
 @RunWith(AndroidJUnit4::class)
@@ -36,9 +37,12 @@ class WasiWebGpuMethodCommandEncoderFinishInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachCommandEncoderFinish(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertNotEquals("buffer rep must be non-zero", 0, rep)
-                                assertTrue("buffer rep should be positive", rep > 0)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals(
+                                    "guest must drop owns and return harness 1",
+                                    1,
+                                    harness,
+                                )
                             }
                         }
                     }
