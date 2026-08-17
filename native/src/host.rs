@@ -56,9 +56,14 @@ pub struct GpuQueue {
 #[derive(Debug)]
 pub struct GpuTexture;
 
-/// Host representation of WIT `resource gpu-buffer` (W3+ `[method]`).
+/// Host representation of WIT `resource gpu-buffer`.
+/// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
+/// `get-buffer` still pushes `{ rep: 0 }`; S4 `create-buffer` stores the real L2 rep.
 #[derive(Debug)]
-pub struct GpuBuffer;
+pub struct GpuBuffer {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
 
 pub struct HostState {
     pub table: ResourceTable,

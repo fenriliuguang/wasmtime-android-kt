@@ -1,8 +1,82 @@
 //! WIT types for `wasi:webgpu@0.3.0-rc.2` used by canonical-shape slices.
 //! S2: `gpu-request-adapter-options` + `gpu-power-preference`.
 //! S3: `gpu-device-descriptor` + `request-device-error` (+ feature enum / queue descriptor).
+//! S4: `gpu-buffer-descriptor` + `gpu-buffer-usage` flags.
 
-use wasmtime::component::{ComponentType, Lift, Lower, Resource};
+use wasmtime::component::{flags, ComponentType, Lift, Lower, Resource};
+
+flags! {
+    GpuBufferUsage {
+        #[component(name = "map-read")]
+        const MAP_READ;
+        #[component(name = "map-write")]
+        const MAP_WRITE;
+        #[component(name = "copy-src")]
+        const COPY_SRC;
+        #[component(name = "copy-dst")]
+        const COPY_DST;
+        #[component(name = "index")]
+        const INDEX;
+        #[component(name = "vertex")]
+        const VERTEX;
+        #[component(name = "uniform")]
+        const UNIFORM;
+        #[component(name = "storage")]
+        const STORAGE;
+        #[component(name = "indirect")]
+        const INDIRECT;
+        #[component(name = "query-resolve")]
+        const QUERY_RESOLVE;
+    }
+}
+
+impl GpuBufferUsage {
+    /// WIT declaration order matches WebGPU / Dawn `GPUBufferUsage` bits.
+    pub fn to_webgpu_u32(self) -> u32 {
+        let mut bits = 0u32;
+        if self.contains(Self::MAP_READ) {
+            bits |= 1 << 0;
+        }
+        if self.contains(Self::MAP_WRITE) {
+            bits |= 1 << 1;
+        }
+        if self.contains(Self::COPY_SRC) {
+            bits |= 1 << 2;
+        }
+        if self.contains(Self::COPY_DST) {
+            bits |= 1 << 3;
+        }
+        if self.contains(Self::INDEX) {
+            bits |= 1 << 4;
+        }
+        if self.contains(Self::VERTEX) {
+            bits |= 1 << 5;
+        }
+        if self.contains(Self::UNIFORM) {
+            bits |= 1 << 6;
+        }
+        if self.contains(Self::STORAGE) {
+            bits |= 1 << 7;
+        }
+        if self.contains(Self::INDIRECT) {
+            bits |= 1 << 8;
+        }
+        if self.contains(Self::QUERY_RESOLVE) {
+            bits |= 1 << 9;
+        }
+        bits
+    }
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuBufferDescriptor {
+    pub size: u64,
+    pub usage: GpuBufferUsage,
+    #[component(name = "mapped-at-creation")]
+    pub mapped_at_creation: Option<bool>,
+    pub label: Option<String>,
+}
 
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]

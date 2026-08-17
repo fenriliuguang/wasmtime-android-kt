@@ -29,8 +29,12 @@ interface ExperimentalHostCallbacks {
 
     fun deviceCreateCommandEncoder(device: Int): Int = unsupported("deviceCreateCommandEncoder")
 
-    /** W3+: host-fixed buffer descriptor (size/usage not from Guest). */
+    /** W3 frozen: host-fixed buffer descriptor (size/usage not from Guest). */
     fun deviceCreateBuffer(device: Int): Int = unsupported("deviceCreateBuffer")
+
+    /** S4: Guest-decoded `gpu-buffer-descriptor` size + WebGPU usage bits. */
+    fun deviceCreateBufferDescribed(device: Int, size: Long, usage: Int): Int =
+        unsupported("deviceCreateBufferDescribed")
 
     /** W3+: JNI ignores Guest stub buffer; host creates MAP_READ buffer then map-async. */
     fun bufferMapAsync(buffer: Int) {

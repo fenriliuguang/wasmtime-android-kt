@@ -224,6 +224,25 @@ pub fn exp_create_buffer(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     )
 }
 
+/// S4: Guest-decoded `gpu-buffer-descriptor` size/usage (mapped/label still unused).
+pub fn exp_create_buffer_described(
+    cb: &GlobalRef,
+    device: u32,
+    size: u64,
+    usage: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateBufferDescribed",
+        "(IJI)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Long(size as i64),
+            HostArg::Int(usage as i32),
+        ],
+    )
+}
+
 pub fn exp_buffer_map_async(cb: &GlobalRef, buffer: u32) -> Result<(), String> {
     call_void(
         cb,
