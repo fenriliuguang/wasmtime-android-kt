@@ -968,7 +968,7 @@ object ExperimentalWebGpuBridge {
         )
     }
 
-    /** W3: adapter + device + queue + encoder + finish + submit1. Shared by flat `queue-submit1` and `[method]gpu-queue.submit`. */
+    /** W3/S5: adapter + device + queue + encoder + finish + submit1. Shared by flat `queue-submit1` and `[method]gpu-queue.submit` (S5 list still host-fixed L2). */
     fun attachQueueSubmit1(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(

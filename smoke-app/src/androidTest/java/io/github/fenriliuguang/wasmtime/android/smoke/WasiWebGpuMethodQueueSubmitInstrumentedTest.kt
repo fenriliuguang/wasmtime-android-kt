@@ -13,8 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3 `[method]` slice: `get-queue` then `[method]gpu-queue.submit` (single
- * command-buffer u32, not proposal `list`) via
+ * S5 `[method]` slice: `get-queue` + `get-command-buffer` then
+ * `[method]gpu-queue.submit` (`list<borrow<gpu-command-buffer>>`;
+ * Guest passes one element; drops owns; `run` returns 1) via
  * [ExperimentalWebGpuBridge.attachQueueSubmit1] + [callRunConcurrent].
  * Flat `queue-submit1` remains. Not compliance.
  */
@@ -36,8 +37,12 @@ class WasiWebGpuMethodQueueSubmitInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachQueueSubmit1(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub command-buffer 19", 19, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals(
+                                    "guest must drop owns and return harness 1",
+                                    1,
+                                    harness,
+                                )
                             }
                         }
                     }

@@ -1,4 +1,6 @@
-//! W3: `get-queue` + `[method]gpu-queue.submit` (self, commands u32). Guest returns 19.
+//! S5: `get-queue` + `get-command-buffer` + `[method]gpu-queue.submit`
+//! WIT: `(borrow<gpu-queue>, list<borrow<gpu-command-buffer>>) -> ()`.
+//! Guest passes a one-element list; drops owns; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -8,6 +10,9 @@ use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
 struct GpuQueue;
+
+#[derive(Debug)]
+struct GpuCommandBuffer;
 
 struct TestHost {
     table: ResourceTable,
@@ -27,15 +32,33 @@ fn register_method_queue_submit(
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-command-buffer",
+        ResourceType::host::<GpuCommandBuffer>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuCommandBuffer>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-queue", |mut store, ()| {
         let resource = store.data_mut().table.push(GpuQueue)?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap("get-command-buffer", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuCommandBuffer)?;
+        Ok((resource,))
+    })?;
     webgpu.func_wrap(
         "[method]gpu-queue.submit",
-        move |mut caller, (queue, commands): (Resource<GpuQueue>, u32)| {
+        move |mut caller, (queue, commands): (Resource<GpuQueue>, Vec<Resource<GpuCommandBuffer>>)| {
             caller.data_mut().table.get(&queue).map(|_| ())?;
-            assert_eq!(commands, 19, "guest must pass stub command-buffer 19");
+            assert_eq!(
+                commands.len(),
+                1,
+                "guest must pass a one-element command-buffer list"
+            );
+            caller.data_mut().table.get(&commands[0]).map(|_| ())?;
             submitted.store(true, Ordering::SeqCst);
             Ok(())
         },
@@ -80,7 +103,7 @@ fn wasi_webgpu_method_queue_submit_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 19, "guest run must return stub command-buffer 19");
+    assert_eq!(v, 1, "guest run must drop owns and return harness 1");
     assert!(
         submitted.load(Ordering::SeqCst),
         "submit must have been called"
@@ -108,7 +131,10 @@ fn wasi_webgpu_method_queue_submit_call_async() -> wasmtime::Result<()> {
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 19, "guest run must return stub command-buffer via call_async");
+    assert_eq!(
+        v, 1,
+        "guest run must drop owns and return harness 1 via call_async"
+    );
     assert!(
         submitted.load(Ordering::SeqCst),
         "submit must have been called"

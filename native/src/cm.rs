@@ -4,10 +4,8 @@ use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_link, throw_err};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
-    Gpu, GpuAdapter, GpuBuffer, GpuCommandEncoder, GpuComputePassEncoder, GpuDevice, GpuQueue,
-    GpuRenderPassEncoder, GpuTexture,
-    HostState,
-    Widget,
+    Gpu, GpuAdapter, GpuBuffer, GpuCommandBuffer, GpuCommandEncoder, GpuComputePassEncoder,
+    GpuDevice, GpuQueue, GpuRenderPassEncoder, GpuTexture, HostState, Widget,
 };
 use crate::webgpu_abi::{
     GpuBufferDescriptor, GpuDeviceDescriptor, GpuRequestAdapterOptions, RecordOptionGpuSize64,
@@ -489,6 +487,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // `[method]gpu-device.create-sampler` (sync; host-fixed descriptor, still u32)
     // and `[method]gpu-device.create-shader-module` (sync; host-fixed WGSL, still u32)
     // and `[method]gpu-queue.write-buffer` (sync void; host-fixed bytes, single buffer u32)
+    // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>)
     // and `gpu-texture` + `get-texture` + `[method]gpu-texture.create-view` (sync; still u32)
     // and `[method]gpu-device.create-bind-group-layout` (sync; host-fixed empty layout, still u32)
     // and `[method]gpu-device.create-pipeline-layout` (sync; host-fixed empty bind-group-layouts, still u32)
@@ -507,7 +506,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-render-pass-encoder.set-vertex-buffer` (sync void; host-fixed VERTEX buffer slot 0, stub buffer u32)
     // and `[method]gpu-command-encoder.copy-buffer-to-buffer` (sync void; host-fixed 4-byte copy, stub src/dst u32).
     // Experimental stays sync.
-    // Not full option / list.
+    // S5: first canonical list is submit; other lists still later.
     {
         let mut webgpu = linker
             .instance("wasi:webgpu/webgpu@0.3.0-rc.2")
@@ -1147,10 +1146,33 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?;
         webgpu
+            .resource(
+                "gpu-command-buffer",
+                ResourceType::host::<GpuCommandBuffer>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuCommandBuffer>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-command-buffer", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuCommandBuffer { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap(
                 "[method]gpu-queue.submit",
-                |mut caller, (queue, _commands): (Resource<GpuQueue>, u32)| {
+                |mut caller, (queue, commands): (
+                    Resource<GpuQueue>,
+                    Vec<Resource<GpuCommandBuffer>>,
+                )| {
                     let _ = caller.data_mut().table.get(&queue)?;
+                    for command in &commands {
+                        let _ = caller.data_mut().table.get(command)?;
+                    }
                     let cb = caller
                         .data()
                         .experimental_host_cb

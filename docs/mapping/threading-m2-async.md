@@ -188,16 +188,16 @@
 
 非 `option<command-buffer-descriptor>`。
 
-## WASI webgpu `[method]gpu-queue.submit`（W3）
+## WASI webgpu `[method]gpu-queue.submit`（S5）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | `gpu-queue` + `get-queue`；`[method]gpu-queue.submit`：`func_wrap` sync void → L2 queue + encoder/finish + submit1（单 buffer u32） |
-| **Guest** | `get-queue` → submit(stub 19)；返回 19（`fixtures/w1/webgpu_method_queue_submit`） |
+| **Host** | `gpu-queue` + `gpu-command-buffer` + `get-queue` + `get-command-buffer`；`[method]gpu-queue.submit`：`func_wrap` sync `(borrow<gpu-queue>, list<borrow<gpu-command-buffer>>) -> ()` → table.get 每个 list 元素；L2 仍 host-fixed encoder/finish + submit1 |
+| **Guest** | `get-queue` + `get-command-buffer` → submit(单元素 list) → drop owns；`run` 返回 1（`fixtures/w1/webgpu_method_queue_submit`） |
 | **仪器** | 复用 `attachQueueSubmit1` |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方 |
 
-非提案 `list<borrow<gpu-command-buffer>>`。
+形状与钉版 WIT `submit: func(command-buffers: list<borrow<gpu-command-buffer>>)` 同构。`get-command-buffer` 仅测试构造器。非合规宣称。
 
 ## WASI webgpu `[method]gpu-device.create-buffer`（S4）
 
