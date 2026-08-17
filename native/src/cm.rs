@@ -8,8 +8,9 @@ use crate::host::{
     GpuDevice, GpuQueue, GpuRenderPassEncoder, GpuTexture, HostState, Widget,
 };
 use crate::webgpu_abi::{
-    GpuBufferDescriptor, GpuCommandEncoderDescriptor, GpuDeviceDescriptor,
-    GpuRequestAdapterOptions, RecordOptionGpuSize64, RequestDeviceError, RequestDeviceErrorKind,
+    GpuBufferDescriptor, GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor,
+    GpuDeviceDescriptor, GpuRequestAdapterOptions, RecordOptionGpuSize64, RequestDeviceError,
+    RequestDeviceErrorKind,
 };
 use crate::jvm;
 use futures::channel::oneshot;
@@ -488,6 +489,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-device.create-shader-module` (sync; host-fixed WGSL, still u32)
     // and `[method]gpu-queue.write-buffer` (sync void; host-fixed bytes, single buffer u32)
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>)
+    // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>)
     // and `gpu-texture` + `get-texture` + `[method]gpu-texture.create-view` (sync; still u32)
     // and `[method]gpu-device.create-bind-group-layout` (sync; host-fixed empty layout, still u32)
     // and `[method]gpu-device.create-pipeline-layout` (sync; host-fixed empty bind-group-layouts, still u32)
@@ -1133,35 +1135,6 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
-            .func_wrap(
-                "[method]gpu-command-encoder.finish",
-                |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_command_encoder_finish(&cb, encoder_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
-                },
-            )
-            .map_err(|e| e.to_string())?;
-        webgpu
-            .func_wrap("get-queue", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuQueue { rep: 0 })?;
-                Ok((resource,))
-            })
-            .map_err(|e| e.to_string())?;
-        webgpu
             .resource(
                 "gpu-command-buffer",
                 ResourceType::host::<GpuCommandBuffer>(),
@@ -1171,6 +1144,49 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Ok(())
                 },
             )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.finish",
+                |mut caller, (encoder, _descriptor): (
+                    Resource<GpuCommandEncoder>,
+                    Option<GpuCommandBufferDescriptor>,
+                )| {
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    let buffer_rep = jvm::exp_command_encoder_finish(&cb, l2_encoder)
+                        .map_err(wasmtime::Error::msg)?;
+                    if buffer_rep == 0 {
+                        return Err(wasmtime::Error::msg("command-encoder-finish returned 0"));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuCommandBuffer { rep: buffer_rep })?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-queue", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuQueue { rep: 0 })?;
+                Ok((resource,))
+            })
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-command-buffer", |mut store, ()| {

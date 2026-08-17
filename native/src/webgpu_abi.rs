@@ -3,6 +3,7 @@
 //! S3: `gpu-device-descriptor` + `request-device-error` (+ feature enum / queue descriptor).
 //! S4: `gpu-buffer-descriptor` + `gpu-buffer-usage` flags.
 //! S6: `gpu-command-encoder-descriptor`.
+//! S7: `gpu-command-buffer-descriptor`.
 
 use wasmtime::component::{flags, ComponentType, Lift, Lower, Resource};
 
@@ -194,6 +195,13 @@ pub enum RequestDeviceErrorKind {
 #[component(record)]
 #[allow(dead_code)]
 pub struct GpuCommandEncoderDescriptor {
+    pub label: Option<String>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuCommandBufferDescriptor {
     pub label: Option<String>,
 }
 
