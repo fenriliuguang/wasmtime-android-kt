@@ -2,7 +2,7 @@
 name = "wasmtime-android-kt"
 version = "0.1.0"
 edition = "2021"
-description = "Thin JNI cdylib over upstream Wasmtime for Android (Track B)"
+description = "Thin JNI cdylib over upstream Wasmtime for Android"
 license = "Apache-2.0"
 publish = false
 
@@ -11,7 +11,7 @@ name = "wasmtime_android_kt"
 crate-type = ["cdylib"]
 
 [dependencies]
-# Pin to Track A Wasmtime generation (wasmtime4j 47.0.2-*). Revise tech-stack.md on bump.
+# Pin wasmtime 47.x (CM async / WASI 0.3). Revise docs/scheme/tech-stack.md on bump.
 jni = "0.21"
 pollster = "0.4"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }

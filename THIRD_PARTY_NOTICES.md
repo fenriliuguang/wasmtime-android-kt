@@ -1,43 +1,45 @@
-# 第三方许可摘要
+# Third-party notices
 
-本仓自有代码见根目录 [`LICENSE`](LICENSE)（Apache-2.0）与 [`NOTICE`](NOTICE)。  
-以下为**直接依赖与主要传递依赖**的许可扫描摘要（`cargo license`，2026-08-11）；完整 SPDX 以各 crate / Maven 构件为准。
+**English** | [中文](THIRD_PARTY_NOTICES.zh.md)
 
-## 1. Rust（`native/`）
+This repository’s own code: [`LICENSE`](LICENSE) (Apache-2.0) and [`NOTICE`](NOTICE).  
+The table below is a **scan summary** of direct and major transitive licenses (`cargo license`, 2026-08-11). Authoritative SPDX is each crate / Maven artifact.
 
-| 依赖 | 角色 | SPDX（扫描结果） |
-|------|------|------------------|
-| `wasmtime` (+ Cranelift 等) | 引擎 | Apache-2.0 WITH LLVM-exception |
-| `jni` | JNI 绑定 | Apache-2.0 OR MIT |
-| `futures` | async 工具 | Apache-2.0 OR MIT |
-| `pollster` | 阻塞驱动 | Apache-2.0 OR MIT |
+## 1. Rust (`native/`)
+
+| Dependency | Role | SPDX (scan) |
+|------------|------|-------------|
+| `wasmtime` (+ Cranelift, …) | Engine | Apache-2.0 WITH LLVM-exception |
+| `jni` | JNI | Apache-2.0 OR MIT |
+| `futures` | async helpers | Apache-2.0 OR MIT |
+| `pollster` | blocking driver | Apache-2.0 OR MIT |
 | `getrandom` | WASI random CSPRNG | Apache-2.0 OR MIT |
 
-传递依赖主要为 **Apache-2.0 OR MIT**、**MIT**、**MIT OR Unlicense**、**Zlib**，以及少量 **BSD-2/3-Clause** / **Unicode-3.0**（如 `encoding_rs`、`unicode-ident`）。均为宽松许可，与本仓 Apache-2.0 兼容。
+Transitives are mostly **Apache-2.0 OR MIT**, **MIT**, **MIT OR Unlicense**, **Zlib**, plus some **BSD-2/3-Clause** / **Unicode-3.0**. All are permissive and compatible with this repo’s Apache-2.0.
 
-重新扫描：
+Rescan:
 
 ```powershell
 cargo license --manifest-path native/Cargo.toml --avoid-dev-deps --avoid-build-deps
 ```
 
-## 2. Guest（`guest/m2-async-smoke/`）
+## 2. Guest (`guest/m2-async-smoke/`)
 
-| 依赖 | SPDX（扫描结果） |
-|------|------------------|
-| `wit-bindgen`（及 wasm-tools 相关） | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
+| Dependency | SPDX (scan) |
+|------------|-------------|
+| `wit-bindgen` (and wasm-tools related) | Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT |
 
-## 3. JVM / Android（Gradle）
+## 3. JVM / Android (Gradle)
 
-| 依赖 | 典型 SPDX |
-|------|-----------|
-| AndroidX（`core-ktx`、`appcompat`、测试库） | Apache-2.0 |
-| Kotlin stdlib / Gradle 插件 | Apache-2.0 |
+| Dependency | Typical SPDX |
+|------------|--------------|
+| AndroidX (`core-ktx`, `appcompat`, test libs) | Apache-2.0 |
+| Kotlin stdlib / Gradle plugins | Apache-2.0 |
 | JUnit 4 | EPL-1.0 |
-| 轨 A engineered（`host-api` / `host-webgpu` / `abi-cm`，可选联调） | 见姊妹仓 `wasi-webgpu-jvm-mvp`（MIT） |
+| Unpublished GPU host (`host-api` / `host-webgpu` / `abi-cm`) | **Not in this tree.** Coordinates and decision: [`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md). License of those artifacts must be recorded here when they are vendored or published. |
 
-JUnit 仅用于测试，不进入发布 AAR 运行时。
+JUnit is test-only and does not enter a published AAR runtime.
 
-## 4. 分发说明
+## 4. Redistribution
 
-发布或再分发含 `libwasmtime_android_kt.so` 的二进制时，须保留本仓 `LICENSE` / `NOTICE`，并遵守上游 Wasmtime（Apache-2.0 WITH LLVM-exception）及其他嵌入依赖的再分发条件。
+Binaries that include `libwasmtime_android_kt.so` must keep this repo’s `LICENSE` / `NOTICE` and follow upstream Wasmtime (Apache-2.0 WITH LLVM-exception) plus any other embedded dependencies.

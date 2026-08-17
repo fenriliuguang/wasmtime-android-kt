@@ -1,6 +1,5 @@
-# Cross-compile Track B cdylib for Android and install into android/jniLibs.
-# Aligns NDK / API / ABI / Rust toolchain with Track A build-wasmtime4j-android.ps1.
-# Layout policy: docs/mapping/artifacts.md
+# Cross-compile wasmtime-android-kt cdylib for Android into android/jniLibs.
+# Pins: docs/scheme/tech-stack.md · layout: docs/mapping/artifacts.md
 param(
     [string]$NdkVersion = "28.2.13676358",
     [int]$ApiLevel = 24,

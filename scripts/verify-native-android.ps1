@@ -1,4 +1,4 @@
-# Verify Track B Android jniLibs layout (M5 artifact policy).
+# Verify Android jniLibs layout (docs/mapping/artifacts.md).
 param(
     [string[]]$Abis = @("arm64-v8a", "x86_64"),
     [switch]$RequireAll,

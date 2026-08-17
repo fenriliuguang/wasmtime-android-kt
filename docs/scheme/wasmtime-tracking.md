@@ -1,101 +1,100 @@
-# 官方 Wasmtime 依赖追踪
+# Upstream Wasmtime tracking
 
-**中文** | （暂无 EN）
+**English** | [中文](wasmtime-tracking.zh.md)
 
-> 配套 [`long-term-plan.md`](long-term-plan.md) **P2** · [`tech-stack.md`](tech-stack.md)。  
-> 原则：**只依赖官方 `wasmtime`（及同组织显式选用的官方附属 crate）**；不依赖 wasmtime4j。
+Companion: [`long-term-plan.md`](long-term-plan.md) **P2** · [`tech-stack.md`](tech-stack.md).  
+Policy: depend only on official `wasmtime` (and explicitly chosen official sibling crates). **No wasmtime4j.**
 
-## 1. 追踪什么
+## 1. What we track
 
-| 类别 | 内容 |
-|------|------|
-| 版本 | crates.io / GitHub release 的 `wasmtime` semver |
-| Features | `component-model`、CM async、WASI 相关 feature（若启用 `wasmtime-wasi` 等须单列） |
-| CM async API | `func_wrap_concurrent`、`FutureReader`/`FutureProducer`、`run_concurrent`、**stream** 相关 API |
-| WASI 0.3 | 上游对 P3 worlds / `wasmtime-wasi` 的默认启用与 breaking |
-| Android / 链接 | NDK、页大小、体积、依赖 libc；发行说明中的平台注意 |
-| 安全 | RustSec / 上游安全公告 |
+| Category | Content |
+|----------|---------|
+| Version | crates.io / GitHub `wasmtime` semver |
+| Features | `component-model`, CM async, WASI features (list `wasmtime-wasi` separately if enabled) |
+| CM async API | `func_wrap_concurrent`, `FutureReader`/`FutureProducer`, `run_concurrent`, **stream** APIs |
+| WASI 0.3 | Upstream P3 worlds / `wasmtime-wasi` defaults and breakages |
+| Android / link | NDK, page size, binary size, libc; platform notes in release notes |
+| Security | RustSec / upstream advisories |
 
-本仓 **不**把「追最新 major」当 KPI；把「可知、可升级、可回滚」当 KPI。
+KPI is **knowable, upgradable, rollback-able** — not “always on latest major”.
 
-## 2. 当前钉死（基线）
+## 2. Current pin (baseline)
 
-| 项 | 值（2026-08-11） | 出处 |
-|----|------------------|------|
+| Item | Value (2026-08-11) | Source |
+|------|--------------------|--------|
 | `wasmtime` | **47.0.2** | `native/Cargo.toml` |
-| 对齐意图 | 与轨 A wasmtime4j 所钉 Wasmtime **代际**一致 | [`tech-stack.md`](tech-stack.md) |
-| Features（摘要） | `component-model` + async 相关（见 Cargo.toml） | 构建时以 lockfile 为准 |
-| 产物 | `libwasmtime_android_kt.so` / 桌面 cdylib | [`../mapping/artifacts.md`](../mapping/artifacts.md) |
+| Intent | Stay on a current **47.x** generation that supports CM async + WASI 0.3 | [`tech-stack.md`](tech-stack.md) |
+| Features (summary) | `component-model` + async (see Cargo.toml) | lockfile at build time |
+| Artifacts | `libwasmtime_android_kt.so` / desktop cdylib | [`../mapping/artifacts.md`](../mapping/artifacts.md) |
 
-升级后必须同步改：本表基线、`tech-stack.md`、CHANGELOG、必要时 `docs/build.md`。
+After an upgrade, update this table, `tech-stack.md`, a changelog fragment, and `docs/build.md` if needed.
 
-## 3. 跟踪表（活页）
+## 3. Living tracker
 
-> 每次评估上游或升级前更新「上次核查」行；不必为每次上游 patch 改代码。
+Refresh the “last checked” row when evaluating upstream; do not churn code for every upstream patch.
 
-| 字段 | 当前记录 |
-|------|----------|
-| 上次核查日期 | 2026-08-11 |
-| 本仓钉版本 | 47.0.2 |
-| 上游最新稳定（核查时） | （填写 crates.io / GitHub；文档期未强制拉网） |
-| WASI 0.3 / CM async 默认 | 上游自 46 起将 WASI 0.3.0 + CM async 作为主线能力（见 BA 宣布）；本仓 47.x 已用 CM async |
-| 与长期计划相关的缺口 | **stream** JNI/Kotlin 面未暴露；WASI package 未接 `wasmtime-wasi` |
-| 已知风险 | major 升级可能改 concurrent API；Android 交叉编译需回归 M0 加载 + M2 async |
-| 下一评估触发 | 见 §5 |
+| Field | Current |
+|-------|---------|
+| Last checked | 2026-08-11 |
+| Pin | 47.0.2 |
+| Upstream latest stable (at check) | (fill from crates.io / GitHub; docs-only PRs need not fetch) |
+| WASI 0.3 / CM async default | Upstream treats WASI 0.3.0 + CM async as mainline from 46; this repo 47.x already uses CM async |
+| Gaps vs long-term plan | **stream** JNI/Kotlin surface not fully exposed; WASI packages not wired through `wasmtime-wasi` |
+| Known risks | major may change concurrent APIs; Android cross-compile must regress load + async smoke |
+| Next eval trigger | §5 |
 
-### 3.1 关注上游信号（清单）
+### 3.1 Signals
 
-- Dependabot：仅 `native/` 的直接依赖 `wasmtime`（[`.github/dependabot.yml`](../../.github/dependabot.yml)）；**忽略 major**（须 §4.1 RFC）  
-- [Wasmtime 发布说明](https://github.com/bytecodealliance/wasmtime/releases)  
+- Dependabot: only direct `wasmtime` in `native/` ([`.github/dependabot.yml`](../../.github/dependabot.yml)); **ignore major** (needs §4.1 RFC)  
+- [Wasmtime releases](https://github.com/bytecodealliance/wasmtime/releases)  
 - [Bytecode Alliance / WASI 0.3](https://bytecodealliance.org/articles/WASI-0.3)  
-- docs.rs：`wasmtime::component` concurrent / stream  
-- （可选）`wasmtime-wasi` 对 P3 的 feature 与 Android 可用性  
-- 轨 A 是否仍钉同一 Wasmtime 代际（双轨文档说明差异即可，不强制同 patch）
+- docs.rs: `wasmtime::component` concurrent / stream  
+- (Optional) `wasmtime-wasi` P3 features and Android viability  
 
-## 4. 升级策略
+## 4. Upgrade policy
 
-### 4.1 级别
+### 4.1 Levels
 
-| 变更 | 流程 |
-|------|------|
-| **patch**（47.0.2 → 47.0.x） | 更新 Cargo；跑 native 构建 + 既有仪器/ JVM smoke；CHANGELOG；更新本表 |
-| **minor**（若上游有） | 同 patch + 浏览 component/WASI release notes |
-| **major**（47 → 48+） | **升级 RFC**（短文即可）：动机、API  diff、回归清单、回滚钉版；合并前双 ABI 构建 |
+| Change | Process |
+|--------|---------|
+| **patch** (47.0.2 → 47.0.x) | Update Cargo; native build + existing instruments / JVM smoke; changelog fragment; this table |
+| **minor** (if upstream ships) | Same as patch + skim component/WASI release notes |
+| **major** (47 → 48+) | **Upgrade RFC** (short): motive, API diff, regression list, rollback pin; dual-ABI build before merge |
 
-### 4.2 回归最低集（升级门禁）
+### 4.2 Minimum regression (upgrade gate)
 
-1. `scripts/build-native-android.ps1`（至少 arm64；正式发版双 ABI）  
-2. M0 等价：`loadLibrary` + `nativeWasmtimeVersion`  
-3. M2 等价：真 CM async future smoke  
-4. 若已接 WASI/webgpu 切片：对应仪器至少一条  
-5. `scripts/verify-native-android.ps1`（发版或 `-RequireAll` 时）
+1. `scripts/build-native-android.ps1` (at least arm64; dual ABI for a release)  
+2. Load: `loadLibrary` + `nativeWasmtimeVersion`  
+3. True CM async future smoke  
+4. If WASI/webgpu slices are wired: at least one matching instrument  
+5. `scripts/verify-native-android.ps1` (release or `-RequireAll`)
 
-### 4.3 禁止
+### 4.3 Forbidden
 
-- 引入 `ai.tegmentum:wasmtime4j` 或 4j native 作运行时  
-- 无 RFC 的 major 跳跃  
-- 为「用上某 WASI 实验 feature」而破坏 Android 主路径构建  
+- Introduce `ai.tegmentum:wasmtime4j` or 4j native as the runtime  
+- Major jump without RFC  
+- Break the Android main-path build to pick up an experimental WASI feature  
 
-## 5. 评估节奏
+## 5. Cadence
 
-| 触发 | 动作 |
-|------|------|
-| Dependabot 打开 `wasmtime` patch/minor PR | 按 §4.1 评估；更新 §2 / lockfile / 碎片；**不要**把 major 当普通 Dependabot 合入 |
-| 本仓准备开 L1 stream / WASI package 切片前 | 核查上游 API 是否稳定；更新 §3 |
-| 上游安全公告涉及 `wasmtime` | 立即评估 patch |
-| 轨 A 或提案 WIT 要求更新代际 | 开 major/minor 升级 RFC |
-| 每季度（建议） | 刷新「上游最新稳定」一行，即使不升级 |
+| Trigger | Action |
+|---------|--------|
+| Dependabot `wasmtime` patch/minor PR | Evaluate per §4.1; update §2 / lockfile / fragment; **do not** land major as ordinary Dependabot |
+| Before opening L1 stream / WASI package slices | Check upstream API stability; update §3 |
+| Upstream security advisory on `wasmtime` | Evaluate a patch immediately |
+| Proposal WIT requires a newer generation | Open a major/minor upgrade RFC |
+| Quarterly (suggested) | Refresh “upstream latest stable” even if not upgrading |
 
-## 6. 与附属 crate
+## 6. Sibling crates
 
-| Crate | 政策 |
-|-------|------|
-| `wasmtime` | **必须** |
-| `wasmtime-wasi` / WASI 预置 Host | **可选**；启用前写切片 RFC（体积、线程、Android 文件系统语义） |
-| `cranelift-*` | 经 `wasmtime` 传递；不直接钉除非排障需要 |
-| 第三方 `wasi-webgpu-wasmtime` | **对照实现 only**；非本仓 cdylib 依赖 |
+| Crate | Policy |
+|-------|--------|
+| `wasmtime` | **Required** |
+| `wasmtime-wasi` / WASI preset host | **Optional**; slice RFC first (size, threads, Android FS semantics) |
+| `cranelift-*` | Transitive via `wasmtime`; do not pin directly unless debugging |
+| Third-party `wasi-webgpu-wasmtime` | **Reference implementation only**; not a cdylib dependency |
 
-## 7. 修订
+## 7. Revisions
 
-- 基线版本变更：本页 §2 + tech-stack + Cargo + CHANGELOG 同 PR。  
-- 改变「只跟官方 Wasmtime」政策：章程级 RFC。  
+- Baseline version: this §2 + tech-stack + Cargo + changelog fragment in the same PR.  
+- Changing “official Wasmtime only”: charter-level RFC.

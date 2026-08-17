@@ -1,4 +1,4 @@
-# Build Track B cdylib for the host OS (desktop JVM convenience).
+# Build wasmtime-android-kt cdylib for the host OS (desktop JVM convenience).
 # Not a CI gate — Android ABI layout remains authoritative (docs/mapping/artifacts.md).
 # Contributor flow: docs/contribute.md
 param(

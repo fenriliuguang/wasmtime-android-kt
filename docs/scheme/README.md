@@ -1,62 +1,37 @@
-# 方案索引（轨 B）
+# Scheme index
 
-**中文** | [English](README.en.md)
+**English** | [中文](README.zh.md)
 
-本仓方案以章程为中心；根 README 给一句话与双轨表。  
-**现行主线：** [`long-term-plan.md`](long-term-plan.md)（WASI 0.3 · wasi:webgpu · 官方 Wasmtime）。  
-**2026-08-16 计划变更：** 结束与轨 A 并行排期；Guest 靠拢官方 wasi:webgpu 形状 → [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)。
+Living plan only. History: [`../archive/README.md`](../archive/README.md).  
+Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 
-## 阶段
+## Now
 
-| 阶段 | 状态 |
-|------|------|
-| **文档立项 / 章程** | **完成**（2026-08-10） |
-| **短期 M0–M5 薄 L1** | **已归档**（2026-08-11）→ [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) |
-| **长期计划（文档期）** | **现行**（2026-08-11）→ [`long-term-plan.md`](long-term-plan.md) |
-| **长期 L1+ 代码切片** | **进行中**（活状态：[Project](https://github.com/users/fenriliuguang/projects/1)；规格见 RFC · [`wasi-p3-surface.md`](wasi-p3-surface.md) · [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)；已合行为见 [`changelog/unreleased/`](../../changelog/unreleased/)；**不要**在本格枚举每一刀） |
+| Doc | Role |
+|-----|------|
+| [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md) | **Accepted:** citable host; drop old L4 |
+| [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md) | **Accepted:** Dawn default bundle; core without Dawn; `request-adapter` `none` |
+| [`long-term-plan.md`](long-term-plan.md) | L0–L5 |
+| [`guest-shape.md`](guest-shape.md) | WIT shape gates (S-series) |
+| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 wasi:webgpu |
+| [`wasi-p3-surface.md`](wasi-p3-surface.md) | Ratified WASI 0.3 cuts |
+| [`wasmtime-tracking.md`](wasmtime-tracking.md) | Engine pin / upgrade |
+| [`charter.md`](charter.md) | Vision / principles |
+| [`non-goals.md`](non-goals.md) | Hard no |
+| [`tech-stack.md`](tech-stack.md) | Wasmtime / JNI / NDK |
+| [`api-stability.md`](api-stability.md) | `0.x-experimental` SemVer |
+| [`vcs-workflow.md`](vcs-workflow.md) | Short-lived branches + PR |
+| [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Unpublished GPU host — **code still depends** |
+| [`../mapping/threading-android.md`](../mapping/threading-android.md) | Thread contract |
+| [`../build.md`](../build.md) | How to build |
+| [`../contribute.md`](../contribute.md) | Contributor shell |
 
-## 文档
+Slice status: [GitHub Project](https://github.com/users/fenriliuguang/projects/1) and [`changelog/unreleased/`](../../changelog/unreleased/). Do not list every cut here.
 
-### 现行规划
+## Principles (short)
 
-| 文档 | 说明 |
-|------|------|
-| [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md) | **Accepted：** 结束双轨并行；规范形状 / 编组；S 系列硬序 |
-| [`long-term-plan.md`](long-term-plan.md) | 长期战略；L0–L5；P0/P1/P2 硬序 |
-| [`wasi-p3-surface.md`](wasi-p3-surface.md) | WASI 0.3 正式特性优先级与切片门禁 |
-| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | wasi:webgpu 提案推进（P0；W3 过渡收口 → S 系列） |
-| [`w1-dual-register.md`](w1-dual-register.md) | W1 双注册切面（进度写在该页，不在本索引追加） |
-| [`wasmtime-tracking.md`](wasmtime-tracking.md) | 官方 Wasmtime 钉版 / 升级 / 回归 |
-| [`vcs-workflow.md`](vcs-workflow.md) | 短命分支 + PR；枢纽冻结 / Ruleset / CI |
-| [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) | 贡献入口（权限 / CI / 枢纽冻结） |
-
-### 章程与契约
-
-| 文档 | 说明 |
-|------|------|
-| [`charter.md`](charter.md) | 背景、愿景、原则、风险 |
-| [`dual-track.md`](dual-track.md) | 轨 A = Demo；本仓拥有 WIT 形状；不静默替换 Demo |
-| [`tech-stack.md`](tech-stack.md) | Wasmtime / JNI / NDK / 依赖 |
-| [`api-stability.md`](api-stability.md) | experimental semver / 破坏性约定 |
-| [`non-goals.md`](non-goals.md) | 非目标硬表（长期修订） |
-| [`../contribute.md`](../contribute.md) | 贡献者构建；可选桌面开发壳 |
-| [`../mapping/threading-android.md`](../mapping/threading-android.md) | 线程契约 |
-| [`../mapping/gap-experimental-vs-wasi-webgpu.md`](../mapping/gap-experimental-vs-wasi-webgpu.md) | W0：experimental ↔ 提案对照 |
-
-### 归档 / 史实
-
-| 文档 | 说明 |
-|------|------|
-| [`archive/m0-m5-thin-l1.md`](archive/m0-m5-thin-l1.md) | 短期阶段归档入口 |
-| [`milestones.md`](milestones.md) | M0–M5 DoD **冻结史实** |
-| [`rfc-wasi-worlds.md`](rfc-wasi-worlds.md) | **Superseded**（M5 旧 worlds 口径） |
-
-## 硬原则（摘录）
-
-1. L2 不依赖 L1；不重造 Dawn。  
-2. Android-first；真 CM async / WASI 0.3 异步走官方 Wasmtime API。  
-3. 不依赖 wasmtime4j；追踪官方 Wasmtime。  
-4. 主推 WASI 0.3 **已批准切片** + **wasi:webgpu 提案**；不作全量套件 / 合规空喊。  
-5. 不静默替换轨 A Demo 默认 runtime（NG-1）；**不再**与轨 A 并行推进 Guest ABI。  
-6. experimental；不默认对外发布。  
-7. wasi:webgpu **新切片**必须是钉版 WIT 形状（RFC）；禁止再扩 host-fixed 过渡 u32。  
+1. Canonical `wasi:webgpu` guest shape; no host-fixed `u32` as new-slice acceptance.  
+2. True CM async via upstream Wasmtime — never Latch/`sync-compat` as “true async”.  
+3. Android-first; package/adapt Dawn as the **default backend**, do not rewrite Dawn (NG-7).  
+4. Experimental; no default Central publish; no compliance claim.  
+5. English docs are canonical.

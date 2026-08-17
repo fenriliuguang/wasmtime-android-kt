@@ -1,30 +1,32 @@
 ---
 name: Feature request
-about: 功能或切片建议（对齐长期计划）
+about: Feature or slice aligned with the long-term plan
 title: "[feat] "
 labels: ["enhancement"]
 ---
 
-## 动机
+## Motive
 
-哪个 Guest / 演示 / 文档缺口被阻塞？
+Which guest / demo / docs gap is blocked?
 
-## 建议落点
+## Suggested landing
 
-- [ ] L1 原语（future / stream / 泵）
-- [ ] WASI 0.3 package 子集
-- [ ] wasi:webgpu 提案（W1–W5）
-- [ ] 文档 / CI / DX
-- [ ] 其他：
+- [ ] L1 primitives (future / stream / pump)
+- [ ] WASI 0.3 package subset
+- [ ] wasi:webgpu proposal (S-series)
+- [ ] Docs / CI / DX
+- [ ] Other:
 
-## 与现有计划的关系
+## Relation to the living plan
 
-请对照 [`docs/scheme/long-term-plan.md`](../../docs/scheme/long-term-plan.md) / [`non-goals.md`](../../docs/scheme/non-goals.md)：是否触碰非目标？
+Check [`docs/scheme/long-term-plan.md`](../../docs/scheme/long-term-plan.md) / [`non-goals.md`](../../docs/scheme/non-goals.md): does this touch a non-goal?
 
-## 验收想法（DoD 草案）
+GPU host Gradle coordinates are **blocked** until an explicit decision: [`docs/blocked-gpu-host.md`](../../docs/blocked-gpu-host.md).
+
+## Acceptance (draft DoD)
 
 -
 
-## 非目标（本 issue 明确不做）
+## Out of scope for this issue
 
 -

@@ -1,44 +1,43 @@
-# 错误模型（轨 B L1）
+# Error model (L1)
 
-**中文** | （暂无 EN）
+**English** | [中文](errors.zh.md)
 
-> M5 切片：稳定 Kotlin 错误类型 + JNI 映射。  
-> experimental CM host → L2 子集规则仍见 [`errors-m3.md`](errors-m3.md)。
+Stable Kotlin exception types + JNI mapping. experimental.
 
-## Kotlin 类型
+## Kotlin types
 
-| 类型 | `Kind` | 典型来源 |
-|------|--------|----------|
-| `WasmtimeApiException` | `API` | null/closed handle；注册时缺 callback |
-| `WasmtimeCompileException` | `COMPILE` | `Component.compile` 失败 |
-| `WasmtimeLinkException` | `LINK` | linker 定义 host / `instantiate` 失败 |
-| `WasmtimeTrapException` | `TRAP` | export 调用 trap；含 host 回调失败 |
-| `WasmtimeException`（基类） | 同上 | 可统一 `catch`；旧构造默认 `TRAP` |
+| Type | `Kind` | Typical source |
+|------|--------|----------------|
+| `WasmtimeApiException` | `API` | null/closed handle; missing callback at register |
+| `WasmtimeCompileException` | `COMPILE` | `Component.compile` failed |
+| `WasmtimeLinkException` | `LINK` | linker define host / `instantiate` failed |
+| `WasmtimeTrapException` | `TRAP` | export trap; includes host-callback failure |
+| `WasmtimeException` (base) | same | unified `catch`; old ctor defaults `TRAP` |
 
-均在 `runtime-api`：`io.github.fenriliuguang.wasmtime.android.api`。
+Package: `runtime-api` → `io.github.fenriliuguang.wasmtime.android.api`.
 
-## JNI 映射
+## JNI mapping
 
-Rust `native/src/error.rs` 按 kind 抛对应子类（`(Ljava/lang/String;)V`）。
+Rust `native/src/error.rs` throws the matching subclass (`(Ljava/lang/String;)V`).
 
-| 操作 | 异常 |
-|------|------|
-| Engine/Store 创建失败、null handle、setter 参数非法 | `WasmtimeApiException` |
+| Operation | Exception |
+|-----------|-----------|
+| Engine/Store create failure, null handle, illegal setter | `WasmtimeApiException` |
 | `Component::new` | `WasmtimeCompileException` |
 | `define_host` / `instantiate_async` | `WasmtimeLinkException` |
-| `call*` / `run_concurrent` / 缺 export | `WasmtimeTrapException` |
+| `call*` / `run_concurrent` / missing export | `WasmtimeTrapException` |
 
-## experimental host → L2（继承 M3）
+## experimental host → GPU backend
 
-| 来源 | 映射 |
-|------|------|
-| L2 `HostException`（回调内抛出） | host Err → guest **trap** → `WasmtimeTrapException` |
-| L1 未注册 experimental host | trap（调用时） |
-| L2 返回 `GpuHandle(0)` | 不预期；仪器断言非零 |
+| Source | Mapping |
+|--------|---------|
+| Host exception thrown inside a callback | host Err → guest **trap** → `WasmtimeTrapException` |
+| experimental host not registered | trap (at call) |
+| Backend returns `GpuHandle(0)` | unexpected; instruments assert non-zero |
 
-与轨 A 一致：**experimental** 轨不把 Host 失败抬成 guest-visible `result`；wasi `result` 编解码非本仓 M5 范围。
+The leftover **flat experimental** host does **not** lift host failure into a guest-visible `result`. Canonical `wasi:webgpu` `result`/`option` lives on the S-series path ([`../scheme/guest-shape.md`](../scheme/guest-shape.md)). GPU backend artifacts: [`../blocked-gpu-host.md`](../blocked-gpu-host.md).
 
-## 使用建议
+## Usage
 
 ```kotlin
 try {
@@ -50,10 +49,10 @@ try {
 }
 ```
 
-Kotlin 侧 `require`（closed handle）仍抛 `IllegalArgumentException`，**不**经 JNI。
+Kotlin `require` (closed handle) still throws `IllegalArgumentException` — **not** via JNI.
 
-## 明确不做（本切片）
+## Out of scope on this page
 
-- 把 trap 翻译成 guest `result<_,_>`
-- Dawn / `HostException` 子类再细分到 L1 kind
-- 稳定对外 1.0 错误码表（仍 experimental）
+- Translating traps into guest `result<_,_>` for the experimental flat host  
+- Splitting Dawn / host exception subclasses into L1 kinds  
+- A stable 1.0 error-code table (still experimental)

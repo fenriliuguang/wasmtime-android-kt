@@ -1,109 +1,108 @@
-# 版本控制与协作工作流
+# Version control and collaboration
 
-**中文** | （暂无 EN）
+**English** | [中文](vcs-workflow.zh.md)
 
-> 配套 [`long-term-plan.md`](long-term-plan.md) · [`../contribute.md`](../contribute.md)。  
-> 目标：可审、可回滚、可 CI；**开源后能自然接受外部 PR**。  
-> 初订：2026-08-11。
+Companion: [`long-term-plan.md`](long-term-plan.md) · [`../contribute.md`](../contribute.md).  
+Goal: reviewable, revertible, CI-backed; ready for external PRs.
 
-## 1. 决策摘要
+Drafted 2026-08-11.
 
-| 问题 | 决定 |
-|------|------|
-| 默认集成方式 | **`main` + 短命功能分支 + PR** |
-| 是否开多条长期并行线（如常驻 `feature/stream` / `feature/webgpu`） | **否** |
-| 「并行」指什么 | 同时存在 **少量短命 PR**（通常 ≤2–3），各自独立 DoD，常合主干 |
-| 合并单元 | 一 PR 一事；可独立 revert |
-| `main` 要求 | 始终可构建；未完成能力不靠长期分叉隐瞒 |
-| 并行短刀怎么避免文档/CI 冲突 | **枢纽冻结**：功能 PR 不改 `CHANGELOG.md` / `ci.yml` 测试清单 / 根 README 索引；改用碎片文件 + `cargo test --tests` |
+## 1. Decisions
 
-## 2. 为什么不用「多长期分支最后大合并」
+| Question | Decision |
+|----------|----------|
+| Default integration | **`main` + short-lived feature branches + PR** |
+| Long-lived parallel lines (`feature/stream`, `feature/webgpu`, …) | **No** |
+| What “parallel” means | A **few** short-lived PRs at once (usually ≤2–3), each with its own DoD, merging often |
+| Merge unit | One PR, one thing; independently revertible |
+| `main` | Always buildable; unfinished work is not hidden on a long fork |
+| Avoiding docs/CI collisions | **Hub freeze**: feature PRs do not edit `CHANGELOG.md` / `ci.yml` test lists / root README index; use fragments + `cargo test --tests` |
 
-本仓冲突热点集中：`native/` JNI、Linker 注册、线程泵、公开 Kotlin API、仪器用例。长期分叉会：
+## 2. Why not long-lived branches then a big merge
 
-- 放大合并冲突，毁掉可审历史  
-- 让外部贡献者不知以哪条线为底  
-- 削弱 bisect / 按 PR 回滚能力  
+Hotspots: `native/` JNI, linker registration, thread pump, public Kotlin API, instruments. Long forks:
 
-战略上的多线（webgpu / stream / clocks）映射为 **多个短 PR 的排期**，不是多条永久 branch。
+- Amplify merge conflicts and wreck reviewable history  
+- Leave outsiders unsure which line is the base  
+- Weaken bisect / per-PR revert  
 
-## 3. 分支命名与寿命
+Strategic parallelism (webgpu / stream / clocks) maps to **scheduled short PRs**, not permanent branches.
 
-| 前缀 | 用途 | 寿命 |
-|------|------|------|
-| `docs/<topic>` | 纯文档 / 规划 | 合并即删；建议 &lt; 1 周 |
-| `feat/<slice>` | 功能切片（如 `feat/p3-stream-read`） | 合并即删；建议 &lt; 2 周 |
-| `fix/<issue>` | 缺陷 | 合并即删 |
-| `chore/<topic>` | 工具链 / 追踪表刷新 | 合并即删 |
+## 3. Branch names and lifetime
 
-禁止：
+| Prefix | Use | Lifetime |
+|--------|-----|----------|
+| `docs/<topic>` | Docs / planning | Delete on merge; prefer &lt; 1 week |
+| `feat/<slice>` | Feature slice | Delete on merge; prefer &lt; 2 weeks |
+| `fix/<issue>` | Bug | Delete on merge |
+| `chore/<topic>` | Tooling / tracking refresh | Delete on merge |
 
-- 无主的常驻 `feature/*` 作为第二主干  
-- 在功能分支上顺手做 Wasmtime **major** 升级（须独立 PR + [`wasmtime-tracking.md`](wasmtime-tracking.md) RFC）  
-- 用分支代替 feature flag 长期隐藏破坏性半成品（`0.x` 可破 API，但须可审、可 CHANGELOG）
+Forbidden:
 
-## 4. PR 规则
+- Ownerless standing `feature/*` as a second trunk  
+- Wasmtime **major** bumps on a feature branch (own PR + [`wasmtime-tracking.md`](wasmtime-tracking.md) RFC)  
+- Using a branch instead of a feature flag to hide a breaking half-product for a long time (`0.x` may break APIs, but must be reviewable and changelog’d)
 
-1. **一 PR 一事**：例如「stream 读端 smoke」与「升 Wasmtime major」不得混装。  
-2. **自带门禁证据**：至少说明跑了哪些命令；触及 native 时按 tracking 回归最低集。  
-3. **文档同车**：公开行为 / 差距 / 钉版变更与代码同 PR。只改**本切片主题文档**的对应行/节；不要顺手改「下一刀」总表、根 README 索引或本页 §7。  
-4. **CHANGELOG**：用户可见行为写成 **新文件** [`changelog/unreleased/<yyyy-mm-dd>-<slug>.md`](../../changelog/unreleased/README.md)。**禁止**在功能 PR 里改根 [`CHANGELOG.md`](../../CHANGELOG.md)（并行插 Unreleased 必冲突）。维护者定期 `.\scripts\roll-changelog.ps1` 滚入。下文其它文档里写「更新 CHANGELOG」均指碎片，不是根文件。  
-5. **枢纽冻结**：见 [`CONTRIBUTING.md`](../../CONTRIBUTING.md)「枢纽冻结」。新 `native/tests/*.rs` **不必**改 [`ci.yml`](../../.github/workflows/ci.yml)（CI 已 `cargo test --locked --tests`）。  
-6. **合并策略（现行建议）**  
-   - 开源前：维护者可 **squash merge** 到 `main`，保持线性历史。  
-   - 开源后：对外部 PR 默认 squash（或 rebase 成清晰少数提交）；避免无意义的 merge 泡泡。  
-7. **删除已合分支**：合并后删远程/本地功能分支。
+## 4. PR rules
 
-## 5. 长期计划下的并行矩阵（排期，非常驻分支）
+1. **One PR, one thing.** Example: stream-read smoke must not mix with a Wasmtime major bump.  
+2. **Bring evidence:** say which commands ran; native changes follow the tracking minimum regression set.  
+3. **Docs ride along** for public behavior / gap / pin changes. Edit only the **topic page** for that slice — not “next cut” tables, root README index, or §7 of this file.  
+4. **CHANGELOG:** user-visible behavior = **new file** [`changelog/unreleased/<yyyy-mm-dd>-<slug>.md`](../../changelog/unreleased/README.md). **Do not** edit root [`CHANGELOG.md`](../../CHANGELOG.md) in a feature PR. Maintainers roll with `.\scripts\roll-changelog.ps1`. Elsewhere, “update CHANGELOG” means a fragment.  
+5. **Hub freeze:** [`CONTRIBUTING.md`](../../CONTRIBUTING.md). New `native/tests/*.rs` **must not** require a [`ci.yml`](../../.github/workflows/ci.yml) edit (`cargo test --locked --tests` already).  
+6. **Merge:** squash to `main` (linear history). After open source, default squash (or rebase to a few clear commits); avoid empty merge bubbles.  
+7. **Delete merged branches.**
+
+## 5. Parallel matrix (schedule, not standing branches)
 
 ```text
-可同时开短 PR：
-  A  文档 / WIT 钉版 / gap 表 / Wasmtime 跟踪表刷新
-  C  wasi:webgpu W0–W1（命名、resource、文档；future-only 可先）
-  D  wasi:clocks / wasi:random 极小面（通常不依赖 stream）
+May open short PRs together:
+  A  docs / WIT pin / gap tables / Wasmtime tracking refresh
+  C  wasi:webgpu W0–W1 (names, resources, docs; future-only ok first)
+  D  wasi:clocks / wasi:random tiny surface (usually no stream)
 
-须先合入再扩面：
-  B  WASI 0.3 stream 原语（JNI/Kotlin）——合并优先级高于依赖 stream 的 package
+Must land first, then expand:
+  B  WASI 0.3 stream primitives (JNI/Kotlin) — higher merge priority than stream-dependent packages
 
-逻辑串行硬闸门：
-  webgpu S2（规范 async option）失败 ⇒ 停扩 option/result 表面
-  stream 未就绪 ⇒ 不开 cli stdio / 大型流式 world
-  **禁止**再开 W3+ host-fixed u32 功能 PR（见 RFC）
+Hard serial gates:
+  webgpu S2 (spec async option) fails ⇒ stop expanding option/result
+  stream not ready ⇒ do not open cli stdio / large streaming worlds
+  Do not open new W3+ host-fixed u32 feature PRs (see guest-shape)
 ```
 
-| 切片 | 可否与其它短 PR 并行 | 备注 |
-|------|----------------------|------|
-| 文档 / 钉版 / tracking | **是** | 随时合 |
-| `feat/…-stream-…` | **优先单线** 占有 `native/` 热点 | 合入后再开 stdio |
-| webgpu S 系列 | **单线优先**（相对其它 webgpu 刀） | 规范形状；见 RFC |
-| clocks / random | **是** | 小面 |
-| cli stdio / fs 流 | **否**（等 stream） | |
+| Slice | Parallel with other short PRs? | Notes |
+|-------|--------------------------------|-------|
+| Docs / pin / tracking | **Yes** | Merge anytime |
+| `feat/…-stream-…` | **Prefer single-line** on `native/` hotspots | Then stdio |
+| webgpu S-series | **Prefer single-line** vs other webgpu cuts | Shape: [`guest-shape.md`](guest-shape.md) |
+| clocks / random | **Yes** | Small |
+| cli stdio / fs streams | **No** (wait for stream) | |
 
-同一时刻建议 **最多 2–3 个** 未合并功能 PR，避免热点腐烂。
+Suggest **at most 2–3** unmerged feature PRs at once.
 
-## 6. `main` 与保护（开源就绪清单）
+## 6. `main` protection (open-source checklist)
 
-开源或接受外部 PR 前建议具备：
+Before accepting external PRs:
 
-- [ ] `main` 禁止直推（**Ruleset**，非经典 Branch protection）：Settings → Rules → Rulesets；目标 Default branch；勾选 Require PR / linear history / block force push；详见 GitHub [Creating rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository)  
-- [ ] PR 必经审查（一人维护：Required approvals = **0** 亦可；有第二人再升 1）  
-- [x] CI：[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（`cargo test --locked --tests` + `:runtime-api:compileKotlin`）；Ruleset 挂状态检查名 **`CI`**  
-- [x] [`CONTRIBUTING.md`](../../CONTRIBUTING.md) → 本文 + [`../contribute.md`](../contribute.md)  
-- [x] Issue / PR 模板：[`.github/`](../../.github/)  
-- [x] 许可证：[`LICENSE`](../../LICENSE)（Apache-2.0）+ [`NOTICE`](../../NOTICE) + [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md)  
-- [x] 权限口径写入 CONTRIBUTING（协作者 Write；外人 Fork + PR）— **须在 GitHub 网页落实** Collaborators  
+- [ ] No direct push to `main` (GitHub **Ruleset**, not classic branch protection): require PR / linear history / block force push  
+- [ ] PR review (solo maintainer: Required approvals = **0** is ok; raise to 1 with a second person)  
+- [x] CI: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (`cargo test --locked --tests` + `:runtime-api:compileKotlin`); Ruleset check name **`CI`**  
+- [x] [`CONTRIBUTING.md`](../../CONTRIBUTING.md) → this page + [`../contribute.md`](../contribute.md)  
+- [x] Issue / PR templates in [`.github/`](../../.github/)  
+- [x] License: [`LICENSE`](../../LICENSE) (Apache-2.0) + [`NOTICE`](../../NOTICE) + [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md)  
+- [x] Permission wording in CONTRIBUTING — **must still be set** on GitHub Collaborators  
 
-合入本清单对应 PR 后：在 Ruleset 中启用 **Require status checks → `CI`**，再把 Enforcement 设为 Active。
+After merging the PR that lands this checklist: enable **Require status checks → `CI`**, then set Enforcement Active.
 
-## 7. 当前仓库实操
+## 7. Current practice
 
-| 动作 | 决定 |
-|------|------|
-| 是否新建 `feature/stream`、`feature/webgpu`、`feature/clocks` 等长期线 | **不新建** |
-| 已合切片 / 下一刀 | **不在本页追加清单**。活状态：[Project](https://github.com/users/fenriliuguang/projects/1)；规格见 [`rfc-wasi-webgpu-canonical-shape.md`](rfc-wasi-webgpu-canonical-shape.md)、[`wasi-p3-surface.md`](wasi-p3-surface.md)、[`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md)；已合行为见 [`changelog/unreleased/`](../../changelog/unreleased/) |
-| 热点文件 | 同一时刻仍避免两条 PR 无协调地改同一 `native/` 源文件（尤其 linker 注册）；文档/CI 枢纽按 §4 冻结 |
+| Action | Decision |
+|--------|----------|
+| Create standing `feature/stream`, `feature/webgpu`, `feature/clocks` | **Do not** |
+| Landed slices / next cut | **Do not append lists here.** Live: [Project](https://github.com/users/fenriliuguang/projects/1); spec: [`guest-shape.md`](guest-shape.md), [`wasi-p3-surface.md`](wasi-p3-surface.md), [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md); shipped behavior: [`changelog/unreleased/`](../../changelog/unreleased/) |
+| Hot files | Still avoid two uncoordinated PRs editing the same `native/` source (especially linker registration); freeze docs/CI hubs per §4 |
 
-## 8. 修订
+## 8. Revisions
 
-- 小修订：PR + `changelog/unreleased/` 碎片。  
-- 改变「禁止长期并行线」、枢纽冻结或合并策略：更新本页并在长期计划文档地图中留链。  
+- Small: PR + `changelog/unreleased/` fragment.  
+- Changing “no long-lived parallel lines”, hub freeze, or merge policy: update this page and leave a link from the long-term plan map.
