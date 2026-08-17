@@ -534,22 +534,19 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu.request-adapter",
                 |accessor, (gpu, _options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
                     Box::pin(async move {
-                        let cb = accessor.with(|mut access| {
+                        let cb = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let _ = access.data_mut().table.get(&gpu)?;
-                            access
-                                .data_mut()
-                                .experimental_host_cb
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    wasmtime::Error::msg("experimental host callback not set")
-                                })
-                                .cloned()
+                            Ok(access.data_mut().experimental_host_cb.clone())
                         })?;
+                        // True CM async even when unwired (guest `none`, not a trap).
                         let (tx, rx) = oneshot::channel::<()>();
                         std::thread::spawn(move || {
                             let _ = tx.send(());
                         });
                         let _ = rx.await;
+                        let Some(cb) = cb else {
+                            return Ok((None,));
+                        };
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         if adapter_rep == 0 {
@@ -1605,22 +1602,17 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap_concurrent("request-adapter", |accessor, ()| {
                 Box::pin(async move {
-                    let cb = accessor.with(|mut access| {
-                        access
-                            .data_mut()
-                            .experimental_host_cb
-                            .as_ref()
-                            .ok_or_else(|| {
-                                wasmtime::Error::msg("experimental host callback not set")
-                            })
-                            .cloned()
-                    })?;
+                    let cb = accessor
+                        .with(|mut access| access.data_mut().experimental_host_cb.clone());
                     // Yield so this is true concurrent (not sync wrap / Latch fake-async).
                     let (tx, rx) = oneshot::channel::<()>();
                     std::thread::spawn(move || {
                         let _ = tx.send(());
                     });
                     let _ = rx.await;
+                    let Some(cb) = cb else {
+                        return Ok((0,));
+                    };
                     let rep = jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                     Ok((rep,))
                 })

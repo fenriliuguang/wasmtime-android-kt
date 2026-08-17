@@ -16,7 +16,7 @@ Language: English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)).
 | [`docs/scheme/rfc-pluggable-gpu-backend.md`](docs/scheme/rfc-pluggable-gpu-backend.md) | Dawn default bundle; SPI |
 | [`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md) | wasi:webgpu WIT gates |
 | [`docs/scheme/non-goals.md`](docs/scheme/non-goals.md) | Hard no |
-| [`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md) | Unpublished GPU host — **do not delete in a docs PR** |
+| [`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md) | GPU host — **vendor path** (Host Kotlin in-tree) |
 
 ## Workflow
 

@@ -69,7 +69,7 @@ L5  Productization RFC (API freeze / publish-or-not)
 | [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 roadmap |
 | [`wasi-p3-surface.md`](wasi-p3-surface.md) | P3 cuts |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | Engine |
-| [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Current unpublished Dawn coordinates (code) |
+| [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Vendor path: Host Kotlin in-tree; Dawn via androidx.webgpu |
 
 ## 6. Revisions
 

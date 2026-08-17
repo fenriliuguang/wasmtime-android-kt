@@ -106,12 +106,8 @@ android {
 }
 
 dependencies {
-    implementation(project(":android"))
+    implementation(project(":android-webgpu"))
     implementation(libs.androidx.core.ktx)
-    // Dawn native (`libwebgpu_c_bundled.so`) must live in the main APK (Track A pattern).
-    implementation(libs.wasi.webgpu.host.webgpu)
-    // Track A L2 Cpu path for M3 instruments (also via :runtime-jni).
-    androidTestImplementation(libs.wasi.webgpu.host.api)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     // Lets AGP/UTP install androidx.test.services (needed on API 30+ / OEM devices).

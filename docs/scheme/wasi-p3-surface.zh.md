@@ -70,7 +70,7 @@ World 层（组合）           wasi:cli/command · wasi:http/service · …
 | 工作 | 落点 |
 |------|------|
 | Engine 配置、linker 注册、future/stream JNI、调度泵 | **本仓** |
-| 设备相关（GPU / Surface） | 本仓可插拔 Host（[`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)）；默认 Dawn。今日构件仍未发布，见 [`../blocked-gpu-host.md`](../blocked-gpu-host.md) |
+| 设备相关（GPU / Surface） | 本仓可插拔 Host（[`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)）；默认 Dawn。未发布坐标仅 `:host-dawn`，见 [`../blocked-gpu-host.md`](../blocked-gpu-host.md) |
 | 纯逻辑 WASI（clocks/random/cli 子集） | 优先本仓 Kotlin Host stub；可日后抽 crate/模块 |
 | HTTP / sockets 完整语义 | 另开 RFC；可评估 Wasmtime `wasmtime-wasi` 能力是否经 JNI 暴露（须 Android 线程与体积审查） |
 

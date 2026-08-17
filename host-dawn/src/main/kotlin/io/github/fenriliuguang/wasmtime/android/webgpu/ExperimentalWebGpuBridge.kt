@@ -18,10 +18,13 @@ import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
 
 /**
- * Wire Track A L2 ([WasiWebGpuHost]) into Track B L1 store callbacks for the
- * experimental CM host interface (`AbiCm.IMPORT_INTERFACE`).
+ * Wire an unpublished L2 [WasiWebGpuHost] into L1 store callbacks.
  *
- * Flat u32-rep imports (M3/M4); not full WIT resource method names.
+ * Lives in `:host-dawn` so `:runtime-jni` does not depend on host-api / Dawn.
+ * Slice `attach*` helpers keep host-fixed descriptors for instruments.
+ * Product code prefers [io.github.fenriliuguang.wasmtime.android.host.dawn.GpuBackends].
+ *
+ * Flat u32-rep imports (legacy); not full WIT resource method names.
  */
 object ExperimentalWebGpuBridge {
     /**

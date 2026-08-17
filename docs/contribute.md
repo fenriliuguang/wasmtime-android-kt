@@ -24,7 +24,7 @@ Principle: **Android-first**; desktop is convenience.
 | Rust | **1.97.1** (`native/rust-toolchain.toml`) |
 | cargo-ndk | Android cross-compile only |
 | Android SDK + NDK `28.2.13676358` | Device / emulator instruments |
-| Unpublished GPU host (mavenLocal) | **Only** for GPU-backed instruments — [`blocked-gpu-host.md`](blocked-gpu-host.md). **Do not delete those Gradle deps in a docs PR.** |
+| GPU host | [`blocked-gpu-host.md`](blocked-gpu-host.md) — vendor Host Kotlin; until that PR, mavenLocal only for `:host-dawn` |
 
 Cursor / VS Code: compile Kotlin with Gradle. Do not let Red Hat Java (JDT LS) import/autobuild Gradle — it copies `.kt` into `runtime-jni/bin/`. [`.vscode/settings.json`](../.vscode/settings.json) already turns that off.
 
@@ -74,7 +74,7 @@ Constraints:
 |--------|-----------------|
 | Toolchain / ABI pins | `docs/build.md`, `scheme/tech-stack.md`, `changelog/unreleased/` fragment |
 | Public API / error types | `scheme/api-stability.md`, `mapping/errors.md`, fragment |
-| GPU host coordinates | [`blocked-gpu-host.md`](blocked-gpu-host.md) — **ask before removing Gradle deps** |
+| GPU host | [`blocked-gpu-host.md`](blocked-gpu-host.md) — vendor Host Kotlin; Dawn via `androidx.webgpu` |
 | WASI / webgpu scope | [`scheme/long-term-plan.md`](scheme/long-term-plan.md), [`wasi-p3-surface.md`](scheme/wasi-p3-surface.md), [`roadmap-wasi-webgpu.md`](scheme/roadmap-wasi-webgpu.md) |
 
 ## 5. PR summary

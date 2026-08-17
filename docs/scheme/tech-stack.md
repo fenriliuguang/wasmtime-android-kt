@@ -40,7 +40,7 @@ Target: [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md).
 
 SPI lives in `runtime-api`. Do not leak foreign `WasiWebGpuHost` types into L1. Canonical guests: `wasi:webgpu@0.3.0-rc.2`. Do not add new `experimental:webgpu-cm` exports.
 
-**Today:** instruments still compile against unpublished Maven-local artifacts inside the current `:runtime-jni` wiring — [`../blocked-gpu-host.md`](../blocked-gpu-host.md) until the module-split PR.
+**Today:** unpublished mavenLocal host artifacts are transitional inside `:host-dawn` until the vendor copy. Dawn `.so` is `androidx.webgpu` (not git). [`../blocked-gpu-host.md`](../blocked-gpu-host.md). `:runtime-jni` does not depend on the experimental coordinates.
 
 ## Build
 

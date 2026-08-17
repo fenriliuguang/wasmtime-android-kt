@@ -11,6 +11,6 @@ Android 主路径：
 .\gradlew.bat :smoke-app:connectedDebugAndroidTest
 ```
 
-GPU 仪器仍依赖 **未发布** Host 构件，见 [`blocked-gpu-host.md`](blocked-gpu-host.md)。**不要在文档 PR 里删除这些 Gradle 依赖。**
+GPU 仪器在 vendor PR 前仍可能需要 mavenLocal Host，见 [`blocked-gpu-host.md`](blocked-gpu-host.md)。Dawn `.so` 走 `androidx.webgpu`，不进 git。
 
 禁止引入 wasmtime4j 作为运行时。用户可见变更只写 `changelog/unreleased/` 碎片。

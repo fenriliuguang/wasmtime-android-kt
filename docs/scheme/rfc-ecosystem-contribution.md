@@ -68,4 +68,4 @@ When an S-series cluster lands (resource/`option`/`result`/`list`/`async`):
 
 ## 7. Blocked: unpublished GPU host artifacts
 
-Instrument tests and `ExperimentalWebGpuBridge` still compile against **unpublished** Maven-local artifacts (`io.github.fenriliuguang.wasi.webgpu.experimental:*`). That is a **code** dependency. Target layout is [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md) (`:host-dawn`, not `:runtime-jni`). How Dawn bytes enter `:host-dawn` is still a follow-up decision — [`../blocked-gpu-host.md`](../blocked-gpu-host.md).
+Instrument tests still compile against **unpublished** Maven-local artifacts **inside `:host-dawn`** until the vendor PR copies mvp Host Kotlin into this repo. Dawn `.so` will come from `androidx.webgpu`, not git. Form: [`../blocked-gpu-host.md`](../blocked-gpu-host.md).

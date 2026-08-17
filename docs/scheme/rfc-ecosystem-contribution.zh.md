@@ -26,4 +26,4 @@ L5 产品化 RFC（另开）
 
 ## 3. 代码依赖（未在本 RFC 解除）
 
-仪器与 `ExperimentalWebGpuBridge` 仍依赖未发布的 mavenLocal GPU Host。目标布局见 [`rfc-pluggable-gpu-backend.zh.md`](rfc-pluggable-gpu-backend.zh.md)；Dawn 字节如何进入 `:host-dawn` 见 [`../blocked-gpu-host.md`](../blocked-gpu-host.md)。
+仪器与 `ExperimentalWebGpuBridge` 在 vendor PR 前仍走 `:host-dawn` 的 mavenLocal。已拍板：拷 Host Kotlin；Dawn `.so` 用 `androidx.webgpu`。见 [`../blocked-gpu-host.md`](../blocked-gpu-host.md)。

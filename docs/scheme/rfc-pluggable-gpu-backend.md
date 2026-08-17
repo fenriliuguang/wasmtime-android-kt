@@ -6,7 +6,7 @@
 > Amends [`charter.md`](charter.md), [`tech-stack.md`](tech-stack.md), [`non-goals.md`](non-goals.md), [`guest-shape.md`](guest-shape.md).  
 > Guest probe: [`gpu.request-adapter`](guest-shape.md) → `option<own<gpu-adapter>>` (`none` = no usable adapter).  
 > Does **not** change P0 WIT shape or true CM async.  
-> Current unpublished Maven-local coordinates remain until a follow-up **code** PR; see [`../blocked-gpu-host.md`](../blocked-gpu-host.md).
+> Unpublished Maven-local coordinates are transitional until the **vendor** PR ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)).
 
 ## 1. Decision
 
@@ -59,7 +59,7 @@ Android still **packages** native libraries at **app build** time. Backends are 
 
 **Opt-out:** depend on `:android` only; register your own backend, or register nothing.
 
-Until Central exists, the same graph is Gradle `include` + `project()` deps. Unpublished `host-webgpu` / `host-api` stay **implementation details of `:host-dawn`**, not of `:runtime-jni`.
+Until Central exists, the same graph is Gradle `include` + `project()` deps. The Kotlin host mapping is **vendored into this repo** ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)); Dawn `.so` comes from published `androidx.webgpu`. Do not put `host-api` / `host-webgpu` on `:runtime-jni`.
 
 ## 4. Runtime SPI
 
@@ -163,13 +163,11 @@ store.setWebGpuBackend(MyBackend())
 - Default Central publish **now** (NG-6). The **coordinate split** is designed so L5 can publish separately.  
 - Runtime download of Dawn `.so`.
 
-## 8. Follow-up code (not this docs change)
+## 8. Follow-up code
 
-1. Move `ExperimentalWebGpuBridge` out of `:runtime-jni` into `:host-dawn` (or `:host-adapter` + `:host-dawn`).  
-2. Drop `api(libs.wasi.webgpu.host.api)` from `:runtime-jni`.  
-3. Change missing-callback path from **trap** to **`none`**.  
-4. `smoke-app` depends on the Dawn bundle by default.  
-5. Keep today’s unpublished artifacts **inside `:host-dawn` only** until they are vendored or published — still a human decision ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)).
+Landed: `:host-dawn` / `:android-webgpu`; `ExperimentalWebGpuBridge` moved out of `:runtime-jni`; unwired `request-adapter` → `none`; `smoke-app` depends on the Dawn bundle.
+
+**Vendor path (decided):** copy mvp `host-api` + `DawnWasiWebGpuHost` + `AbiCmHostBindings` into this repo; depend on `androidx.webgpu` for Dawn `.so`; delete mavenLocal `experimental:*` from `:host-dawn`. Form: [`../blocked-gpu-host.md`](../blocked-gpu-host.md).
 
 ## 9. Revisions
 
