@@ -101,7 +101,9 @@ S4  第一个规范 record 入参（如 create-buffer + gpu-buffer-descriptor）
 
 S5  第一个规范 list（如 queue.submit 的 list<borrow<command-buffer>>）
 
-S6+ 按 WIT 替换其余已冻结过渡方法；一 method 一 PR
+S6+ 按 WIT 替换其余已冻结过渡方法；前期同形状可一批
+    S8 已交付：create-sampler / texture.create-view / begin-compute-pass
+    （option=none → own）
 ```
 
 **硬闸门：** S2 若不能真 async ⇒ 停止扩大 option/result 表面，先修 L1 泵（同 W2 / M2）。  

@@ -1,29 +1,92 @@
-;; W3+: get-texture + [method]gpu-texture.create-view (sync; host-fixed texture).
+;; S8: wasi:webgpu/webgpu@0.3.0-rc.2 get-texture +
+;; [method]gpu-texture.create-view
+;; WIT: create-view: func(descriptor: option<gpu-texture-view-descriptor>)
+;;      -> gpu-texture-view
+;; Guest passes descriptor=none; drops own view; run returns harness 1.
+;; Flattened params exceed 16, so canon lower spills args through memory.
+;; get-texture is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
+    (type $fmt (enum "r8unorm" "r8snorm" "r8uint" "r8sint" "r16unorm" "r16snorm" "r16uint" "r16sint" "r16float" "rg8unorm" "rg8snorm" "rg8uint" "rg8sint" "r32uint" "r32sint" "r32float" "rg16unorm" "rg16snorm" "rg16uint" "rg16sint" "rg16float" "rgba8unorm" "rgba8unorm-srgb" "rgba8snorm" "rgba8uint" "rgba8sint" "bgra8unorm" "bgra8unorm-srgb" "rgb9e5ufloat" "rgb10a2uint" "rgb10a2unorm" "rg11b10ufloat" "rg32uint" "rg32sint" "rg32float" "rgba16unorm" "rgba16snorm" "rgba16uint" "rgba16sint" "rgba16float" "rgba32uint" "rgba32sint" "rgba32float" "stencil8" "depth16unorm" "depth24plus" "depth24plus-stencil8" "depth32float" "depth32float-stencil8" "bc1-rgba-unorm" "bc1-rgba-unorm-srgb" "bc2-rgba-unorm" "bc2-rgba-unorm-srgb" "bc3-rgba-unorm" "bc3-rgba-unorm-srgb" "bc4-r-unorm" "bc4-r-snorm" "bc5-rg-unorm" "bc5-rg-snorm" "bc6h-rgb-ufloat" "bc6h-rgb-float" "bc7-rgba-unorm" "bc7-rgba-unorm-srgb" "etc2-rgb8unorm" "etc2-rgb8unorm-srgb" "etc2-rgb8a1unorm" "etc2-rgb8a1unorm-srgb" "etc2-rgba8unorm" "etc2-rgba8unorm-srgb" "eac-r11unorm" "eac-r11snorm" "eac-rg11unorm" "eac-rg11snorm" "astc4x4-unorm" "astc4x4-unorm-srgb" "astc5x4-unorm" "astc5x4-unorm-srgb" "astc5x5-unorm" "astc5x5-unorm-srgb" "astc6x5-unorm" "astc6x5-unorm-srgb" "astc6x6-unorm" "astc6x6-unorm-srgb" "astc8x5-unorm" "astc8x5-unorm-srgb" "astc8x6-unorm" "astc8x6-unorm-srgb" "astc8x8-unorm" "astc8x8-unorm-srgb" "astc10x5-unorm" "astc10x5-unorm-srgb" "astc10x6-unorm" "astc10x6-unorm-srgb" "astc10x8-unorm" "astc10x8-unorm-srgb" "astc10x10-unorm" "astc10x10-unorm-srgb" "astc12x10-unorm" "astc12x10-unorm-srgb" "astc12x12-unorm" "astc12x12-unorm-srgb"))
+    (export "gpu-texture-format" (type (eq $fmt)))
+    (type $dim (enum "d1" "d2" "d2-array" "cube" "cube-array" "d3"))
+    (export "gpu-texture-view-dimension" (type (eq $dim)))
+    (type $usage (flags "copy-src" "copy-dst" "texture-binding" "storage-binding" "render-attachment" "transient-attachment"))
+    (export "gpu-texture-usage" (type (eq $usage)))
+    (type $asp (enum "all" "stencil-only" "depth-only"))
+    (export "gpu-texture-aspect" (type (eq $asp)))
+    (type $opt-str (option string))
+    (type $opt-fmt (option 1))
+    (type $opt-dim (option 3))
+    (type $opt-usage (option 5))
+    (type $opt-asp (option 7))
+    (type $opt-u32 (option u32))
+    (type $desc-def (record
+      (field "format" $opt-fmt)
+      (field "dimension" $opt-dim)
+      (field "usage" $opt-usage)
+      (field "aspect" $opt-asp)
+      (field "base-mip-level" $opt-u32)
+      (field "mip-level-count" $opt-u32)
+      (field "base-array-layer" $opt-u32)
+      (field "array-layer-count" $opt-u32)
+      (field "swizzle" $opt-str)
+      (field "label" $opt-str)
+    ))
+    (export "gpu-texture-view-descriptor" (type (eq $desc-def)))
+    (export "gpu-texture-view" (type $gpu-texture-view (sub resource)))
     (export "gpu-texture" (type $gpu-texture (sub resource)))
-    (export "get-texture" (func (result (own $gpu-texture))))
-    (export "[method]gpu-texture.create-view"
-      (func (param "self" (borrow $gpu-texture)) (result u32)))
+    (type $borrow-tex (borrow $gpu-texture))
+    (type $opt-desc (option 15))
+    (type $own-view (own $gpu-texture-view))
+    (type $create-ty (func
+      (param "self" $borrow-tex)
+      (param "descriptor" $opt-desc)
+      (result $own-view)))
+    (export "[method]gpu-texture.create-view" (func (type $create-ty)))
+    (type $own-tex (own $gpu-texture))
+    (export "get-texture" (func (result $own-tex)))
   ))
+  (alias export $webgpu "gpu-texture-view" (type $gpu-texture-view))
   (alias export $webgpu "get-texture" (func $get-texture))
   (alias export $webgpu "[method]gpu-texture.create-view" (func $create-view))
 
-  (core module $m
-    (import "" "get-texture" (func $get-texture (result i32)))
-    (import "" "create-view" (func $create-view (param i32) (result i32)))
-    (func (export "run") (result i32)
-      (local $texture i32)
-      (local.set $texture (call $get-texture))
-      (call $create-view (local.get $texture))
+  (core module $builtins
+    (memory (export "mem") 1)
+    (func (export "realloc") (param i32 i32 i32 i32) (result i32)
+      (i32.const 16)
     )
   )
+  (core instance $builtins (instantiate $builtins))
+
   (core func $gt_lower (canon lower (func $get-texture)))
-  (core func $cv_lower (canon lower (func $create-view)))
+  (core func $cv_lower
+    (canon lower (func $create-view)
+      (memory $builtins "mem")
+      (realloc (func $builtins "realloc"))))
+  (core func $dv_lower (canon resource.drop $gpu-texture-view))
+
+  (core module $m
+    (import "" "mem" (memory 1))
+    (import "" "get-texture" (func $get-texture (result i32)))
+    (import "" "create-view" (func $create-view (param i32) (result i32)))
+    (import "" "drop-view" (func $drop-view (param i32)))
+    (func (export "run") (result i32)
+      (local $texture i32)
+      (local $view i32)
+      (local.set $texture (call $get-texture))
+      (i32.store (i32.const 0) (local.get $texture))
+      (local.set $view (call $create-view (i32.const 0)))
+      (call $drop-view (local.get $view))
+      (i32.const 1)
+    )
+  )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-texture" (func $gt_lower))
       (export "create-view" (func $cv_lower))
+      (export "drop-view" (func $dv_lower))
     ))
   ))
   (func (export "run") async (result u32)

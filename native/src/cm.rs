@@ -1,18 +1,20 @@
 //! Component Model JNI (M1 sync + M2 concurrent/async + P3 stream).
 
 use crate::engine::new_engine;
-use crate::error::{throw, throw_compile, throw_link, throw_err};
+use crate::error::{throw, throw_compile, throw_err, throw_link};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
     Gpu, GpuAdapter, GpuBuffer, GpuCommandBuffer, GpuCommandEncoder, GpuComputePassEncoder,
-    GpuDevice, GpuQueue, GpuRenderPassEncoder, GpuTexture, HostState, Widget,
-};
-use crate::webgpu_abi::{
-    GpuBufferDescriptor, GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor,
-    GpuDeviceDescriptor, GpuRequestAdapterOptions, RecordOptionGpuSize64, RequestDeviceError,
-    RequestDeviceErrorKind,
+    GpuDevice, GpuQueue, GpuRenderPassEncoder, GpuSampler, GpuTexture, GpuTextureView, HostState,
+    Widget,
 };
 use crate::jvm;
+use crate::webgpu_abi::{
+    GpuBufferDescriptor, GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor,
+    GpuComputePassDescriptor, GpuDeviceDescriptor, GpuQuerySet, GpuRequestAdapterOptions,
+    GpuSamplerDescriptor, GpuTextureViewDescriptor, RecordOptionGpuSize64, RequestDeviceError,
+    RequestDeviceErrorKind,
+};
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
 use jni::sys::{jint, jlong};
@@ -91,42 +93,32 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
 
     linker
         .root()
-        .func_wrap(
-            "make-widget",
-            |mut store, (rep,): (u32,)| {
-                let resource = store.data_mut().table.push(Widget { rep })?;
-                Ok((resource,))
-            },
-        )
+        .func_wrap("make-widget", |mut store, (rep,): (u32,)| {
+            let resource = store.data_mut().table.push(Widget { rep })?;
+            Ok((resource,))
+        })
         .map_err(|e| e.to_string())?;
 
     linker
         .root()
-        .func_wrap(
-            "echo-widget",
-            |mut store, (r,): (Resource<Widget>,)| {
-                let w = store.data_mut().table.get(&r)?;
-                Ok((w.rep,))
-            },
-        )
+        .func_wrap("echo-widget", |mut store, (r,): (Resource<Widget>,)| {
+            let w = store.data_mut().table.get(&r)?;
+            Ok((w.rep,))
+        })
         .map_err(|e| e.to_string())?;
 
     linker
         .root()
-        .func_wrap(
-            "add",
-            |caller, (a, b): (u32, u32)| {
-                let cb = caller
-                    .data()
-                    .add_cb
-                    .as_ref()
-                    .ok_or_else(|| wasmtime::Error::msg("host add callback not set"))?
-                    .clone();
-                let result =
-                    jvm::call_u32_u32_to_u32(&cb, a, b).map_err(wasmtime::Error::msg)?;
-                Ok((result,))
-            },
-        )
+        .func_wrap("add", |caller, (a, b): (u32, u32)| {
+            let cb = caller
+                .data()
+                .add_cb
+                .as_ref()
+                .ok_or_else(|| wasmtime::Error::msg("host add callback not set"))?
+                .clone();
+            let result = jvm::call_u32_u32_to_u32(&cb, a, b).map_err(wasmtime::Error::msg)?;
+            Ok((result,))
+        })
         .map_err(|e| e.to_string())?;
 
     // M2: true CM async host import via official concurrent API + FutureReader complete.
@@ -169,8 +161,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let n = (len as usize).min(4096);
                 let mut bytes = vec![0u8; n];
                 if n > 0 {
-                    getrandom::fill(&mut bytes)
-                        .map_err(|e| wasmtime::Error::msg(e.to_string()))?;
+                    getrandom::fill(&mut bytes).map_err(|e| wasmtime::Error::msg(e.to_string()))?;
                 }
                 Ok((bytes,))
             })
@@ -363,7 +354,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
 
         exp.func_wrap("adapter-request-device", |caller, (adapter,): (u32,)| {
             let cb = exp_cb(caller.data())?;
-            let rep = jvm::exp_adapter_request_device(&cb, adapter).map_err(wasmtime::Error::msg)?;
+            let rep =
+                jvm::exp_adapter_request_device(&cb, adapter).map_err(wasmtime::Error::msg)?;
             Ok((rep,))
         })
         .map_err(|e| e.to_string())?;
@@ -485,19 +477,19 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (true async void; host-fixed MAP_READ then map)
     // and `[method]gpu-buffer.unmap` (sync void; host-fixed map then unmap)
     // and `[method]gpu-device.create-texture` (sync; host-fixed 1x1, still u32) and
-    // `[method]gpu-device.create-sampler` (sync; host-fixed descriptor, still u32)
+    // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
     // and `[method]gpu-device.create-shader-module` (sync; host-fixed WGSL, still u32)
     // and `[method]gpu-queue.write-buffer` (sync void; host-fixed bytes, single buffer u32)
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>)
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>)
-    // and `gpu-texture` + `get-texture` + `[method]gpu-texture.create-view` (sync; still u32)
+    // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
     // and `[method]gpu-device.create-bind-group-layout` (sync; host-fixed empty layout, still u32)
     // and `[method]gpu-device.create-pipeline-layout` (sync; host-fixed empty bind-group-layouts, still u32)
     // and `[method]gpu-device.create-bind-group` (sync; host-fixed empty entries, still u32)
     // and `[method]gpu-device.create-render-pipeline` (sync; host-fixed stub shader + triangle, still u32)
     // and `[method]gpu-device.create-compute-pipeline` (sync; host-fixed stub shader + empty layout, still u32)
     // and `[method]gpu-queue.write-texture` (sync void; host-fixed 1×1 texels, single texture u32)
-    // and `[method]gpu-command-encoder.begin-compute-pass` (sync; no descriptor, still u32)
+    // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>)
     // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void)
     // and `[method]gpu-compute-pass-encoder.set-pipeline` (sync void; host-fixed compute pipeline, stub pipeline u32)
     // and `[method]gpu-compute-pass-encoder.set-bind-group` (sync void; host-fixed empty bind-group index 0, stub bind-group u32)
@@ -683,12 +675,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let queue_rep = jvm::exp_device_get_queue(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuQueue { rep: queue_rep })?;
+                    let queue_rep =
+                        jvm::exp_device_get_queue(&cb, device_rep).map_err(wasmtime::Error::msg)?;
+                    let resource = caller.data_mut().table.push(GpuQueue { rep: queue_rep })?;
                     Ok((resource,))
                 },
             )
@@ -707,7 +696,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-command-encoder",
-                |mut caller, (device, _descriptor): (
+                |mut caller,
+                 (device, _descriptor): (
                     Resource<GpuDevice>,
                     Option<GpuCommandEncoderDescriptor>,
                 )| {
@@ -793,8 +783,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_create_texture(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let rep =
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?;
                     Ok((rep,))
                 },
             )
@@ -812,30 +802,55 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-texture", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuTexture)?;
+                let resource = store.data_mut().table.push(GpuTexture { rep: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
         webgpu
+            .resource(
+                "gpu-texture-view",
+                ResourceType::host::<GpuTextureView>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuTextureView>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap(
                 "[method]gpu-texture.create-view",
-                |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
+                |mut caller,
+                 (texture, _descriptor): (
+                    Resource<GpuTexture>,
+                    Option<GpuTextureViewDescriptor>,
+                )| {
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let view_rep = jvm::exp_texture_create_view(&cb, l2_texture)
                         .map_err(wasmtime::Error::msg)?;
-                    let texture_rep = jvm::exp_create_texture(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_texture_create_view(&cb, texture_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    if view_rep == 0 {
+                        return Err(wasmtime::Error::msg("texture-create-view returned 0"));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuTextureView { rep: view_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -883,8 +898,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .map_err(wasmtime::Error::msg)?;
                         let buffer_rep = jvm::exp_create_buffer(&cb, device_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_buffer_map_async(&cb, buffer_rep)
-                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_buffer_map_async(&cb, buffer_rep).map_err(wasmtime::Error::msg)?;
                         Ok(())
                     })
                 },
@@ -905,9 +919,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let buffer_rep = jvm::exp_create_buffer(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let buffer_rep =
+                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?;
                     jvm::exp_buffer_unmap(&cb, buffer_rep).map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-sampler",
+                ResourceType::host::<GpuSampler>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuSampler>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
                     Ok(())
                 },
             )
@@ -915,21 +940,35 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-sampler",
-                |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                |mut caller, (device, _descriptor): (
+                    Resource<GpuDevice>,
+                    Option<GpuSamplerDescriptor>,
+                )| {
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let sampler_rep = jvm::exp_create_sampler(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_create_sampler(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    if sampler_rep == 0 {
+                        return Err(wasmtime::Error::msg("device-create-sampler returned 0"));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuSampler { rep: sampler_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1089,25 +1128,62 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .resource(
+                "gpu-query-set",
+                ResourceType::host::<GpuQuerySet>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuQuerySet>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-compute-pass-encoder",
+                ResourceType::host::<GpuComputePassEncoder>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuComputePassEncoder>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap(
                 "[method]gpu-command-encoder.begin-compute-pass",
-                |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
+                |mut caller,
+                 (encoder, _descriptor): (
+                    Resource<GpuCommandEncoder>,
+                    Option<GpuComputePassDescriptor>,
+                )| {
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    let pass_rep = jvm::exp_begin_compute_pass(&cb, l2_encoder)
                         .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_begin_compute_pass(&cb, encoder_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    if pass_rep == 0 {
+                        return Err(wasmtime::Error::msg("begin-compute-pass returned 0"));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuComputePassEncoder { rep: pass_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1148,7 +1224,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-command-encoder.finish",
-                |mut caller, (encoder, _descriptor): (
+                |mut caller,
+                 (encoder, _descriptor): (
                     Resource<GpuCommandEncoder>,
                     Option<GpuCommandBufferDescriptor>,
                 )| {
@@ -1242,10 +1319,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let queue_rep = jvm::exp_device_get_queue(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let buffer_rep = jvm::exp_create_buffer(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let queue_rep =
+                        jvm::exp_device_get_queue(&cb, device_rep).map_err(wasmtime::Error::msg)?;
+                    let buffer_rep =
+                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?;
                     jvm::exp_queue_write_buffer(&cb, queue_rep, buffer_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
@@ -1267,10 +1344,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                     let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let queue_rep = jvm::exp_device_get_queue(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let texture_rep = jvm::exp_create_texture(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let queue_rep =
+                        jvm::exp_device_get_queue(&cb, device_rep).map_err(wasmtime::Error::msg)?;
+                    let texture_rep =
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?;
                     jvm::exp_queue_write_texture(&cb, queue_rep, texture_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
@@ -1311,9 +1388,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(wasmtime::Error::msg)?;
                     let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let pass_rep =
-                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                            .map_err(wasmtime::Error::msg)?;
+                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                        .map_err(wasmtime::Error::msg)?;
                     jvm::exp_render_pass_end(&cb, pass_rep).map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
@@ -1336,9 +1412,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(wasmtime::Error::msg)?;
                     let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let pass_rep =
-                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                            .map_err(wasmtime::Error::msg)?;
+                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                        .map_err(wasmtime::Error::msg)?;
                     jvm::exp_render_pass_set_pipeline(&cb, pass_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
@@ -1362,9 +1437,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(wasmtime::Error::msg)?;
                     let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let pass_rep =
-                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                            .map_err(wasmtime::Error::msg)?;
+                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                        .map_err(wasmtime::Error::msg)?;
                     jvm::exp_render_pass_draw(&cb, pass_rep).map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
@@ -1387,9 +1461,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(wasmtime::Error::msg)?;
                     let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let pass_rep =
-                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                            .map_err(wasmtime::Error::msg)?;
+                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                        .map_err(wasmtime::Error::msg)?;
                     jvm::exp_render_pass_set_bind_group(&cb, pass_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
@@ -1413,9 +1486,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(wasmtime::Error::msg)?;
                     let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    let pass_rep =
-                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                            .map_err(wasmtime::Error::msg)?;
+                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                        .map_err(wasmtime::Error::msg)?;
                     jvm::exp_render_pass_set_vertex_buffer(&cb, pass_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
@@ -1423,19 +1495,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
-            .resource(
-                "gpu-compute-pass-encoder",
-                ResourceType::host::<GpuComputePassEncoder>(),
-                |mut store, rep| {
-                    let resource = Resource::<GpuComputePassEncoder>::new_own(rep);
-                    store.data_mut().table.delete(resource)?;
-                    Ok(())
-                },
-            )
-            .map_err(|e| e.to_string())?;
-        webgpu
             .func_wrap("get-compute-pass", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuComputePassEncoder)?;
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(GpuComputePassEncoder { rep: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -1546,7 +1610,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .data_mut()
                             .experimental_host_cb
                             .as_ref()
-                            .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                            .ok_or_else(|| {
+                                wasmtime::Error::msg("experimental host callback not set")
+                            })
                             .cloned()
                     })?;
                     // Yield so this is true concurrent (not sync wrap / Latch fake-async).
@@ -1568,7 +1634,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .data_mut()
                             .experimental_host_cb
                             .as_ref()
-                            .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                            .ok_or_else(|| {
+                                wasmtime::Error::msg("experimental host callback not set")
+                            })
                             .cloned()
                     })?;
                     let (tx, rx) = oneshot::channel::<()>();
@@ -1595,17 +1663,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?;
         webgpu
-            .func_wrap("device-create-command-encoder", |caller, (device,): (u32,)| {
-                let cb = caller
-                    .data()
-                    .experimental_host_cb
-                    .as_ref()
-                    .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                    .cloned()?;
-                let rep = jvm::exp_create_command_encoder(&cb, device)
-                    .map_err(wasmtime::Error::msg)?;
-                Ok((rep,))
-            })
+            .func_wrap(
+                "device-create-command-encoder",
+                |caller, (device,): (u32,)| {
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let rep = jvm::exp_create_command_encoder(&cb, device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((rep,))
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("command-encoder-finish", |caller, (encoder,): (u32,)| {
@@ -1615,8 +1686,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     .as_ref()
                     .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                     .cloned()?;
-                let rep = jvm::exp_command_encoder_finish(&cb, encoder)
-                    .map_err(wasmtime::Error::msg)?;
+                let rep =
+                    jvm::exp_command_encoder_finish(&cb, encoder).map_err(wasmtime::Error::msg)?;
                 Ok((rep,))
             })
             .map_err(|e| e.to_string())?;
@@ -2037,7 +2108,8 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     };
     let store = unsafe { from_handle::<HostStore>(store) };
     let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
-    let func = match instance.get_typed_func::<(u64, u32, u32), (u32,)>(&mut *store, name.as_str()) {
+    let func = match instance.get_typed_func::<(u64, u32, u32), (u32,)>(&mut *store, name.as_str())
+    {
         Ok(f) => f,
         Err(e) => {
             throw_err(&mut env, e);
@@ -2126,11 +2198,10 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     let instance = unsafe { *from_handle::<wasmtime::component::Instance>(instance) };
 
     let result = (|| -> wasmtime::Result<u32> {
-        let func = instance
-            .get_typed_func::<(StreamReader<u8>, u32), (u32,)>(&mut *store, "read")?;
+        let func =
+            instance.get_typed_func::<(StreamReader<u8>, u32), (u32,)>(&mut *store, "read")?;
         let reader = StreamReader::new(&mut *store, b"P3ST".to_vec())?;
-        let (packed,) =
-            pollster::block_on(func.call_async(&mut *store, (reader, max_len as u32)))?;
+        let (packed,) = pollster::block_on(func.call_async(&mut *store, (reader, max_len as u32)))?;
         Ok(packed)
     })();
 
