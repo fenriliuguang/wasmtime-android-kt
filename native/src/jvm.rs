@@ -69,7 +69,9 @@ fn with_env<T: Send + 'static>(
             .recv()
             .map_err(|_| "cm pump JNI bounce dropped".to_string())?;
     }
-    let jvm = JVM.get().ok_or_else(|| "JavaVM not initialized".to_string())?;
+    let jvm = JVM
+        .get()
+        .ok_or_else(|| "JavaVM not initialized".to_string())?;
     let mut env = jvm
         .attach_current_thread()
         .map_err(|e| format!("attach_current_thread: {e}"))?;
@@ -119,7 +121,12 @@ pub fn call_u32_u32_to_u32(cb: &GlobalRef, a: u32, b: u32) -> Result<u32, String
     })
 }
 
-fn call_i(cb: &GlobalRef, name: &'static str, sig: &'static str, args: Vec<HostArg>) -> Result<u32, String> {
+fn call_i(
+    cb: &GlobalRef,
+    name: &'static str,
+    sig: &'static str,
+    args: Vec<HostArg>,
+) -> Result<u32, String> {
     let cb = cb.clone();
     with_env(move |env| {
         let jargs: Vec<JValue> = args.iter().copied().map(HostArg::as_jvalue).collect();
@@ -134,7 +141,12 @@ fn call_i(cb: &GlobalRef, name: &'static str, sig: &'static str, args: Vec<HostA
     })
 }
 
-fn call_void(cb: &GlobalRef, name: &'static str, sig: &'static str, args: Vec<HostArg>) -> Result<(), String> {
+fn call_void(
+    cb: &GlobalRef,
+    name: &'static str,
+    sig: &'static str,
+    args: Vec<HostArg>,
+) -> Result<(), String> {
     let cb = cb.clone();
     with_env(move |env| {
         let jargs: Vec<JValue> = args.iter().copied().map(HostArg::as_jvalue).collect();
@@ -243,6 +255,8 @@ pub fn exp_create_buffer_described(
     )
 }
 
+/// Host-fixed map-async (no guest mode/offset/size). Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_buffer_map_async(cb: &GlobalRef, buffer: u32) -> Result<(), String> {
     call_void(
         cb,
@@ -252,13 +266,29 @@ pub fn exp_buffer_map_async(cb: &GlobalRef, buffer: u32) -> Result<(), String> {
     )
 }
 
-pub fn exp_buffer_unmap(cb: &GlobalRef, buffer: u32) -> Result<(), String> {
+/// S6+: Guest `gpu-map-mode` + optional offset/size forwarded to L2.
+pub fn exp_buffer_map_async_described(
+    cb: &GlobalRef,
+    buffer: u32,
+    mode: u32,
+    offset: u64,
+    size: u64,
+) -> Result<(), String> {
     call_void(
         cb,
-        "bufferUnmap",
-        "(I)V",
-        vec![HostArg::Int(buffer as i32)],
+        "bufferMapAsyncDescribed",
+        "(IIJJ)V",
+        vec![
+            HostArg::Int(buffer as i32),
+            HostArg::Int(mode as i32),
+            HostArg::Long(offset as i64),
+            HostArg::Long(size as i64),
+        ],
     )
+}
+
+pub fn exp_buffer_unmap(cb: &GlobalRef, buffer: u32) -> Result<(), String> {
+    call_void(cb, "bufferUnmap", "(I)V", vec![HostArg::Int(buffer as i32)])
 }
 
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
@@ -267,6 +297,31 @@ pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
         "deviceCreateTexture",
         "(I)I",
         vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// S6+: Guest-decoded `gpu-texture-descriptor` size/format/usage (Dawn format int).
+pub fn exp_create_texture_described(
+    cb: &GlobalRef,
+    device: u32,
+    width: u32,
+    height: u32,
+    depth: u32,
+    format: u32,
+    usage: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateTextureDescribed",
+        "(IIIIII)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Int(width as i32),
+            HostArg::Int(height as i32),
+            HostArg::Int(depth as i32),
+            HostArg::Int(format as i32),
+            HostArg::Int(usage as i32),
+        ],
     )
 }
 
@@ -342,11 +397,7 @@ pub fn exp_begin_compute_pass(cb: &GlobalRef, encoder: u32) -> Result<u32, Strin
     )
 }
 
-pub fn exp_begin_render_pass_clear(
-    cb: &GlobalRef,
-    encoder: u32,
-    view: u32,
-) -> Result<u32, String> {
+pub fn exp_begin_render_pass_clear(cb: &GlobalRef, encoder: u32, view: u32) -> Result<u32, String> {
     call_i(
         cb,
         "beginRenderPassClear",
@@ -396,7 +447,12 @@ pub fn exp_render_pass_set_vertex_buffer(cb: &GlobalRef, pass: u32) -> Result<()
 }
 
 pub fn exp_compute_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
-    call_void(cb, "computePassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
+    call_void(
+        cb,
+        "computePassEnd",
+        "(I)V",
+        vec![HostArg::Int(pass as i32)],
+    )
 }
 
 pub fn exp_compute_pass_set_pipeline(cb: &GlobalRef, pass: u32) -> Result<(), String> {

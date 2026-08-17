@@ -1,31 +1,103 @@
-;; W3+: wasi:webgpu/webgpu@0.3.0-rc.2 get-device +
-;; [method]gpu-device.create-texture (resource self; sync).
-;; Transitional: method returns u32 (host-fixed 1x1 descriptor).
+;; S6+: wasi:webgpu/webgpu@0.3.0-rc.2 get-device +
+;; [method]gpu-device.create-texture
+;; WIT: create-texture: func(descriptor: gpu-texture-descriptor) -> gpu-texture
+;; Guest passes size width=1 height=some(1) depth=some(1), format=rgba8unorm,
+;; usage=render-attachment, other fields none; drops own; run returns harness 1.
+;; Flattened params exceed 16, so canon lower spills args through memory.
+;; get-device is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
+    (type $fmt (enum "r8unorm" "r8snorm" "r8uint" "r8sint" "r16unorm" "r16snorm" "r16uint" "r16sint" "r16float" "rg8unorm" "rg8snorm" "rg8uint" "rg8sint" "r32uint" "r32sint" "r32float" "rg16unorm" "rg16snorm" "rg16uint" "rg16sint" "rg16float" "rgba8unorm" "rgba8unorm-srgb" "rgba8snorm" "rgba8uint" "rgba8sint" "bgra8unorm" "bgra8unorm-srgb" "rgb9e5ufloat" "rgb10a2uint" "rgb10a2unorm" "rg11b10ufloat" "rg32uint" "rg32sint" "rg32float" "rgba16unorm" "rgba16snorm" "rgba16uint" "rgba16sint" "rgba16float" "rgba32uint" "rgba32sint" "rgba32float" "stencil8" "depth16unorm" "depth24plus" "depth24plus-stencil8" "depth32float" "depth32float-stencil8" "bc1-rgba-unorm" "bc1-rgba-unorm-srgb" "bc2-rgba-unorm" "bc2-rgba-unorm-srgb" "bc3-rgba-unorm" "bc3-rgba-unorm-srgb" "bc4-r-unorm" "bc4-r-snorm" "bc5-rg-unorm" "bc5-rg-snorm" "bc6h-rgb-ufloat" "bc6h-rgb-float" "bc7-rgba-unorm" "bc7-rgba-unorm-srgb" "etc2-rgb8unorm" "etc2-rgb8unorm-srgb" "etc2-rgb8a1unorm" "etc2-rgb8a1unorm-srgb" "etc2-rgba8unorm" "etc2-rgba8unorm-srgb" "eac-r11unorm" "eac-r11snorm" "eac-rg11unorm" "eac-rg11snorm" "astc4x4-unorm" "astc4x4-unorm-srgb" "astc5x4-unorm" "astc5x4-unorm-srgb" "astc5x5-unorm" "astc5x5-unorm-srgb" "astc6x5-unorm" "astc6x5-unorm-srgb" "astc6x6-unorm" "astc6x6-unorm-srgb" "astc8x5-unorm" "astc8x5-unorm-srgb" "astc8x6-unorm" "astc8x6-unorm-srgb" "astc8x8-unorm" "astc8x8-unorm-srgb" "astc10x5-unorm" "astc10x5-unorm-srgb" "astc10x6-unorm" "astc10x6-unorm-srgb" "astc10x8-unorm" "astc10x8-unorm-srgb" "astc10x10-unorm" "astc10x10-unorm-srgb" "astc12x10-unorm" "astc12x10-unorm-srgb" "astc12x12-unorm" "astc12x12-unorm-srgb"))
+    (export "gpu-texture-format" (type (eq $fmt)))
+    (type $usage (flags "copy-src" "copy-dst" "texture-binding" "storage-binding" "render-attachment" "transient-attachment"))
+    (export "gpu-texture-usage" (type (eq $usage)))
+    (type $texdim (enum "d1" "d2" "d3"))
+    (export "gpu-texture-dimension" (type (eq $texdim)))
+    (type $viewdim (enum "d1" "d2" "d2-array" "cube" "cube-array" "d3"))
+    (export "gpu-texture-view-dimension" (type (eq $viewdim)))
+    (type $opt-u32 (option u32))
+    (type $extent (record
+      (field "width" u32)
+      (field "height" $opt-u32)
+      (field "depth-or-array-layers" $opt-u32)
+    ))
+    (export "gpu-extent3-d" (type (eq $extent)))
+    (type $list-fmt (list 1))
+    (type $opt-list-fmt (option $list-fmt))
+    (type $opt-texdim (option 5))
+    (type $opt-viewdim (option 7))
+    (type $opt-str (option string))
+    (type $desc-def (record
+      (field "size" 10)
+      (field "mip-level-count" $opt-u32)
+      (field "sample-count" $opt-u32)
+      (field "dimension" $opt-texdim)
+      (field "format" 1)
+      (field "usage" 3)
+      (field "view-formats" $opt-list-fmt)
+      (field "texture-binding-view-dimension" $opt-viewdim)
+      (field "label" $opt-str)
+    ))
+    (export "gpu-texture-descriptor" (type (eq $desc-def)))
+    (export "gpu-texture" (type $gpu-texture (sub resource)))
     (export "gpu-device" (type $gpu-device (sub resource)))
-    (export "get-device" (func (result (own $gpu-device))))
-    (export "[method]gpu-device.create-texture"
-      (func (param "self" (borrow $gpu-device)) (result u32)))
+    (type $borrow-device (borrow $gpu-device))
+    (type $own-texture (own $gpu-texture))
+    (type $create-ty (func
+      (param "self" $borrow-device)
+      (param "descriptor" 17)
+      (result $own-texture)))
+    (export "[method]gpu-device.create-texture" (func (type $create-ty)))
+    (type $own-device (own $gpu-device))
+    (export "get-device" (func (result $own-device)))
   ))
+  (alias export $webgpu "gpu-texture" (type $gpu-texture))
   (alias export $webgpu "get-device" (func $get-device))
   (alias export $webgpu "[method]gpu-device.create-texture" (func $create-texture))
 
-  (core module $m
-    (import "" "get-device" (func $get-device (result i32)))
-    (import "" "create-texture" (func $create-texture (param i32) (result i32)))
-    (func (export "run") (result i32)
-      (local $device i32)
-      (local.set $device (call $get-device))
-      (call $create-texture (local.get $device))
+  (core module $builtins
+    (memory (export "mem") 1)
+    (func (export "realloc") (param i32 i32 i32 i32) (result i32)
+      (i32.const 256)
     )
   )
+  (core instance $builtins (instantiate $builtins))
+
   (core func $gd_lower (canon lower (func $get-device)))
-  (core func $ct_lower (canon lower (func $create-texture)))
+  (core func $ct_lower
+    (canon lower (func $create-texture)
+      (memory $builtins "mem")
+      (realloc (func $builtins "realloc"))))
+  (core func $dt_lower (canon resource.drop $gpu-texture))
+
+  (core module $m
+    (import "" "mem" (memory 1))
+    (import "" "get-device" (func $get-device (result i32)))
+    (import "" "create-texture" (func $create-texture (param i32) (result i32)))
+    (import "" "drop-texture" (func $drop-texture (param i32)))
+    (func (export "run") (result i32)
+      (local $device i32)
+      (local $texture i32)
+      (local.set $device (call $get-device))
+      (i32.store (i32.const 0) (local.get $device))
+      (i32.store (i32.const 4) (i32.const 1))
+      (i32.store (i32.const 8) (i32.const 1))
+      (i32.store (i32.const 12) (i32.const 1))
+      (i32.store (i32.const 16) (i32.const 1))
+      (i32.store (i32.const 20) (i32.const 1))
+      (i32.store8 (i32.const 42) (i32.const 21))
+      (i32.store8 (i32.const 43) (i32.const 16))
+      (local.set $texture (call $create-texture (i32.const 0)))
+      (call $drop-texture (local.get $texture))
+      (i32.const 1)
+    )
+  )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-device" (func $gd_lower))
       (export "create-texture" (func $ct_lower))
+      (export "drop-texture" (func $dt_lower))
     ))
   ))
   (func (export "run") async (result u32)

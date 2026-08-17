@@ -5,7 +5,9 @@
 //! S6: `gpu-command-encoder-descriptor`.
 //! S7: `gpu-command-buffer-descriptor`.
 //! S8: sampler / texture-view / compute-pass option descriptors (guest passes none).
+//! S6+: `gpu-texture-descriptor`, `gpu-render-pass-descriptor`, `map-async` result.
 
+use crate::host::GpuTextureView;
 use wasmtime::component::{flags, ComponentType, Lift, Lower, Resource};
 
 flags! {
@@ -372,6 +374,54 @@ flags! {
     }
 }
 
+impl GpuTextureUsage {
+    /// WIT declaration order matches WebGPU / Dawn `GPUTextureUsage` bits.
+    pub fn to_webgpu_u32(self) -> u32 {
+        let mut bits = 0u32;
+        if self.contains(Self::COPY_SRC) {
+            bits |= 1 << 0;
+        }
+        if self.contains(Self::COPY_DST) {
+            bits |= 1 << 1;
+        }
+        if self.contains(Self::TEXTURE_BINDING) {
+            bits |= 1 << 2;
+        }
+        if self.contains(Self::STORAGE_BINDING) {
+            bits |= 1 << 3;
+        }
+        if self.contains(Self::RENDER_ATTACHMENT) {
+            bits |= 1 << 4;
+        }
+        if self.contains(Self::TRANSIENT_ATTACHMENT) {
+            bits |= 1 << 5;
+        }
+        bits
+    }
+}
+
+flags! {
+    GpuMapMode {
+        #[component(name = "read")]
+        const READ;
+        #[component(name = "write")]
+        const WRITE;
+    }
+}
+
+impl GpuMapMode {
+    pub fn to_webgpu_u32(self) -> u32 {
+        let mut bits = 0u32;
+        if self.contains(Self::READ) {
+            bits |= 1 << 0;
+        }
+        if self.contains(Self::WRITE) {
+            bits |= 1 << 1;
+        }
+        bits
+    }
+}
+
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
@@ -581,6 +631,17 @@ pub enum GpuTextureFormat {
     Astc12x12UnormSrgb,
 }
 
+impl GpuTextureFormat {
+    /// `androidx.webgpu.TextureFormat` / Dawn value used by L2.
+    /// This slice only needs RGBA8Unorm (`0x16` on alpha05).
+    pub fn to_dawn_u32(self) -> u32 {
+        match self {
+            Self::Rgba8unorm => 0x16,
+            _ => 0x16,
+        }
+    }
+}
+
 #[derive(Clone, Debug, ComponentType, Lift, Lower)]
 #[component(record)]
 #[allow(dead_code)]
@@ -598,5 +659,165 @@ pub struct GpuTextureViewDescriptor {
     #[component(name = "array-layer-count")]
     pub array_layer_count: Option<u32>,
     pub swizzle: Option<String>,
+    pub label: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuTextureDimension {
+    #[component(name = "d1")]
+    D1,
+    #[component(name = "d2")]
+    D2,
+    #[component(name = "d3")]
+    D3,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuExtent3D {
+    pub width: u32,
+    pub height: Option<u32>,
+    #[component(name = "depth-or-array-layers")]
+    pub depth_or_array_layers: Option<u32>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuTextureDescriptor {
+    pub size: GpuExtent3D,
+    #[component(name = "mip-level-count")]
+    pub mip_level_count: Option<u32>,
+    #[component(name = "sample-count")]
+    pub sample_count: Option<u32>,
+    pub dimension: Option<GpuTextureDimension>,
+    pub format: GpuTextureFormat,
+    pub usage: GpuTextureUsage,
+    #[component(name = "view-formats")]
+    pub view_formats: Option<Vec<GpuTextureFormat>>,
+    #[component(name = "texture-binding-view-dimension")]
+    pub texture_binding_view_dimension: Option<GpuTextureViewDimension>,
+    pub label: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum MapAsyncErrorKind {
+    #[component(name = "operation-error")]
+    OperationError,
+    #[component(name = "range-error")]
+    RangeError,
+    #[component(name = "abort-error")]
+    AbortError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct MapAsyncError {
+    pub kind: MapAsyncErrorKind,
+    pub message: String,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuLoadOp {
+    #[component(name = "load")]
+    Load,
+    #[component(name = "clear")]
+    Clear,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuStoreOp {
+    #[component(name = "store")]
+    Store,
+    #[component(name = "discard")]
+    Discard,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuColor {
+    pub r: f64,
+    pub g: f64,
+    pub b: f64,
+    pub a: f64,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuRenderPassColorAttachment {
+    pub view: Resource<GpuTextureView>,
+    #[component(name = "depth-slice")]
+    pub depth_slice: Option<u32>,
+    #[component(name = "resolve-target")]
+    pub resolve_target: Option<Resource<GpuTextureView>>,
+    #[component(name = "clear-value")]
+    pub clear_value: Option<GpuColor>,
+    #[component(name = "load-op")]
+    pub load_op: GpuLoadOp,
+    #[component(name = "store-op")]
+    pub store_op: GpuStoreOp,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuRenderPassDepthStencilAttachment {
+    pub view: Resource<GpuTextureView>,
+    #[component(name = "depth-clear-value")]
+    pub depth_clear_value: Option<f32>,
+    #[component(name = "depth-load-op")]
+    pub depth_load_op: Option<GpuLoadOp>,
+    #[component(name = "depth-store-op")]
+    pub depth_store_op: Option<GpuStoreOp>,
+    #[component(name = "depth-read-only")]
+    pub depth_read_only: Option<bool>,
+    #[component(name = "stencil-clear-value")]
+    pub stencil_clear_value: Option<u32>,
+    #[component(name = "stencil-load-op")]
+    pub stencil_load_op: Option<GpuLoadOp>,
+    #[component(name = "stencil-store-op")]
+    pub stencil_store_op: Option<GpuStoreOp>,
+    #[component(name = "stencil-read-only")]
+    pub stencil_read_only: Option<bool>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuRenderPassTimestampWrites {
+    #[component(name = "query-set")]
+    pub query_set: Resource<GpuQuerySet>,
+    #[component(name = "beginning-of-pass-write-index")]
+    pub beginning_of_pass_write_index: Option<u32>,
+    #[component(name = "end-of-pass-write-index")]
+    pub end_of_pass_write_index: Option<u32>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuRenderPassDescriptor {
+    #[component(name = "color-attachments")]
+    pub color_attachments: Vec<Option<GpuRenderPassColorAttachment>>,
+    #[component(name = "depth-stencil-attachment")]
+    pub depth_stencil_attachment: Option<GpuRenderPassDepthStencilAttachment>,
+    #[component(name = "occlusion-query-set")]
+    pub occlusion_query_set: Option<Resource<GpuQuerySet>>,
+    #[component(name = "timestamp-writes")]
+    pub timestamp_writes: Option<GpuRenderPassTimestampWrites>,
+    #[component(name = "max-draw-count")]
+    pub max_draw_count: Option<u64>,
     pub label: Option<String>,
 }

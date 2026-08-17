@@ -97,9 +97,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + host-fixed MAP_READ buffer + map-async.
-     * Guest stub buffer ignored. True CM async (`func_wrap_concurrent`).
-     * `[method]gpu-buffer.map-async`.
+     * S6+: adapter + device + host-fixed MAP_READ buffer + map-async.
+     * Guest stub buffer ignored; guest `gpu-map-mode` / offset / size forwarded.
+     * True CM async (`func_wrap_concurrent`). `[method]gpu-buffer.map-async`.
      */
     fun attachBufferMapAsync(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -117,13 +117,13 @@ object ExperimentalWebGpuBridge {
                         usage = GpuBufferUsage.MAP_READ or GpuBufferUsage.COPY_DST,
                     )
 
-                override fun bufferMapAsync(buffer: Int) {
-                    bindings.bufferMapAsync(
-                        buffer,
-                        GpuMapMode.READ,
-                        0,
-                        STUB_BUFFER_SIZE,
-                    )
+                override fun bufferMapAsyncDescribed(
+                    buffer: Int,
+                    mode: Int,
+                    offset: Long,
+                    size: Long,
+                ) {
+                    bindings.bufferMapAsync(buffer, mode, offset, size)
                 }
             },
         )
@@ -163,8 +163,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + create-texture. Host-fixed 1×1 RGBA8
-     * RENDER_ATTACHMENT (no Guest record). `[method]gpu-device.create-texture`.
+     * S6+: adapter + device + create-texture. Guest `gpu-texture-descriptor`
+     * size/format/usage forwarded to L2. `[method]gpu-device.create-texture`.
      */
     fun attachCreateTexture(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -175,13 +175,24 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
-                override fun deviceCreateTexture(device: Int): Int =
+                override fun deviceCreateTextureDescribed(
+                    device: Int,
+                    width: Int,
+                    height: Int,
+                    depth: Int,
+                    format: Int,
+                    usage: Int,
+                ): Int =
                     bindings.deviceCreateTexture(
                         device,
                         TextureDescriptor(
-                            size = Extent3D(width = 1, height = 1),
-                            format = GpuTextureFormat.RGBA8_UNORM,
-                            usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                            size = Extent3D(
+                                width = width,
+                                height = height,
+                                depthOrArrayLayers = depth,
+                            ),
+                            format = format,
+                            usage = usage,
                         ),
                     )
             },
