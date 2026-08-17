@@ -8,12 +8,19 @@ import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.webgpu.ExperimentalWebGpuBridge
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** W3+ `[method]gpu-device.create-bind-group` via [ExperimentalWebGpuBridge.attachCreateBindGroup]. */
+/**
+ * S6+ `[method]` slice: guest imports `get-device` + `get-bind-group-layout` then
+ * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-device.create-bind-group`
+ * (`(borrow gpu-device, gpu-bind-group-descriptor) -> own gpu-bind-group`;
+ * Guest passes layout borrow + empty entries; drops the own; `run` returns 1).
+ * L2 still host-fixed empty BGL + empty entries.
+ * via [ExperimentalWebGpuBridge.attachCreateBindGroup] + [callRunConcurrent].
+ * Not full wasi:webgpu compliance.
+ */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodCreateBindGroupInstrumentedTest {
     @Test
@@ -32,9 +39,12 @@ class WasiWebGpuMethodCreateBindGroupInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachCreateBindGroup(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertNotEquals("bind-group rep must be non-zero", 0, rep)
-                                assertTrue("bind-group rep should be positive", rep > 0)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals(
+                                    "guest must drop own<gpu-bind-group> and return harness 1",
+                                    1,
+                                    harness,
+                                )
                             }
                         }
                     }

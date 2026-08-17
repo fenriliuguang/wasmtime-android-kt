@@ -94,6 +94,40 @@ pub struct GpuSampler {
     pub rep: u32,
 }
 
+/// Host representation of WIT `resource gpu-shader-module`.
+/// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
+#[derive(Debug)]
+pub struct GpuShaderModule {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
+/// Host representation of WIT `resource gpu-bind-group-layout`.
+/// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
+/// `get-bind-group-layout` still pushes `{ rep: 0 }`; S6+ `create-bind-group-layout`
+/// stores the real L2 rep.
+#[derive(Debug)]
+pub struct GpuBindGroupLayout {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
+/// Host representation of WIT `resource gpu-pipeline-layout`.
+/// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
+#[derive(Debug)]
+pub struct GpuPipelineLayout {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
+/// Host representation of WIT `resource gpu-bind-group`.
+/// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
+#[derive(Debug)]
+pub struct GpuBindGroup {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
 /// Host representation of WIT `resource gpu-texture-view`.
 /// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
 #[derive(Debug)]

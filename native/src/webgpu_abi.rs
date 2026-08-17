@@ -6,8 +6,11 @@
 //! S7: `gpu-command-buffer-descriptor`.
 //! S8: sampler / texture-view / compute-pass option descriptors (guest passes none).
 //! S6+: `gpu-texture-descriptor`, `gpu-render-pass-descriptor`, `map-async` result.
+//! S6+ layout/shader: shader-module / bind-group-layout / pipeline-layout / bind-group descriptors.
 
-use crate::host::GpuTextureView;
+use crate::host::{
+    GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuTexture, GpuTextureView,
+};
 use wasmtime::component::{flags, ComponentType, Lift, Lower, Resource};
 
 flags! {
@@ -819,5 +822,212 @@ pub struct GpuRenderPassDescriptor {
     pub timestamp_writes: Option<GpuRenderPassTimestampWrites>,
     #[component(name = "max-draw-count")]
     pub max_draw_count: Option<u64>,
+    pub label: Option<String>,
+}
+
+flags! {
+    GpuShaderStage {
+        #[component(name = "vertex")]
+        const VERTEX;
+        #[component(name = "fragment")]
+        const FRAGMENT;
+        #[component(name = "compute")]
+        const COMPUTE;
+    }
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuBufferBindingType {
+    #[component(name = "uniform")]
+    Uniform,
+    #[component(name = "storage")]
+    Storage,
+    #[component(name = "read-only-storage")]
+    ReadOnlyStorage,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuSamplerBindingType {
+    #[component(name = "filtering")]
+    Filtering,
+    #[component(name = "non-filtering")]
+    NonFiltering,
+    #[component(name = "comparison")]
+    Comparison,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuTextureSampleType {
+    #[component(name = "float")]
+    Float,
+    #[component(name = "unfilterable-float")]
+    UnfilterableFloat,
+    #[component(name = "depth")]
+    Depth,
+    #[component(name = "sint")]
+    Sint,
+    #[component(name = "uint")]
+    Uint,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuStorageTextureAccess {
+    #[component(name = "write-only")]
+    WriteOnly,
+    #[component(name = "read-only")]
+    ReadOnly,
+    #[component(name = "read-write")]
+    ReadWrite,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuBufferBindingLayout {
+    #[component(name = "type")]
+    pub ty: Option<GpuBufferBindingType>,
+    #[component(name = "has-dynamic-offset")]
+    pub has_dynamic_offset: Option<bool>,
+    #[component(name = "min-binding-size")]
+    pub min_binding_size: Option<u64>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuSamplerBindingLayout {
+    #[component(name = "type")]
+    pub ty: Option<GpuSamplerBindingType>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuTextureBindingLayout {
+    #[component(name = "sample-type")]
+    pub sample_type: Option<GpuTextureSampleType>,
+    #[component(name = "view-dimension")]
+    pub view_dimension: Option<GpuTextureViewDimension>,
+    pub multisampled: Option<bool>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuStorageTextureBindingLayout {
+    pub access: Option<GpuStorageTextureAccess>,
+    pub format: GpuTextureFormat,
+    #[component(name = "view-dimension")]
+    pub view_dimension: Option<GpuTextureViewDimension>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuBindGroupLayoutEntry {
+    pub binding: u32,
+    pub visibility: GpuShaderStage,
+    pub buffer: Option<GpuBufferBindingLayout>,
+    pub sampler: Option<GpuSamplerBindingLayout>,
+    pub texture: Option<GpuTextureBindingLayout>,
+    #[component(name = "storage-texture")]
+    pub storage_texture: Option<GpuStorageTextureBindingLayout>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuBindGroupLayoutDescriptor {
+    pub entries: Vec<GpuBindGroupLayoutEntry>,
+    pub label: Option<String>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuPipelineLayoutDescriptor {
+    #[component(name = "bind-group-layouts")]
+    pub bind_group_layouts: Vec<Option<Resource<GpuBindGroupLayout>>>,
+    #[component(name = "immediate-size")]
+    pub immediate_size: Option<u32>,
+    pub label: Option<String>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum GpuLayoutMode {
+    #[component(name = "specific")]
+    Specific(Resource<GpuPipelineLayout>),
+    #[component(name = "auto")]
+    Auto,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuShaderModuleCompilationHint {
+    #[component(name = "entry-point")]
+    pub entry_point: String,
+    pub layout: Option<GpuLayoutMode>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuShaderModuleDescriptor {
+    pub code: String,
+    #[component(name = "compilation-hints")]
+    pub compilation_hints: Option<Vec<GpuShaderModuleCompilationHint>>,
+    pub label: Option<String>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuBufferBinding {
+    pub buffer: Resource<GpuBuffer>,
+    pub offset: Option<u64>,
+    pub size: Option<u64>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum GpuBindingResource {
+    #[component(name = "gpu-buffer")]
+    GpuBuffer(Resource<GpuBuffer>),
+    #[component(name = "gpu-buffer-binding")]
+    GpuBufferBinding(GpuBufferBinding),
+    #[component(name = "gpu-sampler")]
+    GpuSampler(Resource<GpuSampler>),
+    #[component(name = "gpu-texture")]
+    GpuTexture(Resource<GpuTexture>),
+    #[component(name = "gpu-texture-view")]
+    GpuTextureView(Resource<GpuTextureView>),
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuBindGroupEntry {
+    pub binding: u32,
+    pub resource: GpuBindingResource,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuBindGroupDescriptor {
+    pub layout: Resource<GpuBindGroupLayout>,
+    pub entries: Vec<GpuBindGroupEntry>,
     pub label: Option<String>,
 }
