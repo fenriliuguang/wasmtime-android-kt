@@ -34,9 +34,10 @@ cargo license --manifest-path native/Cargo.toml --avoid-dev-deps --avoid-build-d
 | 依赖 | 典型 SPDX |
 |------|-----------|
 | AndroidX（`core-ktx`、`appcompat`、测试库） | Apache-2.0 |
+| `androidx.webgpu:webgpu:1.0.0-alpha05` | Dawn Java + 捆绑 `.so`。AndroidX 构件 Apache-2.0；Dawn 原生多为 BSD-3-Clause，见 AAR `NOTICE`。**不要把 `.so` 提交进 git。** |
 | Kotlin stdlib / Gradle 插件 | Apache-2.0 |
 | JUnit 4 | EPL-1.0 |
-| 未发布 GPU Host（`host-api` / `host-webgpu` / `abi-cm`） | **不在本仓树内。** 坐标与决策见 [`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md)。在 vendor 或正式发布后须把许可记入本页。 |
+| Vendor 的 Host Kotlin（`:host-dawn` `…experimental.host` / `dawn` / `abicm`） | MIT。拷自 `wasi-webgpu-jvm-mvp`（Copyright 焚日流光 2026）。全文：[`host-dawn/third_party/wasi-webgpu-jvm-mvp/LICENSE`](host-dawn/third_party/wasi-webgpu-jvm-mvp/LICENSE)。 |
 
 JUnit 仅用于测试，不进入发布 AAR 运行时。
 

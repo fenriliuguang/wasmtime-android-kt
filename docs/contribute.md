@@ -24,7 +24,7 @@ Principle: **Android-first**; desktop is convenience.
 | Rust | **1.97.1** (`native/rust-toolchain.toml`) |
 | cargo-ndk | Android cross-compile only |
 | Android SDK + NDK `28.2.13676358` | Device / emulator instruments |
-| GPU host | [`blocked-gpu-host.md`](blocked-gpu-host.md) — vendor Host Kotlin; until that PR, mavenLocal only for `:host-dawn` |
+| GPU host | [`blocked-gpu-host.md`](blocked-gpu-host.md) — Host Kotlin in `:host-dawn`; Dawn `.so` via `androidx.webgpu` (not git) |
 
 Cursor / VS Code: compile Kotlin with Gradle. Do not let Red Hat Java (JDT LS) import/autobuild Gradle — it copies `.kt` into `runtime-jni/bin/`. [`.vscode/settings.json`](../.vscode/settings.json) already turns that off.
 

@@ -4,7 +4,7 @@
 
 Draft 2026-08-10; M4 pins 2026-08-11. True Component Model async on ART + a GPU backend.
 
-GPU objects today come from an **unpublished** host library ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)). Target: Dawn is the **default** backend for the product/test bundle ([`../scheme/rfc-pluggable-gpu-backend.md`](../scheme/rfc-pluggable-gpu-backend.md)). The thread rules below still apply to whatever backend owns Dawn / `ANativeWindow`.
+GPU objects today come from in-tree `:host-dawn` plus `androidx.webgpu` ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)). Dawn is the **default** backend for the product/test bundle ([`../scheme/rfc-pluggable-gpu-backend.md`](../scheme/rfc-pluggable-gpu-backend.md)). The thread rules below still apply to whatever backend owns Dawn / `ANativeWindow`.
 
 ## 1. Why a dedicated page
 

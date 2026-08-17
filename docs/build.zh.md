@@ -15,4 +15,4 @@
 .\gradlew.bat :smoke-app:connectedDebugAndroidTest
 ```
 
-GPU 仪器另需未发布 Host：[`blocked-gpu-host.md`](blocked-gpu-host.md)。不依赖 wasmtime4j 运行时。
+GPU 仪器走仓内 `:host-dawn` + `androidx.webgpu`：[`blocked-gpu-host.md`](blocked-gpu-host.md)。不依赖 wasmtime4j 运行时。

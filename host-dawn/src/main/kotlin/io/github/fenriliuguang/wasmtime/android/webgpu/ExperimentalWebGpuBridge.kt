@@ -18,9 +18,9 @@ import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
 
 /**
- * Wire an unpublished L2 [WasiWebGpuHost] into L1 store callbacks.
+ * Wire an in-tree L2 [WasiWebGpuHost] into L1 store callbacks.
  *
- * Lives in `:host-dawn` so `:runtime-jni` does not depend on host-api / Dawn.
+ * Lives in `:host-dawn` so `:runtime-jni` does not depend on Dawn types.
  * Slice `attach*` helpers keep host-fixed descriptors for instruments.
  * Product code prefers [io.github.fenriliuguang.wasmtime.android.host.dawn.GpuBackends].
  *

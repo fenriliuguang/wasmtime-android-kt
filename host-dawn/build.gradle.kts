@@ -27,8 +27,6 @@ kotlin {
 
 dependencies {
     api(project(":runtime-jni"))
-    // Unpublished until vendored or published — mavenLocal only for this module.
-    api(libs.wasi.webgpu.host.api)
-    api(libs.wasi.webgpu.host.webgpu)
-    implementation(libs.wasi.webgpu.abi.cm)
+    // Dawn Java + bundled .so (not git). Bump via changelog when changing the pin.
+    api(libs.androidx.webgpu)
 }
