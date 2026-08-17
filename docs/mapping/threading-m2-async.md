@@ -146,16 +146,16 @@
 
 形状与钉版 WIT `queue: func() -> gpu-queue` 同构。非合规宣称。
 
-## WASI webgpu `[method]gpu-device.create-command-encoder`（W3）
+## WASI webgpu `[method]gpu-device.create-command-encoder`（S6）
 
 | 角色 | 职责 |
 |------|------|
-| **Host** | 复用 `gpu-device` / `get-device`；`[method]gpu-device.create-command-encoder`：`func_wrap` sync → L2 `request-adapter` 再 `adapter-request-device` 再 `device-create-command-encoder`（同 u32） |
-| **Guest** | `get-device` → `[method]gpu-device.create-command-encoder`（borrow self；`fixtures/w1/webgpu_method_create_command_encoder`） |
+| **Host** | 复用 `gpu-device` / `get-device`；`[method]gpu-device.create-command-encoder`：`func_wrap` sync `(borrow, option<gpu-command-encoder-descriptor>) -> own<gpu-command-encoder>` → L2 adapter/device 再 `device-create-command-encoder`；table 存 L2 rep |
+| **Guest** | `get-device` → create-encoder（descriptor=none）→ drop own；`run` 返回 1（`fixtures/w1/webgpu_method_create_command_encoder`） |
 | **仪器** | 复用 `attachCreateCommandEncoder`；扁平 `device-create-command-encoder` 仍注册 |
 | **Pump** | Wasmtime 走 8MiB pthread；L2 JNI 回跳调用方。禁止在泵线程 `AttachCurrentThread` |
 
-非 `option<command-encoder-descriptor>`。
+形状与钉版 WIT `create-command-encoder: func(descriptor: option<gpu-command-encoder-descriptor>) -> gpu-command-encoder` 同构。descriptor 本刀传 none。非合规宣称。
 
 ## WASI webgpu `[method]gpu-command-encoder.begin-render-pass`（W3）
 

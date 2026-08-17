@@ -29,7 +29,7 @@
 | 4 | `create-surface-from-native-window` | **提案无**（平台 / wasi-gfx） | — | 轨 A Dawn 胶水；非 wasi:webgpu 范围 | W4 策略 |
 | 5 | `surface-configure` | `gpu-canvas-context.configure` | sync | 需完整 `gpu-canvas-configuration` record | W4 |
 | 6 | `surface-get-current-texture-view` | `get-current-texture` → 再取 view | sync | 提案返回 `gpu-texture`，非直接 view；多一步 | W3/W4 |
-| 7 | `device-create-command-encoder` | `gpu-device.create-command-encoder` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；**W3** `[method]gpu-device.create-command-encoder` sync（`get-device` + resource self） | 扁平名仍注册；`[method]` 仍返回过渡 u32；缺 `option<descriptor>` | **W3**（descriptor 仍后） |
+| 7 | `device-create-command-encoder` | `gpu-device.create-command-encoder` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；**S6** `[method]gpu-device.create-command-encoder`：`(borrow, option<gpu-command-encoder-descriptor>) -> own<gpu-command-encoder>`（Guest 传 none） | 扁平名仍注册；`get-device` 仍为测试构造器；descriptor 本刀 none | **S6** |
 | 8 | `command-encoder-begin-render-pass-clear` | `begin-render-pass` + clear 附件 | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；**W3** `[method]gpu-command-encoder.begin-render-pass` sync（`get-encoder` + resource self + stub view `23`） | 扁平名仍注册；clear 色仍 host 固定；仪器 Cpu 离屏 TextureView 替换 | **W3**（完整 descriptor 仍后） |
 | 9 | `render-pass-end` | `gpu-render-pass-encoder.end` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；**W3** `[method]gpu-render-pass-encoder.end` sync void（`get-pass` + resource self） | 扁平名仍注册；仪器 Cpu 离屏 TextureView | **W3** |
 | 10 | `command-encoder-finish` | `gpu-command-encoder.finish` | 提案 **sync**；**W3** 提案名路径过渡扁平 sync；**W3** `[method]gpu-command-encoder.finish` sync（`get-encoder` + resource self） | 扁平名仍注册；缺 descriptor option | **W3**（descriptor 仍后） |
@@ -73,7 +73,7 @@
 切片**定义**见 [`../scheme/rfc-wasi-webgpu-canonical-shape.md`](../scheme/rfc-wasi-webgpu-canonical-shape.md) **S 系列** 与 [`../scheme/roadmap-wasi-webgpu.md`](../scheme/roadmap-wasi-webgpu.md)。  
 **正在做 / 下一刀** 只维护在 GitHub Project：[wasmtime-android-kt progress](https://github.com/users/fenriliuguang/projects/1)（筛 `Slice` = S1…，`Status` = Todo 或 In Progress）。功能 PR **不要**在本页追加编号清单。
 
-史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸；**W3 host-fixed `[method]` 冻结**（本表 §2 为对照，不是扩面看板）。W4 分层见 [`../scheme/w4-present-strategy.md`](../scheme/w4-present-strategy.md)。**S1 已交付**（`gpu-device.queue` → `own<gpu-queue>`）。**S2 已交付**（`gpu.request-adapter` → `option<own<gpu-adapter>>`）。**S3 已交付**（`gpu-adapter.request-device` → `result<own<gpu-device>, …>`）。**S4 已交付**（`gpu-device.create-buffer` + 真实 `gpu-buffer-descriptor` → `own<gpu-buffer>`）。**S5 已交付**（`gpu-queue.submit` + `list<borrow<gpu-command-buffer>>`）。**下一刀代码：S6+**（按 WIT 替换其余已冻结过渡方法）。
+史实（硬闸门，不随每刀改写）：W0 差距表已交付；W1 双注册见 [`../scheme/w1-dual-register.md`](../scheme/w1-dual-register.md)；W2 adapter/device 真 async 已过闸；**W3 host-fixed `[method]` 冻结**（本表 §2 为对照，不是扩面看板）。W4 分层见 [`../scheme/w4-present-strategy.md`](../scheme/w4-present-strategy.md)。**S1 已交付**（`gpu-device.queue` → `own<gpu-queue>`）。**S2 已交付**（`gpu.request-adapter` → `option<own<gpu-adapter>>`）。**S3 已交付**（`gpu-adapter.request-device` → `result<own<gpu-device>, …>`）。**S4 已交付**（`gpu-device.create-buffer` + 真实 `gpu-buffer-descriptor` → `own<gpu-buffer>`）。**S5 已交付**（`gpu-queue.submit` + `list<borrow<gpu-command-buffer>>`）。**S6 已交付**（`gpu-device.create-command-encoder` + `option<descriptor>` = none → `own<gpu-command-encoder>`）。**下一刀代码：S6+**（`gpu-command-encoder.finish` → `own<gpu-command-buffer>` 等）。
 
 ## 6. 钉版与修订
 

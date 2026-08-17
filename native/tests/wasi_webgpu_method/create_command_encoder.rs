@@ -1,12 +1,31 @@
-//! W3 slice: wasi:webgpu/webgpu@0.3.0-rc.2 `get-device` +
-//! `[method]gpu-device.create-command-encoder` (resource self, sync).
-//! Stub: get-device pushes a host `GpuDevice`; method returns 17.
+//! S6: wasi:webgpu/webgpu@0.3.0-rc.2 `get-device` +
+//! `[method]gpu-device.create-command-encoder`
+//! WIT: `(borrow<gpu-device>, option<gpu-command-encoder-descriptor>)
+//!      -> own<gpu-command-encoder>`.
+//! Guest passes none; drops own; `run` returns harness 1.
 
-use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuDevice;
+struct GpuDevice {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug)]
+struct GpuCommandEncoder {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GpuCommandEncoderDescriptor {
+    label: Option<String>,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -25,15 +44,35 @@ fn register_method_create_command_encoder(
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-command-encoder",
+        ResourceType::host::<GpuCommandEncoder>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuCommandEncoder>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-device", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuDevice)?;
+        let resource = store.data_mut().table.push(GpuDevice { rep: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
         "[method]gpu-device.create-command-encoder",
-        |mut caller, (device,): (Resource<GpuDevice>,)| {
+        |mut caller, (device, descriptor): (
+            Resource<GpuDevice>,
+            Option<GpuCommandEncoderDescriptor>,
+        )| {
             caller.data_mut().table.get(&device).map(|_| ())?;
-            Ok((17u32,))
+            assert!(
+                descriptor.is_none(),
+                "guest must pass descriptor=none this slice"
+            );
+            let resource = caller
+                .data_mut()
+                .table
+                .push(GpuCommandEncoder { rep: 17 })?;
+            Ok((resource,))
         },
     )?;
     Ok(())
@@ -75,7 +114,7 @@ fn wasi_webgpu_method_create_command_encoder_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 17, "guest run must return stub encoder rep via [method]");
+    assert_eq!(v, 1, "guest run must drop owns and return harness 1");
     Ok(())
 }
 
@@ -99,8 +138,8 @@ fn wasi_webgpu_method_create_command_encoder_call_async() -> wasmtime::Result<()
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
     assert_eq!(
-        v, 17,
-        "guest run must return stub encoder rep via [method] call_async"
+        v, 1,
+        "guest run must drop owns and return harness 1 via call_async"
     );
     Ok(())
 }
