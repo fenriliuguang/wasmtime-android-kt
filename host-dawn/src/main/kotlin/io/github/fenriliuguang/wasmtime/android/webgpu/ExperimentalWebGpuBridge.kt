@@ -1012,6 +1012,31 @@ object ExperimentalWebGpuBridge {
         )
     }
 
+    /**
+     * S6+: `[method]gpu-render-pass-encoder.set-viewport` / `set-scissor-rect` /
+     * `set-blend-constant` / `set-stencil-reference`. Native lifts guest args;
+     * L2 unused (no new JNI).
+     */
+    fun attachRenderPassState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
+     * S6+: same L2 as [attachRenderPassSetVertexBuffer]; product guest is
+     * `[method]gpu-render-pass-encoder.set-index-buffer`.
+     */
+    fun attachRenderPassSetIndexBuffer(store: Store, host: WasiWebGpuHost) {
+        attachRenderPassSetVertexBuffer(store, host)
+    }
+
+    /**
+     * S6+: same L2 as [attachRenderPassDraw]; product guests are
+     * `draw-indexed` / `draw-indirect` / `draw-indexed-indirect`.
+     */
+    fun attachRenderPassDrawIndexed(store: Store, host: WasiWebGpuHost) {
+        attachRenderPassDraw(store, host)
+    }
+
     /** W3/S5: adapter + device + queue + encoder + finish + submit1. Shared by flat `queue-submit1` and `[method]gpu-queue.submit` (S5 list still host-fixed L2). */
     fun attachQueueSubmit1(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
