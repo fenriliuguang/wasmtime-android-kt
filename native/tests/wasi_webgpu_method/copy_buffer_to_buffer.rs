@@ -1,5 +1,7 @@
-//! W3+: `get-encoder` + `[method]gpu-command-encoder.copy-buffer-to-buffer`
-//! (self, source/destination u32). Guest returns 31.
+//! S6+: `get-encoder` + `get-buffer` +
+//! `[method]gpu-command-encoder.copy-buffer-to-buffer`
+//! WIT: `(borrow encoder, borrow src, option offset, borrow dst, option offset, option size)`.
+//! Guest passes two buffers, offsets/size none; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -9,6 +11,9 @@ use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
 struct GpuCommandEncoder;
+
+#[derive(Debug)]
+struct GpuBuffer;
 
 struct TestHost {
     table: ResourceTable,
@@ -28,16 +33,46 @@ fn register_method_copy_buffer_to_buffer(
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-buffer",
+        ResourceType::host::<GpuBuffer>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuBuffer>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-encoder", |mut store, ()| {
         let resource = store.data_mut().table.push(GpuCommandEncoder)?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap("get-buffer", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuBuffer)?;
+        Ok((resource,))
+    })?;
     webgpu.func_wrap(
         "[method]gpu-command-encoder.copy-buffer-to-buffer",
-        move |mut caller, (encoder, source, destination): (Resource<GpuCommandEncoder>, u32, u32)| {
+        move |mut caller,
+              (encoder, source, source_offset, destination, destination_offset, size): (
+            Resource<GpuCommandEncoder>,
+            Resource<GpuBuffer>,
+            Option<u64>,
+            Resource<GpuBuffer>,
+            Option<u64>,
+            Option<u64>,
+        )| {
             caller.data_mut().table.get(&encoder).map(|_| ())?;
-            assert_eq!(source, 31, "guest must pass stub source 31");
-            assert_eq!(destination, 31, "guest must pass stub destination 31");
+            caller.data_mut().table.get(&source).map(|_| ())?;
+            caller.data_mut().table.get(&destination).map(|_| ())?;
+            assert!(
+                source_offset.is_none(),
+                "guest must pass source-offset=none this slice"
+            );
+            assert!(
+                destination_offset.is_none(),
+                "guest must pass destination-offset=none this slice"
+            );
+            assert!(size.is_none(), "guest must pass size=none this slice");
             copied.store(true, Ordering::SeqCst);
             Ok(())
         },
@@ -82,8 +117,11 @@ fn wasi_webgpu_method_copy_buffer_to_buffer_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 31, "guest run must return stub buffer 31 after copy");
-    assert!(copied.load(Ordering::SeqCst), "copy-buffer-to-buffer must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 after copy");
+    assert!(
+        copied.load(Ordering::SeqCst),
+        "copy-buffer-to-buffer must have been called"
+    );
     Ok(())
 }
 
@@ -107,7 +145,10 @@ fn wasi_webgpu_method_copy_buffer_to_buffer_call_async() -> wasmtime::Result<()>
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 31, "guest run must return stub buffer via call_async");
-    assert!(copied.load(Ordering::SeqCst), "copy-buffer-to-buffer must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 via call_async");
+    assert!(
+        copied.load(Ordering::SeqCst),
+        "copy-buffer-to-buffer must have been called"
+    );
     Ok(())
 }

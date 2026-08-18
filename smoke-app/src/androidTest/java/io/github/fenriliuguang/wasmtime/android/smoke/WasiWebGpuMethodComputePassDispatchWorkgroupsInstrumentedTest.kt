@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-compute-pass` then
- * `[method]gpu-compute-pass-encoder.dispatch-workgroups` (Guest counts 1,1,1
- * ignored; host set-pipeline + empty bind-group + dispatch) via
+ * S6+ `[method]` slice: `get-compute-pass` then
+ * `[method]gpu-compute-pass-encoder.dispatch-workgroups` (x=1, y/z=some(1);
+ * L2 still host-fixed 1×1×1 after set-pipeline + empty bind-group) via
  * [ExperimentalWebGpuBridge.attachComputePassDispatchWorkgroups] +
  * [callRunConcurrent]. Not compliance.
  */
@@ -37,8 +37,8 @@ class WasiWebGpuMethodComputePassDispatchWorkgroupsInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachComputePassDispatchWorkgroups(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub compute-pass 79 after dispatch", 79, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest must return harness 1 after dispatch", 1, harness)
                             }
                         }
                     }

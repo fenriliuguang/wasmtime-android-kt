@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-compute-pass` then
- * `[method]gpu-compute-pass-encoder.set-pipeline` (stub pipeline 73,
- * host-fixed compute pipeline) via
+ * S6+ `[method]` slice: `get-compute-pass` + `get-compute-pipeline` then
+ * `[method]gpu-compute-pass-encoder.set-pipeline` (borrow pipeline;
+ * L2 still host-fixed compute pipeline) via
  * [ExperimentalWebGpuBridge.attachComputePassSetPipeline] + [callRunConcurrent].
  * Not compliance.
  */
@@ -37,8 +37,8 @@ class WasiWebGpuMethodComputePassSetPipelineInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachComputePassSetPipeline(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub pipeline 73 after set-pipeline", 73, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest must return harness 1 after set-pipeline", 1, harness)
                             }
                         }
                     }

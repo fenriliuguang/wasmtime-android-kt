@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-pass` then
- * `[method]gpu-render-pass-encoder.set-pipeline` (stub pipeline 71,
- * host-fixed triangle pipeline + offscreen view) via
+ * S6+ `[method]` slice: `get-pass` + `get-render-pipeline` then
+ * `[method]gpu-render-pass-encoder.set-pipeline` (borrow pipeline;
+ * L2 still host-fixed triangle pipeline + offscreen view) via
  * [ExperimentalWebGpuBridge.attachRenderPassSetPipeline] + [callRunConcurrent].
  * Not compliance.
  */
@@ -37,8 +37,8 @@ class WasiWebGpuMethodRenderPassSetPipelineInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachRenderPassSetPipeline(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub pipeline 71 after set-pipeline", 71, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest must return harness 1 after set-pipeline", 1, harness)
                             }
                         }
                     }

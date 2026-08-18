@@ -5,9 +5,9 @@ use crate::error::{throw, throw_compile, throw_err, throw_link};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
     Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
-    GpuCommandEncoder, GpuComputePassEncoder, GpuDevice, GpuPipelineLayout, GpuQueue,
-    GpuRenderPassEncoder, GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState,
-    Widget,
+    GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout,
+    GpuQueue, GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture,
+    GpuTextureView, HostState, Widget,
 };
 use crate::jvm;
 use crate::webgpu_abi::{
@@ -16,7 +16,7 @@ use crate::webgpu_abi::{
     GpuDeviceDescriptor, GpuMapMode, GpuPipelineLayoutDescriptor, GpuQuerySet,
     GpuRenderPassDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
     GpuShaderModuleDescriptor, GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError,
-    RecordOptionGpuSize64, RequestDeviceError, RequestDeviceErrorKind,
+    RecordOptionGpuSize64, RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError,
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -496,14 +496,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>)
     // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 still host-fixed view)
     // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void)
-    // and `[method]gpu-compute-pass-encoder.set-pipeline` (sync void; host-fixed compute pipeline, stub pipeline u32)
-    // and `[method]gpu-compute-pass-encoder.set-bind-group` (sync void; host-fixed empty bind-group index 0, stub bind-group u32)
-    // and `[method]gpu-compute-pass-encoder.dispatch-workgroups` (sync void; host-fixed 1x1x1 after set-pipeline + empty bind-group)
-    // and `[method]gpu-render-pass-encoder.set-pipeline` (sync void; host-fixed triangle pipeline, stub pipeline u32)
-    // and `[method]gpu-render-pass-encoder.draw` (sync void; host-fixed vertexCount 3 after set-pipeline)
-    // and `[method]gpu-render-pass-encoder.set-bind-group` (sync void; host-fixed empty bind-group index 0, stub bind-group u32)
-    // and `[method]gpu-render-pass-encoder.set-vertex-buffer` (sync void; host-fixed VERTEX buffer slot 0, stub buffer u32)
-    // and `[method]gpu-command-encoder.copy-buffer-to-buffer` (sync void; host-fixed 4-byte copy, stub src/dst u32).
+    // and `[method]gpu-compute-pass-encoder.set-pipeline` (S6+: borrow<gpu-compute-pipeline>; L2 still host-fixed compute pipeline)
+    // and `[method]gpu-compute-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
+    // and `[method]gpu-compute-pass-encoder.dispatch-workgroups` (S6+: x + option y/z; L2 still host-fixed 1x1x1)
+    // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
+    // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
+    // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
+    // and `[method]gpu-render-pass-encoder.set-vertex-buffer` (S6+: slot + option buffer + option offset/size; L2 still host-fixed VERTEX slot 0)
+    // and `[method]gpu-command-encoder.copy-buffer-to-buffer` (S6+: borrow src/dst + option offsets/size; L2 still host-fixed 4-byte copy).
     // Experimental stays sync.
     // S5: first canonical list is submit; other lists still later.
     {
@@ -1211,6 +1211,46 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap("get-bind-group", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuBindGroup { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-render-pipeline",
+                ResourceType::host::<GpuRenderPipeline>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuRenderPipeline>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-render-pipeline", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuRenderPipeline { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-compute-pipeline",
+                ResourceType::host::<GpuComputePipeline>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuComputePipeline>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-compute-pipeline", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuComputePipeline { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap(
                 "[method]gpu-device.create-render-pipeline",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
@@ -1369,7 +1409,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-command-encoder.copy-buffer-to-buffer",
-                |mut caller, (encoder, _source, _destination): (Resource<GpuCommandEncoder>, u32, u32)| {
+                |mut caller,
+                 (encoder, _source, _source_offset, _destination, _destination_offset, _size): (
+                    Resource<GpuCommandEncoder>,
+                    Resource<GpuBuffer>,
+                    Option<u64>,
+                    Resource<GpuBuffer>,
+                    Option<u64>,
+                    Option<u64>,
+                )| {
                     let _ = caller.data_mut().table.get(&encoder)?;
                     let cb = caller
                         .data()
@@ -1569,7 +1617,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-pipeline",
-                |mut caller, (pass, _pipeline): (Resource<GpuRenderPassEncoder>, u32)| {
+                |mut caller,
+                 (pass, _pipeline): (
+                    Resource<GpuRenderPassEncoder>,
+                    Resource<GpuRenderPipeline>,
+                )| {
                     let _ = caller.data_mut().table.get(&pass)?;
                     let cb = caller
                         .data()
@@ -1594,7 +1646,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-render-pass-encoder.draw",
-                |mut caller, (pass, _vertex_count): (Resource<GpuRenderPassEncoder>, u32)| {
+                |mut caller,
+                 (pass, _vertex_count, _instance_count, _first_vertex, _first_instance): (
+                    Resource<GpuRenderPassEncoder>,
+                    u32,
+                    Option<u32>,
+                    Option<u32>,
+                    Option<u32>,
+                )| {
                     let _ = caller.data_mut().table.get(&pass)?;
                     let cb = caller
                         .data()
@@ -1618,7 +1677,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-bind-group",
-                |mut caller, (pass, _bind_group): (Resource<GpuRenderPassEncoder>, u32)| {
+                |mut caller,
+                 (pass, _index, _bind_group, _offsets, _start, _length): (
+                    Resource<GpuRenderPassEncoder>,
+                    u32,
+                    Option<Resource<GpuBindGroup>>,
+                    Option<Vec<u32>>,
+                    Option<u64>,
+                    Option<u32>,
+                )| {
                     let _ = caller.data_mut().table.get(&pass)?;
                     let cb = caller
                         .data()
@@ -1636,14 +1703,21 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(wasmtime::Error::msg)?;
                     jvm::exp_render_pass_set_bind_group(&cb, pass_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    Ok(())
+                    Ok((Ok::<(), SetBindGroupError>(()),))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-vertex-buffer",
-                |mut caller, (pass, _buffer): (Resource<GpuRenderPassEncoder>, u32)| {
+                |mut caller,
+                 (pass, _slot, _buffer, _offset, _size): (
+                    Resource<GpuRenderPassEncoder>,
+                    u32,
+                    Option<Resource<GpuBuffer>>,
+                    Option<u64>,
+                    Option<u64>,
+                )| {
                     let _ = caller.data_mut().table.get(&pass)?;
                     let cb = caller
                         .data()
@@ -1701,7 +1775,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-compute-pass-encoder.set-pipeline",
-                |mut caller, (pass, _pipeline): (Resource<GpuComputePassEncoder>, u32)| {
+                |mut caller,
+                 (pass, _pipeline): (
+                    Resource<GpuComputePassEncoder>,
+                    Resource<GpuComputePipeline>,
+                )| {
                     let _ = caller.data_mut().table.get(&pass)?;
                     let cb = caller
                         .data()
@@ -1726,7 +1804,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-compute-pass-encoder.set-bind-group",
-                |mut caller, (pass, _bind_group): (Resource<GpuComputePassEncoder>, u32)| {
+                |mut caller,
+                 (pass, _index, _bind_group, _offsets, _start, _length): (
+                    Resource<GpuComputePassEncoder>,
+                    u32,
+                    Option<Resource<GpuBindGroup>>,
+                    Option<Vec<u32>>,
+                    Option<u64>,
+                    Option<u32>,
+                )| {
                     let _ = caller.data_mut().table.get(&pass)?;
                     let cb = caller
                         .data()
@@ -1744,14 +1830,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(wasmtime::Error::msg)?;
                     jvm::exp_compute_pass_set_bind_group(&cb, pass_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    Ok(())
+                    Ok((Ok::<(), SetBindGroupError>(()),))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-compute-pass-encoder.dispatch-workgroups",
-                |mut caller, (pass, _x, _y, _z): (Resource<GpuComputePassEncoder>, u32, u32, u32)| {
+                |mut caller,
+                 (pass, _x, _y, _z): (
+                    Resource<GpuComputePassEncoder>,
+                    u32,
+                    Option<u32>,
+                    Option<u32>,
+                )| {
                     let _ = caller.data_mut().table.get(&pass)?;
                     let cb = caller
                         .data()

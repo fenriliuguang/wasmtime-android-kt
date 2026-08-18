@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-compute-pass` then
- * `[method]gpu-compute-pass-encoder.set-bind-group` (stub bind-group 67,
- * host-fixed empty bind-group at index 0) via
+ * S6+ `[method]` slice: `get-compute-pass` + `get-bind-group` then
+ * `[method]gpu-compute-pass-encoder.set-bind-group` (index 0, some bind-group,
+ * offsets none → result ok; L2 still host-fixed empty bind-group) via
  * [ExperimentalWebGpuBridge.attachComputePassSetBindGroup] + [callRunConcurrent].
  * Not compliance.
  */
@@ -37,11 +37,11 @@ class WasiWebGpuMethodComputePassSetBindGroupInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachComputePassSetBindGroup(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
+                                val harness = instance.callRunConcurrent(store)
                                 assertEquals(
-                                    "guest returns stub bind-group 67 after set-bind-group",
-                                    67,
-                                    rep,
+                                    "guest must return harness 1 after set-bind-group ok",
+                                    1,
+                                    harness,
                                 )
                             }
                         }

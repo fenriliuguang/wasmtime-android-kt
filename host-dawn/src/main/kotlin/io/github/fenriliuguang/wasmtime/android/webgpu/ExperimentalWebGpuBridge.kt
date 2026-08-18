@@ -432,8 +432,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + host-fixed 4-byte copy-buffer-to-buffer.
-     * Guest passes stub source/destination `31`; JNI ignores them.
+     * W3+ / S6+: adapter + device + encoder + host-fixed 4-byte copy-buffer-to-buffer.
+     * Guest passes WIT borrow src/dst (JNI still host-fixed; ignores Guest handles).
      * `[method]gpu-command-encoder.copy-buffer-to-buffer`.
      */
     fun attachCopyBufferToBuffer(store: Store, host: WasiWebGpuHost) {
@@ -504,9 +504,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + begin-compute-pass + host-fixed
+     * W3+ / S6+: adapter + device + encoder + begin-compute-pass + host-fixed
      * compute pipeline set-pipeline.
-     * Guest passes stub pipeline `73`; JNI ignores it.
+     * Guest passes WIT `borrow<gpu-compute-pipeline>` (JNI still host-fixed).
      * `[method]gpu-compute-pass-encoder.set-pipeline`.
      */
     fun attachComputePassSetPipeline(store: Store, host: WasiWebGpuHost) {
@@ -550,9 +550,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + begin-compute-pass + host-fixed
+     * W3+ / S6+: adapter + device + encoder + begin-compute-pass + host-fixed
      * empty bind-group at index 0.
-     * Guest passes stub bind-group `67`; JNI ignores it.
+     * Guest passes WIT option bind-group (JNI still host-fixed).
      * Cpu only accepts bind-group index 0.
      * `[method]gpu-compute-pass-encoder.set-bind-group`.
      */
@@ -593,9 +593,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + begin-compute-pass + host-fixed
+     * W3+ / S6+: adapter + device + encoder + begin-compute-pass + host-fixed
      * set-pipeline + empty bind-group + dispatch(1,1,1).
-     * Guest workgroup counts ignored. Cpu requires pipeline and bind-group 0.
+     * Guest WIT option counts (JNI still host-fixed). Cpu requires pipeline and bind-group 0.
      * `[method]gpu-compute-pass-encoder.dispatch-workgroups`.
      */
     fun attachComputePassDispatchWorkgroups(store: Store, host: WasiWebGpuHost) {
@@ -751,10 +751,10 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + begin-render-pass-clear + host-fixed
+     * W3+ / S6+: adapter + device + encoder + begin-render-pass-clear + host-fixed
      * triangle pipeline set-pipeline.
      * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Guest stub pipeline `71` ignored.
+     * Guest passes WIT `borrow<gpu-render-pipeline>` (JNI still host-fixed).
      * `[method]gpu-render-pass-encoder.set-pipeline`.
      */
     fun attachRenderPassSetPipeline(store: Store, host: WasiWebGpuHost) {
@@ -809,10 +809,11 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + begin-render-pass-clear + host-fixed
+     * W3+ / S6+: adapter + device + encoder + begin-render-pass-clear + host-fixed
      * triangle pipeline set-pipeline + draw(3).
      * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Guest vertexCount ignored. `[method]gpu-render-pass-encoder.draw`.
+     * Guest passes vertex-count + option fields (JNI still host-fixed).
+     * `[method]gpu-render-pass-encoder.draw`.
      */
     fun attachRenderPassDraw(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -867,10 +868,10 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + begin-render-pass-clear + host-fixed
+     * W3+ / S6+: adapter + device + encoder + begin-render-pass-clear + host-fixed
      * empty bind-group at index 0.
      * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Guest passes stub bind-group `67`; JNI ignores it.
+     * Guest passes WIT option bind-group (JNI still host-fixed).
      * `[method]gpu-render-pass-encoder.set-bind-group`.
      */
     fun attachRenderPassSetBindGroup(store: Store, host: WasiWebGpuHost) {
@@ -930,10 +931,10 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + begin-render-pass-clear + host-fixed
+     * W3+ / S6+: adapter + device + encoder + begin-render-pass-clear + host-fixed
      * VERTEX buffer at slot 0.
      * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Guest passes stub buffer `31`; JNI ignores it.
+     * Guest passes WIT option buffer (JNI still host-fixed).
      * `[method]gpu-render-pass-encoder.set-vertex-buffer`.
      */
     fun attachRenderPassSetVertexBuffer(store: Store, host: WasiWebGpuHost) {

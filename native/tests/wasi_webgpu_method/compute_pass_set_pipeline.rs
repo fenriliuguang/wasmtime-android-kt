@@ -1,5 +1,7 @@
-//! W3+: `get-compute-pass` + `[method]gpu-compute-pass-encoder.set-pipeline`
-//! (self, pipeline u32). Guest returns 73.
+//! S6+: `get-compute-pass` + `get-compute-pipeline` +
+//! `[method]gpu-compute-pass-encoder.set-pipeline`
+//! WIT: `(borrow<gpu-compute-pass-encoder>, borrow<gpu-compute-pipeline>)`.
+//! Guest borrows the pipeline; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -9,6 +11,9 @@ use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
 struct GpuComputePassEncoder;
+
+#[derive(Debug)]
+struct GpuComputePipeline;
 
 struct TestHost {
     table: ResourceTable,
@@ -28,15 +33,32 @@ fn register_method_compute_pass_set_pipeline(
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-compute-pipeline",
+        ResourceType::host::<GpuComputePipeline>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuComputePipeline>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-compute-pass", |mut store, ()| {
         let resource = store.data_mut().table.push(GpuComputePassEncoder)?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap("get-compute-pipeline", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuComputePipeline)?;
+        Ok((resource,))
+    })?;
     webgpu.func_wrap(
         "[method]gpu-compute-pass-encoder.set-pipeline",
-        move |mut caller, (pass, pipeline): (Resource<GpuComputePassEncoder>, u32)| {
+        move |mut caller,
+              (pass, pipeline): (
+            Resource<GpuComputePassEncoder>,
+            Resource<GpuComputePipeline>,
+        )| {
             caller.data_mut().table.get(&pass).map(|_| ())?;
-            assert_eq!(pipeline, 73, "guest must pass stub pipeline 73");
+            caller.data_mut().table.get(&pipeline).map(|_| ())?;
             set.store(true, Ordering::SeqCst);
             Ok(())
         },
@@ -81,8 +103,11 @@ fn wasi_webgpu_method_compute_pass_set_pipeline_smoke() -> wasmtime::Result<()> 
             })
             .await?
     })?;
-    assert_eq!(v, 73, "guest run must return stub pipeline 73 after set-pipeline");
-    assert!(set.load(Ordering::SeqCst), "set-pipeline must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 after set-pipeline");
+    assert!(
+        set.load(Ordering::SeqCst),
+        "set-pipeline must have been called"
+    );
     Ok(())
 }
 
@@ -106,7 +131,10 @@ fn wasi_webgpu_method_compute_pass_set_pipeline_call_async() -> wasmtime::Result
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 73, "guest run must return stub pipeline via call_async");
-    assert!(set.load(Ordering::SeqCst), "set-pipeline must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 via call_async");
+    assert!(
+        set.load(Ordering::SeqCst),
+        "set-pipeline must have been called"
+    );
     Ok(())
 }

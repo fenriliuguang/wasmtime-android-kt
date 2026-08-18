@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-pass` then
- * `[method]gpu-render-pass-encoder.draw` (Guest vertexCount 3 ignored;
- * host set-pipeline + draw(3) + offscreen view) via
+ * S6+ `[method]` slice: `get-pass` then
+ * `[method]gpu-render-pass-encoder.draw` (vertex-count=3, other options none;
+ * L2 still host-fixed draw(3) after set-pipeline + offscreen view) via
  * [ExperimentalWebGpuBridge.attachRenderPassDraw] + [callRunConcurrent].
  * Not compliance.
  */
@@ -37,8 +37,8 @@ class WasiWebGpuMethodRenderPassDrawInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachRenderPassDraw(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub pass 29 after draw", 29, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest must return harness 1 after draw", 1, harness)
                             }
                         }
                     }

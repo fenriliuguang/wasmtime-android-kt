@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-pass` then
- * `[method]gpu-render-pass-encoder.set-vertex-buffer` (stub buffer 31,
- * host-fixed VERTEX buffer at slot 0, Cpu offscreen view) via
+ * S6+ `[method]` slice: `get-pass` + `get-buffer` then
+ * `[method]gpu-render-pass-encoder.set-vertex-buffer` (slot 0, some buffer,
+ * offset/size none; L2 still host-fixed VERTEX slot 0 + offscreen view) via
  * [ExperimentalWebGpuBridge.attachRenderPassSetVertexBuffer] + [callRunConcurrent].
  * Not compliance.
  */
@@ -37,11 +37,11 @@ class WasiWebGpuMethodRenderPassSetVertexBufferInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachRenderPassSetVertexBuffer(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
+                                val harness = instance.callRunConcurrent(store)
                                 assertEquals(
-                                    "guest returns stub buffer 31 after set-vertex-buffer",
-                                    31,
-                                    rep,
+                                    "guest must return harness 1 after set-vertex-buffer",
+                                    1,
+                                    harness,
                                 )
                             }
                         }

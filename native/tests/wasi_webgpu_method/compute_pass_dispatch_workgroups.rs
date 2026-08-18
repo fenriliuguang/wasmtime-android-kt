@@ -1,5 +1,6 @@
-//! W3+: `get-compute-pass` + `[method]gpu-compute-pass-encoder.dispatch-workgroups`
-//! (self, x/y/z u32). Guest returns 79.
+//! S6+: `get-compute-pass` + `[method]gpu-compute-pass-encoder.dispatch-workgroups`
+//! WIT: `(borrow, x: u32, y: option<u32>, z: option<u32>)`.
+//! Guest passes x=1, y=some(1), z=some(1); `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -34,9 +35,17 @@ fn register_method_compute_pass_dispatch_workgroups(
     })?;
     webgpu.func_wrap(
         "[method]gpu-compute-pass-encoder.dispatch-workgroups",
-        move |mut caller, (pass, x, y, z): (Resource<GpuComputePassEncoder>, u32, u32, u32)| {
+        move |mut caller,
+              (pass, x, y, z): (
+            Resource<GpuComputePassEncoder>,
+            u32,
+            Option<u32>,
+            Option<u32>,
+        )| {
             caller.data_mut().table.get(&pass).map(|_| ())?;
-            assert_eq!((x, y, z), (1, 1, 1), "guest must pass stub workgroup counts 1,1,1");
+            assert_eq!(x, 1, "guest must pass workgroup-count-x=1");
+            assert_eq!(y, Some(1), "guest must pass y=some(1) this slice");
+            assert_eq!(z, Some(1), "guest must pass z=some(1) this slice");
             dispatched.store(true, Ordering::SeqCst);
             Ok(())
         },
@@ -81,8 +90,11 @@ fn wasi_webgpu_method_compute_pass_dispatch_workgroups_smoke() -> wasmtime::Resu
             })
             .await?
     })?;
-    assert_eq!(v, 79, "guest run must return stub compute-pass 79 after dispatch");
-    assert!(dispatched.load(Ordering::SeqCst), "dispatch-workgroups must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 after dispatch");
+    assert!(
+        dispatched.load(Ordering::SeqCst),
+        "dispatch-workgroups must have been called"
+    );
     Ok(())
 }
 
@@ -106,7 +118,10 @@ fn wasi_webgpu_method_compute_pass_dispatch_workgroups_call_async() -> wasmtime:
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 79, "guest run must return stub compute-pass via call_async");
-    assert!(dispatched.load(Ordering::SeqCst), "dispatch-workgroups must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 via call_async");
+    assert!(
+        dispatched.load(Ordering::SeqCst),
+        "dispatch-workgroups must have been called"
+    );
     Ok(())
 }
