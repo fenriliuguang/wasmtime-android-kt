@@ -503,6 +503,24 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: same L2 as [attachCopyBufferToBuffer]; product guests are
+     * `copy-buffer-to-texture` / `copy-texture-to-buffer` /
+     * `copy-texture-to-texture` / `clear-buffer`.
+     */
+    fun attachCommandEncoderCopy(store: Store, host: WasiWebGpuHost) {
+        attachCopyBufferToBuffer(store, host)
+    }
+
+    /**
+     * S6+: `[method]gpu-command-encoder.resolve-query-set` /
+     * `push-debug-group` / `pop-debug-group` / `insert-debug-marker`.
+     * Native lifts guest args; L2 unused (no new JNI).
+     */
+    fun attachCommandEncoderState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * W3+: adapter + device + encoder + begin-compute-pass + compute-pass-end.
      * `[method]gpu-compute-pass-encoder.end` (Guest stub pass ignored).
      */

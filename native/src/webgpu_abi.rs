@@ -806,6 +806,17 @@ pub struct GpuTexelCopyBufferLayout {
     pub rows_per_image: Option<u32>,
 }
 
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuTexelCopyBufferInfo {
+    pub buffer: Resource<GpuBuffer>,
+    pub offset: Option<u64>,
+    #[component(name = "bytes-per-row")]
+    pub bytes_per_row: Option<u32>,
+    #[component(name = "rows-per-image")]
+    pub rows_per_image: Option<u32>,
+}
+
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
