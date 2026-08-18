@@ -508,7 +508,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ render-pass debug: push-debug-group / pop-debug-group / insert-debug-marker
     // and S6+ remaining render-pass: begin-occlusion-query / end-occlusion-query /
     // execute-bundles / set-immediates
-    // and S6+ render-bundle-encoder: finish / set-pipeline / set-bind-group / draw.
+    // and S6+ render-bundle-encoder: finish / set-pipeline / set-bind-group / draw /
+    // set-index-buffer / set-vertex-buffer / draw-indexed / draw-indirect /
+    // draw-indexed-indirect / push-debug-group / pop-debug-group / insert-debug-marker /
+    // set-immediates.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -2499,6 +2502,139 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<u32>,
                     Option<u32>,
                     Option<u32>,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.set-index-buffer",
+                |mut caller,
+                 (encoder, buffer, _format, _offset, _size): (
+                    Resource<GpuRenderBundleEncoder>,
+                    Resource<GpuBuffer>,
+                    GpuIndexFormat,
+                    Option<u64>,
+                    Option<u64>,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.set-vertex-buffer",
+                |mut caller,
+                 (encoder, _slot, buffer, _offset, _size): (
+                    Resource<GpuRenderBundleEncoder>,
+                    u32,
+                    Option<Resource<GpuBuffer>>,
+                    Option<u64>,
+                    Option<u64>,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    if let Some(buffer) = buffer.as_ref() {
+                        let _ = caller.data_mut().table.get(buffer)?;
+                    }
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.draw-indexed",
+                |mut caller,
+                 (
+                    encoder,
+                    _index_count,
+                    _instance_count,
+                    _first_index,
+                    _base_vertex,
+                    _first_instance,
+                ): (
+                    Resource<GpuRenderBundleEncoder>,
+                    u32,
+                    Option<u32>,
+                    Option<u32>,
+                    Option<i32>,
+                    Option<u32>,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.draw-indirect",
+                |mut caller,
+                 (encoder, buffer, _offset): (
+                    Resource<GpuRenderBundleEncoder>,
+                    Resource<GpuBuffer>,
+                    u64,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.draw-indexed-indirect",
+                |mut caller,
+                 (encoder, buffer, _offset): (
+                    Resource<GpuRenderBundleEncoder>,
+                    Resource<GpuBuffer>,
+                    u64,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.push-debug-group",
+                |mut caller, (encoder, _group_label): (Resource<GpuRenderBundleEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.pop-debug-group",
+                |mut caller, (encoder,): (Resource<GpuRenderBundleEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.insert-debug-marker",
+                |mut caller, (encoder, _marker_label): (Resource<GpuRenderBundleEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.set-immediates",
+                |mut caller,
+                 (encoder, _range_offset, _data, _data_offset, _data_size): (
+                    Resource<GpuRenderBundleEncoder>,
+                    u32,
+                    Vec<u8>,
+                    Option<u64>,
+                    Option<u64>,
                 )| {
                     let _ = caller.data_mut().table.get(&encoder)?;
                     Ok(())

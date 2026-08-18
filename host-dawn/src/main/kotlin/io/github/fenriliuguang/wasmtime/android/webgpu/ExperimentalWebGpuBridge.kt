@@ -1061,7 +1061,10 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[method]gpu-render-bundle-encoder.finish` / `set-pipeline` /
-     * `set-bind-group` / `draw`. Native lifts guest args; L2 unused (no new JNI).
+     * `set-bind-group` / `draw` / `set-index-buffer` / `set-vertex-buffer` /
+     * `draw-indexed` / `draw-indirect` / `draw-indexed-indirect` /
+     * `push-debug-group` / `pop-debug-group` / `insert-debug-marker` /
+     * `set-immediates`. Native lifts guest args; L2 unused (no new JNI).
      */
     fun attachRenderBundleState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
         store.setExperimentalHost(object : ExperimentalHostCallbacks {})
