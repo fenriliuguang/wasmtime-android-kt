@@ -219,6 +219,13 @@ pub struct GpuCommandBufferDescriptor {
 #[derive(Clone, Debug, ComponentType, Lift, Lower)]
 #[component(record)]
 #[allow(dead_code)]
+pub struct GpuRenderBundleDescriptor {
+    pub label: Option<String>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
 pub struct RequestDeviceError {
     pub kind: RequestDeviceErrorKind,
     pub message: String,

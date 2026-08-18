@@ -154,6 +154,22 @@ pub struct GpuTextureView {
     pub rep: u32,
 }
 
+/// Host representation of WIT `resource gpu-render-bundle`.
+/// `get-render-bundle` still pushes `{ rep: 0 }`; S6+ `bundle-encoder.finish` stores it.
+#[derive(Debug)]
+pub struct GpuRenderBundle {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
+/// Host representation of WIT `resource gpu-render-bundle-encoder`.
+/// `get-render-bundle-encoder` still pushes `{ rep: 0 }`.
+#[derive(Debug)]
+pub struct GpuRenderBundleEncoder {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
 /// Host representation of WIT `resource gpu-buffer`.
 /// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
 /// `get-buffer` still pushes `{ rep: 0 }`; S4 `create-buffer` stores the real L2 rep.
