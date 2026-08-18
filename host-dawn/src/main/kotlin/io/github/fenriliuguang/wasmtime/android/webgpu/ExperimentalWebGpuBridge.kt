@@ -640,6 +640,7 @@ object ExperimentalWebGpuBridge {
      * set-pipeline + empty bind-group + dispatch(1,1,1).
      * Guest WIT option counts (JNI still host-fixed). Cpu requires pipeline and bind-group 0.
      * `[method]gpu-compute-pass-encoder.dispatch-workgroups`.
+     * Also used by `dispatch-workgroups-indirect` (L2 still host-fixed 1×1×1).
      */
     fun attachComputePassDispatchWorkgroups(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -692,6 +693,23 @@ object ExperimentalWebGpuBridge {
                 }
             },
         )
+    }
+
+    /**
+     * S6+: same L2 as [attachComputePassDispatchWorkgroups]; product guest is
+     * `[method]gpu-compute-pass-encoder.dispatch-workgroups-indirect`.
+     */
+    fun attachComputePassDispatchWorkgroupsIndirect(store: Store, host: WasiWebGpuHost) {
+        attachComputePassDispatchWorkgroups(store, host)
+    }
+
+    /**
+     * S6+: `[method]gpu-compute-pass-encoder.set-immediates` /
+     * `push-debug-group` / `pop-debug-group` / `insert-debug-marker`.
+     * Native lifts guest args; L2 unused (no new JNI).
+     */
+    fun attachComputePassState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
     }
 
     /**
@@ -1032,7 +1050,8 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[method]gpu-render-pass-encoder.set-viewport` / `set-scissor-rect` /
-     * `set-blend-constant` / `set-stencil-reference`. Native lifts guest args;
+     * `set-blend-constant` / `set-stencil-reference` / `push-debug-group` /
+     * `pop-debug-group` / `insert-debug-marker`. Native lifts guest args;
      * L2 unused (no new JNI).
      */
     fun attachRenderPassState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
