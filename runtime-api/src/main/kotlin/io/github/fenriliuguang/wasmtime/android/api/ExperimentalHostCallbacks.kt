@@ -103,7 +103,8 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassSetPipeline")
     }
 
-    /** S6+: JNI still host-fixed draw(3); Guest WIT options are lifted in native. */
+    /** S6+: JNI still host-fixed draw(3); Guest WIT options are lifted in native.
+     *  Also used by draw-indexed / draw-indirect / draw-indexed-indirect. */
     fun renderPassDraw(pass: Int) {
         unsupported("renderPassDraw")
     }
@@ -113,7 +114,8 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassSetBindGroup")
     }
 
-    /** S6+: JNI still host-fixed VERTEX slot 0; Guest WIT option is lifted in native. */
+    /** S6+: JNI still host-fixed VERTEX slot 0; Guest WIT option is lifted in native.
+     *  Also used by `[method]gpu-render-pass-encoder.set-index-buffer`. */
     fun renderPassSetVertexBuffer(pass: Int) {
         unsupported("renderPassSetVertexBuffer")
     }
