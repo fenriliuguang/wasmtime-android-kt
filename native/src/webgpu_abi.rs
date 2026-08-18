@@ -10,6 +10,7 @@
 //! S6+ pass commands: `set-bind-group-error` (+ kind).
 //! S6+ unmap / write-*-with-copy: `unmap-error`, `write-buffer-error`, texel copy info.
 //! S6+ pipeline create: render/compute pipeline descriptors (+ vertex/fragment graph).
+//! S6+ pipeline-async / mapped-range: `create-pipeline-error`, `get-mapped-range-error`.
 
 use crate::host::{
     GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuShaderModule, GpuTexture,
@@ -1528,4 +1529,51 @@ pub struct GpuRenderPipelineDescriptor {
     pub fragment: Option<GpuFragmentState>,
     pub layout: GpuLayoutMode,
     pub label: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuPipelineErrorReason {
+    #[component(name = "validation")]
+    Validation,
+    #[component(name = "internal")]
+    Internal,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum CreatePipelineErrorKind {
+    #[component(name = "gpu-pipeline-error")]
+    GpuPipelineError(GpuPipelineErrorReason),
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct CreatePipelineError {
+    pub kind: CreatePipelineErrorKind,
+    pub message: String,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum GetMappedRangeErrorKind {
+    #[component(name = "operation-error")]
+    OperationError,
+    #[component(name = "range-error")]
+    RangeError,
+    #[component(name = "type-error")]
+    TypeError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GetMappedRangeError {
+    pub kind: GetMappedRangeErrorKind,
+    pub message: String,
 }

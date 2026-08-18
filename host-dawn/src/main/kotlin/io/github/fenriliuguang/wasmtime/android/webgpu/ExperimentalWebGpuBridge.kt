@@ -164,9 +164,13 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: adapter + device + create-texture. Guest `gpu-texture-descriptor`
-     * size/format/usage forwarded to L2. `[method]gpu-device.create-texture`.
+     * S6+: `[method]gpu-buffer.get-mapped-range-get-with-copy` /
+     * `[method]gpu-buffer.get-mapped-range-set-with-copy`.
+     * Native lifts guest types and returns empty list / ok; L2 still unused (no new JNI).
      */
+    fun attachGetMappedRange(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
     fun attachCreateTexture(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(
@@ -343,6 +347,15 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: same L2 as [attachCreateRenderPipeline]; product guest is
+     * `[method]gpu-device.create-render-pipeline-async`
+     * (`result<own<pipeline>, create-pipeline-error>`; true CM async).
+     */
+    fun attachCreateRenderPipelineAsync(store: Store, host: WasiWebGpuHost) {
+        attachCreateRenderPipeline(store, host)
+    }
+
+    /**
      * W3+: adapter + device + stub shader + empty pipeline-layout + compute pipeline.
      * `[method]gpu-device.create-compute-pipeline` (guest `gpu-compute-pipeline-descriptor`;
      * L2 still host-fixed stub shader + explicit empty layout).
@@ -375,6 +388,15 @@ object ExperimentalWebGpuBridge {
                 }
             },
         )
+    }
+
+    /**
+     * S6+: same L2 as [attachCreateComputePipeline]; product guest is
+     * `[method]gpu-device.create-compute-pipeline-async`
+     * (`result<own<pipeline>, create-pipeline-error>`; true CM async).
+     */
+    fun attachCreateComputePipelineAsync(store: Store, host: WasiWebGpuHost) {
+        attachCreateComputePipeline(store, host)
     }
 
     /** W3/S6: adapter + device + encoder. Shared by flat `device-create-command-encoder` and `[method]gpu-device.create-command-encoder` (S6 own; descriptor still none). */
