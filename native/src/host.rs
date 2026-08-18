@@ -129,7 +129,8 @@ pub struct GpuBindGroup {
 }
 
 /// Host representation of WIT `resource gpu-compute-pipeline`.
-/// `get-compute-pipeline` still pushes `{ rep: 0 }`; create still returns transitional u32.
+/// `get-compute-pipeline` still pushes `{ rep: 0 }`; S6+ `create-compute-pipeline`
+/// stores the real L2 rep.
 #[derive(Debug)]
 pub struct GpuComputePipeline {
     #[allow(dead_code)]
@@ -137,7 +138,8 @@ pub struct GpuComputePipeline {
 }
 
 /// Host representation of WIT `resource gpu-render-pipeline`.
-/// `get-render-pipeline` still pushes `{ rep: 0 }`; create still returns transitional u32.
+/// `get-render-pipeline` still pushes `{ rep: 0 }`; S6+ `create-render-pipeline`
+/// stores the real L2 rep.
 #[derive(Debug)]
 pub struct GpuRenderPipeline {
     #[allow(dead_code)]

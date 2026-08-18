@@ -8,12 +8,19 @@ import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.webgpu.ExperimentalWebGpuBridge
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** W3+ `[method]gpu-device.create-compute-pipeline` via [ExperimentalWebGpuBridge.attachCreateComputePipeline]. */
+/**
+ * S6+ `[method]` slice: guest imports `get-device` + `get-shader-module` then
+ * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-device.create-compute-pipeline`
+ * (`(borrow gpu-device, gpu-compute-pipeline-descriptor) -> own gpu-compute-pipeline`;
+ * Guest passes shader borrow + layout auto; drops the own; `run` returns 1).
+ * L2 still host-fixed stub WGSL + empty layout.
+ * via [ExperimentalWebGpuBridge.attachCreateComputePipeline] + [callRunConcurrent].
+ * Not full wasi:webgpu compliance.
+ */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodCreateComputePipelineInstrumentedTest {
     @Test
@@ -32,9 +39,12 @@ class WasiWebGpuMethodCreateComputePipelineInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachCreateComputePipeline(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertNotEquals("compute-pipeline rep must be non-zero", 0, rep)
-                                assertTrue("compute-pipeline rep should be positive", rep > 0)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals(
+                                    "guest must drop own<gpu-compute-pipeline> and return harness 1",
+                                    1,
+                                    harness,
+                                )
                             }
                         }
                     }

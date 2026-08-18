@@ -318,7 +318,8 @@ object ExperimentalWebGpuBridge {
 
     /**
      * W3+: adapter + device + stub shader + triangle render pipeline.
-     * `[method]gpu-device.create-render-pipeline` (no Guest descriptor).
+     * `[method]gpu-device.create-render-pipeline` (guest `gpu-render-pipeline-descriptor`;
+     * L2 still host-fixed stub shader + triangle).
      */
     fun attachCreateRenderPipeline(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -343,7 +344,8 @@ object ExperimentalWebGpuBridge {
 
     /**
      * W3+: adapter + device + stub shader + empty pipeline-layout + compute pipeline.
-     * `[method]gpu-device.create-compute-pipeline` (no Guest descriptor; explicit layout).
+     * `[method]gpu-device.create-compute-pipeline` (guest `gpu-compute-pipeline-descriptor`;
+     * L2 still host-fixed stub shader + explicit empty layout).
      */
     fun attachCreateComputePipeline(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)

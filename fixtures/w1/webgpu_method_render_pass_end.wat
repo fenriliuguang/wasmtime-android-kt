@@ -1,4 +1,5 @@
-;; W3: get-pass + [method]gpu-render-pass-encoder.end (void). Returns stub 29.
+;; W3: get-pass + [method]gpu-render-pass-encoder.end (void).
+;; Guest calls end then returns harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-render-pass-encoder" (type $gpu-render-pass-encoder (sub resource)))
@@ -16,7 +17,7 @@
       (local $pass i32)
       (local.set $pass (call $get-pass))
       (call $end (local.get $pass))
-      (i32.const 29)
+      (i32.const 1)
     )
   )
   (core func $gp_lower (canon lower (func $get-pass)))

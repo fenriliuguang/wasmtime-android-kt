@@ -1,4 +1,5 @@
-//! W3+: `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (void). Guest returns 79.
+//! W3+: `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (void).
+//! Guest calls end; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -79,7 +80,7 @@ fn wasi_webgpu_method_compute_pass_end_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 79, "guest run must return stub compute-pass rep after end");
+    assert_eq!(v, 1, "guest run must return harness 1 after end");
     assert!(ended.load(Ordering::SeqCst), "end must have been called");
     Ok(())
 }
@@ -104,10 +105,7 @@ fn wasi_webgpu_method_compute_pass_end_call_async() -> wasmtime::Result<()> {
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(
-        v, 79,
-        "guest run must return stub compute-pass rep via call_async"
-    );
+    assert_eq!(v, 1, "guest run must return harness 1 via call_async");
     assert!(ended.load(Ordering::SeqCst), "end must have been called");
     Ok(())
 }

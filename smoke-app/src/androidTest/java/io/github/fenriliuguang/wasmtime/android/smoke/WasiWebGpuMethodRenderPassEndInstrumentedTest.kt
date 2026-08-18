@@ -15,7 +15,7 @@ import org.junit.runner.RunWith
 /**
  * W3 `[method]` slice: `get-pass` then `[method]gpu-render-pass-encoder.end`
  * via [ExperimentalWebGpuBridge.attachRenderPassEnd] + [callRunConcurrent].
- * Flat `render-pass-end` remains. Not compliance.
+ * Guest `run` returns harness 1. Flat `render-pass-end` remains. Not compliance.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodRenderPassEndInstrumentedTest {
@@ -35,8 +35,8 @@ class WasiWebGpuMethodRenderPassEndInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachRenderPassEnd(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub pass 29 after end", 29, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest returns harness 1 after end", 1, harness)
                             }
                         }
                     }

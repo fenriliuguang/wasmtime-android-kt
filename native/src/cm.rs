@@ -13,10 +13,11 @@ use crate::jvm;
 use crate::webgpu_abi::{
     GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferDescriptor,
     GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor, GpuComputePassDescriptor,
-    GpuDeviceDescriptor, GpuExtent3D, GpuMapMode, GpuPipelineLayoutDescriptor, GpuQuerySet,
-    GpuRenderPassDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
-    GpuShaderModuleDescriptor, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
-    GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError, RecordOptionGpuSize64,
+    GpuComputePipelineDescriptor, GpuDeviceDescriptor, GpuExtent3D, GpuMapMode,
+    GpuPipelineLayoutDescriptor, GpuQuerySet, GpuRenderPassDescriptor, GpuRenderPipelineDescriptor,
+    GpuRequestAdapterOptions, GpuSamplerDescriptor, GpuShaderModuleDescriptor,
+    GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor,
+    GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
     RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
 };
 use futures::channel::oneshot;
@@ -491,8 +492,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 still host-fixed empty entries)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 still host-fixed empty bind-group-layouts)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 still host-fixed empty BGL + empty entries)
-    // and `[method]gpu-device.create-render-pipeline` (sync; host-fixed stub shader + triangle, still u32)
-    // and `[method]gpu-device.create-compute-pipeline` (sync; host-fixed stub shader + empty layout, still u32)
+    // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 still host-fixed stub shader + triangle)
+    // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 still host-fixed stub shader + empty layout)
     // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 still host-fixed 1×1)
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>)
     // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 still host-fixed view)
@@ -1075,6 +1076,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap("get-shader-module", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuShaderModule { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "record-gpu-pipeline-constant-value",
+                ResourceType::host::<RecordGpuPipelineConstantValue>(),
+                |mut store, rep| {
+                    let resource = Resource::<RecordGpuPipelineConstantValue>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .resource(
                 "gpu-bind-group-layout",
                 ResourceType::host::<GpuBindGroupLayout>(),
@@ -1254,42 +1272,76 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-render-pipeline",
-                |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                |mut caller, (device, descriptor): (
+                    Resource<GpuDevice>,
+                    GpuRenderPipelineDescriptor,
+                )| {
+                    let _ = caller.data_mut().table.get(&descriptor.vertex.module)?;
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let pipeline_rep = jvm::exp_create_render_pipeline(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_create_render_pipeline(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    if pipeline_rep == 0 {
+                        return Err(wasmtime::Error::msg(
+                            "device-create-render-pipeline returned 0",
+                        ));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuRenderPipeline { rep: pipeline_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-compute-pipeline",
-                |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                |mut caller, (device, descriptor): (
+                    Resource<GpuDevice>,
+                    GpuComputePipelineDescriptor,
+                )| {
+                    let _ = caller.data_mut().table.get(&descriptor.compute.module)?;
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let pipeline_rep = jvm::exp_create_compute_pipeline(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let rep = jvm::exp_create_compute_pipeline(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((rep,))
+                    if pipeline_rep == 0 {
+                        return Err(wasmtime::Error::msg(
+                            "device-create-compute-pipeline returned 0",
+                        ));
+                    }
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuComputePipeline { rep: pipeline_rep })?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;

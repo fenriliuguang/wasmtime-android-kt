@@ -9,9 +9,11 @@
 //! S6+ layout/shader: shader-module / bind-group-layout / pipeline-layout / bind-group descriptors.
 //! S6+ pass commands: `set-bind-group-error` (+ kind).
 //! S6+ unmap / write-*-with-copy: `unmap-error`, `write-buffer-error`, texel copy info.
+//! S6+ pipeline create: render/compute pipeline descriptors (+ vertex/fragment graph).
 
 use crate::host::{
-    GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuTexture, GpuTextureView,
+    GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuShaderModule, GpuTexture,
+    GpuTextureView,
 };
 use wasmtime::component::{flags, ComponentType, Lift, Lower, Resource};
 
@@ -1107,5 +1109,423 @@ pub struct GpuBindGroupEntry {
 pub struct GpuBindGroupDescriptor {
     pub layout: Resource<GpuBindGroupLayout>,
     pub entries: Vec<GpuBindGroupEntry>,
+    pub label: Option<String>,
+}
+
+/// WIT `resource record-gpu-pipeline-constant-value` (pipeline constant map).
+#[derive(Debug)]
+pub struct RecordGpuPipelineConstantValue;
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuBlendFactor {
+    #[component(name = "zero")]
+    Zero,
+    #[component(name = "one")]
+    One,
+    #[component(name = "src")]
+    Src,
+    #[component(name = "one-minus-src")]
+    OneMinusSrc,
+    #[component(name = "src-alpha")]
+    SrcAlpha,
+    #[component(name = "one-minus-src-alpha")]
+    OneMinusSrcAlpha,
+    #[component(name = "dst")]
+    Dst,
+    #[component(name = "one-minus-dst")]
+    OneMinusDst,
+    #[component(name = "dst-alpha")]
+    DstAlpha,
+    #[component(name = "one-minus-dst-alpha")]
+    OneMinusDstAlpha,
+    #[component(name = "src-alpha-saturated")]
+    SrcAlphaSaturated,
+    #[component(name = "constant")]
+    Constant,
+    #[component(name = "one-minus-constant")]
+    OneMinusConstant,
+    #[component(name = "src1")]
+    Src1,
+    #[component(name = "one-minus-src1")]
+    OneMinusSrc1,
+    #[component(name = "src1-alpha")]
+    Src1Alpha,
+    #[component(name = "one-minus-src1-alpha")]
+    OneMinusSrc1Alpha,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuBlendOperation {
+    #[component(name = "add")]
+    Add,
+    #[component(name = "subtract")]
+    Subtract,
+    #[component(name = "reverse-subtract")]
+    ReverseSubtract,
+    #[component(name = "min")]
+    Min,
+    #[component(name = "max")]
+    Max,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuBlendComponent {
+    pub operation: Option<GpuBlendOperation>,
+    #[component(name = "src-factor")]
+    pub src_factor: Option<GpuBlendFactor>,
+    #[component(name = "dst-factor")]
+    pub dst_factor: Option<GpuBlendFactor>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuBlendState {
+    pub color: GpuBlendComponent,
+    pub alpha: GpuBlendComponent,
+}
+
+flags! {
+    GpuColorWrite {
+        #[component(name = "red")]
+        const RED;
+        #[component(name = "green")]
+        const GREEN;
+        #[component(name = "blue")]
+        const BLUE;
+        #[component(name = "alpha")]
+        const ALPHA;
+        #[component(name = "all")]
+        const ALL;
+    }
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuColorTargetState {
+    pub format: GpuTextureFormat,
+    pub blend: Option<GpuBlendState>,
+    #[component(name = "write-mask")]
+    pub write_mask: Option<GpuColorWrite>,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuPrimitiveTopology {
+    #[component(name = "point-list")]
+    PointList,
+    #[component(name = "line-list")]
+    LineList,
+    #[component(name = "line-strip")]
+    LineStrip,
+    #[component(name = "triangle-list")]
+    TriangleList,
+    #[component(name = "triangle-strip")]
+    TriangleStrip,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuIndexFormat {
+    #[component(name = "uint16")]
+    Uint16,
+    #[component(name = "uint32")]
+    Uint32,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuFrontFace {
+    #[component(name = "ccw")]
+    Ccw,
+    #[component(name = "cw")]
+    Cw,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuCullMode {
+    #[component(name = "none")]
+    None,
+    #[component(name = "front")]
+    Front,
+    #[component(name = "back")]
+    Back,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuPrimitiveState {
+    pub topology: Option<GpuPrimitiveTopology>,
+    #[component(name = "strip-index-format")]
+    pub strip_index_format: Option<GpuIndexFormat>,
+    #[component(name = "front-face")]
+    pub front_face: Option<GpuFrontFace>,
+    #[component(name = "cull-mode")]
+    pub cull_mode: Option<GpuCullMode>,
+    #[component(name = "unclipped-depth")]
+    pub unclipped_depth: Option<bool>,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuStencilOperation {
+    #[component(name = "keep")]
+    Keep,
+    #[component(name = "zero")]
+    Zero,
+    #[component(name = "replace")]
+    Replace,
+    #[component(name = "invert")]
+    Invert,
+    #[component(name = "increment-clamp")]
+    IncrementClamp,
+    #[component(name = "decrement-clamp")]
+    DecrementClamp,
+    #[component(name = "increment-wrap")]
+    IncrementWrap,
+    #[component(name = "decrement-wrap")]
+    DecrementWrap,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuStencilFaceState {
+    pub compare: Option<GpuCompareFunction>,
+    #[component(name = "fail-op")]
+    pub fail_op: Option<GpuStencilOperation>,
+    #[component(name = "depth-fail-op")]
+    pub depth_fail_op: Option<GpuStencilOperation>,
+    #[component(name = "pass-op")]
+    pub pass_op: Option<GpuStencilOperation>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuDepthStencilState {
+    pub format: GpuTextureFormat,
+    #[component(name = "depth-write-enabled")]
+    pub depth_write_enabled: Option<bool>,
+    #[component(name = "depth-compare")]
+    pub depth_compare: Option<GpuCompareFunction>,
+    #[component(name = "stencil-front")]
+    pub stencil_front: Option<GpuStencilFaceState>,
+    #[component(name = "stencil-back")]
+    pub stencil_back: Option<GpuStencilFaceState>,
+    #[component(name = "stencil-read-mask")]
+    pub stencil_read_mask: Option<u32>,
+    #[component(name = "stencil-write-mask")]
+    pub stencil_write_mask: Option<u32>,
+    #[component(name = "depth-bias")]
+    pub depth_bias: Option<i32>,
+    #[component(name = "depth-bias-slope-scale")]
+    pub depth_bias_slope_scale: Option<f32>,
+    #[component(name = "depth-bias-clamp")]
+    pub depth_bias_clamp: Option<f32>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuMultisampleState {
+    pub count: Option<u32>,
+    pub mask: Option<u32>,
+    #[component(name = "alpha-to-coverage-enabled")]
+    pub alpha_to_coverage_enabled: Option<bool>,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuVertexFormat {
+    #[component(name = "uint8")]
+    Uint8,
+    #[component(name = "uint8x2")]
+    Uint8x2,
+    #[component(name = "uint8x4")]
+    Uint8x4,
+    #[component(name = "sint8")]
+    Sint8,
+    #[component(name = "sint8x2")]
+    Sint8x2,
+    #[component(name = "sint8x4")]
+    Sint8x4,
+    #[component(name = "unorm8")]
+    Unorm8,
+    #[component(name = "unorm8x2")]
+    Unorm8x2,
+    #[component(name = "unorm8x4")]
+    Unorm8x4,
+    #[component(name = "snorm8")]
+    Snorm8,
+    #[component(name = "snorm8x2")]
+    Snorm8x2,
+    #[component(name = "snorm8x4")]
+    Snorm8x4,
+    #[component(name = "uint16")]
+    Uint16,
+    #[component(name = "uint16x2")]
+    Uint16x2,
+    #[component(name = "uint16x4")]
+    Uint16x4,
+    #[component(name = "sint16")]
+    Sint16,
+    #[component(name = "sint16x2")]
+    Sint16x2,
+    #[component(name = "sint16x4")]
+    Sint16x4,
+    #[component(name = "unorm16")]
+    Unorm16,
+    #[component(name = "unorm16x2")]
+    Unorm16x2,
+    #[component(name = "unorm16x4")]
+    Unorm16x4,
+    #[component(name = "snorm16")]
+    Snorm16,
+    #[component(name = "snorm16x2")]
+    Snorm16x2,
+    #[component(name = "snorm16x4")]
+    Snorm16x4,
+    #[component(name = "float16")]
+    Float16,
+    #[component(name = "float16x2")]
+    Float16x2,
+    #[component(name = "float16x4")]
+    Float16x4,
+    #[component(name = "float32")]
+    Float32,
+    #[component(name = "float32x2")]
+    Float32x2,
+    #[component(name = "float32x3")]
+    Float32x3,
+    #[component(name = "float32x4")]
+    Float32x4,
+    #[component(name = "uint32")]
+    Uint32,
+    #[component(name = "uint32x2")]
+    Uint32x2,
+    #[component(name = "uint32x3")]
+    Uint32x3,
+    #[component(name = "uint32x4")]
+    Uint32x4,
+    #[component(name = "sint32")]
+    Sint32,
+    #[component(name = "sint32x2")]
+    Sint32x2,
+    #[component(name = "sint32x3")]
+    Sint32x3,
+    #[component(name = "sint32x4")]
+    Sint32x4,
+    #[component(name = "unorm1010102")]
+    Unorm1010102,
+    #[component(name = "unorm8x4-bgra")]
+    Unorm8x4Bgra,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuVertexAttribute {
+    pub format: GpuVertexFormat,
+    pub offset: u64,
+    #[component(name = "shader-location")]
+    pub shader_location: u32,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuVertexStepMode {
+    #[component(name = "vertex")]
+    Vertex,
+    #[component(name = "instance")]
+    Instance,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuVertexBufferLayout {
+    #[component(name = "array-stride")]
+    pub array_stride: u64,
+    #[component(name = "step-mode")]
+    pub step_mode: Option<GpuVertexStepMode>,
+    pub attributes: Vec<GpuVertexAttribute>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuProgrammableStage {
+    pub module: Resource<GpuShaderModule>,
+    #[component(name = "entry-point")]
+    pub entry_point: Option<String>,
+    pub constants: Option<Resource<RecordGpuPipelineConstantValue>>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuVertexState {
+    pub buffers: Option<Vec<Option<GpuVertexBufferLayout>>>,
+    pub module: Resource<GpuShaderModule>,
+    #[component(name = "entry-point")]
+    pub entry_point: Option<String>,
+    pub constants: Option<Resource<RecordGpuPipelineConstantValue>>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuFragmentState {
+    pub targets: Vec<Option<GpuColorTargetState>>,
+    pub module: Resource<GpuShaderModule>,
+    #[component(name = "entry-point")]
+    pub entry_point: Option<String>,
+    pub constants: Option<Resource<RecordGpuPipelineConstantValue>>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuComputePipelineDescriptor {
+    pub compute: GpuProgrammableStage,
+    pub layout: GpuLayoutMode,
+    pub label: Option<String>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuRenderPipelineDescriptor {
+    pub vertex: GpuVertexState,
+    pub primitive: Option<GpuPrimitiveState>,
+    #[component(name = "depth-stencil")]
+    pub depth_stencil: Option<GpuDepthStencilState>,
+    pub multisample: Option<GpuMultisampleState>,
+    pub fragment: Option<GpuFragmentState>,
+    pub layout: GpuLayoutMode,
     pub label: Option<String>,
 }
