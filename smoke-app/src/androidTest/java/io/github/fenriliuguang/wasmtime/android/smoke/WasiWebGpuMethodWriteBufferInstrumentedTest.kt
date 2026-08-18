@@ -13,8 +13,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]gpu-queue.write-buffer` (stub buffer 31, host-fixed 4 bytes)
- * via [ExperimentalWebGpuBridge.attachWriteBuffer].
+ * S6+ `[method]gpu-queue.write-buffer-with-copy` (borrow buffer, empty data,
+ * L2 still host-fixed 4 bytes) via [ExperimentalWebGpuBridge.attachWriteBuffer].
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodWriteBufferInstrumentedTest {
@@ -34,8 +34,8 @@ class WasiWebGpuMethodWriteBufferInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachWriteBuffer(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub buffer 31", 31, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest must return harness 1 after write-buffer ok", 1, harness)
                             }
                         }
                     }

@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-buffer` then
- * `[method]gpu-buffer.unmap` (stub buffer 31; host maps then unmaps
- * a MAP_READ buffer) via
+ * S6+ `[method]` slice: `get-buffer` then
+ * `[method]gpu-buffer.unmap` (`result<_, unmap-error>`; L2 still host-fixed
+ * map then unmap) via
  * [ExperimentalWebGpuBridge.attachBufferUnmap] + [callRunConcurrent].
  * Not compliance.
  */
@@ -37,8 +37,8 @@ class WasiWebGpuMethodBufferUnmapInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachBufferUnmap(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub buffer 31 after unmap", 31, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest must return harness 1 after unmap ok", 1, harness)
                             }
                         }
                     }

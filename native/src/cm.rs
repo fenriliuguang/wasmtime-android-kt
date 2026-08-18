@@ -13,10 +13,11 @@ use crate::jvm;
 use crate::webgpu_abi::{
     GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferDescriptor,
     GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor, GpuComputePassDescriptor,
-    GpuDeviceDescriptor, GpuMapMode, GpuPipelineLayoutDescriptor, GpuQuerySet,
+    GpuDeviceDescriptor, GpuExtent3D, GpuMapMode, GpuPipelineLayoutDescriptor, GpuQuerySet,
     GpuRenderPassDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
-    GpuShaderModuleDescriptor, GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError,
-    RecordOptionGpuSize64, RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError,
+    GpuShaderModuleDescriptor, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
+    GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError, RecordOptionGpuSize64,
+    RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -479,11 +480,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // (S4: sync (borrow, gpu-buffer-descriptor) -> own<gpu-buffer>) and
     // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (S6+: true async
     // result<_, map-async-error>; guest mode/offset/size; L2 still host-fixed MAP_READ buffer)
-    // and `[method]gpu-buffer.unmap` (sync void; host-fixed map then unmap)
+    // and `[method]gpu-buffer.unmap` (S6+: result<_, unmap-error>; L2 still host-fixed map then unmap)
     // and `[method]gpu-device.create-texture` (S6+: sync (borrow, gpu-texture-descriptor) -> own<gpu-texture>) and
     // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
     // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 still host-fixed WGSL)
-    // and `[method]gpu-queue.write-buffer` (sync void; host-fixed bytes, single buffer u32)
+    // and `[method]gpu-queue.write-buffer-with-copy` (S6+: borrow buffer + list data → result; L2 still host-fixed 4 bytes)
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>)
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
@@ -492,7 +493,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 still host-fixed empty BGL + empty entries)
     // and `[method]gpu-device.create-render-pipeline` (sync; host-fixed stub shader + triangle, still u32)
     // and `[method]gpu-device.create-compute-pipeline` (sync; host-fixed stub shader + empty layout, still u32)
-    // and `[method]gpu-queue.write-texture` (sync void; host-fixed 1×1 texels, single texture u32)
+    // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 still host-fixed 1×1)
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>)
     // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 still host-fixed view)
     // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void)
@@ -964,7 +965,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let buffer_rep =
                         jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?;
                     jvm::exp_buffer_unmap(&cb, buffer_rep).map_err(wasmtime::Error::msg)?;
-                    Ok(())
+                    Ok((Ok::<(), UnmapError>(()),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1533,8 +1534,16 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
-                "[method]gpu-queue.write-buffer",
-                |mut caller, (queue, _buffer): (Resource<GpuQueue>, u32)| {
+                "[method]gpu-queue.write-buffer-with-copy",
+                |mut caller,
+                 (queue, _buffer, _offset, _data, _data_offset, _size): (
+                    Resource<GpuQueue>,
+                    Resource<GpuBuffer>,
+                    u64,
+                    Vec<u8>,
+                    Option<u64>,
+                    Option<u64>,
+                )| {
                     let _ = caller.data_mut().table.get(&queue)?;
                     let cb = caller
                         .data()
@@ -1552,15 +1561,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?;
                     jvm::exp_queue_write_buffer(&cb, queue_rep, buffer_rep)
                         .map_err(wasmtime::Error::msg)?;
-                    Ok(())
+                    Ok((Ok::<(), WriteBufferError>(()),))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
-                "[method]gpu-queue.write-texture",
-                |mut caller, (queue, _texture): (Resource<GpuQueue>, u32)| {
+                "[method]gpu-queue.write-texture-with-copy",
+                |mut caller,
+                 (queue, destination, _data, _layout, _size): (
+                    Resource<GpuQueue>,
+                    GpuTexelCopyTextureInfo,
+                    Vec<u8>,
+                    GpuTexelCopyBufferLayout,
+                    GpuExtent3D,
+                )| {
                     let _ = caller.data_mut().table.get(&queue)?;
+                    let _ = caller.data_mut().table.get(&destination.texture)?;
                     let cb = caller
                         .data()
                         .experimental_host_cb

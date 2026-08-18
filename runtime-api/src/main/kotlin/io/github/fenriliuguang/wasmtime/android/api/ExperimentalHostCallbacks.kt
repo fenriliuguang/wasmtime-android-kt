@@ -57,7 +57,7 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferMapAsyncDescribed")
     }
 
-    /** W3+: JNI ignores Guest stub buffer; host maps then unmaps a MAP_READ buffer. */
+    /** S6+: JNI still host-fixed map-then-unmap; Guest WIT result is lifted in native. */
     fun bufferUnmap(buffer: Int) {
         unsupported("bufferUnmap")
     }
@@ -147,12 +147,12 @@ interface ExperimentalHostCallbacks {
         unsupported("queueSubmit1")
     }
 
-    /** W3+: host-fixed 4-byte write (offset 0; buffer u32 from Guest is ignored by JNI). */
+    /** S6+: JNI still host-fixed 4-byte write; Guest WIT list/borrow lifted in native. */
     fun queueWriteBuffer(queue: Int, buffer: Int) {
         unsupported("queueWriteBuffer")
     }
 
-    /** W3+: host-fixed 1×1 write (texture u32 from Guest is ignored by JNI). */
+    /** S6+: JNI still host-fixed 1×1 write; Guest WIT texel copy info lifted in native. */
     fun queueWriteTexture(queue: Int, texture: Int) {
         unsupported("queueWriteTexture")
     }
