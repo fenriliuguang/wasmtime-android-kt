@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-encoder` then
- * `[method]gpu-command-encoder.copy-buffer-to-buffer` (stub src/dst 31,
- * host-fixed 4-byte copy) via
+ * S6+ `[method]` slice: `get-encoder` + `get-buffer` then
+ * `[method]gpu-command-encoder.copy-buffer-to-buffer` (borrow src/dst,
+ * offsets/size none; L2 still host-fixed 4-byte copy) via
  * [ExperimentalWebGpuBridge.attachCopyBufferToBuffer] + [callRunConcurrent].
  * Not compliance.
  */
@@ -37,8 +37,8 @@ class WasiWebGpuMethodCopyBufferToBufferInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachCopyBufferToBuffer(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub buffer 31 after copy", 31, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest must return harness 1 after copy", 1, harness)
                             }
                         }
                     }

@@ -7,6 +7,7 @@
 //! S8: sampler / texture-view / compute-pass option descriptors (guest passes none).
 //! S6+: `gpu-texture-descriptor`, `gpu-render-pass-descriptor`, `map-async` result.
 //! S6+ layout/shader: shader-module / bind-group-layout / pipeline-layout / bind-group descriptors.
+//! S6+ pass commands: `set-bind-group-error` (+ kind).
 
 use crate::host::{
     GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuTexture, GpuTextureView,
@@ -722,6 +723,22 @@ pub enum MapAsyncErrorKind {
 #[allow(dead_code)]
 pub struct MapAsyncError {
     pub kind: MapAsyncErrorKind,
+    pub message: String,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum SetBindGroupErrorKind {
+    #[component(name = "range-error")]
+    RangeError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct SetBindGroupError {
+    pub kind: SetBindGroupErrorKind,
     pub message: String,
 }
 

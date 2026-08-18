@@ -96,22 +96,22 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassEnd")
     }
 
-    /** W3+: JNI ignores Guest stub pipeline; host creates triangle pipeline then set. */
+    /** S6+: JNI still host-fixed; Guest WIT borrow pipeline is lifted in native. */
     fun renderPassSetPipeline(pass: Int) {
         unsupported("renderPassSetPipeline")
     }
 
-    /** W3+: JNI ignores Guest vertexCount; host set-pipeline then draw(3). */
+    /** S6+: JNI still host-fixed draw(3); Guest WIT options are lifted in native. */
     fun renderPassDraw(pass: Int) {
         unsupported("renderPassDraw")
     }
 
-    /** W3+: JNI ignores Guest stub bind-group; host creates empty bind-group then set index 0. */
+    /** S6+: JNI still host-fixed empty bind-group; Guest WIT option is lifted in native. */
     fun renderPassSetBindGroup(pass: Int) {
         unsupported("renderPassSetBindGroup")
     }
 
-    /** W3+: JNI ignores Guest stub buffer; host creates VERTEX buffer then set slot 0. */
+    /** S6+: JNI still host-fixed VERTEX slot 0; Guest WIT option is lifted in native. */
     fun renderPassSetVertexBuffer(pass: Int) {
         unsupported("renderPassSetVertexBuffer")
     }
@@ -121,22 +121,22 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassEnd")
     }
 
-    /** W3+: JNI ignores Guest stub pipeline; host creates compute pipeline then set. */
+    /** S6+: JNI still host-fixed; Guest WIT borrow pipeline is lifted in native. */
     fun computePassSetPipeline(pass: Int) {
         unsupported("computePassSetPipeline")
     }
 
-    /** W3+: JNI ignores Guest stub bind-group; host creates empty bind-group then set index 0. */
+    /** S6+: JNI still host-fixed empty bind-group; Guest WIT option is lifted in native. */
     fun computePassSetBindGroup(pass: Int) {
         unsupported("computePassSetBindGroup")
     }
 
-    /** W3+: JNI ignores Guest counts; host set-pipeline + empty bind-group then dispatch. */
+    /** S6+: JNI still host-fixed 1×1×1; Guest WIT option counts are lifted in native. */
     fun computePassDispatchWorkgroups(pass: Int) {
         unsupported("computePassDispatchWorkgroups")
     }
 
-    /** W3+: JNI ignores Guest stub buffers; host creates two buffers then copy. */
+    /** S6+: JNI still host-fixed 4-byte copy; Guest WIT borrow buffers are lifted in native. */
     fun commandEncoderCopyBufferToBuffer(encoder: Int) {
         unsupported("commandEncoderCopyBufferToBuffer")
     }

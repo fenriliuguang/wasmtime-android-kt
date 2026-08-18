@@ -1,5 +1,6 @@
-//! W3+: `get-pass` + `[method]gpu-render-pass-encoder.draw`
-//! (self, vertex-count u32). Guest returns 29.
+//! S6+: `get-pass` + `[method]gpu-render-pass-encoder.draw`
+//! WIT: `(borrow, vertex-count: u32, three option<u32>)`.
+//! Guest passes vertex-count=3, other fields none; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -34,9 +35,28 @@ fn register_method_render_pass_draw(
     })?;
     webgpu.func_wrap(
         "[method]gpu-render-pass-encoder.draw",
-        move |mut caller, (pass, vertex_count): (Resource<GpuRenderPassEncoder>, u32)| {
+        move |mut caller,
+              (pass, vertex_count, instance_count, first_vertex, first_instance): (
+            Resource<GpuRenderPassEncoder>,
+            u32,
+            Option<u32>,
+            Option<u32>,
+            Option<u32>,
+        )| {
             caller.data_mut().table.get(&pass).map(|_| ())?;
-            assert_eq!(vertex_count, 3, "guest must pass stub vertex-count 3");
+            assert_eq!(vertex_count, 3, "guest must pass vertex-count=3");
+            assert!(
+                instance_count.is_none(),
+                "guest must pass instance-count=none this slice"
+            );
+            assert!(
+                first_vertex.is_none(),
+                "guest must pass first-vertex=none this slice"
+            );
+            assert!(
+                first_instance.is_none(),
+                "guest must pass first-instance=none this slice"
+            );
             drawn.store(true, Ordering::SeqCst);
             Ok(())
         },
@@ -81,7 +101,7 @@ fn wasi_webgpu_method_render_pass_draw_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 29, "guest run must return stub pass 29 after draw");
+    assert_eq!(v, 1, "guest run must return harness 1 after draw");
     assert!(drawn.load(Ordering::SeqCst), "draw must have been called");
     Ok(())
 }
@@ -106,7 +126,7 @@ fn wasi_webgpu_method_render_pass_draw_call_async() -> wasmtime::Result<()> {
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 29, "guest run must return stub pass via call_async");
+    assert_eq!(v, 1, "guest run must return harness 1 via call_async");
     assert!(drawn.load(Ordering::SeqCst), "draw must have been called");
     Ok(())
 }

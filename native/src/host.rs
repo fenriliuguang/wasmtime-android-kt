@@ -128,6 +128,22 @@ pub struct GpuBindGroup {
     pub rep: u32,
 }
 
+/// Host representation of WIT `resource gpu-compute-pipeline`.
+/// `get-compute-pipeline` still pushes `{ rep: 0 }`; create still returns transitional u32.
+#[derive(Debug)]
+pub struct GpuComputePipeline {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
+/// Host representation of WIT `resource gpu-render-pipeline`.
+/// `get-render-pipeline` still pushes `{ rep: 0 }`; create still returns transitional u32.
+#[derive(Debug)]
+pub struct GpuRenderPipeline {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
 /// Host representation of WIT `resource gpu-texture-view`.
 /// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
 #[derive(Debug)]

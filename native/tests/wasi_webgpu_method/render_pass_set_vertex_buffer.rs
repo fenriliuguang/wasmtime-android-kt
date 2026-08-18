@@ -1,5 +1,7 @@
-//! W3+: `get-pass` + `[method]gpu-render-pass-encoder.set-vertex-buffer`
-//! (self, buffer u32). Guest returns 31.
+//! S6+: `get-pass` + `get-buffer` +
+//! `[method]gpu-render-pass-encoder.set-vertex-buffer`
+//! WIT: `(borrow, slot: u32, option<borrow<gpu-buffer>>, option offset/size)`.
+//! Guest passes slot=0, buffer=some, offset/size=none; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -9,6 +11,9 @@ use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
 struct GpuRenderPassEncoder;
+
+#[derive(Debug)]
+struct GpuBuffer;
 
 struct TestHost {
     table: ResourceTable,
@@ -28,15 +33,39 @@ fn register_method_render_pass_set_vertex_buffer(
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-buffer",
+        ResourceType::host::<GpuBuffer>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuBuffer>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-pass", |mut store, ()| {
         let resource = store.data_mut().table.push(GpuRenderPassEncoder)?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap("get-buffer", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuBuffer)?;
+        Ok((resource,))
+    })?;
     webgpu.func_wrap(
         "[method]gpu-render-pass-encoder.set-vertex-buffer",
-        move |mut caller, (pass, buffer): (Resource<GpuRenderPassEncoder>, u32)| {
+        move |mut caller,
+              (pass, slot, buffer, offset, size): (
+            Resource<GpuRenderPassEncoder>,
+            u32,
+            Option<Resource<GpuBuffer>>,
+            Option<u64>,
+            Option<u64>,
+        )| {
             caller.data_mut().table.get(&pass).map(|_| ())?;
-            assert_eq!(buffer, 31, "guest must pass stub buffer 31");
+            assert_eq!(slot, 0, "guest must pass slot=0");
+            let buffer = buffer.expect("guest must pass buffer=some this slice");
+            caller.data_mut().table.get(&buffer).map(|_| ())?;
+            assert!(offset.is_none(), "guest must pass offset=none this slice");
+            assert!(size.is_none(), "guest must pass size=none this slice");
             set.store(true, Ordering::SeqCst);
             Ok(())
         },
@@ -81,8 +110,14 @@ fn wasi_webgpu_method_render_pass_set_vertex_buffer_smoke() -> wasmtime::Result<
             })
             .await?
     })?;
-    assert_eq!(v, 31, "guest run must return stub buffer 31 after set-vertex-buffer");
-    assert!(set.load(Ordering::SeqCst), "set-vertex-buffer must have been called");
+    assert_eq!(
+        v, 1,
+        "guest run must return harness 1 after set-vertex-buffer"
+    );
+    assert!(
+        set.load(Ordering::SeqCst),
+        "set-vertex-buffer must have been called"
+    );
     Ok(())
 }
 
@@ -106,7 +141,10 @@ fn wasi_webgpu_method_render_pass_set_vertex_buffer_call_async() -> wasmtime::Re
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 31, "guest run must return stub buffer via call_async");
-    assert!(set.load(Ordering::SeqCst), "set-vertex-buffer must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 via call_async");
+    assert!(
+        set.load(Ordering::SeqCst),
+        "set-vertex-buffer must have been called"
+    );
     Ok(())
 }

@@ -1,14 +1,38 @@
-//! W3+: `get-pass` + `[method]gpu-render-pass-encoder.set-bind-group`
-//! (self, bind-group u32). Guest returns 67.
+//! S6+: `get-pass` + `get-bind-group` +
+//! `[method]gpu-render-pass-encoder.set-bind-group`
+//! WIT: `(borrow, index, option bind-group, option offsets, option start, option length)
+//!      -> result<_, set-bind-group-error>`.
+//! Guest passes index=0, bind-group=some, offsets none; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
 struct GpuRenderPassEncoder;
+
+#[derive(Debug)]
+struct GpuBindGroup;
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum SetBindGroupErrorKind {
+    #[component(name = "range-error")]
+    RangeError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct SetBindGroupError {
+    kind: SetBindGroupErrorKind,
+    message: String,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -28,17 +52,43 @@ fn register_method_render_pass_set_bind_group(
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-bind-group",
+        ResourceType::host::<GpuBindGroup>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuBindGroup>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-pass", |mut store, ()| {
         let resource = store.data_mut().table.push(GpuRenderPassEncoder)?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap("get-bind-group", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuBindGroup)?;
+        Ok((resource,))
+    })?;
     webgpu.func_wrap(
         "[method]gpu-render-pass-encoder.set-bind-group",
-        move |mut caller, (pass, bind_group): (Resource<GpuRenderPassEncoder>, u32)| {
+        move |mut caller,
+              (pass, index, bind_group, offsets, start, length): (
+            Resource<GpuRenderPassEncoder>,
+            u32,
+            Option<Resource<GpuBindGroup>>,
+            Option<Vec<u32>>,
+            Option<u64>,
+            Option<u32>,
+        )| {
             caller.data_mut().table.get(&pass).map(|_| ())?;
-            assert_eq!(bind_group, 67, "guest must pass stub bind-group 67");
+            assert_eq!(index, 0, "guest must pass index=0");
+            let bind_group = bind_group.expect("guest must pass bind-group=some this slice");
+            caller.data_mut().table.get(&bind_group).map(|_| ())?;
+            assert!(offsets.is_none(), "guest must pass offsets=none this slice");
+            assert!(start.is_none(), "guest must pass start=none this slice");
+            assert!(length.is_none(), "guest must pass length=none this slice");
             set.store(true, Ordering::SeqCst);
-            Ok(())
+            Ok((Ok::<(), SetBindGroupError>(()),))
         },
     )?;
     Ok(())
@@ -81,8 +131,14 @@ fn wasi_webgpu_method_render_pass_set_bind_group_smoke() -> wasmtime::Result<()>
             })
             .await?
     })?;
-    assert_eq!(v, 67, "guest run must return stub bind-group 67 after set-bind-group");
-    assert!(set.load(Ordering::SeqCst), "set-bind-group must have been called");
+    assert_eq!(
+        v, 1,
+        "guest run must return harness 1 after set-bind-group ok"
+    );
+    assert!(
+        set.load(Ordering::SeqCst),
+        "set-bind-group must have been called"
+    );
     Ok(())
 }
 
@@ -106,7 +162,10 @@ fn wasi_webgpu_method_render_pass_set_bind_group_call_async() -> wasmtime::Resul
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 67, "guest run must return stub bind-group via call_async");
-    assert!(set.load(Ordering::SeqCst), "set-bind-group must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 via call_async");
+    assert!(
+        set.load(Ordering::SeqCst),
+        "set-bind-group must have been called"
+    );
     Ok(())
 }
