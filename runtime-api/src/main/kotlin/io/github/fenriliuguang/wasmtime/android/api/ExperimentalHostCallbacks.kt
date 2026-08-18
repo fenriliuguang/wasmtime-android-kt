@@ -140,7 +140,9 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassDispatchWorkgroups")
     }
 
-    /** S6+: JNI still host-fixed 4-byte copy; Guest WIT borrow buffers are lifted in native. */
+    /** S6+: JNI still host-fixed 4-byte copy; Guest WIT borrow buffers are lifted in native.
+     *  Also used by copy-buffer-to-texture / copy-texture-to-buffer /
+     *  copy-texture-to-texture / clear-buffer. */
     fun commandEncoderCopyBufferToBuffer(encoder: Int) {
         unsupported("commandEncoderCopyBufferToBuffer")
     }

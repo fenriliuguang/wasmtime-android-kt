@@ -17,9 +17,10 @@ use crate::webgpu_abi::{
     GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuMapMode, GpuPipelineErrorReason,
     GpuPipelineLayoutDescriptor, GpuQuerySet, GpuRenderPassDescriptor, GpuRenderPipelineDescriptor,
     GpuRequestAdapterOptions, GpuSamplerDescriptor, GpuShaderModuleDescriptor,
-    GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor,
-    GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
-    RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
+    GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
+    GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue,
+    RecordOptionGpuSize64, RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError,
+    UnmapError, WriteBufferError,
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -506,7 +507,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
     // and `[method]gpu-render-pass-encoder.set-vertex-buffer` (S6+: slot + option buffer + option offset/size; L2 still host-fixed VERTEX slot 0)
-    // and `[method]gpu-command-encoder.copy-buffer-to-buffer` (S6+: borrow src/dst + option offsets/size; L2 still host-fixed 4-byte copy).
+    // and `[method]gpu-command-encoder.copy-buffer-to-buffer` (S6+: borrow src/dst + option offsets/size; L2 still host-fixed 4-byte copy)
+    // and S6+ remaining encoder recording: copy-buffer-to-texture / copy-texture-to-buffer /
+    // copy-texture-to-texture / clear-buffer / resolve-query-set / push-debug-group /
+    // pop-debug-group / insert-debug-marker.
     // Experimental stays sync.
     // S5: first canonical list is submit; other lists still later.
     {
@@ -1506,6 +1510,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap("get-query-set", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuQuerySet)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
             .resource(
                 "gpu-render-pass-encoder",
                 ResourceType::host::<GpuRenderPassEncoder>(),
@@ -1629,6 +1639,182 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(wasmtime::Error::msg)?;
                     jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
                         .map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.copy-buffer-to-texture",
+                |mut caller,
+                 (encoder, source, destination, _copy_size): (
+                    Resource<GpuCommandEncoder>,
+                    GpuTexelCopyBufferInfo,
+                    GpuTexelCopyTextureInfo,
+                    GpuExtent3D,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let _ = caller.data_mut().table.get(&source.buffer)?;
+                    let _ = caller.data_mut().table.get(&destination.texture)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.copy-texture-to-buffer",
+                |mut caller,
+                 (encoder, source, destination, _copy_size): (
+                    Resource<GpuCommandEncoder>,
+                    GpuTexelCopyTextureInfo,
+                    GpuTexelCopyBufferInfo,
+                    GpuExtent3D,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let _ = caller.data_mut().table.get(&source.texture)?;
+                    let _ = caller.data_mut().table.get(&destination.buffer)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.copy-texture-to-texture",
+                |mut caller,
+                 (encoder, source, destination, _copy_size): (
+                    Resource<GpuCommandEncoder>,
+                    GpuTexelCopyTextureInfo,
+                    GpuTexelCopyTextureInfo,
+                    GpuExtent3D,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let _ = caller.data_mut().table.get(&source.texture)?;
+                    let _ = caller.data_mut().table.get(&destination.texture)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.clear-buffer",
+                |mut caller,
+                 (encoder, buffer, _offset, _size): (
+                    Resource<GpuCommandEncoder>,
+                    Resource<GpuBuffer>,
+                    Option<u64>,
+                    Option<u64>,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.resolve-query-set",
+                |mut caller,
+                 (
+                    encoder,
+                    query_set,
+                    _first_query,
+                    _query_count,
+                    destination,
+                    _destination_offset,
+                ): (
+                    Resource<GpuCommandEncoder>,
+                    Resource<GpuQuerySet>,
+                    u32,
+                    u32,
+                    Resource<GpuBuffer>,
+                    u64,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let _ = caller.data_mut().table.get(&query_set)?;
+                    let _ = caller.data_mut().table.get(&destination)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.push-debug-group",
+                |mut caller, (encoder, _group_label): (Resource<GpuCommandEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.pop-debug-group",
+                |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.insert-debug-marker",
+                |mut caller, (encoder, _marker_label): (Resource<GpuCommandEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
                     Ok(())
                 },
             )
