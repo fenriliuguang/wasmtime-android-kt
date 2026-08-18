@@ -36,8 +36,8 @@ class WasiWebGpuMethodComputePassEndInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachComputePassEnd(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub compute-pass 79 after end", 79, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest returns harness 1 after end", 1, harness)
                             }
                         }
                     }

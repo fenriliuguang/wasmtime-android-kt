@@ -1,5 +1,5 @@
 ;; W3+: get-compute-pass + [method]gpu-compute-pass-encoder.end (void).
-;; Returns stub 79. Do not reuse get-pass (that is render-pass).
+;; Guest calls end then returns harness 1. Do not reuse get-pass (that is render-pass).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-compute-pass-encoder" (type $gpu-compute-pass-encoder (sub resource)))
@@ -17,7 +17,7 @@
       (local $pass i32)
       (local.set $pass (call $get-compute-pass))
       (call $end (local.get $pass))
-      (i32.const 79)
+      (i32.const 1)
     )
   )
   (core func $gp_lower (canon lower (func $get-compute-pass)))

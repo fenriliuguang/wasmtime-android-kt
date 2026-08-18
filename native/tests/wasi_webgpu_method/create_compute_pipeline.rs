@@ -1,10 +1,66 @@
-//! W3+ slice: `get-device` + `[method]gpu-device.create-compute-pipeline`. Stub returns 73.
+//! S6+: `get-device` + `get-shader-module` + `[method]gpu-device.create-compute-pipeline`
+//! WIT: `(borrow<gpu-device>, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>`.
+//! Guest passes shader borrow, layout=auto; drops own; `run` returns harness 1.
 
-use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuDevice;
+struct GpuDevice {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug)]
+struct GpuShaderModule {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug)]
+struct GpuPipelineLayout {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug)]
+struct GpuComputePipeline {
+    #[allow(dead_code)]
+    rep: u32,
+}
+
+#[derive(Debug)]
+struct RecordGpuPipelineConstantValue;
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum GpuLayoutMode {
+    #[component(name = "specific")]
+    Specific(Resource<GpuPipelineLayout>),
+    #[component(name = "auto")]
+    Auto,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct GpuProgrammableStage {
+    module: Resource<GpuShaderModule>,
+    #[component(name = "entry-point")]
+    entry_point: Option<String>,
+    constants: Option<Resource<RecordGpuPipelineConstantValue>>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GpuComputePipelineDescriptor {
+    compute: GpuProgrammableStage,
+    layout: GpuLayoutMode,
+    label: Option<String>,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -21,22 +77,80 @@ fn register_method_create_compute_pipeline(linker: &mut Linker<TestHost>) -> was
             Ok(())
         },
     )?;
+    webgpu.resource(
+        "gpu-shader-module",
+        ResourceType::host::<GpuShaderModule>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuShaderModule>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
+    webgpu.resource(
+        "gpu-pipeline-layout",
+        ResourceType::host::<GpuPipelineLayout>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuPipelineLayout>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
+    webgpu.resource(
+        "gpu-compute-pipeline",
+        ResourceType::host::<GpuComputePipeline>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuComputePipeline>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
+    webgpu.resource(
+        "record-gpu-pipeline-constant-value",
+        ResourceType::host::<RecordGpuPipelineConstantValue>(),
+        |mut store, rep| {
+            let resource = Resource::<RecordGpuPipelineConstantValue>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.func_wrap("get-device", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuDevice)?;
+        let resource = store.data_mut().table.push(GpuDevice { rep: 0 })?;
+        Ok((resource,))
+    })?;
+    webgpu.func_wrap("get-shader-module", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuShaderModule { rep: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
         "[method]gpu-device.create-compute-pipeline",
-        |mut caller, (device,): (Resource<GpuDevice>,)| {
+        |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuComputePipelineDescriptor)| {
             caller.data_mut().table.get(&device).map(|_| ())?;
-            Ok((73u32,))
+            caller
+                .data_mut()
+                .table
+                .get(&descriptor.compute.module)
+                .map(|_| ())?;
+            assert!(matches!(descriptor.layout, GpuLayoutMode::Auto));
+            assert!(descriptor.compute.entry_point.is_none());
+            assert!(descriptor.compute.constants.is_none());
+            assert!(descriptor.label.is_none());
+            let resource = caller
+                .data_mut()
+                .table
+                .push(GpuComputePipeline { rep: 73 })?;
+            Ok((resource,))
         },
     )?;
     Ok(())
 }
 
 fn new_store(engine: &Engine) -> Store<TestHost> {
-    Store::new(engine, TestHost { table: ResourceTable::new() })
+    Store::new(
+        engine,
+        TestHost {
+            table: ResourceTable::new(),
+        },
+    )
 }
 
 #[test]
@@ -64,7 +178,10 @@ fn wasi_webgpu_method_create_compute_pipeline_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 73, "guest run must return stub compute-pipeline rep via [method]");
+    assert_eq!(
+        v, 1,
+        "guest run must drop own<gpu-compute-pipeline> and return harness 1"
+    );
     Ok(())
 }
 
@@ -85,6 +202,9 @@ fn wasi_webgpu_method_create_compute_pipeline_call_async() -> wasmtime::Result<(
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 73, "guest run must return stub compute-pipeline rep via [method] call_async");
+    assert_eq!(
+        v, 1,
+        "guest run must drop own<gpu-compute-pipeline> and return harness 1 via call_async"
+    );
     Ok(())
 }
