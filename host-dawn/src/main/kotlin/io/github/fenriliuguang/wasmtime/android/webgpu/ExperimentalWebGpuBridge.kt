@@ -130,8 +130,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + host-fixed MAP_READ buffer + map then unmap.
-     * Guest stub buffer ignored. `[method]gpu-buffer.unmap`.
+     * W3+ / S6+: adapter + device + host-fixed MAP_READ buffer + map then unmap.
+     * Guest WIT `result<_, unmap-error>` (JNI still host-fixed).
+     * `[method]gpu-buffer.unmap`.
      */
     fun attachBufferUnmap(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -1042,9 +1043,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + queue + host-fixed create-buffer + write-buffer.
-     * Guest passes stub buffer `31`; JNI ignores it and writes 4 host bytes.
-     * `[method]gpu-queue.write-buffer` only (not proposal `list<u8>`).
+     * W3+ / S6+: adapter + device + queue + host-fixed create-buffer + write-buffer.
+     * Guest passes WIT borrow buffer + list data (JNI still host-fixed 4 bytes).
+     * `[method]gpu-queue.write-buffer-with-copy`.
      */
     fun attachWriteBuffer(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -1072,8 +1073,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + queue + host-fixed 1×1 COPY_DST texture write.
-     * `[method]gpu-queue.write-texture` (Guest texture u32 ignored).
+     * W3+ / S6+: adapter + device + queue + host-fixed 1×1 COPY_DST texture write.
+     * `[method]gpu-queue.write-texture-with-copy` (JNI still host-fixed).
      */
     fun attachWriteTexture(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)

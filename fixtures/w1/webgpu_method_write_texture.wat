@@ -1,30 +1,111 @@
-;; W3+: get-queue + [method]gpu-queue.write-texture (self, texture u32; void). Returns 37.
+;; S6+: get-queue + get-texture + [method]gpu-queue.write-texture-with-copy
+;; WIT: write-texture-with-copy: func(destination, data, data-layout, size)
+;; Guest passes texture borrow, mip/origin/aspect none, empty data, layout none,
+;; size 1×1×1; drops texture; run returns harness 1.
+;; Flattened params exceed 16, so canon lower spills through memory.
+;; L2 still host-fixed 1×1 write. get-queue / get-texture are test constructors.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
+    (export "gpu-texture" (type $gpu-texture (sub resource)))
     (export "gpu-queue" (type $gpu-queue (sub resource)))
-    (export "get-queue" (func (result (own $gpu-queue))))
-    (export "[method]gpu-queue.write-texture"
-      (func (param "self" (borrow $gpu-queue)) (param "texture" u32)))
+    (type $aspect (enum "all" "stencil-only" "depth-only"))
+    (export "gpu-texture-aspect" (type (eq $aspect)))
+    (type $opt-u32 (option u32))
+    (type $origin (record
+      (field "x" $opt-u32)
+      (field "y" $opt-u32)
+      (field "z" $opt-u32)
+    ))
+    (export "gpu-origin3-d" (type (eq $origin)))
+    (type $borrow-tex (borrow $gpu-texture))
+    (type $opt-origin (option 6))
+    (type $opt-aspect (option 3))
+    (type $dest (record
+      (field "texture" $borrow-tex)
+      (field "mip-level" $opt-u32)
+      (field "origin" $opt-origin)
+      (field "aspect" $opt-aspect)
+    ))
+    (export "gpu-texel-copy-texture-info" (type (eq $dest)))
+    (type $opt-u64 (option u64))
+    (type $layout (record
+      (field "offset" $opt-u64)
+      (field "bytes-per-row" $opt-u32)
+      (field "rows-per-image" $opt-u32)
+    ))
+    (export "gpu-texel-copy-buffer-layout" (type (eq $layout)))
+    (type $extent (record
+      (field "width" u32)
+      (field "height" $opt-u32)
+      (field "depth-or-array-layers" $opt-u32)
+    ))
+    (export "gpu-extent3-d" (type (eq $extent)))
+    (type $list-u8 (list u8))
+    (type $borrow-q (borrow $gpu-queue))
+    (type $write-ty (func
+      (param "self" $borrow-q)
+      (param "destination" 11)
+      (param "data" $list-u8)
+      (param "data-layout" 14)
+      (param "size" 16)))
+    (export "[method]gpu-queue.write-texture-with-copy" (func (type $write-ty)))
+    (type $own-q (own $gpu-queue))
+    (export "get-queue" (func (result $own-q)))
+    (type $own-tex (own $gpu-texture))
+    (export "get-texture" (func (result $own-tex)))
   ))
+  (alias export $webgpu "gpu-texture" (type $gpu-texture))
   (alias export $webgpu "get-queue" (func $get-queue))
-  (alias export $webgpu "[method]gpu-queue.write-texture" (func $write-texture))
+  (alias export $webgpu "get-texture" (func $get-texture))
+  (alias export $webgpu "[method]gpu-queue.write-texture-with-copy" (func $write))
 
-  (core module $m
-    (import "" "get-queue" (func $get-queue (result i32)))
-    (import "" "write-texture" (func $write-texture (param i32 i32)))
-    (func (export "run") (result i32)
-      (local $queue i32)
-      (local.set $queue (call $get-queue))
-      (call $write-texture (local.get $queue) (i32.const 37))
-      (i32.const 37)
+  (core module $builtins
+    (memory (export "mem") 1)
+    (func (export "realloc") (param i32 i32 i32 i32) (result i32)
+      (i32.const 256)
     )
   )
+  (core instance $builtins (instantiate $builtins))
+
   (core func $gq_lower (canon lower (func $get-queue)))
-  (core func $wt_lower (canon lower (func $write-texture)))
+  (core func $gt_lower (canon lower (func $get-texture)))
+  (core func $w_lower
+    (canon lower (func $write)
+      (memory $builtins "mem")
+      (realloc (func $builtins "realloc"))))
+  (core func $dt_lower (canon resource.drop $gpu-texture))
+
+  (core module $m
+    (import "" "mem" (memory 1))
+    (import "" "get-queue" (func $get-queue (result i32)))
+    (import "" "get-texture" (func $get-texture (result i32)))
+    (import "" "write" (func $write (param i32)))
+    (import "" "drop-texture" (func $drop-texture (param i32)))
+    (func (export "run") (result i32)
+      (local $queue i32)
+      (local $tex i32)
+      (local.set $queue (call $get-queue))
+      (local.set $tex (call $get-texture))
+      ;; Spill tuple; zeros = none / empty list. Extent starts at offset 88.
+            (i32.store (i32.const 0) (local.get $queue))
+      (i32.store (i32.const 4) (local.get $tex))
+      (i32.store (i32.const 88) (i32.const 1))
+      (i32.store (i32.const 92) (i32.const 1))
+      (i32.store (i32.const 96) (i32.const 1))
+      (i32.store (i32.const 100) (i32.const 1))
+      (i32.store (i32.const 104) (i32.const 1))
+      (call $write (i32.const 0))
+      (call $drop-texture (local.get $tex))
+      (i32.const 1)
+    )
+  )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-queue" (func $gq_lower))
-      (export "write-texture" (func $wt_lower))
+      (export "get-texture" (func $gt_lower))
+      (export "write" (func $w_lower))
+      (export "drop-texture" (func $dt_lower))
     ))
   ))
   (func (export "run") async (result u32)

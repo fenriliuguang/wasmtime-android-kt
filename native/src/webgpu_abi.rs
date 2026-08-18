@@ -8,6 +8,7 @@
 //! S6+: `gpu-texture-descriptor`, `gpu-render-pass-descriptor`, `map-async` result.
 //! S6+ layout/shader: shader-module / bind-group-layout / pipeline-layout / bind-group descriptors.
 //! S6+ pass commands: `set-bind-group-error` (+ kind).
+//! S6+ unmap / write-*-with-copy: `unmap-error`, `write-buffer-error`, texel copy info.
 
 use crate::host::{
     GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuTexture, GpuTextureView,
@@ -740,6 +741,66 @@ pub enum SetBindGroupErrorKind {
 pub struct SetBindGroupError {
     pub kind: SetBindGroupErrorKind,
     pub message: String,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum UnmapErrorKind {
+    #[component(name = "abort-error")]
+    AbortError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct UnmapError {
+    pub kind: UnmapErrorKind,
+    pub message: String,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum WriteBufferErrorKind {
+    #[component(name = "operation-error")]
+    OperationError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct WriteBufferError {
+    pub kind: WriteBufferErrorKind,
+    pub message: String,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuOrigin3D {
+    pub x: Option<u32>,
+    pub y: Option<u32>,
+    pub z: Option<u32>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuTexelCopyTextureInfo {
+    pub texture: Resource<GpuTexture>,
+    #[component(name = "mip-level")]
+    pub mip_level: Option<u32>,
+    pub origin: Option<GpuOrigin3D>,
+    pub aspect: Option<GpuTextureAspect>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+pub struct GpuTexelCopyBufferLayout {
+    pub offset: Option<u64>,
+    #[component(name = "bytes-per-row")]
+    pub bytes_per_row: Option<u32>,
+    #[component(name = "rows-per-image")]
+    pub rows_per_image: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]

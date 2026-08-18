@@ -13,8 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]gpu-queue.write-texture` (stub texture 37, host-fixed 1×1)
- * via [ExperimentalWebGpuBridge.attachWriteTexture].
+ * S6+ `[method]gpu-queue.write-texture-with-copy` (texel copy info, empty data,
+ * size 1×1×1; L2 still host-fixed 1×1) via
+ * [ExperimentalWebGpuBridge.attachWriteTexture].
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodWriteTextureInstrumentedTest {
@@ -34,8 +35,8 @@ class WasiWebGpuMethodWriteTextureInstrumentedTest {
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachWriteTexture(store, host)
                             linker.instantiate(store, component).use { instance ->
-                                val rep = instance.callRunConcurrent(store)
-                                assertEquals("guest returns stub texture 37", 37, rep)
+                                val harness = instance.callRunConcurrent(store)
+                                assertEquals("guest must return harness 1 after write-texture", 1, harness)
                             }
                         }
                     }

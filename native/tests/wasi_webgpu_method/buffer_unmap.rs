@@ -1,13 +1,33 @@
-//! W3+: `get-buffer` + `[method]gpu-buffer.unmap` (self). Guest returns 31.
+//! S6+: `get-buffer` + `[method]gpu-buffer.unmap`
+//! WIT: `(borrow<gpu-buffer>) -> result<_, unmap-error>`.
+//! Guest unmaps; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
 struct GpuBuffer;
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum UnmapErrorKind {
+    #[component(name = "abort-error")]
+    AbortError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct UnmapError {
+    kind: UnmapErrorKind,
+    message: String,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -36,7 +56,7 @@ fn register_method_buffer_unmap(
         move |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
             caller.data_mut().table.get(&buffer).map(|_| ())?;
             unmapped.store(true, Ordering::SeqCst);
-            Ok(())
+            Ok((Ok::<(), UnmapError>(()),))
         },
     )?;
     Ok(())
@@ -79,8 +99,11 @@ fn wasi_webgpu_method_buffer_unmap_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 31, "guest run must return stub buffer 31 after unmap");
-    assert!(unmapped.load(Ordering::SeqCst), "unmap must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 after unmap ok");
+    assert!(
+        unmapped.load(Ordering::SeqCst),
+        "unmap must have been called"
+    );
     Ok(())
 }
 
@@ -104,7 +127,10 @@ fn wasi_webgpu_method_buffer_unmap_call_async() -> wasmtime::Result<()> {
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 31, "guest run must return stub buffer via call_async");
-    assert!(unmapped.load(Ordering::SeqCst), "unmap must have been called");
+    assert_eq!(v, 1, "guest run must return harness 1 via call_async");
+    assert!(
+        unmapped.load(Ordering::SeqCst),
+        "unmap must have been called"
+    );
     Ok(())
 }
