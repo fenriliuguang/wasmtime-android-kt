@@ -4,7 +4,9 @@
 
 mod begin_compute_pass;
 mod begin_render_pass;
+mod buffer_get_mapped_range;
 mod buffer_map_async;
+mod buffer_set_mapped_range;
 mod buffer_unmap;
 mod command_encoder_finish;
 mod compute_pass_dispatch_workgroups;
@@ -17,8 +19,10 @@ mod create_bind_group_layout;
 mod create_buffer;
 mod create_command_encoder;
 mod create_compute_pipeline;
+mod create_compute_pipeline_async;
 mod create_pipeline_layout;
 mod create_render_pipeline;
+mod create_render_pipeline_async;
 mod create_sampler;
 mod create_shader_module;
 mod create_texture;

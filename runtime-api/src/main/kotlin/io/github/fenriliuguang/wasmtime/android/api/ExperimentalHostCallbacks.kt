@@ -80,10 +80,12 @@ interface ExperimentalHostCallbacks {
     /** S6+: guest `gpu-bind-group-descriptor`; L2 still host-fixed empty BGL + empty entries. */
     fun deviceCreateBindGroup(device: Int): Int = unsupported("deviceCreateBindGroup")
 
-    /** S6+: guest `gpu-render-pipeline-descriptor`; L2 still host-fixed stub shader + triangle. */
+    /** S6+: guest `gpu-render-pipeline-descriptor`; L2 still host-fixed stub shader + triangle.
+     *  Also used by `[method]gpu-device.create-render-pipeline-async`. */
     fun deviceCreateRenderPipeline(device: Int): Int = unsupported("deviceCreateRenderPipeline")
 
-    /** S6+: guest `gpu-compute-pipeline-descriptor`; L2 still host-fixed stub shader + empty layout. */
+    /** S6+: guest `gpu-compute-pipeline-descriptor`; L2 still host-fixed stub shader + empty layout.
+     *  Also used by `[method]gpu-device.create-compute-pipeline-async`. */
     fun deviceCreateComputePipeline(device: Int): Int = unsupported("deviceCreateComputePipeline")
 
     /** W3+: host-default compute-pass descriptor (not from Guest). */
