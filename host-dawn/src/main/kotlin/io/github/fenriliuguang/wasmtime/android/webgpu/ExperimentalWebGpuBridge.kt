@@ -1051,10 +1051,19 @@ object ExperimentalWebGpuBridge {
     /**
      * S6+: `[method]gpu-render-pass-encoder.set-viewport` / `set-scissor-rect` /
      * `set-blend-constant` / `set-stencil-reference` / `push-debug-group` /
-     * `pop-debug-group` / `insert-debug-marker`. Native lifts guest args;
-     * L2 unused (no new JNI).
+     * `pop-debug-group` / `insert-debug-marker` / `begin-occlusion-query` /
+     * `end-occlusion-query` / `execute-bundles` / `set-immediates`.
+     * Native lifts guest args; L2 unused (no new JNI).
      */
     fun attachRenderPassState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
+     * S6+: `[method]gpu-render-bundle-encoder.finish` / `set-pipeline` /
+     * `set-bind-group` / `draw`. Native lifts guest args; L2 unused (no new JNI).
+     */
+    fun attachRenderBundleState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
         store.setExperimentalHost(object : ExperimentalHostCallbacks {})
     }
 

@@ -6,8 +6,8 @@ use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
     Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
     GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout,
-    GpuQueue, GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture,
-    GpuTextureView, HostState, Widget,
+    GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder, GpuRenderPipeline,
+    GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
 };
 use crate::jvm;
 use crate::webgpu_abi::{
@@ -15,12 +15,12 @@ use crate::webgpu_abi::{
     GpuBindGroupLayoutDescriptor, GpuBufferDescriptor, GpuColor, GpuCommandBufferDescriptor,
     GpuCommandEncoderDescriptor, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
     GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuMapMode, GpuPipelineErrorReason,
-    GpuPipelineLayoutDescriptor, GpuQuerySet, GpuRenderPassDescriptor, GpuRenderPipelineDescriptor,
-    GpuRequestAdapterOptions, GpuSamplerDescriptor, GpuShaderModuleDescriptor,
-    GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
-    GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue,
-    RecordOptionGpuSize64, RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError,
-    UnmapError, WriteBufferError,
+    GpuPipelineLayoutDescriptor, GpuQuerySet, GpuRenderBundleDescriptor, GpuRenderPassDescriptor,
+    GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
+    GpuShaderModuleDescriptor, GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout,
+    GpuTexelCopyTextureInfo, GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError,
+    RecordGpuPipelineConstantValue, RecordOptionGpuSize64, RequestDeviceError,
+    RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -505,7 +505,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-compute-pass-encoder.dispatch-workgroups` (S6+: x + option y/z; L2 still host-fixed 1x1x1)
     // and S6+ remaining compute-pass recording: dispatch-workgroups-indirect / set-immediates /
     // push-debug-group / pop-debug-group / insert-debug-marker
-    // and S6+ render-pass debug: push-debug-group / pop-debug-group / insert-debug-marker.
+    // and S6+ render-pass debug: push-debug-group / pop-debug-group / insert-debug-marker
+    // and S6+ remaining render-pass: begin-occlusion-query / end-occlusion-query /
+    // execute-bundles / set-immediates
+    // and S6+ render-bundle-encoder: finish / set-pipeline / set-bind-group / draw.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -2347,6 +2350,157 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu-render-pass-encoder.insert-debug-marker",
                 |mut caller, (pass, _marker_label): (Resource<GpuRenderPassEncoder>, String)| {
                     let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.begin-occlusion-query",
+                |mut caller, (pass, _query_index): (Resource<GpuRenderPassEncoder>, u32)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.end-occlusion-query",
+                |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-render-bundle",
+                ResourceType::host::<GpuRenderBundle>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuRenderBundle>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-render-bundle", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuRenderBundle { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.execute-bundles",
+                |mut caller,
+                 (pass, bundles): (
+                    Resource<GpuRenderPassEncoder>,
+                    Vec<Resource<GpuRenderBundle>>,
+                )| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    for bundle in &bundles {
+                        let _ = caller.data_mut().table.get(bundle)?;
+                    }
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.set-immediates",
+                |mut caller,
+                 (pass, _range_offset, _data, _data_offset, _data_size): (
+                    Resource<GpuRenderPassEncoder>,
+                    u32,
+                    Vec<u8>,
+                    Option<u64>,
+                    Option<u64>,
+                )| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-render-bundle-encoder",
+                ResourceType::host::<GpuRenderBundleEncoder>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuRenderBundleEncoder>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-render-bundle-encoder", |mut store, ()| {
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(GpuRenderBundleEncoder { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.finish",
+                |mut caller,
+                 (encoder, _descriptor): (
+                    Resource<GpuRenderBundleEncoder>,
+                    Option<GpuRenderBundleDescriptor>,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let resource = caller.data_mut().table.push(GpuRenderBundle { rep: 0 })?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.set-pipeline",
+                |mut caller,
+                 (encoder, pipeline): (
+                    Resource<GpuRenderBundleEncoder>,
+                    Resource<GpuRenderPipeline>,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let _ = caller.data_mut().table.get(&pipeline)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.set-bind-group",
+                |mut caller,
+                 (encoder, _index, bind_group, _offsets, _start, _length): (
+                    Resource<GpuRenderBundleEncoder>,
+                    u32,
+                    Option<Resource<GpuBindGroup>>,
+                    Option<Vec<u32>>,
+                    Option<u64>,
+                    Option<u32>,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    if let Some(bind_group) = bind_group.as_ref() {
+                        let _ = caller.data_mut().table.get(bind_group)?;
+                    }
+                    Ok((Ok::<(), SetBindGroupError>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.draw",
+                |mut caller,
+                 (encoder, _vertex_count, _instance_count, _first_vertex, _first_instance): (
+                    Resource<GpuRenderBundleEncoder>,
+                    u32,
+                    Option<u32>,
+                    Option<u32>,
+                    Option<u32>,
+                )| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
                     Ok(())
                 },
             )
