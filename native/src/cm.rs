@@ -503,6 +503,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-compute-pass-encoder.set-pipeline` (S6+: borrow<gpu-compute-pipeline>; L2 still host-fixed compute pipeline)
     // and `[method]gpu-compute-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
     // and `[method]gpu-compute-pass-encoder.dispatch-workgroups` (S6+: x + option y/z; L2 still host-fixed 1x1x1)
+    // and S6+ remaining compute-pass recording: dispatch-workgroups-indirect / set-immediates /
+    // push-debug-group / pop-debug-group / insert-debug-marker
+    // and S6+ render-pass debug: push-debug-group / pop-debug-group / insert-debug-marker.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -2322,6 +2325,33 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.push-debug-group",
+                |mut caller, (pass, _group_label): (Resource<GpuRenderPassEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.pop-debug-group",
+                |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.insert-debug-marker",
+                |mut caller, (pass, _marker_label): (Resource<GpuRenderPassEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap("get-compute-pass", |mut store, ()| {
                 let resource = store
                     .data_mut()
@@ -2443,6 +2473,80 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(wasmtime::Error::msg)?;
                     jvm::exp_compute_pass_dispatch_workgroups(&cb, pass_rep)
                         .map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pass-encoder.dispatch-workgroups-indirect",
+                |mut caller,
+                 (pass, buffer, _offset): (
+                    Resource<GpuComputePassEncoder>,
+                    Resource<GpuBuffer>,
+                    u64,
+                )| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    let pass_rep = jvm::exp_begin_compute_pass(&cb, encoder_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    jvm::exp_compute_pass_dispatch_workgroups(&cb, pass_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pass-encoder.set-immediates",
+                |mut caller,
+                 (pass, _range_offset, _data, _data_offset, _data_size): (
+                    Resource<GpuComputePassEncoder>,
+                    u32,
+                    Vec<u8>,
+                    Option<u64>,
+                    Option<u64>,
+                )| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pass-encoder.push-debug-group",
+                |mut caller, (pass, _group_label): (Resource<GpuComputePassEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pass-encoder.pop-debug-group",
+                |mut caller, (pass,): (Resource<GpuComputePassEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pass-encoder.insert-debug-marker",
+                |mut caller, (pass, _marker_label): (Resource<GpuComputePassEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
                     Ok(())
                 },
             )

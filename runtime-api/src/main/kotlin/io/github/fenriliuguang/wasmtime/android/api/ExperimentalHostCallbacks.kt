@@ -135,7 +135,8 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassSetBindGroup")
     }
 
-    /** S6+: JNI still host-fixed 1×1×1; Guest WIT option counts are lifted in native. */
+    /** S6+: JNI still host-fixed 1×1×1; Guest WIT option counts are lifted in native.
+     *  Also used by dispatch-workgroups-indirect. */
     fun computePassDispatchWorkgroups(pass: Int) {
         unsupported("computePassDispatchWorkgroups")
     }
