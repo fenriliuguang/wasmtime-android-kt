@@ -1071,6 +1071,19 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `[method]gpu-device.create-render-bundle-encoder` /
+     * `create-query-set` / `destroy` / `[method]gpu-buffer.destroy` /
+     * `[method]gpu-texture.destroy` / `[method]gpu-query-set.destroy` /
+     * `type` / `count`. Native lifts guest args; L2 unused (no new JNI).
+     */
+    fun attachDeviceQueryAndDestroy(
+        store: Store,
+        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+    ) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: same L2 as [attachRenderPassSetVertexBuffer]; product guest is
      * `[method]gpu-render-pass-encoder.set-index-buffer`.
      */
