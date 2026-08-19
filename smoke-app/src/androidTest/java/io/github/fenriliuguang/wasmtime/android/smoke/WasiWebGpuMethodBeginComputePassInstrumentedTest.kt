@@ -13,10 +13,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S8 `[method]` slice: guest imports `get-encoder` then
+ * L2 `[method]` slice: guest imports `get-encoder` + `get-query-set` then
  * `[method]gpu-command-encoder.begin-compute-pass`
- * (`option<gpu-compute-pass-descriptor>` = none → `own<gpu-compute-pass-encoder>`;
- * drops the own; `run` returns 1) via
+ * (`option<gpu-compute-pass-descriptor>` = some with timestamp-writes
+ * beginning=0/end=1 → `own<gpu-compute-pass-encoder>`;
+ * drops owns; `run` returns 1) via
  * [ExperimentalWebGpuBridge.attachBeginComputePass] + [callRunConcurrent].
  * Flat names remain registered. Not compliance.
  */

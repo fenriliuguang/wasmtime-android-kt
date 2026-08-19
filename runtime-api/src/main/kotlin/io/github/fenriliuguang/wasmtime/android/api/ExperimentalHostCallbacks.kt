@@ -101,8 +101,15 @@ interface ExperimentalHostCallbacks {
      *  Also used by `[method]gpu-device.create-compute-pipeline-async`. */
     fun deviceCreateComputePipeline(device: Int): Int = unsupported("deviceCreateComputePipeline")
 
-    /** W3+: host-default compute-pass descriptor (not from Guest). */
+    /** W3+: host-default compute-pass descriptor leftover; L2 uses [beginComputePassDescribed]. */
     fun beginComputePass(encoder: Int): Int = unsupported("beginComputePass")
+
+    /** L2: Guest encoder + timestamp-write indices (none → 0/0). Host still uses default descriptor. */
+    fun beginComputePassDescribed(
+        encoder: Int,
+        beginningOfPassWriteIndex: Int,
+        endOfPassWriteIndex: Int,
+    ): Int = unsupported("beginComputePassDescribed")
 
     /** Host picks a fixed clear color (smoke). */
     fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")

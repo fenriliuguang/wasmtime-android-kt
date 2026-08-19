@@ -432,6 +432,25 @@ pub fn exp_begin_compute_pass(cb: &GlobalRef, encoder: u32) -> Result<u32, Strin
     )
 }
 
+/// L2: Guest encoder + timestamp-write indices (none → 0/0).
+pub fn exp_begin_compute_pass_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    beginning_of_pass_write_index: u32,
+    end_of_pass_write_index: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "beginComputePassDescribed",
+        "(III)I",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(beginning_of_pass_write_index as i32),
+            HostArg::Int(end_of_pass_write_index as i32),
+        ],
+    )
+}
+
 pub fn exp_begin_render_pass_clear(cb: &GlobalRef, encoder: u32, view: u32) -> Result<u32, String> {
     call_i(
         cb,
