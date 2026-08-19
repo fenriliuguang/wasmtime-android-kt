@@ -497,7 +497,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 described WGSL code)
     // and `[method]gpu-queue.write-buffer-with-copy` (S6+: borrow buffer + list data → result; L2 still host-fixed 4 bytes)
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>)
-    // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>)
+    // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>; L2 described label)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
     // and S6+ `[method]gpu-texture.*` info getters / label / set-label (lift-only stubs).
     // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (lift-only stubs).
@@ -3300,11 +3300,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-command-encoder.finish",
                 |mut caller,
-                 (encoder, _descriptor): (
+                 (encoder, descriptor): (
                     Resource<GpuCommandEncoder>,
                     Option<GpuCommandBufferDescriptor>,
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let label = descriptor
+                        .as_ref()
+                        .and_then(|d| d.label.clone())
+                        .unwrap_or_default();
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -3321,8 +3325,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         encoder_rep
                     };
-                    let buffer_rep = jvm::exp_command_encoder_finish(&cb, l2_encoder)
-                        .map_err(wasmtime::Error::msg)?;
+                    let buffer_rep =
+                        jvm::exp_command_encoder_finish_described(&cb, l2_encoder, label)
+                            .map_err(wasmtime::Error::msg)?;
                     if buffer_rep == 0 {
                         return Err(wasmtime::Error::msg("command-encoder-finish returned 0"));
                     }

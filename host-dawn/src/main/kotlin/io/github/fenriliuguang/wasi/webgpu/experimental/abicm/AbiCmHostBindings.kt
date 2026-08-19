@@ -488,6 +488,9 @@ class AbiCmHostBindings(
     fun commandEncoderFinish(encoder: Int): Int =
         host.commandEncoderFinish(GpuHandle(encoder)).raw
 
+    fun commandEncoderFinish(encoder: Int, label: String): Int =
+        host.commandEncoderFinish(GpuHandle(encoder), label.ifEmpty { null }).raw
+
     fun queueSubmit(queue: Int, commandBuffers: List<Int>) {
         host.queueSubmit(GpuHandle(queue), commandBuffers.map { GpuHandle(it) })
     }

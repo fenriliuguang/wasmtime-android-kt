@@ -1,7 +1,7 @@
-//! S7: `get-encoder` + `[method]gpu-command-encoder.finish`
+//! L2: `get-encoder` + `[method]gpu-command-encoder.finish`
 //! WIT: `(borrow<gpu-command-encoder>, option<gpu-command-buffer-descriptor>)
 //!      -> own<gpu-command-buffer>`.
-//! Guest passes none; drops own; `run` returns harness 1.
+//! Guest passes some(descriptor) label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -56,19 +56,15 @@ fn register_method_finish(linker: &mut Linker<TestHost>) -> wasmtime::Result<()>
     })?;
     webgpu.func_wrap(
         "[method]gpu-command-encoder.finish",
-        |mut caller, (encoder, descriptor): (
+        |mut caller,
+         (encoder, descriptor): (
             Resource<GpuCommandEncoder>,
             Option<GpuCommandBufferDescriptor>,
         )| {
             caller.data_mut().table.get(&encoder).map(|_| ())?;
-            assert!(
-                descriptor.is_none(),
-                "guest must pass descriptor=none this slice"
-            );
-            let resource = caller
-                .data_mut()
-                .table
-                .push(GpuCommandBuffer { rep: 19 })?;
+            let desc = descriptor.expect("guest must pass some(descriptor) this slice");
+            assert_eq!(desc.label.as_deref(), Some("l2"));
+            let resource = caller.data_mut().table.push(GpuCommandBuffer { rep: 19 })?;
             Ok((resource,))
         },
     )?;

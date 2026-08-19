@@ -324,6 +324,9 @@ private class ForwardingHostCallbacks(
 
     override fun commandEncoderFinish(encoder: Int): Int = bindings.commandEncoderFinish(encoder)
 
+    override fun commandEncoderFinishDescribed(encoder: Int, label: String): Int =
+        bindings.commandEncoderFinish(encoder, label)
+
     override fun queueSubmit1(queue: Int, commandBuffer: Int) {
         bindings.queueSubmit1(queue, commandBuffer)
     }

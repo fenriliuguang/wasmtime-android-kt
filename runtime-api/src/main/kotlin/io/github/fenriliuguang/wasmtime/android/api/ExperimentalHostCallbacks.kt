@@ -331,6 +331,10 @@ interface ExperimentalHostCallbacks {
 
     fun commandEncoderFinish(encoder: Int): Int = unsupported("commandEncoderFinish")
 
+    /** L2: Guest optional `gpu-command-buffer-descriptor` label (none → empty). */
+    fun commandEncoderFinishDescribed(encoder: Int, label: String): Int =
+        unsupported("commandEncoderFinishDescribed")
+
     fun queueSubmit1(queue: Int, commandBuffer: Int) {
         unsupported("queueSubmit1")
     }
