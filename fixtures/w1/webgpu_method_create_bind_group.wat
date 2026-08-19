@@ -1,8 +1,8 @@
 ;; S6+: wasi:webgpu/webgpu@0.3.0-rc.2 get-device + get-bind-group-layout +
 ;; [method]gpu-device.create-bind-group
 ;; WIT: create-bind-group: func(descriptor: gpu-bind-group-descriptor) -> gpu-bind-group
-;; Guest passes layout borrow + empty entries + label=none; drops own;
-;; run returns harness 1. L2 still host-fixed empty BGL + empty entries.
+;; Guest passes layout borrow + empty entries + label="l2"; drops own;
+;; run returns harness 1.
 ;; get-device / get-bind-group-layout are test constructors only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -80,6 +80,7 @@
   (core func $dbg_lower (canon resource.drop $gpu-bind-group))
 
   (core module $m
+    (import "" "mem" (memory 1))
     (import "" "get-device" (func $get-device (result i32)))
     (import "" "get-bgl" (func $get-bgl (result i32)))
     (import "" "create-bg"
@@ -87,6 +88,7 @@
         (param i32 i32 i32 i32 i32 i32 i32)
         (result i32)))
     (import "" "drop-bg" (func $drop-bg (param i32)))
+    (data (i32.const 32) "l2")
     (func (export "run") (result i32)
       (local $device i32)
       (local $layout i32)
@@ -99,15 +101,16 @@
           (local.get $layout)
           (i32.const 0)
           (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)))
+          (i32.const 1)
+          (i32.const 32)
+          (i32.const 2)))
       (call $drop-bg (local.get $bg))
       (i32.const 1)
     )
   )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-device" (func $gd_lower))
       (export "get-bgl" (func $gbgl_lower))
       (export "create-bg" (func $cbg_lower))

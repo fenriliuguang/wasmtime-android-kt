@@ -333,6 +333,12 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
+                override fun deviceCreateBindGroupLayout(device: Int): Int =
+                    bindings.deviceCreateBindGroupLayout(
+                        device,
+                        BindGroupLayoutDescriptor(entries = emptyList()),
+                    )
+
                 override fun deviceCreateBindGroup(device: Int): Int {
                     val layout = bindings.deviceCreateBindGroupLayout(
                         device,
@@ -346,6 +352,20 @@ object ExperimentalWebGpuBridge {
                         ),
                     )
                 }
+
+                override fun deviceCreateBindGroupDescribed(
+                    device: Int,
+                    layout: Int,
+                    label: String,
+                ): Int =
+                    bindings.deviceCreateBindGroup(
+                        device,
+                        BindGroupDescriptor(
+                            layout = GpuHandle(layout),
+                            entries = emptyList(),
+                            label = label.ifEmpty { null },
+                        ),
+                    )
             },
         )
     }
