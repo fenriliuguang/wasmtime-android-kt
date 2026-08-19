@@ -660,12 +660,33 @@ pub fn exp_compute_pass_set_pipeline_described(
     )
 }
 
+/// Host-fixed empty bind-group (ignores guest index/group). Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_compute_pass_set_bind_group(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
         cb,
         "computePassSetBindGroup",
         "(I)V",
         vec![HostArg::Int(pass as i32)],
+    )
+}
+
+/// L2: Guest pass/bind-group reps + index (offsets none this slice → empty on host).
+pub fn exp_compute_pass_set_bind_group_described(
+    cb: &GlobalRef,
+    pass: u32,
+    index: u32,
+    bind_group: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassSetBindGroupDescribed",
+        "(III)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(index as i32),
+            HostArg::Int(bind_group as i32),
+        ],
     )
 }
 

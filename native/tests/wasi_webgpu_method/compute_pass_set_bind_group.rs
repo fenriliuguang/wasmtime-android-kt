@@ -1,4 +1,4 @@
-//! S6+: `get-compute-pass` + `get-bind-group` +
+//! L2: `get-compute-pass` + `get-bind-group` +
 //! `[method]gpu-compute-pass-encoder.set-bind-group`
 //! WIT: `(borrow, index, option bind-group, option offsets, option start, option length)
 //!      -> result<_, set-bind-group-error>`.

@@ -260,6 +260,10 @@ private class ForwardingHostCallbacks(
         bindings.computePassSetPipeline(pass, pipeline)
     }
 
+    override fun computePassSetBindGroupDescribed(pass: Int, index: Int, bindGroup: Int) {
+        bindings.computePassSetBindGroup(pass, index, bindGroup)
+    }
+
     override fun computePassDispatchWorkgroupsDescribed(pass: Int, x: Int, y: Int, z: Int) {
         bindings.computePassDispatchWorkgroups(pass, x, y, z)
     }
