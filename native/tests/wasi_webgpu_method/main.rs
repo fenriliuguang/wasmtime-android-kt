@@ -2,6 +2,16 @@
 //!
 //! Keep each slice in its own module; do not add empty ignore stubs.
 
+mod adapter_features;
+mod adapter_info;
+mod adapter_info_architecture;
+mod adapter_info_description;
+mod adapter_info_device;
+mod adapter_info_is_fallback_adapter;
+mod adapter_info_subgroup_max_size;
+mod adapter_info_subgroup_min_size;
+mod adapter_info_vendor;
+mod adapter_limits;
 mod begin_compute_pass;
 mod begin_render_pass;
 mod buffer_destroy;
