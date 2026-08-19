@@ -2,6 +2,7 @@ package io.github.fenriliuguang.wasmtime.android.host.dawn
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
 import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
@@ -80,6 +81,21 @@ private class ForwardingHostCallbacks(
     override fun bufferMapAsyncDescribed(buffer: Int, mode: Int, offset: Long, size: Long) {
         bindings.bufferMapAsync(buffer, mode, offset, size)
     }
+
+    override fun deviceCreateSamplerDescribed(
+        device: Int,
+        magFilter: Int,
+        minFilter: Int,
+        addressModeU: Int,
+    ): Int =
+        bindings.deviceCreateSampler(
+            device,
+            SamplerDescriptor(
+                magFilter = magFilter,
+                minFilter = minFilter,
+                addressModeU = addressModeU,
+            ),
+        )
 
     override fun commandEncoderFinish(encoder: Int): Int = bindings.commandEncoderFinish(encoder)
 

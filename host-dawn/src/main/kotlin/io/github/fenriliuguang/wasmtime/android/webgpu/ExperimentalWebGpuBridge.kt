@@ -12,6 +12,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuBufferUsage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuMapMode
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
 import io.github.fenriliuguang.wasmtime.android.Store
@@ -205,8 +206,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + create-sampler. Host-fixed default sampler
-     * (no Guest record). `[method]gpu-device.create-sampler`.
+     * L2: adapter + device + `[method]gpu-device.create-sampler` with Guest
+     * `gpu-sampler-descriptor` mag/min filter and address-mode-u forwarded to L2.
      */
     fun attachCreateSampler(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -217,8 +218,20 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
-                override fun deviceCreateSampler(device: Int): Int =
-                    bindings.deviceCreateSampler(device)
+                override fun deviceCreateSamplerDescribed(
+                    device: Int,
+                    magFilter: Int,
+                    minFilter: Int,
+                    addressModeU: Int,
+                ): Int =
+                    bindings.deviceCreateSampler(
+                        device,
+                        SamplerDescriptor(
+                            magFilter = magFilter,
+                            minFilter = minFilter,
+                            addressModeU = addressModeU,
+                        ),
+                    )
             },
         )
     }

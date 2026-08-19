@@ -13,10 +13,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S8 `[method]` slice: guest imports `get-device` then
+ * L2 `[method]` slice: guest imports `get-device` then
  * `[method]gpu-device.create-sampler`
- * (`option<gpu-sampler-descriptor>` = none → `own<gpu-sampler>`;
- * drops the own; `run` returns 1) via
+ * (`option<gpu-sampler-descriptor>` = some(repeat + linear filters)
+ * → `own<gpu-sampler>`; drops the own; `run` returns 1) via
  * [ExperimentalWebGpuBridge.attachCreateSampler] + [callRunConcurrent].
  * Flat names remain registered. Not compliance.
  */
