@@ -22,8 +22,9 @@ use crate::webgpu_abi::{
     GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
     GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits, GpuDeviceLostInfo,
     GpuDeviceLostReason, GpuError, GpuErrorFilter, PopErrorScopeError, GpuTexelCopyBufferInfo,
-    GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor,
-    GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
+    GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor, GpuTextureDimension,
+    GpuTextureFormat, GpuTextureUsage, GpuTextureViewDescriptor, GpuTextureViewDimension,
+    MapAsyncError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
     RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
 };
 use futures::channel::oneshot;
@@ -495,6 +496,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>)
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
+    // and S6+ `[method]gpu-texture.*` info getters / label / set-label (lift-only stubs).
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 still host-fixed empty entries)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 still host-fixed empty bind-group-layouts)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 still host-fixed empty BGL + empty entries)
@@ -1312,6 +1314,105 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.destroy",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.width",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.height",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.depth-or-array-layers",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.mip-level-count",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.sample-count",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.dimension",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((GpuTextureDimension::D2,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.format",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((GpuTextureFormat::Rgba8unorm,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.usage",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((GpuTextureUsage::empty(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.texture-binding-view-dimension",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((None::<GpuTextureViewDimension>,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.label",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture.set-label",
+                |mut caller, (texture, _label): (Resource<GpuTexture>, String)| {
                     let _ = caller.data_mut().table.get(&texture)?;
                     Ok(())
                 },
