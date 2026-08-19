@@ -30,6 +30,7 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         val dimension: Int = GpuTextureDimension.D2,
         val format: Int = GpuTextureFormat.RGBA8_UNORM,
         val usage: Int = GpuTextureUsage.RENDER_ATTACHMENT,
+        val textureBindingViewDimension: Int = 0,
     )
     private class TextureView
     private class ComputePipeline(val shader: ShaderModule)
@@ -511,6 +512,13 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     override fun textureUsage(texture: GpuHandle): Int =
         handles.get<Texture>(texture, ResourceKind.Texture).usage
+
+    override fun textureBindingViewDimension(texture: GpuHandle): Int =
+        handles.get<Texture>(texture, ResourceKind.Texture).textureBindingViewDimension
+
+    override fun textureDestroy(texture: GpuHandle) {
+        handles.get<Texture>(texture, ResourceKind.Texture)
+    }
 
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

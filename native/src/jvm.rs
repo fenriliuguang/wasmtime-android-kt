@@ -1379,6 +1379,29 @@ pub fn exp_texture_usage_described(cb: &GlobalRef, texture: u32) -> Result<u32, 
     )
 }
 
+/// L2: Guest texture handle → Dawn `TextureViewDimension` (0 = none).
+pub fn exp_texture_binding_view_dimension_described(
+    cb: &GlobalRef,
+    texture: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "textureBindingViewDimensionDescribed",
+        "(I)I",
+        vec![HostArg::Int(texture as i32)],
+    )
+}
+
+/// L2: Guest texture handle → destroy.
+pub fn exp_texture_destroy_described(cb: &GlobalRef, texture: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "textureDestroyDescribed",
+        "(I)V",
+        vec![HostArg::Int(texture as i32)],
+    )
+}
+
 /// L2: Guest-decoded `gpu-texture-view-descriptor` dimension + aspect (Dawn ints).
 pub fn exp_texture_create_view_described(
     cb: &GlobalRef,

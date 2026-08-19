@@ -296,6 +296,13 @@ private class ForwardingHostCallbacks(
 
     override fun textureUsageDescribed(texture: Int): Int = bindings.textureUsage(texture)
 
+    override fun textureBindingViewDimensionDescribed(texture: Int): Int =
+        bindings.textureBindingViewDimension(texture)
+
+    override fun textureDestroyDescribed(texture: Int) {
+        bindings.textureDestroy(texture)
+    }
+
     override fun commandEncoderCopyBufferToBufferDescribed(
         encoder: Int,
         source: Int,

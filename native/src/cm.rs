@@ -1750,7 +1750,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.destroy",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    jvm::exp_texture_destroy_described(&cb, l2_texture)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -1967,8 +1984,26 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.texture-binding-view-dimension",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((None::<GpuTextureViewDimension>,))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let dawn =
+                        jvm::exp_texture_binding_view_dimension_described(&cb, l2_texture)
+                            .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuTextureViewDimension::from_dawn_u32(dawn),))
                 },
             )
             .map_err(|e| e.to_string())?;

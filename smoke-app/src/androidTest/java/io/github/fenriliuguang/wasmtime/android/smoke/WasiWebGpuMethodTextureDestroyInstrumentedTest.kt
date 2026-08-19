@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-texture.destroy` via [ExperimentalWebGpuBridge.attachDeviceQueryAndDestroy]. */
+/** L2 `[method]gpu-texture.destroy` via [ExperimentalWebGpuBridge.attachTextureInfo]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodTextureDestroyInstrumentedTest {
     @Test
@@ -28,7 +28,7 @@ class WasiWebGpuMethodTextureDestroyInstrumentedTest {
                 Component.compile(engine, bytes).use { component ->
                     Linker.create(engine).use { linker ->
                         Store.create(engine).use { store ->
-                            ExperimentalWebGpuBridge.attachDeviceQueryAndDestroy(store, host)
+                            ExperimentalWebGpuBridge.attachTextureInfo(store, host)
                             linker.instantiate(store, component).use { instance ->
                                 assertEquals(1, instance.callRunConcurrent(store))
                             }

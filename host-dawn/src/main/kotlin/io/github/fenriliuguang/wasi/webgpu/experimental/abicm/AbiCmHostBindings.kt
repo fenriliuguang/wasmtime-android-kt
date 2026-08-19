@@ -270,6 +270,13 @@ class AbiCmHostBindings(
 
     fun textureUsage(texture: Int): Int = host.textureUsage(GpuHandle(texture))
 
+    fun textureBindingViewDimension(texture: Int): Int =
+        host.textureBindingViewDimension(GpuHandle(texture))
+
+    fun textureDestroy(texture: Int) {
+        host.textureDestroy(GpuHandle(texture))
+    }
+
     fun surfaceConfigure(surface: Int, device: Int, adapter: Int, width: Int, height: Int): Int =
         host.surfaceConfigure(
             GpuHandle(surface),

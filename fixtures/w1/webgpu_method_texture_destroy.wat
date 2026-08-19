@@ -1,6 +1,6 @@
 ;; S6+: get-texture + [method]gpu-texture.destroy
 ;; WIT: destroy: func(). Guest constructs texture then destroys; harness 1.
-;; L2 unused (lift-only). get-texture is a test constructor (not product WIT).
+;; L2 described texture handle → destroy (stub 1×1 when get-texture rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-texture" (type $gpu-texture (sub resource)))

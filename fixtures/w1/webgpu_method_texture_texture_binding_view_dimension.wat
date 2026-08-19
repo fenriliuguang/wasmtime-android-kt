@@ -1,6 +1,6 @@
 ;; S6+: get-texture + [method]gpu-texture.texture-binding-view-dimension
 ;; WIT: texture-binding-view-dimension: func() -> option<gpu-texture-view-dimension>.
-;; Host returns none; harness 1. L2 unused (lift-only).
+;; Host returns none; harness 1. L2 described texture handle (stub 1×1 when get-texture rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $viewdim (enum "d1" "d2" "d2-array" "cube" "cube-array" "d3"))
