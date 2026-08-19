@@ -376,6 +376,14 @@ class AbiCmHostBindings(
         )
     }
 
+    fun renderPassDrawIndirect(pass: Int, buffer: Int, offset: Long) {
+        host.renderPassDrawIndirect(GpuHandle(pass), GpuHandle(buffer), offset)
+    }
+
+    fun renderPassDrawIndexedIndirect(pass: Int, buffer: Int, offset: Long) {
+        host.renderPassDrawIndexedIndirect(GpuHandle(pass), GpuHandle(buffer), offset)
+    }
+
     fun renderPassEnd(pass: Int) {
         host.renderPassEnd(GpuHandle(pass))
     }

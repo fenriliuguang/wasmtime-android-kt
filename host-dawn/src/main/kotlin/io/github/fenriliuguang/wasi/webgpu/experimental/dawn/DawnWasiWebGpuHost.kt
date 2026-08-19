@@ -778,6 +778,22 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun renderPassDrawIndirect(pass: GpuHandle, buffer: GpuHandle, offset: Long) {
+        synchronized(gpuLock) {
+            val renderPass = handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+            val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+            renderPass.drawIndirect(gpuBuffer, offset)
+        }
+    }
+
+    override fun renderPassDrawIndexedIndirect(pass: GpuHandle, buffer: GpuHandle, offset: Long) {
+        synchronized(gpuLock) {
+            val renderPass = handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+            val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+            renderPass.drawIndexedIndirect(gpuBuffer, offset)
+        }
+    }
+
     override fun renderPassEnd(pass: GpuHandle) {
         synchronized(gpuLock) {
             val renderPass = handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)

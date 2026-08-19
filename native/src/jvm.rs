@@ -458,6 +458,8 @@ pub fn exp_render_pass_set_pipeline_described(
     )
 }
 
+/// Host-fixed draw(3) leftover. Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_render_pass_draw(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
         cb,
@@ -487,6 +489,44 @@ pub fn exp_render_pass_draw_described(
             HostArg::Int(instance_count as i32),
             HostArg::Int(first_vertex as i32),
             HostArg::Int(first_instance as i32),
+        ],
+    )
+}
+
+/// L2: Guest pass/buffer reps + indirect-offset.
+pub fn exp_render_pass_draw_indirect_described(
+    cb: &GlobalRef,
+    pass: u32,
+    buffer: u32,
+    offset: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassDrawIndirectDescribed",
+        "(IIJ)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Long(offset as i64),
+        ],
+    )
+}
+
+/// L2: Guest pass/buffer reps + indirect-offset (indexed).
+pub fn exp_render_pass_draw_indexed_indirect_described(
+    cb: &GlobalRef,
+    pass: u32,
+    buffer: u32,
+    offset: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassDrawIndexedIndirectDescribed",
+        "(IIJ)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Long(offset as i64),
         ],
     )
 }

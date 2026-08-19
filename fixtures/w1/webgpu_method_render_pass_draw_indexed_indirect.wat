@@ -1,7 +1,7 @@
 ;; S6+: get-pass + get-buffer + [method]gpu-render-pass-encoder.draw-indexed-indirect
 ;; WIT: draw-indexed-indirect: func(indirect-buffer: borrow, indirect-offset: u64)
 ;; Guest passes borrow buffer, offset=0; drops buffer; run returns harness 1.
-;; L2 still host-fixed draw(3).
+;; L2 described JNI forwards pass/buffer reps + offset.
 ;; get-pass / get-buffer are test constructors (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu

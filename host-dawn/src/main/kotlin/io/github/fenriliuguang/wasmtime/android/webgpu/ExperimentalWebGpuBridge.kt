@@ -1102,10 +1102,10 @@ object ExperimentalWebGpuBridge {
 
     /**
      * L2: adapter + device + encoder + begin-render-pass-clear + triangle pipeline
-     * + described draw / draw-indexed (guest counts). Host-fixed [renderPassDraw]
-     * remains for indirect attaches. Same Cpu offscreen TextureView substitution as
+     * + described draw / draw-indexed / draw-indirect / draw-indexed-indirect
+     * (guest counts or buffer+offset). Same Cpu offscreen TextureView substitution as
      * [attachBeginRenderPassClear]. `[method]gpu-render-pass-encoder.draw` /
-     * `draw-indexed`.
+     * `draw-indexed` / `draw-indirect` / `draw-indexed-indirect`.
      */
     fun attachRenderPassDraw(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -1197,6 +1197,44 @@ object ExperimentalWebGpuBridge {
 
                 override fun renderPassEndDescribed(pass: Int) {
                     bindings.renderPassEnd(pass)
+                }
+
+                override fun renderPassDrawIndirectDescribed(
+                    pass: Int,
+                    buffer: Int,
+                    offset: Long,
+                ) {
+                    bindTrianglePipeline(pass)
+                    val resolved =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_INDIRECT_BYTES,
+                                usage = GpuBufferUsage.INDIRECT,
+                            )
+                        }
+                    bindings.renderPassDrawIndirect(pass, resolved, offset)
+                }
+
+                override fun renderPassDrawIndexedIndirectDescribed(
+                    pass: Int,
+                    buffer: Int,
+                    offset: Long,
+                ) {
+                    bindTrianglePipeline(pass)
+                    val resolved =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_INDIRECT_BYTES,
+                                usage = GpuBufferUsage.INDIRECT,
+                            )
+                        }
+                    bindings.renderPassDrawIndexedIndirect(pass, resolved, offset)
                 }
             },
         )
@@ -1586,8 +1624,7 @@ object ExperimentalWebGpuBridge {
 
     /**
      * L2: same attach as [attachRenderPassDraw]; product guests are
-     * `draw-indexed` (described) / `draw-indirect` / `draw-indexed-indirect`
-     * (host-fixed draw JNI).
+     * `draw-indexed` / `draw-indirect` / `draw-indexed-indirect`.
      */
     fun attachRenderPassDrawIndexed(store: Store, host: WasiWebGpuHost) {
         attachRenderPassDraw(store, host)
@@ -1792,6 +1829,8 @@ object ExperimentalWebGpuBridge {
     private const val CLEAR_B = 0.72f
     private const val CLEAR_A = 1.0f
     private const val STUB_BUFFER_SIZE = 4L
+    /** Indirect draw args: 5×u32 (drawIndexedIndirect) with 4-byte alignment. */
+    private const val STUB_INDIRECT_BYTES = 20L
     /** 256-byte row alignment for described texel copies (1×1 RGBA8). */
     private const val STUB_TEXEL_COPY_BYTES = 256L
     private val STUB_BUFFER_BYTES = byteArrayOf(1, 2, 3, 4)

@@ -545,6 +545,18 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         require(firstIndex >= 0) { "firstIndex must be non-negative" }
     }
 
+    override fun renderPassDrawIndirect(pass: GpuHandle, buffer: GpuHandle, offset: Long) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+        require(offset >= 0) { "indirect offset must be non-negative" }
+    }
+
+    override fun renderPassDrawIndexedIndirect(pass: GpuHandle, buffer: GpuHandle, offset: Long) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+        require(offset >= 0) { "indirect offset must be non-negative" }
+    }
+
     override fun renderPassEnd(pass: GpuHandle) {
         handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
         handles.tryDrop(pass)

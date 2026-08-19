@@ -121,8 +121,8 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassSetPipelineDescribed")
     }
 
-    /** S6+: JNI still host-fixed draw(3); Guest WIT options are lifted in native.
-     *  Also used by draw-indirect / draw-indexed-indirect. */
+    /** S6+: host-fixed draw(3) leftover; L2 draw uses [renderPassDrawDescribed].
+     *  Indirect uses [renderPassDrawIndirectDescribed] / [renderPassDrawIndexedIndirectDescribed]. */
     fun renderPassDraw(pass: Int) {
         unsupported("renderPassDraw")
     }
@@ -148,6 +148,16 @@ interface ExperimentalHostCallbacks {
         firstInstance: Int,
     ) {
         unsupported("renderPassDrawIndexedDescribed")
+    }
+
+    /** L2: Guest pass/buffer reps + indirect-offset. */
+    fun renderPassDrawIndirectDescribed(pass: Int, buffer: Int, offset: Long) {
+        unsupported("renderPassDrawIndirectDescribed")
+    }
+
+    /** L2: Guest pass/buffer reps + indirect-offset (indexed). */
+    fun renderPassDrawIndexedIndirectDescribed(pass: Int, buffer: Int, offset: Long) {
+        unsupported("renderPassDrawIndexedIndirectDescribed")
     }
 
     /** S6+: host-fixed empty bind-group leftover; L2 uses [renderPassSetBindGroupDescribed]. */

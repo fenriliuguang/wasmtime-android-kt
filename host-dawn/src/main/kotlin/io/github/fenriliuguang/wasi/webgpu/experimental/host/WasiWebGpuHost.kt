@@ -172,6 +172,10 @@ interface WasiWebGpuHost : AutoCloseable {
         firstInstance: Int = 0,
     )
 
+    fun renderPassDrawIndirect(pass: GpuHandle, buffer: GpuHandle, offset: Long)
+
+    fun renderPassDrawIndexedIndirect(pass: GpuHandle, buffer: GpuHandle, offset: Long)
+
     fun renderPassEnd(pass: GpuHandle)
 
     // --- Command encoding (compute) ---
