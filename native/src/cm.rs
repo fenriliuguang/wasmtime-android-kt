@@ -495,7 +495,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-device.create-texture` (S6+: sync (borrow, gpu-texture-descriptor) -> own<gpu-texture>) and
     // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
     // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 described WGSL code)
-    // and `[method]gpu-queue.write-buffer-with-copy` (S6+: borrow buffer + list data → result; L2 still host-fixed 4 bytes)
+    // and `[method]gpu-queue.write-buffer-with-copy` (S6+: borrow buffer + list data → result; L2 described bytes + offset)
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>; L2 described handles)
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>; L2 described label)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
@@ -3553,7 +3553,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-queue.write-buffer-with-copy",
                 |mut caller,
-                 (queue, _buffer, _offset, _data, _data_offset, _size): (
+                 (queue, buffer, offset, data, data_offset, size): (
                     Resource<GpuQueue>,
                     Resource<GpuBuffer>,
                     u64,
@@ -3561,23 +3561,50 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<u64>,
                     Option<u64>,
                 )| {
-                    let _ = caller.data_mut().table.get(&queue)?;
+                    let queue_rep = caller.data_mut().table.get(&queue)?.rep;
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
+                    let start = data_offset.unwrap_or(0) as usize;
+                    let copy_len = size
+                        .map(|s| s as usize)
+                        .unwrap_or_else(|| data.len().saturating_sub(start));
+                    let payload = if start >= data.len() {
+                        Vec::new()
+                    } else {
+                        let end = (start + copy_len).min(data.len());
+                        data[start..end].to_vec()
+                    };
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let queue_rep =
-                        jvm::exp_device_get_queue(&cb, device_rep).map_err(wasmtime::Error::msg)?;
-                    let buffer_rep =
-                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?;
-                    jvm::exp_queue_write_buffer(&cb, queue_rep, buffer_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let mut device_rep = 0u32;
+                    let l2_queue = if queue_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_device_get_queue(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        queue_rep
+                    };
+                    let l2_buffer = if buffer_rep == 0 {
+                        if device_rep == 0 {
+                            let adapter_rep =
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                            device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                .map_err(wasmtime::Error::msg)?;
+                        }
+                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        buffer_rep
+                    };
+                    jvm::exp_queue_write_buffer_described(
+                        &cb, l2_queue, l2_buffer, offset, payload,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((Ok::<(), WriteBufferError>(()),))
                 },
             )

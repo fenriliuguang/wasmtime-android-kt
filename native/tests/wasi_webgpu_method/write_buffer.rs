@@ -1,7 +1,7 @@
-//! S6+: `get-queue` + `get-buffer` + `[method]gpu-queue.write-buffer-with-copy`
+//! L2: `get-queue` + `get-buffer` + `[method]gpu-queue.write-buffer-with-copy`
 //! WIT: `(borrow queue, borrow buffer, u64, list<u8>, option u64, option u64)
 //!      -> result<_, write-buffer-error>`.
-//! Guest passes offset=0, empty data, offset/size none; `run` returns harness 1.
+//! Guest passes offset=0, 4-byte data `l2\0\0`, offset/size none; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -82,7 +82,7 @@ fn register_method_write_buffer(
             caller.data_mut().table.get(&queue).map(|_| ())?;
             caller.data_mut().table.get(&buffer).map(|_| ())?;
             assert_eq!(offset, 0, "guest must pass buffer-offset=0");
-            assert!(data.is_empty(), "guest must pass empty data this slice");
+            assert_eq!(data, b"l2\0\0", "guest must pass 4-byte data l2\\0\\0");
             assert!(
                 data_offset.is_none(),
                 "guest must pass data-offset=none this slice"

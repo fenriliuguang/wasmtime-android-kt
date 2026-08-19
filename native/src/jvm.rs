@@ -1,6 +1,6 @@
 //! Process-wide `JavaVM` for host callbacks into Kotlin.
 
-use jni::objects::{GlobalRef, JIntArray, JObject, JString, JValue};
+use jni::objects::{GlobalRef, JByteArray, JIntArray, JObject, JString, JValue};
 use jni::sys::JavaVM as SysJavaVM;
 use jni::{JNIEnv, JavaVM};
 use std::cell::RefCell;
@@ -92,6 +92,7 @@ enum HostArg {
     Long(i64),
     Str(String),
     Ints(Vec<i32>),
+    Bytes(Vec<u8>),
 }
 
 fn call_with_host_args<'a>(
@@ -103,6 +104,7 @@ fn call_with_host_args<'a>(
 ) -> Result<jni::objects::JValueOwned<'a>, String> {
     let mut java_strings: Vec<JString<'a>> = Vec::new();
     let mut java_int_arrays: Vec<JIntArray<'a>> = Vec::new();
+    let mut java_byte_arrays: Vec<JByteArray<'a>> = Vec::new();
     for arg in args {
         match arg {
             HostArg::Str(s) => {
@@ -119,11 +121,21 @@ fn call_with_host_args<'a>(
                     .map_err(|e| format!("host {name} set_int_array_region: {e}"))?;
                 java_int_arrays.push(arr);
             }
+            HostArg::Bytes(v) => {
+                let arr = env
+                    .new_byte_array(v.len() as i32)
+                    .map_err(|e| format!("host {name} new_byte_array: {e}"))?;
+                let i8s: Vec<i8> = v.iter().map(|b| *b as i8).collect();
+                env.set_byte_array_region(&arr, 0, &i8s)
+                    .map_err(|e| format!("host {name} set_byte_array_region: {e}"))?;
+                java_byte_arrays.push(arr);
+            }
             HostArg::Int(_) | HostArg::Long(_) => {}
         }
     }
     let mut str_i = 0usize;
     let mut ints_i = 0usize;
+    let mut bytes_i = 0usize;
     let jargs: Vec<JValue> = args
         .iter()
         .map(|arg| match arg {
@@ -137,6 +149,11 @@ fn call_with_host_args<'a>(
             HostArg::Ints(_) => {
                 let v = JValue::Object(&java_int_arrays[ints_i]);
                 ints_i += 1;
+                v
+            }
+            HostArg::Bytes(_) => {
+                let v = JValue::Object(&java_byte_arrays[bytes_i]);
+                bytes_i += 1;
                 v
             }
         })
@@ -1079,12 +1096,35 @@ pub fn exp_queue_submit_described(
     )
 }
 
+/// Host-fixed 4-byte write leftover. Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_queue_write_buffer(cb: &GlobalRef, queue: u32, buffer: u32) -> Result<(), String> {
     call_void(
         cb,
         "queueWriteBuffer",
         "(II)V",
         vec![HostArg::Int(queue as i32), HostArg::Int(buffer as i32)],
+    )
+}
+
+/// L2: Guest buffer handle + offset + `list<u8>` payload (sliced by data-offset/size).
+pub fn exp_queue_write_buffer_described(
+    cb: &GlobalRef,
+    queue: u32,
+    buffer: u32,
+    buffer_offset: u64,
+    data: Vec<u8>,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "queueWriteBufferDescribed",
+        "(IIJ[B)V",
+        vec![
+            HostArg::Int(queue as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Long(buffer_offset as i64),
+            HostArg::Bytes(data),
+        ],
     )
 }
 

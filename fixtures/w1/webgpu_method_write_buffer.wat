@@ -1,8 +1,8 @@
-;; S6+: get-queue + get-buffer + [method]gpu-queue.write-buffer-with-copy
+;; L2: get-queue + get-buffer + [method]gpu-queue.write-buffer-with-copy
 ;; WIT: write-buffer-with-copy: func(buffer, buffer-offset, data, data-offset, size)
 ;;      -> result<_, write-buffer-error>
-;; Guest passes borrow buffer, offset=0, empty data, offset/size none; result ok;
-;; drops buffer; run returns harness 1. L2 still host-fixed 4-byte write.
+;; Guest passes borrow buffer, offset=0, 4-byte data "l2\00\00", offset/size none;
+;; result ok; drops buffer; run returns harness 1.
 ;; get-queue / get-buffer are test constructors (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -60,6 +60,7 @@
       (func $write
         (param i32 i32 i64 i32 i32 i32 i64 i32 i64 i32)))
     (import "" "drop-buffer" (func $drop-buffer (param i32)))
+    (data (i32.const 32) "\6c\32\00\00")
     (func (export "run") (result i32)
       (local $queue i32)
       (local $buf i32)
@@ -71,7 +72,7 @@
         (local.get $queue)
         (local.get $buf)
         (i64.const 0)
-        (i32.const 0) (i32.const 0)
+        (i32.const 32) (i32.const 4)
         (i32.const 0) (i64.const 0)
         (i32.const 0) (i64.const 0)
         (local.get $retptr))
