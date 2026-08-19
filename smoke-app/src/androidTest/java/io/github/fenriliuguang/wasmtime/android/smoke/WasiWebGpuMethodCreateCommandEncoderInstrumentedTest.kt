@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6 `[method]` slice: guest imports `get-device` then
+ * L2 `[method]` slice: guest imports `get-device` then
  * `[method]gpu-device.create-command-encoder`
- * (`option<gpu-command-encoder-descriptor>` = none → `own<gpu-command-encoder>`;
+ * (`option<gpu-command-encoder-descriptor>` = some(label="l2") → `own<gpu-command-encoder>`;
  * drops the own; `run` returns 1) via
  * [ExperimentalWebGpuBridge.attachCreateCommandEncoder] + [callRunConcurrent].
  * Flat `device-create-command-encoder` remains registered. Not compliance.

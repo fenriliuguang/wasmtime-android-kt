@@ -1,8 +1,7 @@
-//! S6: wasi:webgpu/webgpu@0.3.0-rc.2 `get-device` +
-//! `[method]gpu-device.create-command-encoder`
+//! L2: `get-device` + `[method]gpu-device.create-command-encoder`
 //! WIT: `(borrow<gpu-device>, option<gpu-command-encoder-descriptor>)
 //!      -> own<gpu-command-encoder>`.
-//! Guest passes none; drops own; `run` returns harness 1.
+//! Guest passes some(descriptor) label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -31,9 +30,7 @@ struct TestHost {
     table: ResourceTable,
 }
 
-fn register_method_create_command_encoder(
-    linker: &mut Linker<TestHost>,
-) -> wasmtime::Result<()> {
+fn register_method_create_command_encoder(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
     let mut webgpu = linker.instance("wasi:webgpu/webgpu@0.3.0-rc.2")?;
     webgpu.resource(
         "gpu-device",
@@ -59,15 +56,11 @@ fn register_method_create_command_encoder(
     })?;
     webgpu.func_wrap(
         "[method]gpu-device.create-command-encoder",
-        |mut caller, (device, descriptor): (
-            Resource<GpuDevice>,
-            Option<GpuCommandEncoderDescriptor>,
-        )| {
+        |mut caller,
+         (device, descriptor): (Resource<GpuDevice>, Option<GpuCommandEncoderDescriptor>)| {
             caller.data_mut().table.get(&device).map(|_| ())?;
-            assert!(
-                descriptor.is_none(),
-                "guest must pass descriptor=none this slice"
-            );
+            let desc = descriptor.expect("guest must pass some(descriptor) this slice");
+            assert_eq!(desc.label.as_deref(), Some("l2"));
             let resource = caller
                 .data_mut()
                 .table

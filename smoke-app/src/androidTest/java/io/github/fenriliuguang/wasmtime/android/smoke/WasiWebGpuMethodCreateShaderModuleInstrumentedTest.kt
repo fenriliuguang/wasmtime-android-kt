@@ -13,10 +13,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]` slice: guest imports `get-device` then
+ * L2 `[method]` slice: guest imports `get-device` then
  * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-device.create-shader-module`
  * (`(borrow gpu-device, gpu-shader-module-descriptor) -> own gpu-shader-module`;
- * Guest passes empty code; drops the own; `run` returns 1). L2 still host-fixed stub WGSL.
+ * Guest passes WGSL `fn l2`; drops the own; `run` returns 1)
  * via [ExperimentalWebGpuBridge.attachCreateShaderModule] + [callRunConcurrent].
  * Not full wasi:webgpu compliance.
  */

@@ -30,6 +30,10 @@ interface ExperimentalHostCallbacks {
 
     fun deviceCreateCommandEncoder(device: Int): Int = unsupported("deviceCreateCommandEncoder")
 
+    /** L2: Guest optional `gpu-command-encoder-descriptor` label (none → empty). */
+    fun deviceCreateCommandEncoderDescribed(device: Int, label: String): Int =
+        unsupported("deviceCreateCommandEncoderDescribed")
+
     /** W3 frozen: host-fixed buffer descriptor (size/usage not from Guest). */
     fun deviceCreateBuffer(device: Int): Int = unsupported("deviceCreateBuffer")
 
@@ -81,8 +85,12 @@ interface ExperimentalHostCallbacks {
         addressModeU: Int,
     ): Int = unsupported("deviceCreateSamplerDescribed")
 
-    /** S6+: guest `gpu-shader-module-descriptor`; L2 still host-fixed WGSL. */
+    /** S6+: guest `gpu-shader-module-descriptor`; L2 uses [deviceCreateShaderModuleDescribed]. */
     fun deviceCreateShaderModule(device: Int): Int = unsupported("deviceCreateShaderModule")
+
+    /** L2: Guest WGSL `code` (hints/label still unused). */
+    fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
+        unsupported("deviceCreateShaderModuleDescribed")
 
     /** S6+: guest `gpu-bind-group-layout-descriptor`; L2 still host-fixed empty entries. */
     fun deviceCreateBindGroupLayout(device: Int): Int = unsupported("deviceCreateBindGroupLayout")

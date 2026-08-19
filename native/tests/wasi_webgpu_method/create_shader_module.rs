@@ -1,6 +1,6 @@
-//! S6+: `get-device` + `[method]gpu-device.create-shader-module`
+//! L2: `get-device` + `[method]gpu-device.create-shader-module`
 //! WIT: `(borrow<gpu-device>, gpu-shader-module-descriptor) -> own<gpu-shader-module>`.
-//! Guest passes empty code, hints/label none; drops own; `run` returns harness 1.
+//! Guest passes WGSL `fn l2`; hints/label none; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -94,9 +94,9 @@ fn register_method_create_shader_module(linker: &mut Linker<TestHost>) -> wasmti
         "[method]gpu-device.create-shader-module",
         |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuShaderModuleDescriptor)| {
             caller.data_mut().table.get(&device).map(|_| ())?;
-            assert!(
-                descriptor.code.is_empty(),
-                "guest must pass empty shader code this slice"
+            assert_eq!(
+                descriptor.code, "@compute @workgroup_size(1) fn l2() {}",
+                "guest must pass L2 WGSL this slice"
             );
             assert!(descriptor.compilation_hints.is_none());
             assert!(descriptor.label.is_none());

@@ -8,6 +8,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBinding
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.CommandEncoderDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuShaderStage
@@ -212,6 +213,12 @@ class AbiCmHostBindings(
 
     fun deviceCreateCommandEncoder(device: Int): Int =
         host.deviceCreateCommandEncoder(GpuHandle(device)).raw
+
+    fun deviceCreateCommandEncoder(device: Int, label: String): Int =
+        host.deviceCreateCommandEncoder(
+            GpuHandle(device),
+            CommandEncoderDescriptor(label = label.ifEmpty { null }),
+        ).raw
 
     fun textureCreateView(
         texture: Int,
