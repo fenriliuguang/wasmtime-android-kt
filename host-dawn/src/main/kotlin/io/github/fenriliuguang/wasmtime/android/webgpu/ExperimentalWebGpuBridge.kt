@@ -472,8 +472,9 @@ object ExperimentalWebGpuBridge {
 
     /**
      * L2: adapter + device + encoder + `[method]gpu-command-encoder.copy-buffer-to-buffer`
-     * / `clear-buffer` with Guest buffer reps (0 → stub 4-byte) and offsets/size.
-     * Host-fixed [commandEncoderCopyBufferToBuffer] remains for texture-copy attaches.
+     * / `clear-buffer` with Guest buffer reps (0 → stub 4-byte) and offsets/size,
+     * plus texture copies with Guest buffer/texture reps (0 → stub) and 1×1×1 extent.
+     * Host-fixed [commandEncoderCopyBufferToBuffer] remains for older attaches.
      */
     fun attachCopyBufferToBuffer(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -571,14 +572,156 @@ object ExperimentalWebGpuBridge {
                     val clearSize = if (size != 0L) size else STUB_BUFFER_SIZE
                     bindings.commandEncoderClearBuffer(encoder, buf, offset, clearSize)
                 }
+
+                override fun commandEncoderCopyBufferToTextureDescribed(
+                    encoder: Int,
+                    buffer: Int,
+                    texture: Int,
+                    width: Int,
+                    height: Int,
+                    depth: Int,
+                ) {
+                    val src =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_BUFFER_SIZE,
+                                usage = GpuBufferUsage.COPY_SRC,
+                            )
+                        }
+                    val dst =
+                        if (texture != 0) {
+                            texture
+                        } else {
+                            bindings.deviceCreateTexture(
+                                device,
+                                TextureDescriptor(
+                                    size = Extent3D(
+                                        width = width.coerceAtLeast(1),
+                                        height = height.coerceAtLeast(1),
+                                        depthOrArrayLayers = depth.coerceAtLeast(1),
+                                    ),
+                                    format = GpuTextureFormat.RGBA8_UNORM,
+                                    usage = GpuTextureUsage.COPY_DST,
+                                ),
+                            )
+                        }
+                    bindings.commandEncoderCopyBufferToTexture(
+                        encoder,
+                        src,
+                        dst,
+                        width,
+                        height,
+                        depth,
+                    )
+                }
+
+                override fun commandEncoderCopyTextureToBufferDescribed(
+                    encoder: Int,
+                    texture: Int,
+                    buffer: Int,
+                    width: Int,
+                    height: Int,
+                    depth: Int,
+                ) {
+                    val src =
+                        if (texture != 0) {
+                            texture
+                        } else {
+                            bindings.deviceCreateTexture(
+                                device,
+                                TextureDescriptor(
+                                    size = Extent3D(
+                                        width = width.coerceAtLeast(1),
+                                        height = height.coerceAtLeast(1),
+                                        depthOrArrayLayers = depth.coerceAtLeast(1),
+                                    ),
+                                    format = GpuTextureFormat.RGBA8_UNORM,
+                                    usage = GpuTextureUsage.COPY_SRC,
+                                ),
+                            )
+                        }
+                    val dst =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_BUFFER_SIZE,
+                                usage = GpuBufferUsage.COPY_DST,
+                            )
+                        }
+                    bindings.commandEncoderCopyTextureToBuffer(
+                        encoder,
+                        src,
+                        dst,
+                        width,
+                        height,
+                        depth,
+                    )
+                }
+
+                override fun commandEncoderCopyTextureToTextureDescribed(
+                    encoder: Int,
+                    source: Int,
+                    destination: Int,
+                    width: Int,
+                    height: Int,
+                    depth: Int,
+                ) {
+                    val src =
+                        if (source != 0) {
+                            source
+                        } else {
+                            bindings.deviceCreateTexture(
+                                device,
+                                TextureDescriptor(
+                                    size = Extent3D(
+                                        width = width.coerceAtLeast(1),
+                                        height = height.coerceAtLeast(1),
+                                        depthOrArrayLayers = depth.coerceAtLeast(1),
+                                    ),
+                                    format = GpuTextureFormat.RGBA8_UNORM,
+                                    usage = GpuTextureUsage.COPY_SRC,
+                                ),
+                            )
+                        }
+                    val dst =
+                        if (destination != 0) {
+                            destination
+                        } else {
+                            bindings.deviceCreateTexture(
+                                device,
+                                TextureDescriptor(
+                                    size = Extent3D(
+                                        width = width.coerceAtLeast(1),
+                                        height = height.coerceAtLeast(1),
+                                        depthOrArrayLayers = depth.coerceAtLeast(1),
+                                    ),
+                                    format = GpuTextureFormat.RGBA8_UNORM,
+                                    usage = GpuTextureUsage.COPY_DST,
+                                ),
+                            )
+                        }
+                    bindings.commandEncoderCopyTextureToTexture(
+                        encoder,
+                        src,
+                        dst,
+                        width,
+                        height,
+                        depth,
+                    )
+                }
             },
         )
     }
 
     /**
-     * S6+: same attach as [attachCopyBufferToBuffer]; product guests are
+     * L2: same attach as [attachCopyBufferToBuffer]; product guests are
      * `copy-buffer-to-texture` / `copy-texture-to-buffer` /
-     * `copy-texture-to-texture` (host-fixed copy JNI) plus L2 `clear-buffer`.
+     * `copy-texture-to-texture` plus `copy-buffer-to-buffer` / `clear-buffer`.
      */
     fun attachCommandEncoderCopy(store: Store, host: WasiWebGpuHost) {
         attachCopyBufferToBuffer(store, host)

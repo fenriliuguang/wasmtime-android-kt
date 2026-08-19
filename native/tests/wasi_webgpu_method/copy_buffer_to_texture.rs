@@ -1,4 +1,4 @@
-//! S6+: `get-encoder` + `get-buffer` + `get-texture` +
+//! L2: `get-encoder` + `get-buffer` + `get-texture` +
 //! `[method]gpu-command-encoder.copy-buffer-to-texture`
 //! WIT: `(borrow encoder, gpu-texel-copy-buffer-info,
 //!      gpu-texel-copy-texture-info, gpu-extent3-d)`.

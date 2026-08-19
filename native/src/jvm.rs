@@ -505,7 +505,8 @@ pub fn exp_compute_pass_dispatch_workgroups(cb: &GlobalRef, pass: u32) -> Result
     )
 }
 
-/// Host-fixed 4-byte copy (ignores guest buffers). Kept for texture-copy attaches.
+/// Host-fixed 4-byte copy (ignores guest buffers). Kept for older attaches.
+#[allow(dead_code)]
 pub fn exp_copy_buffer_to_buffer(cb: &GlobalRef, encoder: u32) -> Result<(), String> {
     call_void(
         cb,
@@ -557,6 +558,81 @@ pub fn exp_clear_buffer_described(
             HostArg::Int(buffer as i32),
             HostArg::Long(offset as i64),
             HostArg::Long(size as i64),
+        ],
+    )
+}
+
+/// L2: Guest encoder/buffer/texture reps + extent (option height/depth → 1).
+pub fn exp_copy_buffer_to_texture_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    buffer: u32,
+    texture: u32,
+    width: u32,
+    height: u32,
+    depth: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderCopyBufferToTextureDescribed",
+        "(IIIIII)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Int(texture as i32),
+            HostArg::Int(width as i32),
+            HostArg::Int(height as i32),
+            HostArg::Int(depth as i32),
+        ],
+    )
+}
+
+/// L2: Guest encoder/texture/buffer reps + extent (option height/depth → 1).
+pub fn exp_copy_texture_to_buffer_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    texture: u32,
+    buffer: u32,
+    width: u32,
+    height: u32,
+    depth: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderCopyTextureToBufferDescribed",
+        "(IIIIII)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(texture as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Int(width as i32),
+            HostArg::Int(height as i32),
+            HostArg::Int(depth as i32),
+        ],
+    )
+}
+
+/// L2: Guest encoder/src/dst texture reps + extent (option height/depth → 1).
+pub fn exp_copy_texture_to_texture_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    source: u32,
+    destination: u32,
+    width: u32,
+    height: u32,
+    depth: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderCopyTextureToTextureDescribed",
+        "(IIIIII)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(source as i32),
+            HostArg::Int(destination as i32),
+            HostArg::Int(width as i32),
+            HostArg::Int(height as i32),
+            HostArg::Int(depth as i32),
         ],
     )
 }

@@ -1,8 +1,8 @@
-;; S6+: get-encoder + two get-texture +
+;; L2: get-encoder + two get-texture +
 ;; [method]gpu-command-encoder.copy-texture-to-texture
 ;; Guest passes two texture borrows, mip/origin/aspect none, size 1×1×1;
 ;; drops owns; run returns harness 1. Flattened params exceed 16 (spill).
-;; L2 still host-fixed 4-byte buffer copy.
+;; Native forwards encoder/src/dst texture reps + extent into described JNI.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-texture" (type $gpu-texture (sub resource)))

@@ -129,6 +129,60 @@ private class ForwardingHostCallbacks(
         )
     }
 
+    override fun commandEncoderCopyBufferToTextureDescribed(
+        encoder: Int,
+        buffer: Int,
+        texture: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        bindings.commandEncoderCopyBufferToTexture(
+            encoder,
+            buffer,
+            texture,
+            width,
+            height,
+            depth,
+        )
+    }
+
+    override fun commandEncoderCopyTextureToBufferDescribed(
+        encoder: Int,
+        texture: Int,
+        buffer: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        bindings.commandEncoderCopyTextureToBuffer(
+            encoder,
+            texture,
+            buffer,
+            width,
+            height,
+            depth,
+        )
+    }
+
+    override fun commandEncoderCopyTextureToTextureDescribed(
+        encoder: Int,
+        source: Int,
+        destination: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        bindings.commandEncoderCopyTextureToTexture(
+            encoder,
+            source,
+            destination,
+            width,
+            height,
+            depth,
+        )
+    }
+
     override fun commandEncoderClearBufferDescribed(
         encoder: Int,
         buffer: Int,

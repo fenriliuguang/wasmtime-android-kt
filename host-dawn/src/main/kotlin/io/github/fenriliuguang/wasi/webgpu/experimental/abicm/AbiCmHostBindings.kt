@@ -352,6 +352,60 @@ class AbiCmHostBindings(
         )
     }
 
+    fun commandEncoderCopyBufferToTexture(
+        encoder: Int,
+        buffer: Int,
+        texture: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        host.commandEncoderCopyBufferToTexture(
+            GpuHandle(encoder),
+            GpuHandle(buffer),
+            GpuHandle(texture),
+            width,
+            height,
+            depth,
+        )
+    }
+
+    fun commandEncoderCopyTextureToBuffer(
+        encoder: Int,
+        texture: Int,
+        buffer: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        host.commandEncoderCopyTextureToBuffer(
+            GpuHandle(encoder),
+            GpuHandle(texture),
+            GpuHandle(buffer),
+            width,
+            height,
+            depth,
+        )
+    }
+
+    fun commandEncoderCopyTextureToTexture(
+        encoder: Int,
+        source: Int,
+        destination: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        host.commandEncoderCopyTextureToTexture(
+            GpuHandle(encoder),
+            GpuHandle(source),
+            GpuHandle(destination),
+            width,
+            height,
+            depth,
+        )
+    }
+
     fun commandEncoderClearBuffer(
         encoder: Int,
         buffer: Int,

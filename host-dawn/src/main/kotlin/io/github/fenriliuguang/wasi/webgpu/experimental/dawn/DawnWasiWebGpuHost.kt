@@ -41,6 +41,7 @@ import androidx.webgpu.GPURenderPassDescriptor
 import androidx.webgpu.GPURenderPassEncoder
 import androidx.webgpu.GPURenderPipeline
 import androidx.webgpu.GPURenderPipelineDescriptor
+import androidx.webgpu.GPUTexelCopyBufferInfo
 import androidx.webgpu.GPUTexelCopyBufferLayout
 import androidx.webgpu.GPUTexelCopyTextureInfo
 import androidx.webgpu.OptionalBool
@@ -813,6 +814,60 @@ class DawnWasiWebGpuHost private constructor(
         val src = handles.get<GPUBuffer>(source, ResourceKind.Buffer)
         val dst = handles.get<GPUBuffer>(destination, ResourceKind.Buffer)
         commandEncoder.copyBufferToBuffer(src, sourceOffset, dst, destinationOffset, size)
+    }
+
+    override fun commandEncoderCopyBufferToTexture(
+        encoder: GpuHandle,
+        buffer: GpuHandle,
+        texture: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        val commandEncoder = handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        val src = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+        val dst = handles.get<GPUTexture>(texture, ResourceKind.Texture)
+        commandEncoder.copyBufferToTexture(
+            GPUTexelCopyBufferInfo(buffer = src),
+            GPUTexelCopyTextureInfo(texture = dst),
+            GPUExtent3D(width = width, height = height, depthOrArrayLayers = depth),
+        )
+    }
+
+    override fun commandEncoderCopyTextureToBuffer(
+        encoder: GpuHandle,
+        texture: GpuHandle,
+        buffer: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        val commandEncoder = handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        val src = handles.get<GPUTexture>(texture, ResourceKind.Texture)
+        val dst = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+        commandEncoder.copyTextureToBuffer(
+            GPUTexelCopyTextureInfo(texture = src),
+            GPUTexelCopyBufferInfo(buffer = dst),
+            GPUExtent3D(width = width, height = height, depthOrArrayLayers = depth),
+        )
+    }
+
+    override fun commandEncoderCopyTextureToTexture(
+        encoder: GpuHandle,
+        source: GpuHandle,
+        destination: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        val commandEncoder = handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        val src = handles.get<GPUTexture>(source, ResourceKind.Texture)
+        val dst = handles.get<GPUTexture>(destination, ResourceKind.Texture)
+        commandEncoder.copyTextureToTexture(
+            GPUTexelCopyTextureInfo(texture = src),
+            GPUTexelCopyTextureInfo(texture = dst),
+            GPUExtent3D(width = width, height = height, depthOrArrayLayers = depth),
+        )
     }
 
     override fun commandEncoderClearBuffer(

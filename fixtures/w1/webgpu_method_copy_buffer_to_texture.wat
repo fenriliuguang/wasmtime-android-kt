@@ -1,10 +1,10 @@
-;; S6+: get-encoder + get-buffer + get-texture +
+;; L2: get-encoder + get-buffer + get-texture +
 ;; [method]gpu-command-encoder.copy-buffer-to-texture
 ;; WIT: copy-buffer-to-texture: func(source: gpu-texel-copy-buffer-info,
 ;;      destination: gpu-texel-copy-texture-info, copy-size: gpu-extent3-d)
 ;; Guest passes buffer/texture borrows, layout/mip/origin/aspect none, size 1×1×1;
 ;; drops owns; run returns harness 1. Flattened params exceed 16 (spill).
-;; L2 still host-fixed 4-byte buffer copy.
+;; Native forwards encoder/buffer/texture reps + extent into described JNI.
 ;; get-encoder / get-buffer / get-texture are test constructors (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu

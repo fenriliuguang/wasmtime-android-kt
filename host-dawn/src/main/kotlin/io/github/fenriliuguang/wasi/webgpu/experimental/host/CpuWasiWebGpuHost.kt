@@ -242,6 +242,45 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         commandEncoder.copies += CopyOp(source, sourceOffset, destination, destinationOffset, size)
     }
 
+    override fun commandEncoderCopyBufferToTexture(
+        encoder: GpuHandle,
+        buffer: GpuHandle,
+        texture: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+        handles.get<Texture>(texture, ResourceKind.Texture)
+    }
+
+    override fun commandEncoderCopyTextureToBuffer(
+        encoder: GpuHandle,
+        texture: GpuHandle,
+        buffer: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        handles.get<Texture>(texture, ResourceKind.Texture)
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+    }
+
+    override fun commandEncoderCopyTextureToTexture(
+        encoder: GpuHandle,
+        source: GpuHandle,
+        destination: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        handles.get<Texture>(source, ResourceKind.Texture)
+        handles.get<Texture>(destination, ResourceKind.Texture)
+    }
+
     override fun commandEncoderClearBuffer(
         encoder: GpuHandle,
         buffer: GpuHandle,
