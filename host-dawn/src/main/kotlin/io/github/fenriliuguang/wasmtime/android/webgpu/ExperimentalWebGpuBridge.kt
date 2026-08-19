@@ -1130,6 +1130,18 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `[constructor]record-option-gpu-size64` and
+     * `[method]record-option-gpu-size64.add` / `get` / `has` /
+     * `remove` / `keys` / `values` / `entries`. Native lifts; L2 unused (no new JNI).
+     */
+    fun attachRecordOptionGpuSize64(
+        store: Store,
+        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+    ) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: `[method]gpu-command-buffer.label` / `set-label`,
      * `[method]gpu-command-encoder.label` / `set-label`,
      * `[method]gpu-compilation-info.messages`, and

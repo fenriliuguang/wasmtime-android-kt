@@ -168,6 +168,13 @@
 | `webgpu_method_record_gpu_pipeline_constant_value_keys.wasm` | **`[constructor]record-gpu-pipeline-constant-value`** + **`[method]record-gpu-pipeline-constant-value.keys` sync** `list<string>` | `run: async func() -> u32` | construct record → keys (host empty); harness returns 1 |
 | `webgpu_method_record_gpu_pipeline_constant_value_values.wasm` | **`[constructor]record-gpu-pipeline-constant-value`** + **`[method]record-gpu-pipeline-constant-value.values` sync** `list<f64>` | `run: async func() -> u32` | construct record → values (host empty); harness returns 1 |
 | `webgpu_method_record_gpu_pipeline_constant_value_entries.wasm` | **`[constructor]record-gpu-pipeline-constant-value`** + **`[method]record-gpu-pipeline-constant-value.entries` sync** `list<tuple<string, f64>>` | `run: async func() -> u32` | construct record → entries (host empty); harness returns 1 |
+| `webgpu_method_record_option_gpu_size64_add.wasm` | **`[constructor]record-option-gpu-size64`** + **`[method]record-option-gpu-size64.add` sync** void | `run: async func() -> u32` | construct record → add (empty key, none); harness returns 1 |
+| `webgpu_method_record_option_gpu_size64_get.wasm` | **`[constructor]record-option-gpu-size64`** + **`[method]record-option-gpu-size64.get` sync** `option<option<u64>>` | `run: async func() -> u32` | construct record → get (empty key; host none); harness returns 1 |
+| `webgpu_method_record_option_gpu_size64_has.wasm` | **`[constructor]record-option-gpu-size64`** + **`[method]record-option-gpu-size64.has` sync** `bool` | `run: async func() -> u32` | construct record → has (empty key; host false); harness returns 1 |
+| `webgpu_method_record_option_gpu_size64_remove.wasm` | **`[constructor]record-option-gpu-size64`** + **`[method]record-option-gpu-size64.remove` sync** void | `run: async func() -> u32` | construct record → remove (empty key); harness returns 1 |
+| `webgpu_method_record_option_gpu_size64_keys.wasm` | **`[constructor]record-option-gpu-size64`** + **`[method]record-option-gpu-size64.keys` sync** `list<string>` | `run: async func() -> u32` | construct record → keys (host empty); harness returns 1 |
+| `webgpu_method_record_option_gpu_size64_values.wasm` | **`[constructor]record-option-gpu-size64`** + **`[method]record-option-gpu-size64.values` sync** `list<option<u64>>` | `run: async func() -> u32` | construct record → values (host empty); harness returns 1 |
+| `webgpu_method_record_option_gpu_size64_entries.wasm` | **`[constructor]record-option-gpu-size64`** + **`[method]record-option-gpu-size64.entries` sync** `list<tuple<string, option<u64>>>` | `run: async func() -> u32` | construct record → entries (host empty); harness returns 1 |
 | `webgpu_method_supported_limits_max_bind_groups.wasm` | `get-supported-limits` + **`[method]gpu-supported-limits.max-bind-groups` sync** `u32` | `run: async func() -> u32` | construct limits → max-bind-groups (host-fixed 1); harness returns 1 |
 | `webgpu_method_supported_limits_max_bind_groups_plus_vertex_buffers.wasm` | `get-supported-limits` + **`[method]gpu-supported-limits.max-bind-groups-plus-vertex-buffers` sync** `u32` | `run: async func() -> u32` | construct limits → max-bind-groups-plus-vertex-buffers (host-fixed 1); harness returns 1 |
 | `webgpu_method_supported_limits_max_bindings_per_bind_group.wasm` | `get-supported-limits` + **`[method]gpu-supported-limits.max-bindings-per-bind-group` sync** `u32` | `run: async func() -> u32` | construct limits → max-bindings-per-bind-group (host-fixed 1); harness returns 1 |
@@ -554,6 +561,20 @@ wasm-tools parse fixtures/w1/webgpu_method_record_gpu_pipeline_constant_value_va
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_record_gpu_pipeline_constant_value_values.wasm
 wasm-tools parse fixtures/w1/webgpu_method_record_gpu_pipeline_constant_value_entries.wat -o fixtures/w1/webgpu_method_record_gpu_pipeline_constant_value_entries.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_record_gpu_pipeline_constant_value_entries.wasm
+wasm-tools parse fixtures/w1/webgpu_method_record_option_gpu_size64_add.wat -o fixtures/w1/webgpu_method_record_option_gpu_size64_add.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_record_option_gpu_size64_add.wasm
+wasm-tools parse fixtures/w1/webgpu_method_record_option_gpu_size64_get.wat -o fixtures/w1/webgpu_method_record_option_gpu_size64_get.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_record_option_gpu_size64_get.wasm
+wasm-tools parse fixtures/w1/webgpu_method_record_option_gpu_size64_has.wat -o fixtures/w1/webgpu_method_record_option_gpu_size64_has.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_record_option_gpu_size64_has.wasm
+wasm-tools parse fixtures/w1/webgpu_method_record_option_gpu_size64_remove.wat -o fixtures/w1/webgpu_method_record_option_gpu_size64_remove.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_record_option_gpu_size64_remove.wasm
+wasm-tools parse fixtures/w1/webgpu_method_record_option_gpu_size64_keys.wat -o fixtures/w1/webgpu_method_record_option_gpu_size64_keys.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_record_option_gpu_size64_keys.wasm
+wasm-tools parse fixtures/w1/webgpu_method_record_option_gpu_size64_values.wat -o fixtures/w1/webgpu_method_record_option_gpu_size64_values.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_record_option_gpu_size64_values.wasm
+wasm-tools parse fixtures/w1/webgpu_method_record_option_gpu_size64_entries.wat -o fixtures/w1/webgpu_method_record_option_gpu_size64_entries.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_record_option_gpu_size64_entries.wasm
 wasm-tools parse fixtures/w1/webgpu_method_supported_limits_max_bind_groups.wat -o fixtures/w1/webgpu_method_supported_limits_max_bind_groups.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_supported_limits_max_bind_groups.wasm
 wasm-tools parse fixtures/w1/webgpu_method_supported_limits_max_bind_groups_plus_vertex_buffers.wat -o fixtures/w1/webgpu_method_supported_limits_max_bind_groups_plus_vertex_buffers.wasm

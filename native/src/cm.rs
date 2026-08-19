@@ -1127,6 +1127,79 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap("[constructor]record-option-gpu-size64", |mut store, ()| {
+                let resource = store.data_mut().table.push(RecordOptionGpuSize64)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-option-gpu-size64.add",
+                |mut caller,
+                 (record, _key, _value): (Resource<RecordOptionGpuSize64>, String, Option<u64>)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-option-gpu-size64.get",
+                |mut caller,
+                 (record, _key): (Resource<RecordOptionGpuSize64>, String)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((None::<Option<u64>>,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-option-gpu-size64.has",
+                |mut caller,
+                 (record, _key): (Resource<RecordOptionGpuSize64>, String)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((false,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-option-gpu-size64.remove",
+                |mut caller,
+                 (record, _key): (Resource<RecordOptionGpuSize64>, String)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-option-gpu-size64.keys",
+                |mut caller, (record,): (Resource<RecordOptionGpuSize64>,)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((Vec::<String>::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-option-gpu-size64.values",
+                |mut caller, (record,): (Resource<RecordOptionGpuSize64>,)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((Vec::<Option<u64>>::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-option-gpu-size64.entries",
+                |mut caller, (record,): (Resource<RecordOptionGpuSize64>,)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((Vec::<(String, Option<u64>)>::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .resource(
                 "gpu-device",
                 ResourceType::host::<GpuDevice>(),
