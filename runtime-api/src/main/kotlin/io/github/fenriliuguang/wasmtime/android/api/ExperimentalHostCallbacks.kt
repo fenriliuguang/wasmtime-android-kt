@@ -106,6 +106,13 @@ interface ExperimentalHostCallbacks {
     /** S6+: guest `gpu-pipeline-layout-descriptor`; L2 still host-fixed empty bind-group-layouts. */
     fun deviceCreatePipelineLayout(device: Int): Int = unsupported("deviceCreatePipelineLayout")
 
+    /** L2: Guest bind-group-layout handles + optional label (none → empty). */
+    fun deviceCreatePipelineLayoutDescribed(
+        device: Int,
+        bindGroupLayouts: IntArray,
+        label: String,
+    ): Int = unsupported("deviceCreatePipelineLayoutDescribed")
+
     /** S6+: guest `gpu-bind-group-descriptor`; L2 still host-fixed empty BGL + empty entries. */
     fun deviceCreateBindGroup(device: Int): Int = unsupported("deviceCreateBindGroup")
 

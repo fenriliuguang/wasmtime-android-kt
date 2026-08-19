@@ -1,6 +1,6 @@
-//! S6+: `get-device` + `[method]gpu-device.create-pipeline-layout`
+//! L2: `get-device` + `[method]gpu-device.create-pipeline-layout`
 //! WIT: `(borrow<gpu-device>, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>`.
-//! Guest passes empty bind-group-layouts; drops own; `run` returns harness 1.
+//! Guest passes empty bind-group-layouts + label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -81,7 +81,7 @@ fn register_method_create_pipeline_layout(linker: &mut Linker<TestHost>) -> wasm
                 "guest must pass empty bind-group-layouts this slice"
             );
             assert!(descriptor.immediate_size.is_none());
-            assert!(descriptor.label.is_none());
+            assert_eq!(descriptor.label.as_deref(), Some("l2"));
             let resource = caller
                 .data_mut()
                 .table

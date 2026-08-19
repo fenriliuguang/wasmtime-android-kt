@@ -2,6 +2,7 @@ package io.github.fenriliuguang.wasmtime.android.host.dawn
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassColorAttachment
@@ -78,6 +79,19 @@ private class ForwardingHostCallbacks(
             BindGroupDescriptor(
                 layout = GpuHandle(layout),
                 entries = emptyList(),
+                label = label.ifEmpty { null },
+            ),
+        )
+
+    override fun deviceCreatePipelineLayoutDescribed(
+        device: Int,
+        bindGroupLayouts: IntArray,
+        label: String,
+    ): Int =
+        bindings.deviceCreatePipelineLayout(
+            device,
+            PipelineLayoutDescriptor(
+                bindGroupLayouts = bindGroupLayouts.map { GpuHandle(it) },
                 label = label.ifEmpty { null },
             ),
         )

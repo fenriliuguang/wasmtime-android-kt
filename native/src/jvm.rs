@@ -495,12 +495,33 @@ pub fn exp_create_bind_group_layout_described(
     )
 }
 
+/// Host-fixed empty pipeline-layout leftover. Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_create_pipeline_layout(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreatePipelineLayout",
         "(I)I",
         vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest bind-group-layout handles + optional label (none → empty string).
+pub fn exp_create_pipeline_layout_described(
+    cb: &GlobalRef,
+    device: u32,
+    bind_group_layouts: Vec<i32>,
+    label: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreatePipelineLayoutDescribed",
+        "(I[ILjava/lang/String;)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Ints(bind_group_layouts),
+            HostArg::Str(label),
+        ],
     )
 }
 

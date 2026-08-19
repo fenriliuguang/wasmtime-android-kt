@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
  * S6+ `[method]` slice: guest imports `get-device` then
  * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-device.create-pipeline-layout`
  * (`(borrow gpu-device, gpu-pipeline-layout-descriptor) -> own gpu-pipeline-layout`;
- * Guest passes empty bind-group-layouts; drops the own; `run` returns 1). L2 still host-fixed empty layouts.
+ * Guest passes empty bind-group-layouts + label=`l2`; drops the own; `run` returns 1). L2 described handles + label.
  * via [ExperimentalWebGpuBridge.attachCreatePipelineLayout] + [callRunConcurrent].
  * Not full wasi:webgpu compliance.
  */

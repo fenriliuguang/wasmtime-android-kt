@@ -2,8 +2,8 @@
 ;; [method]gpu-device.create-pipeline-layout
 ;; WIT: create-pipeline-layout: func(descriptor: gpu-pipeline-layout-descriptor)
 ;;      -> gpu-pipeline-layout
-;; Guest passes empty bind-group-layouts, immediate-size=none, label=none;
-;; drops own; run returns harness 1. L2 still host-fixed empty layouts.
+;; Guest passes empty bind-group-layouts, immediate-size=none, label="l2";
+;; drops own; run returns harness 1.
 ;; get-device is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -51,12 +51,14 @@
   (core func $dpl_lower (canon resource.drop $gpu-pipeline-layout))
 
   (core module $m
+    (import "" "mem" (memory 1))
     (import "" "get-device" (func $get-device (result i32)))
     (import "" "create-pll"
       (func $create-pll
         (param i32 i32 i32 i32 i32 i32 i32 i32)
         (result i32)))
     (import "" "drop-pll" (func $drop-pll (param i32)))
+    (data (i32.const 32) "l2")
     (func (export "run") (result i32)
       (local $device i32)
       (local $pll i32)
@@ -68,15 +70,16 @@
           (i32.const 0)
           (i32.const 0)
           (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)))
+          (i32.const 1)
+          (i32.const 32)
+          (i32.const 2)))
       (call $drop-pll (local.get $pll))
       (i32.const 1)
     )
   )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-device" (func $gd_lower))
       (export "create-pll" (func $cpl_lower))
       (export "drop-pll" (func $dpl_lower))
