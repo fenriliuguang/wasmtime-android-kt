@@ -840,6 +840,16 @@ class DawnWasiWebGpuHost private constructor(
         computePass.dispatchWorkgroups(workgroupCountX, workgroupCountY, workgroupCountZ)
     }
 
+    override fun computePassDispatchWorkgroupsIndirect(
+        pass: GpuHandle,
+        buffer: GpuHandle,
+        offset: Long,
+    ) {
+        val computePass = handles.get<GPUComputePassEncoder>(pass, ResourceKind.ComputePassEncoder)
+        val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+        computePass.dispatchWorkgroupsIndirect(gpuBuffer, offset)
+    }
+
     override fun computePassEnd(pass: GpuHandle) {
         val computePass = handles.get<GPUComputePassEncoder>(pass, ResourceKind.ComputePassEncoder)
         computePass.end()

@@ -223,6 +223,21 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         computePass.encoder.dispatch = DispatchOp(pipelineHandle, bindGroupHandle)
     }
 
+    override fun computePassDispatchWorkgroupsIndirect(
+        pass: GpuHandle,
+        buffer: GpuHandle,
+        offset: Long,
+    ) {
+        val computePass = handles.get<ComputePass>(pass, ResourceKind.ComputePassEncoder)
+        val pipelineHandle = computePass.pipeline
+            ?: throw HostException.Validation("pipeline not set")
+        val bindGroupHandle = computePass.bindGroup
+            ?: throw HostException.Validation("bind group not set")
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+        require(offset >= 0) { "indirect offset must be non-negative" }
+        computePass.encoder.dispatch = DispatchOp(pipelineHandle, bindGroupHandle)
+    }
+
     override fun computePassEnd(pass: GpuHandle) {
         handles.get<ComputePass>(pass, ResourceKind.ComputePassEncoder)
         handles.drop(pass)

@@ -2,7 +2,7 @@
 ;; [method]gpu-compute-pass-encoder.dispatch-workgroups-indirect
 ;; WIT: dispatch-workgroups-indirect: func(indirect-buffer: borrow, indirect-offset: u64)
 ;; Guest passes borrow buffer, offset=0; drops buffer; run returns harness 1.
-;; L2 still host-fixed 1×1×1 dispatch.
+;; L2 described JNI forwards pass/buffer reps + offset.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-buffer" (type $gpu-buffer (sub resource)))

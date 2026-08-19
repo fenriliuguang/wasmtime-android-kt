@@ -201,6 +201,8 @@ interface WasiWebGpuHost : AutoCloseable {
         workgroupCountZ: Int = 1,
     )
 
+    fun computePassDispatchWorkgroupsIndirect(pass: GpuHandle, buffer: GpuHandle, offset: Long)
+
     fun computePassEnd(pass: GpuHandle)
 
     fun commandEncoderCopyBufferToBuffer(

@@ -304,6 +304,10 @@ class AbiCmHostBindings(
         host.computePassDispatchWorkgroups(GpuHandle(pass), x, y, z)
     }
 
+    fun computePassDispatchWorkgroupsIndirect(pass: Int, buffer: Int, offset: Long) {
+        host.computePassDispatchWorkgroupsIndirect(GpuHandle(pass), GpuHandle(buffer), offset)
+    }
+
     fun computePassEnd(pass: Int) {
         host.computePassEnd(GpuHandle(pass))
     }
