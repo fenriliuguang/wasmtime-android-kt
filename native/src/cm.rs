@@ -640,6 +640,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap(
+                "[method]wgsl-language-features.has",
+                |mut caller, (features, _value): (Resource<WgslLanguageFeatures>, String)| {
+                    let _ = caller.data_mut().table.get(&features)?;
+                    Ok((false,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap("get-adapter", |mut store, ()| {
                 let resource = store.data_mut().table.push(GpuAdapter { rep: 0 })?;
                 Ok((resource,))

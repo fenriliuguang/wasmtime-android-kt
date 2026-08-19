@@ -97,6 +97,7 @@ mod gpu_error_kind;
 mod gpu_error_message;
 mod gpu_get_preferred_canvas_format;
 mod gpu_wgsl_language_features;
+mod wgsl_language_features_has;
 mod insert_debug_marker;
 mod pop_debug_group;
 mod push_debug_group;

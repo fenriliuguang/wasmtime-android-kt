@@ -221,6 +221,7 @@
 | `webgpu_method_supported_limits_min_uniform_buffer_offset_alignment.wasm` | `get-supported-limits` + **`[method]gpu-supported-limits.min-uniform-buffer-offset-alignment` sync** `u32` | `run: async func() -> u32` | construct limits → min-uniform-buffer-offset-alignment (host-fixed 1); harness returns 1 |
 | `webgpu_method_gpu_get_preferred_canvas_format.wasm` | `get-gpu` + **`[method]gpu.get-preferred-canvas-format` sync** `gpu-texture-format` | `run: async func() -> u32` | construct gpu → get-preferred-canvas-format (host rgba8unorm); harness returns 1 |
 | `webgpu_method_gpu_wgsl_language_features.wasm` | `get-gpu` + **`[method]gpu.wgsl-language-features` sync** `own<wgsl-language-features>` | `run: async func() -> u32` | construct gpu → wgsl-language-features → drop own; harness returns 1 |
+| `webgpu_method_wgsl_language_features_has.wasm` | `get-gpu` + **`[method]gpu.wgsl-language-features`** + **`[method]wgsl-language-features.has` sync** `bool` | `run: async func() -> u32` | construct gpu → wgsl-language-features → has (empty value; host false); harness returns 1 |
 | `webgpu_method_gpu_error_kind.wasm` | `get-gpu-error` + **`[method]gpu-error.kind` sync** `gpu-error-kind` | `run: async func() -> u32` | construct error → kind (host validation-error); harness returns 1 |
 | `webgpu_method_gpu_error_message.wasm` | `get-gpu-error` + **`[method]gpu-error.message` sync** `string` | `run: async func() -> u32` | construct error → message (host empty); harness returns 1 |
 | `webgpu_method_uncaptured_error_event_error.wasm` | `get-uncaptured-error-event` + **`[method]gpu-uncaptured-error-event.error` sync** `own<gpu-error>` | `run: async func() -> u32` | construct event → error → drop own error; harness returns 1 |
@@ -675,6 +676,8 @@ wasm-tools parse fixtures/w1/webgpu_method_gpu_get_preferred_canvas_format.wat -
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_gpu_get_preferred_canvas_format.wasm
 wasm-tools parse fixtures/w1/webgpu_method_gpu_wgsl_language_features.wat -o fixtures/w1/webgpu_method_gpu_wgsl_language_features.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_gpu_wgsl_language_features.wasm
+wasm-tools parse fixtures/w1/webgpu_method_wgsl_language_features_has.wat -o fixtures/w1/webgpu_method_wgsl_language_features_has.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_wgsl_language_features_has.wasm
 wasm-tools parse fixtures/w1/webgpu_method_gpu_error_kind.wat -o fixtures/w1/webgpu_method_gpu_error_kind.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_gpu_error_kind.wasm
 wasm-tools parse fixtures/w1/webgpu_method_gpu_error_message.wat -o fixtures/w1/webgpu_method_gpu_error_message.wasm
