@@ -635,12 +635,28 @@ pub fn exp_compute_pass_end_described(cb: &GlobalRef, pass: u32) -> Result<(), S
     )
 }
 
+/// Host-fixed stub compute pipeline (ignores guest pipeline). Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_compute_pass_set_pipeline(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
         cb,
         "computePassSetPipeline",
         "(I)V",
         vec![HostArg::Int(pass as i32)],
+    )
+}
+
+/// L2: Guest compute-pass + pipeline reps (0 → stub in attach).
+pub fn exp_compute_pass_set_pipeline_described(
+    cb: &GlobalRef,
+    pass: u32,
+    pipeline: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassSetPipelineDescribed",
+        "(II)V",
+        vec![HostArg::Int(pass as i32), HostArg::Int(pipeline as i32)],
     )
 }
 

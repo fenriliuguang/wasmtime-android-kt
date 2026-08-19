@@ -1,4 +1,4 @@
-//! S6+: `get-compute-pass` + `get-compute-pipeline` +
+//! L2: `get-compute-pass` + `get-compute-pipeline` +
 //! `[method]gpu-compute-pass-encoder.set-pipeline`
 //! WIT: `(borrow<gpu-compute-pass-encoder>, borrow<gpu-compute-pipeline>)`.
 //! Guest borrows the pipeline; `run` returns harness 1.

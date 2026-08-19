@@ -197,9 +197,14 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassEndDescribed")
     }
 
-    /** S6+: JNI still host-fixed; Guest WIT borrow pipeline is lifted in native. */
+    /** S6+: host-fixed compute pipeline leftover; L2 uses [computePassSetPipelineDescribed]. */
     fun computePassSetPipeline(pass: Int) {
         unsupported("computePassSetPipeline")
+    }
+
+    /** L2: Guest compute-pass + pipeline reps (0 → stub in attach). */
+    fun computePassSetPipelineDescribed(pass: Int, pipeline: Int) {
+        unsupported("computePassSetPipelineDescribed")
     }
 
     /** S6+: JNI still host-fixed empty bind-group; Guest WIT option is lifted in native. */

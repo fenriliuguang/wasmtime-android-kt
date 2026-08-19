@@ -2,7 +2,7 @@
 ;; [method]gpu-compute-pass-encoder.set-pipeline
 ;; WIT: set-pipeline: func(pipeline: borrow<gpu-compute-pipeline>)
 ;; Guest borrows the pipeline; drops owns; run returns harness 1.
-;; L2 still host-fixed compute pipeline.
+;; L2 described JNI forwards pass + pipeline reps (0 → stub in attach).
 ;; get-compute-pass / get-compute-pipeline are test constructors (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu

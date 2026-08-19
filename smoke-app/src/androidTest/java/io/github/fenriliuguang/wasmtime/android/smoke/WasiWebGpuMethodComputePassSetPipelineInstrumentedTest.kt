@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]` slice: `get-compute-pass` + `get-compute-pipeline` then
+ * L2 `[method]` slice: `get-compute-pass` + `get-compute-pipeline` then
  * `[method]gpu-compute-pass-encoder.set-pipeline` (borrow pipeline;
- * L2 still host-fixed compute pipeline) via
+ * described pass+pipeline reps, 0 → stub compute pipeline) via
  * [ExperimentalWebGpuBridge.attachComputePassSetPipeline] + [callRunConcurrent].
  * Not compliance.
  */

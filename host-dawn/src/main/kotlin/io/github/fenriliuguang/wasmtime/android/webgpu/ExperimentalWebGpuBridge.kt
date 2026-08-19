@@ -735,9 +735,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+ / S6+: adapter + device + encoder + begin-compute-pass + host-fixed
-     * compute pipeline set-pipeline.
-     * Guest passes WIT `borrow<gpu-compute-pipeline>` (JNI still host-fixed).
+     * L2: adapter + device + encoder + begin-compute-pass + described
+     * set-pipeline (guest pipeline rep; 0 → stub compute pipeline).
      * `[method]gpu-compute-pass-encoder.set-pipeline`.
      */
     fun attachComputePassSetPipeline(store: Store, host: WasiWebGpuHost) {
@@ -759,22 +758,31 @@ object ExperimentalWebGpuBridge {
                     bindings.commandEncoderBeginComputePass(encoder)
 
                 override fun computePassSetPipeline(pass: Int) {
-                    val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
-                    val layout = bindings.deviceCreatePipelineLayout(
-                        device,
-                        PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
-                    )
-                    val pipeline = bindings.deviceCreateComputePipeline(
-                        device,
-                        ComputePipelineDescriptor(
-                            layout = GpuHandle(layout),
-                            compute = ProgrammableStage(
-                                module = GpuHandle(shader),
-                                entryPoint = "main",
-                            ),
-                        ),
-                    )
-                    bindings.computePassSetPipeline(pass, pipeline)
+                    computePassSetPipelineDescribed(pass, 0)
+                }
+
+                override fun computePassSetPipelineDescribed(pass: Int, pipeline: Int) {
+                    val resolved =
+                        if (pipeline != 0) {
+                            pipeline
+                        } else {
+                            val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                            val layout = bindings.deviceCreatePipelineLayout(
+                                device,
+                                PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                            )
+                            bindings.deviceCreateComputePipeline(
+                                device,
+                                ComputePipelineDescriptor(
+                                    layout = GpuHandle(layout),
+                                    compute = ProgrammableStage(
+                                        module = GpuHandle(shader),
+                                        entryPoint = "main",
+                                    ),
+                                ),
+                            )
+                        }
+                    bindings.computePassSetPipeline(pass, resolved)
                 }
             },
         )
