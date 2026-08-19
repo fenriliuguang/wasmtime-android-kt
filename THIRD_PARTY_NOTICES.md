@@ -41,6 +41,14 @@ cargo license --manifest-path native/Cargo.toml --avoid-dev-deps --avoid-build-d
 
 JUnit is test-only and does not enter a published AAR runtime.
 
-## 4. Redistribution
+## 4. Vendored WIT (`third_party/wasi-webgpu/`)
+
+| Tree | License |
+|------|---------|
+| `wasi-webgpu` tag `v0.3.0-rc.2` (`wit/webgpu.wit`, `wit/imports.wit`) | W3C Community CLA. Text: [`third_party/wasi-webgpu/v0.3.0-rc.2/LICENSE.md`](third_party/wasi-webgpu/v0.3.0-rc.2/LICENSE.md). Origin: [`ORIGIN.txt`](third_party/wasi-webgpu/v0.3.0-rc.2/ORIGIN.txt). |
+
+Do not refresh this tree unless [`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md) changes the pin.
+
+## 5. Redistribution
 
 Binaries that include `libwasmtime_android_kt.so` must keep this repo’s `LICENSE` / `NOTICE` and follow upstream Wasmtime (Apache-2.0 WITH LLVM-exception) plus any other embedded dependencies.

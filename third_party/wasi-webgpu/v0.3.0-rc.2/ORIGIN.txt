@@ -1,0 +1,6 @@
+Vendored from https://github.com/WebAssembly/wasi-webgpu
+Tag: v0.3.0-rc.2
+Files: wit/webgpu.wit, wit/imports.wit, LICENSE.md
+
+Refresh only when docs/scheme/guest-shape.md changes the pin.
+Agents must not WebFetch or clone this package while the pin is unchanged.
