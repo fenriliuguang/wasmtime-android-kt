@@ -1,6 +1,6 @@
-//! S6+: `get-device` + `get-bind-group-layout` + `[method]gpu-device.create-bind-group`
+//! L2: `get-device` + `get-bind-group-layout` + `[method]gpu-device.create-bind-group`
 //! WIT: `(borrow<gpu-device>, gpu-bind-group-descriptor) -> own<gpu-bind-group>`.
-//! Guest passes layout borrow + empty entries; drops own; `run` returns harness 1.
+//! Guest passes layout borrow + empty entries + label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -180,7 +180,7 @@ fn register_method_create_bind_group(linker: &mut Linker<TestHost>) -> wasmtime:
                 descriptor.entries.is_empty(),
                 "guest must pass empty bind-group entries this slice"
             );
-            assert!(descriptor.label.is_none());
+            assert_eq!(descriptor.label.as_deref(), Some("l2"));
             let resource = caller.data_mut().table.push(GpuBindGroup { rep: 67 })?;
             Ok((resource,))
         },

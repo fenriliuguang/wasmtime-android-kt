@@ -16,8 +16,8 @@ import org.junit.runner.RunWith
  * S6+ `[method]` slice: guest imports `get-device` + `get-bind-group-layout` then
  * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-device.create-bind-group`
  * (`(borrow gpu-device, gpu-bind-group-descriptor) -> own gpu-bind-group`;
- * Guest passes layout borrow + empty entries; drops the own; `run` returns 1).
- * L2 still host-fixed empty BGL + empty entries.
+ * Guest passes layout borrow + empty entries + label=`l2`; drops the own; `run` returns 1).
+ * L2 described layout handle + label.
  * via [ExperimentalWebGpuBridge.attachCreateBindGroup] + [callRunConcurrent].
  * Not full wasi:webgpu compliance.
  */
