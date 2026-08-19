@@ -2,7 +2,7 @@
 
 **English** | [中文](guest-shape.zh.md)
 
-Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (`wit/webgpu.wit`, tag `v0.3.0-rc.2`).
+Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (vendored [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit), tag `v0.3.0-rc.2`). Agent shape-slice playbook: [`../agent/webgpu-shape-slice.md`](../agent/webgpu-shape-slice.md).
 
 Extracted from the 2026-08-16 shape RFC (now in [`../archive/`](../archive/README.md)). Dual-product scheduling in that RFC is **not** current; see [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md).
 

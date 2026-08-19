@@ -93,4 +93,5 @@ Full rules: [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md).
 - [`scheme/long-term-plan.md`](scheme/long-term-plan.md)  
 - [`build.md`](build.md)  
 - [`mapping/artifacts.md`](mapping/artifacts.md)  
+- [`agent/webgpu-shape-slice.md`](agent/webgpu-shape-slice.md) — S6+ `[method]` agent playbook  
 - [`../archive/README.md`](archive/README.md) — historical M0–M5  

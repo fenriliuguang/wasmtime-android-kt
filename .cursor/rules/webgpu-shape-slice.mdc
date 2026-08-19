@@ -1,0 +1,15 @@
+---
+description: wasi:webgpu S6+ shape-slice playbook — vendored WIT, no full-file reads, narrow tests
+alwaysApply: true
+---
+
+# WebGPU shape slices
+
+For S6+ / `[method]` / 「下一刀」work, read `docs/agent/webgpu-shape-slice.md` and follow it.
+
+- Do not WebFetch wasi-webgpu. Use `third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit` (Grep the resource).
+- Do not Read `native/src/cm.rs` without offset. Grep, then ~80 lines.
+- Copy one named test twin from the playbook; do not scan extra tests for templates.
+- Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
+- rustfmt only changed `.rs` files. Narrow `cargo check --locked --lib` + filtered `wasi_webgpu_method`.
+- Remaining methods: `.\scripts\webgpu-shape-remaining.ps1`

@@ -41,6 +41,14 @@ cargo license --manifest-path native/Cargo.toml --avoid-dev-deps --avoid-build-d
 
 JUnit 仅用于测试，不进入发布 AAR 运行时。
 
-## 4. 分发说明
+## 4. Vendor 的 WIT（`third_party/wasi-webgpu/`）
+
+| 树 | 许可 |
+|----|------|
+| `wasi-webgpu` 标签 `v0.3.0-rc.2` | W3C Community CLA。见 [`third_party/wasi-webgpu/v0.3.0-rc.2/LICENSE.md`](third_party/wasi-webgpu/v0.3.0-rc.2/LICENSE.md)。 |
+
+钉版变更时才刷新。正文以[英文](THIRD_PARTY_NOTICES.md)为准。
+
+## 5. 分发说明
 
 发布或再分发含 `libwasmtime_android_kt.so` 的二进制时，须保留本仓 `LICENSE` / `NOTICE`，并遵守上游 Wasmtime（Apache-2.0 WITH LLVM-exception）及其他嵌入依赖的再分发条件。
