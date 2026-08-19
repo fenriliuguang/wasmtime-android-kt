@@ -64,6 +64,13 @@ private class ForwardingHostCallbacks(
     override fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
         bindings.deviceCreateShaderModule(device, code)
 
+    override fun deviceCreateBindGroupLayoutDescribed(
+        device: Int,
+        binding: Int,
+        visibility: Int,
+        bufferType: Int,
+    ): Int = bindings.deviceCreateBindGroupLayoutDescribed(device, binding, visibility, bufferType)
+
     override fun beginComputePassDescribed(
         encoder: Int,
         beginningOfPassWriteIndex: Int,

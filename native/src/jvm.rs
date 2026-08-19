@@ -463,12 +463,35 @@ pub fn exp_create_shader_module_described(
     )
 }
 
+/// Host-fixed empty-layout leftover. Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_create_bind_group_layout(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateBindGroupLayout",
         "(I)I",
         vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest first bind-group-layout entry (binding / visibility / buffer type; -1 = none).
+pub fn exp_create_bind_group_layout_described(
+    cb: &GlobalRef,
+    device: u32,
+    binding: i32,
+    visibility: i32,
+    buffer_type: i32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateBindGroupLayoutDescribed",
+        "(IIII)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Int(binding),
+            HostArg::Int(visibility),
+            HostArg::Int(buffer_type),
+        ],
     )
 }
 

@@ -12,7 +12,8 @@ use crate::host::{
 use crate::jvm;
 use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
-    GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferDescriptor,
+    GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferBindingType,
+    GpuBufferDescriptor,
     GpuBufferMapState, GpuBufferUsage, GpuColor, GpuCommandBufferDescriptor,
     GpuCommandEncoderDescriptor, GpuCompilationInfo, GpuCompilationMessage,
     GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
@@ -23,6 +24,7 @@ use crate::webgpu_abi::{
     GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
     GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits, GpuDeviceLostInfo,
     GpuDeviceLostReason, GpuError, GpuErrorFilter, GpuErrorKind, GpuUncapturedErrorEvent,
+    GpuShaderStage,
     PopErrorScopeError, GpuTexelCopyBufferInfo,
     GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor, GpuTextureDimension,
     GpuTextureFormat, GpuTextureUsage, GpuTextureViewDescriptor, GpuTextureViewDimension,
@@ -501,7 +503,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
     // and S6+ `[method]gpu-texture.*` info getters / label / set-label (lift-only stubs).
     // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (lift-only stubs).
-    // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 still host-fixed empty entries)
+    // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described first entry)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 still host-fixed empty bind-group-layouts)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 still host-fixed empty BGL + empty entries)
     // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 still host-fixed stub shader + triangle)
@@ -2342,11 +2344,33 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-bind-group-layout",
-                |mut caller, (device, _descriptor): (
+                |mut caller, (device, descriptor): (
                     Resource<GpuDevice>,
                     GpuBindGroupLayoutDescriptor,
                 )| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let (binding, visibility, buffer_type) = match descriptor.entries.first() {
+                        Some(entry) => {
+                            let buffer_type = match entry.buffer.as_ref().and_then(|b| b.ty) {
+                                Some(GpuBufferBindingType::Uniform) => 0,
+                                Some(GpuBufferBindingType::Storage) => 1,
+                                Some(GpuBufferBindingType::ReadOnlyStorage) => 2,
+                                None => -1,
+                            };
+                            let mut visibility = 0i32;
+                            if entry.visibility.contains(GpuShaderStage::VERTEX) {
+                                visibility |= 1;
+                            }
+                            if entry.visibility.contains(GpuShaderStage::FRAGMENT) {
+                                visibility |= 2;
+                            }
+                            if entry.visibility.contains(GpuShaderStage::COMPUTE) {
+                                visibility |= 4;
+                            }
+                            (entry.binding as i32, visibility, buffer_type)
+                        }
+                        None => (0, 0, -1),
+                    };
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -2361,8 +2385,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         device_rep
                     };
-                    let layout_rep = jvm::exp_create_bind_group_layout(&cb, l2_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let layout_rep = jvm::exp_create_bind_group_layout_described(
+                        &cb,
+                        l2_device,
+                        binding,
+                        visibility,
+                        buffer_type,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     if layout_rep == 0 {
                         return Err(wasmtime::Error::msg(
                             "device-create-bind-group-layout returned 0",

@@ -2,8 +2,8 @@
 ;; [method]gpu-device.create-bind-group-layout
 ;; WIT: create-bind-group-layout: func(descriptor: gpu-bind-group-layout-descriptor)
 ;;      -> gpu-bind-group-layout
-;; Guest passes empty entries + label=none; drops own; run returns harness 1.
-;; L2 still host-fixed empty entries.
+;; Guest passes one uniform buffer entry (binding=0, visibility=compute);
+;; label=none; drops own; run returns harness 1.
 ;; get-device is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -102,6 +102,7 @@
   (core func $dbgl_lower (canon resource.drop $gpu-bind-group-layout))
 
   (core module $m
+    (import "" "mem" (memory 1))
     (import "" "get-device" (func $get-device (result i32)))
     (import "" "create-bgl"
       (func $create-bgl
@@ -112,11 +113,18 @@
       (local $device i32)
       (local $bgl i32)
       (local.set $device (call $get-device))
+      ;; One BGL entry at 256: binding=0, visibility=COMPUTE (4),
+      ;; buffer=some { type=some(uniform) }.
+      (i32.store (i32.const 256) (i32.const 0))
+      (i32.store (i32.const 260) (i32.const 4))
+      (i32.store (i32.const 264) (i32.const 1))
+      (i32.store (i32.const 272) (i32.const 1))
+      (i32.store (i32.const 276) (i32.const 0))
       (local.set $bgl
         (call $create-bgl
           (local.get $device)
-          (i32.const 0)
-          (i32.const 0)
+          (i32.const 256)
+          (i32.const 1)
           (i32.const 0)
           (i32.const 0)
           (i32.const 0)))
@@ -126,6 +134,7 @@
   )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-device" (func $gd_lower))
       (export "create-bgl" (func $cbgl_lower))
       (export "drop-bgl" (func $dbgl_lower))
