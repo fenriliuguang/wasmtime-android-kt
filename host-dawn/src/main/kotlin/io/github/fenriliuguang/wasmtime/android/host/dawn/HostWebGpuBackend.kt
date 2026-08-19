@@ -276,6 +276,14 @@ private class ForwardingHostCallbacks(
         bindings.computePassDispatchWorkgroups(pass, x, y, z)
     }
 
+    override fun computePassDispatchWorkgroupsIndirectDescribed(
+        pass: Int,
+        buffer: Int,
+        offset: Long,
+    ) {
+        bindings.computePassDispatchWorkgroupsIndirect(pass, buffer, offset)
+    }
+
     override fun commandEncoderFinish(encoder: Int): Int = bindings.commandEncoderFinish(encoder)
 
     override fun queueSubmit1(queue: Int, commandBuffer: Int) {

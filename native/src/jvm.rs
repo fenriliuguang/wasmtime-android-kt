@@ -730,7 +730,7 @@ pub fn exp_compute_pass_set_bind_group_described(
     )
 }
 
-/// Host-fixed dispatch(1,1,1) (ignores guest counts). Kept for indirect attach.
+/// Host-fixed dispatch(1,1,1) leftover. Kept for older attach objects.
 #[allow(dead_code)]
 pub fn exp_compute_pass_dispatch_workgroups(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
@@ -758,6 +758,25 @@ pub fn exp_compute_pass_dispatch_workgroups_described(
             HostArg::Int(x as i32),
             HostArg::Int(y as i32),
             HostArg::Int(z as i32),
+        ],
+    )
+}
+
+/// L2: Guest pass/buffer reps + indirect-offset.
+pub fn exp_compute_pass_dispatch_workgroups_indirect_described(
+    cb: &GlobalRef,
+    pass: u32,
+    buffer: u32,
+    offset: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassDispatchWorkgroupsIndirectDescribed",
+        "(IIJ)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Long(offset as i64),
         ],
     )
 }

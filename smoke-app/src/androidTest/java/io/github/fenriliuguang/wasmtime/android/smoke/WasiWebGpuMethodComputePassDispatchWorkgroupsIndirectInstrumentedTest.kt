@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]gpu-compute-pass-encoder.dispatch-workgroups-indirect` via
+ * L2 `[method]gpu-compute-pass-encoder.dispatch-workgroups-indirect` via
  * [ExperimentalWebGpuBridge.attachComputePassDispatchWorkgroupsIndirect].
  */
 @RunWith(AndroidJUnit4::class)

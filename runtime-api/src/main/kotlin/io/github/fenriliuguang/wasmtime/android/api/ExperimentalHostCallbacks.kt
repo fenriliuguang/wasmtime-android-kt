@@ -227,10 +227,14 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassSetBindGroupDescribed")
     }
 
-    /** S6+: host-fixed 1×1×1 leftover; L2 uses [computePassDispatchWorkgroupsDescribed].
-     *  Also used by dispatch-workgroups-indirect. */
+    /** S6+: host-fixed 1×1×1 leftover; L2 uses [computePassDispatchWorkgroupsDescribed]. */
     fun computePassDispatchWorkgroups(pass: Int) {
         unsupported("computePassDispatchWorkgroups")
+    }
+
+    /** L2: Guest pass/buffer reps + indirect-offset. */
+    fun computePassDispatchWorkgroupsIndirectDescribed(pass: Int, buffer: Int, offset: Long) {
+        unsupported("computePassDispatchWorkgroupsIndirectDescribed")
     }
 
     /** L2: Guest pass rep + workgroup-count-x / option y/z (none → 1). */

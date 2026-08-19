@@ -1,4 +1,4 @@
-//! S6+: `get-compute-pass` + `get-buffer` +
+//! L2: `get-compute-pass` + `get-buffer` +
 //! `[method]gpu-compute-pass-encoder.dispatch-workgroups-indirect`
 //! WIT: `(borrow, borrow<gpu-buffer>, indirect-offset: u64)`.
 //! Guest passes offset=0; harness 1.

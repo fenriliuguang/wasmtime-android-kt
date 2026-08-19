@@ -845,14 +845,15 @@ object ExperimentalWebGpuBridge {
 
     /**
      * L2: adapter + device + encoder + begin-compute-pass + stub pipeline +
-     * empty bind-group + described dispatch (guest x/y/z; none → 1).
-     * `[method]gpu-compute-pass-encoder.dispatch-workgroups`.
-     * Indirect still uses host-fixed [computePassDispatchWorkgroups].
+     * empty bind-group + described dispatch (guest x/y/z; none → 1) or
+     * described dispatch-indirect (guest buffer+offset; buffer 0 → INDIRECT stub).
+     * `[method]gpu-compute-pass-encoder.dispatch-workgroups` /
+     * `dispatch-workgroups-indirect`.
      */
     fun attachComputePassDispatchWorkgroups(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         var device = 0
-        fun bindStubAndDispatch(pass: Int, x: Int, y: Int, z: Int) {
+        fun bindStubPipelineAndGroup(pass: Int) {
             val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
             val layout = bindings.deviceCreatePipelineLayout(
                 device,
@@ -881,7 +882,24 @@ object ExperimentalWebGpuBridge {
             )
             bindings.computePassSetPipeline(pass, pipeline)
             bindings.computePassSetBindGroup(pass, 0, bindGroup)
+        }
+        fun bindStubAndDispatch(pass: Int, x: Int, y: Int, z: Int) {
+            bindStubPipelineAndGroup(pass)
             bindings.computePassDispatchWorkgroups(pass, x, y, z)
+        }
+        fun bindStubAndDispatchIndirect(pass: Int, buffer: Int, offset: Long) {
+            bindStubPipelineAndGroup(pass)
+            val resolved =
+                if (buffer != 0) {
+                    buffer
+                } else {
+                    bindings.deviceCreateBuffer(
+                        device,
+                        size = STUB_INDIRECT_BYTES,
+                        usage = GpuBufferUsage.INDIRECT,
+                    )
+                }
+            bindings.computePassDispatchWorkgroupsIndirect(pass, resolved, offset)
         }
         store.setExperimentalHost(
             object : ExperimentalHostCallbacks {
@@ -910,12 +928,20 @@ object ExperimentalWebGpuBridge {
                 ) {
                     bindStubAndDispatch(pass, x, y, z)
                 }
+
+                override fun computePassDispatchWorkgroupsIndirectDescribed(
+                    pass: Int,
+                    buffer: Int,
+                    offset: Long,
+                ) {
+                    bindStubAndDispatchIndirect(pass, buffer, offset)
+                }
             },
         )
     }
 
     /**
-     * S6+: same L2 as [attachComputePassDispatchWorkgroups]; product guest is
+     * L2: same attach as [attachComputePassDispatchWorkgroups]; product guest is
      * `[method]gpu-compute-pass-encoder.dispatch-workgroups-indirect`.
      */
     fun attachComputePassDispatchWorkgroupsIndirect(store: Store, host: WasiWebGpuHost) {

@@ -512,7 +512,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-compute-pass-encoder.set-pipeline` (S6+: borrow<gpu-compute-pipeline>; L2 described pass+pipeline reps)
     // and `[method]gpu-compute-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 described JNI, offsets none → empty)
     // and `[method]gpu-compute-pass-encoder.dispatch-workgroups` (S6+: x + option y/z; L2 described JNI)
-    // and S6+ remaining compute-pass recording: dispatch-workgroups-indirect / set-immediates /
+    // and S6+ remaining compute-pass recording: dispatch-workgroups-indirect (L2 described JNI) / set-immediates /
     // push-debug-group / pop-debug-group / insert-debug-marker
     // and S6+ render-pass debug: push-debug-group / pop-debug-group / insert-debug-marker
     // and S6+ remaining render-pass: begin-occlusion-query / end-occlusion-query /
@@ -4546,29 +4546,38 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-compute-pass-encoder.dispatch-workgroups-indirect",
                 |mut caller,
-                 (pass, buffer, _offset): (
+                 (pass, buffer, offset): (
                     Resource<GpuComputePassEncoder>,
                     Resource<GpuBuffer>,
                     u64,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
-                    let _ = caller.data_mut().table.get(&buffer)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let pass_rep = jvm::exp_begin_compute_pass(&cb, encoder_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_compute_pass_dispatch_workgroups(&cb, pass_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_compute_pass(&cb, encoder_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_compute_pass_dispatch_workgroups_indirect_described(
+                        &cb,
+                        l2_pass,
+                        buffer_rep,
+                        offset,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
