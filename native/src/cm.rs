@@ -14,7 +14,8 @@ use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
     GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferDescriptor,
     GpuBufferMapState, GpuBufferUsage, GpuColor, GpuCommandBufferDescriptor,
-    GpuCommandEncoderDescriptor, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
+    GpuCommandEncoderDescriptor, GpuCompilationInfo, GpuCompilationMessage,
+    GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
     GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuMapMode, GpuPipelineErrorReason,
     GpuPipelineLayoutDescriptor, GpuQuerySet, GpuQuerySetDescriptor, GpuQueryType,
     GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor,
@@ -520,6 +521,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ adapter info: adapter.features / limits / info + adapter-info getters.
     // and S6+ bind-group / bind-group-layout / buffer label + set-label and
     // buffer size / usage / map-state.
+    // and S6+ command-buffer / encoder label + compilation-info.messages +
+    // compilation-message getters.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -1756,6 +1759,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.label",
+                |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-encoder.set-label",
+                |mut caller, (encoder, _label): (Resource<GpuCommandEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .resource(
                 "gpu-query-set",
                 ResourceType::host::<GpuQuerySet>(),
@@ -2174,6 +2195,121 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let resource = store.data_mut().table.push(GpuCommandBuffer { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-buffer.label",
+                |mut caller, (buffer,): (Resource<GpuCommandBuffer>,)| {
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-command-buffer.set-label",
+                |mut caller, (buffer, _label): (Resource<GpuCommandBuffer>, String)| {
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-compilation-message",
+                ResourceType::host::<GpuCompilationMessage>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuCompilationMessage>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-compilation-info",
+                ResourceType::host::<GpuCompilationInfo>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuCompilationInfo>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-compilation-info", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuCompilationInfo)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-compilation-message", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuCompilationMessage)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compilation-info.messages",
+                |mut caller, (info,): (Resource<GpuCompilationInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((Vec::<Resource<GpuCompilationMessage>>::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compilation-message.message",
+                |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
+                    let _ = caller.data_mut().table.get(&msg)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compilation-message.type",
+                |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
+                    let _ = caller.data_mut().table.get(&msg)?;
+                    Ok((GpuCompilationMessageType::Error,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compilation-message.line-num",
+                |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
+                    let _ = caller.data_mut().table.get(&msg)?;
+                    Ok((0u64,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compilation-message.line-pos",
+                |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
+                    let _ = caller.data_mut().table.get(&msg)?;
+                    Ok((0u64,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compilation-message.offset",
+                |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
+                    let _ = caller.data_mut().table.get(&msg)?;
+                    Ok((0u64,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compilation-message.length",
+                |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
+                    let _ = caller.data_mut().table.get(&msg)?;
+                    Ok((0u64,))
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(

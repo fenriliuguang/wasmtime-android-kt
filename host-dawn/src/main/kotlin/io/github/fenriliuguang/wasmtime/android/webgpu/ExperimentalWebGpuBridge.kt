@@ -1107,6 +1107,20 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `[method]gpu-command-buffer.label` / `set-label`,
+     * `[method]gpu-command-encoder.label` / `set-label`,
+     * `[method]gpu-compilation-info.messages`, and
+     * `[method]gpu-compilation-message.message` / `type` / `line-num` /
+     * `line-pos` / `offset` / `length`. Native lifts; L2 unused (no new JNI).
+     */
+    fun attachCommandCompilationLabel(
+        store: Store,
+        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+    ) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: same L2 as [attachRenderPassSetVertexBuffer]; product guest is
      * `[method]gpu-render-pass-encoder.set-index-buffer`.
      */
