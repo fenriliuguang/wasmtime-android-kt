@@ -1,5 +1,6 @@
 ;; W3+: get-compute-pass + [method]gpu-compute-pass-encoder.end (void).
 ;; Guest calls end then returns harness 1. Do not reuse get-pass (that is render-pass).
+;; L2 described JNI forwards pass rep (0 → smoke rebuild).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-compute-pass-encoder" (type $gpu-compute-pass-encoder (sub resource)))

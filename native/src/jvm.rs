@@ -614,10 +614,22 @@ pub fn exp_render_pass_set_index_buffer_described(
     )
 }
 
+/// Host-fixed begin-then-end (ignores guest pass). Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_compute_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
         cb,
         "computePassEnd",
+        "(I)V",
+        vec![HostArg::Int(pass as i32)],
+    )
+}
+
+/// L2: Guest compute-pass rep (0 → smoke rebuild in the wrap).
+pub fn exp_compute_pass_end_described(cb: &GlobalRef, pass: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassEndDescribed",
         "(I)V",
         vec![HostArg::Int(pass as i32)],
     )
@@ -641,12 +653,35 @@ pub fn exp_compute_pass_set_bind_group(cb: &GlobalRef, pass: u32) -> Result<(), 
     )
 }
 
+/// Host-fixed dispatch(1,1,1) (ignores guest counts). Kept for indirect attach.
+#[allow(dead_code)]
 pub fn exp_compute_pass_dispatch_workgroups(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
         cb,
         "computePassDispatchWorkgroups",
         "(I)V",
         vec![HostArg::Int(pass as i32)],
+    )
+}
+
+/// L2: Guest pass rep + workgroup-count-x / option y/z (none → 1).
+pub fn exp_compute_pass_dispatch_workgroups_described(
+    cb: &GlobalRef,
+    pass: u32,
+    x: u32,
+    y: u32,
+    z: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassDispatchWorkgroupsDescribed",
+        "(IIII)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(x as i32),
+            HostArg::Int(y as i32),
+            HostArg::Int(z as i32),
+        ],
     )
 }
 

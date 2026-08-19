@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * W3+ `[method]` slice: `get-compute-pass` then
+ * L2 `[method]` slice: `get-compute-pass` then
  * `[method]gpu-compute-pass-encoder.end` via
  * [ExperimentalWebGpuBridge.attachComputePassEnd] + [callRunConcurrent].
  * Not compliance.

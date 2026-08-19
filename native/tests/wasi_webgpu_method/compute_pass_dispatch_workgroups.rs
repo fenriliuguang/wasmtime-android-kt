@@ -1,4 +1,4 @@
-//! S6+: `get-compute-pass` + `[method]gpu-compute-pass-encoder.dispatch-workgroups`
+//! L2: `get-compute-pass` + `[method]gpu-compute-pass-encoder.dispatch-workgroups`
 //! WIT: `(borrow, x: u32, y: option<u32>, z: option<u32>)`.
 //! Guest passes x=1, y=some(1), z=some(1); `run` returns harness 1.
 

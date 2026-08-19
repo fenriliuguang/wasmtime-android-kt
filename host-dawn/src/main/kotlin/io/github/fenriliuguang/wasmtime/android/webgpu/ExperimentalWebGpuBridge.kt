@@ -704,8 +704,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + begin-compute-pass + compute-pass-end.
-     * `[method]gpu-compute-pass-encoder.end` (Guest stub pass ignored).
+     * L2: adapter + device + encoder + begin-compute-pass + described end
+     * (guest pass rep; 0 → smoke rebuild).
+     * `[method]gpu-compute-pass-encoder.end`.
      */
     fun attachComputePassEnd(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -723,6 +724,10 @@ object ExperimentalWebGpuBridge {
                     bindings.commandEncoderBeginComputePass(encoder)
 
                 override fun computePassEnd(pass: Int) {
+                    bindings.computePassEnd(pass)
+                }
+
+                override fun computePassEndDescribed(pass: Int) {
                     bindings.computePassEnd(pass)
                 }
             },
@@ -819,15 +824,45 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+ / S6+: adapter + device + encoder + begin-compute-pass + host-fixed
-     * set-pipeline + empty bind-group + dispatch(1,1,1).
-     * Guest WIT option counts (JNI still host-fixed). Cpu requires pipeline and bind-group 0.
+     * L2: adapter + device + encoder + begin-compute-pass + stub pipeline +
+     * empty bind-group + described dispatch (guest x/y/z; none → 1).
      * `[method]gpu-compute-pass-encoder.dispatch-workgroups`.
-     * Also used by `dispatch-workgroups-indirect` (L2 still host-fixed 1×1×1).
+     * Indirect still uses host-fixed [computePassDispatchWorkgroups].
      */
     fun attachComputePassDispatchWorkgroups(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         var device = 0
+        fun bindStubAndDispatch(pass: Int, x: Int, y: Int, z: Int) {
+            val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+            val layout = bindings.deviceCreatePipelineLayout(
+                device,
+                PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+            )
+            val pipeline = bindings.deviceCreateComputePipeline(
+                device,
+                ComputePipelineDescriptor(
+                    layout = GpuHandle(layout),
+                    compute = ProgrammableStage(
+                        module = GpuHandle(shader),
+                        entryPoint = "main",
+                    ),
+                ),
+            )
+            val bgl = bindings.deviceCreateBindGroupLayout(
+                device,
+                BindGroupLayoutDescriptor(entries = emptyList()),
+            )
+            val bindGroup = bindings.deviceCreateBindGroup(
+                device,
+                BindGroupDescriptor(
+                    layout = GpuHandle(bgl),
+                    entries = emptyList(),
+                ),
+            )
+            bindings.computePassSetPipeline(pass, pipeline)
+            bindings.computePassSetBindGroup(pass, 0, bindGroup)
+            bindings.computePassDispatchWorkgroups(pass, x, y, z)
+        }
         store.setExperimentalHost(
             object : ExperimentalHostCallbacks {
                 override fun requestAdapter(): Int = bindings.requestAdapter()
@@ -844,35 +879,16 @@ object ExperimentalWebGpuBridge {
                     bindings.commandEncoderBeginComputePass(encoder)
 
                 override fun computePassDispatchWorkgroups(pass: Int) {
-                    val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
-                    val layout = bindings.deviceCreatePipelineLayout(
-                        device,
-                        PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
-                    )
-                    val pipeline = bindings.deviceCreateComputePipeline(
-                        device,
-                        ComputePipelineDescriptor(
-                            layout = GpuHandle(layout),
-                            compute = ProgrammableStage(
-                                module = GpuHandle(shader),
-                                entryPoint = "main",
-                            ),
-                        ),
-                    )
-                    val bgl = bindings.deviceCreateBindGroupLayout(
-                        device,
-                        BindGroupLayoutDescriptor(entries = emptyList()),
-                    )
-                    val bindGroup = bindings.deviceCreateBindGroup(
-                        device,
-                        BindGroupDescriptor(
-                            layout = GpuHandle(bgl),
-                            entries = emptyList(),
-                        ),
-                    )
-                    bindings.computePassSetPipeline(pass, pipeline)
-                    bindings.computePassSetBindGroup(pass, 0, bindGroup)
-                    bindings.computePassDispatchWorkgroups(pass, 1, 1, 1)
+                    bindStubAndDispatch(pass, 1, 1, 1)
+                }
+
+                override fun computePassDispatchWorkgroupsDescribed(
+                    pass: Int,
+                    x: Int,
+                    y: Int,
+                    z: Int,
+                ) {
+                    bindStubAndDispatch(pass, x, y, z)
                 }
             },
         )

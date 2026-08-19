@@ -1,4 +1,4 @@
-//! W3+: `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (void).
+//! L2: `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (void).
 //! Guest calls end; `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
