@@ -13,10 +13,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S8 `[method]` slice: guest imports `get-texture` then
+ * L2 `[method]` slice: guest imports `get-texture` then
  * `[method]gpu-texture.create-view`
- * (`option<gpu-texture-view-descriptor>` = none → `own<gpu-texture-view>`;
- * drops the own; `run` returns 1) via
+ * (`option<gpu-texture-view-descriptor>` = some(d2 + aspect all)
+ * → `own<gpu-texture-view>`; drops the own; `run` returns 1) via
  * [ExperimentalWebGpuBridge.attachCreateTextureView] + [callRunConcurrent].
  * Flat names remain registered. Not compliance.
  */

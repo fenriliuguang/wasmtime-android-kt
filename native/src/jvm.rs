@@ -550,12 +550,33 @@ pub fn exp_queue_write_texture(cb: &GlobalRef, queue: u32, texture: u32) -> Resu
     )
 }
 
+/// Host-fixed texture view (no guest record). Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_texture_create_view(cb: &GlobalRef, texture: u32) -> Result<u32, String> {
     call_i(
         cb,
         "textureCreateView",
         "(I)I",
         vec![HostArg::Int(texture as i32)],
+    )
+}
+
+/// L2: Guest-decoded `gpu-texture-view-descriptor` dimension + aspect (Dawn ints).
+pub fn exp_texture_create_view_described(
+    cb: &GlobalRef,
+    texture: u32,
+    dimension: u32,
+    aspect: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "textureCreateViewDescribed",
+        "(III)I",
+        vec![
+            HostArg::Int(texture as i32),
+            HostArg::Int(dimension as i32),
+            HostArg::Int(aspect as i32),
+        ],
     )
 }
 

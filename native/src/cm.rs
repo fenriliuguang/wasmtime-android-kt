@@ -1668,7 +1668,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.create-view",
                 |mut caller,
-                 (texture, _descriptor): (
+                 (texture, descriptor): (
                     Resource<GpuTexture>,
                     Option<GpuTextureViewDescriptor>,
                 )| {
@@ -1688,8 +1688,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         texture_rep
                     };
-                    let view_rep = jvm::exp_texture_create_view(&cb, l2_texture)
-                        .map_err(wasmtime::Error::msg)?;
+                    let (dimension, aspect) = match &descriptor {
+                        None => (0, 0),
+                        Some(d) => (
+                            d.dimension.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                            d.aspect.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                        ),
+                    };
+                    let view_rep = jvm::exp_texture_create_view_described(
+                        &cb,
+                        l2_texture,
+                        dimension,
+                        aspect,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     if view_rep == 0 {
                         return Err(wasmtime::Error::msg("texture-create-view returned 0"));
                     }

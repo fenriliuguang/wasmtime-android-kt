@@ -390,7 +390,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return handles.insert(ResourceKind.RenderPipeline, RenderPipeline())
     }
 
-    override fun textureCreateView(texture: GpuHandle): GpuHandle {
+    override fun textureCreateView(
+        texture: GpuHandle,
+        descriptor: TextureViewDescriptor,
+    ): GpuHandle {
         handles.get<Texture>(texture, ResourceKind.Texture)
         return handles.insert(ResourceKind.TextureView, TextureView())
     }

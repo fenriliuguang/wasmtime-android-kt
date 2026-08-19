@@ -110,7 +110,10 @@ interface WasiWebGpuHost : AutoCloseable {
         descriptor: RenderPipelineDescriptor,
     ): GpuHandle
 
-    fun textureCreateView(texture: GpuHandle): GpuHandle
+    fun textureCreateView(
+        texture: GpuHandle,
+        descriptor: TextureViewDescriptor = TextureViewDescriptor(),
+    ): GpuHandle
 
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(

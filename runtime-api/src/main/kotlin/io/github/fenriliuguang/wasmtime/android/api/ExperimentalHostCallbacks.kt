@@ -175,6 +175,13 @@ interface ExperimentalHostCallbacks {
     /** W3+: texture view from host-created texture (no Guest descriptor). */
     fun textureCreateView(texture: Int): Int = unsupported("textureCreateView")
 
+    /** L2: Guest-decoded `gpu-texture-view-descriptor` dimension + aspect (Dawn ints). */
+    fun textureCreateViewDescribed(
+        texture: Int,
+        dimension: Int,
+        aspect: Int,
+    ): Int = unsupported("textureCreateViewDescribed")
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

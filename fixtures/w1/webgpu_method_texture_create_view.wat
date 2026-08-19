@@ -1,8 +1,9 @@
-;; S8: wasi:webgpu/webgpu@0.3.0-rc.2 get-texture +
+;; L2: wasi:webgpu/webgpu@0.3.0-rc.2 get-texture +
 ;; [method]gpu-texture.create-view
 ;; WIT: create-view: func(descriptor: option<gpu-texture-view-descriptor>)
 ;;      -> gpu-texture-view
-;; Guest passes descriptor=none; drops own view; run returns harness 1.
+;; Guest passes some(descriptor) with dimension=d2, aspect=all; other fields none;
+;; drops own view; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills args through memory.
 ;; get-texture is a test constructor only (not product WIT).
 (component
@@ -54,7 +55,7 @@
   (core module $builtins
     (memory (export "mem") 1)
     (func (export "realloc") (param i32 i32 i32 i32) (result i32)
-      (i32.const 16)
+      (i32.const 256)
     )
   )
   (core instance $builtins (instantiate $builtins))
@@ -76,6 +77,14 @@
       (local $view i32)
       (local.set $texture (call $get-texture))
       (i32.store (i32.const 0) (local.get $texture))
+      ;; option<gpu-texture-view-descriptor> = some; record starts at 8
+      (i32.store8 (i32.const 4) (i32.const 1))
+      ;; dimension = some(d2)
+      (i32.store8 (i32.const 10) (i32.const 1))
+      (i32.store8 (i32.const 11) (i32.const 1))
+      ;; aspect = some(all)
+      (i32.store8 (i32.const 14) (i32.const 1))
+      (i32.store8 (i32.const 15) (i32.const 0))
       (local.set $view (call $create-view (i32.const 0)))
       (call $drop-view (local.get $view))
       (i32.const 1)

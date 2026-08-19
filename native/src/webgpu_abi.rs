@@ -402,6 +402,17 @@ pub enum GpuTextureAspect {
     DepthOnly,
 }
 
+impl GpuTextureAspect {
+    /// Dawn `TextureAspect` (`androidx.webgpu` alpha05): Undefined=0, All=1, StencilOnly=2, DepthOnly=3.
+    pub fn to_dawn_u32(self) -> u32 {
+        match self {
+            Self::All => 1,
+            Self::StencilOnly => 2,
+            Self::DepthOnly => 3,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
@@ -419,6 +430,20 @@ pub enum GpuTextureViewDimension {
     CubeArray,
     #[component(name = "d3")]
     D3,
+}
+
+impl GpuTextureViewDimension {
+    /// Dawn `TextureViewDimension`: Undefined=0, 1D=1, 2D=2, 2DArray=3, Cube=4, CubeArray=5, 3D=6.
+    pub fn to_dawn_u32(self) -> u32 {
+        match self {
+            Self::D1 => 1,
+            Self::D2 => 2,
+            Self::D2Array => 3,
+            Self::Cube => 4,
+            Self::CubeArray => 5,
+            Self::D3 => 6,
+        }
+    }
 }
 
 flags! {
