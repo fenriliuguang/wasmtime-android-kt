@@ -506,7 +506,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 still host-fixed empty BGL + empty entries)
     // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 still host-fixed stub shader + triangle)
     // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 still host-fixed stub shader + empty layout)
-    // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 still host-fixed 1×1)
+    // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 described bytes + size)
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>; L2 described timestamp-write indices)
     // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 described first color-attachment view/load/store)
     // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void; L2 described pass rep)
@@ -3613,31 +3613,62 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-queue.write-texture-with-copy",
                 |mut caller,
-                 (queue, destination, _data, _layout, _size): (
+                 (queue, destination, data, layout, size): (
                     Resource<GpuQueue>,
                     GpuTexelCopyTextureInfo,
                     Vec<u8>,
                     GpuTexelCopyBufferLayout,
                     GpuExtent3D,
                 )| {
-                    let _ = caller.data_mut().table.get(&queue)?;
-                    let _ = caller.data_mut().table.get(&destination.texture)?;
+                    let queue_rep = caller.data_mut().table.get(&queue)?.rep;
+                    let texture_rep = caller.data_mut().table.get(&destination.texture)?.rep;
+                    let start = layout.offset.unwrap_or(0) as usize;
+                    let payload = if start >= data.len() {
+                        Vec::new()
+                    } else {
+                        data[start..].to_vec()
+                    };
+                    let width = size.width.max(1);
+                    let height = size.height.unwrap_or(1).max(1);
+                    let bytes_per_row = layout.bytes_per_row.unwrap_or(width.saturating_mul(4)).max(1);
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let queue_rep =
-                        jvm::exp_device_get_queue(&cb, device_rep).map_err(wasmtime::Error::msg)?;
-                    let texture_rep =
-                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?;
-                    jvm::exp_queue_write_texture(&cb, queue_rep, texture_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let mut device_rep = 0u32;
+                    let l2_queue = if queue_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_device_get_queue(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        queue_rep
+                    };
+                    let l2_texture = if texture_rep == 0 {
+                        if device_rep == 0 {
+                            let adapter_rep =
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                            device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                .map_err(wasmtime::Error::msg)?;
+                        }
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    jvm::exp_queue_write_texture_described(
+                        &cb,
+                        l2_queue,
+                        l2_texture,
+                        payload,
+                        width,
+                        height,
+                        bytes_per_row,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

@@ -1,7 +1,7 @@
-//! S6+: `get-queue` + `get-texture` + `[method]gpu-queue.write-texture-with-copy`
+//! L2: `get-queue` + `get-texture` + `[method]gpu-queue.write-texture-with-copy`
 //! WIT: `(borrow queue, gpu-texel-copy-texture-info, list<u8>,
 //!      gpu-texel-copy-buffer-layout, gpu-extent3-d)`.
-//! Guest passes texture borrow, empty data, layout none, size 1×1×1;
+//! Guest passes texture borrow, 4-byte data `l2\0\0`, bytes-per-row=4, size 1×1×1;
 //! `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -131,12 +131,15 @@ fn register_method_write_texture(
                 destination.aspect.is_none(),
                 "guest must pass aspect=none this slice"
             );
-            assert!(data.is_empty(), "guest must pass empty data this slice");
+            assert_eq!(data, b"l2\0\0", "guest must pass 4-byte data l2\\0\\0");
             assert!(
-                layout.offset.is_none()
-                    && layout.bytes_per_row.is_none()
-                    && layout.rows_per_image.is_none(),
-                "guest must pass layout fields none this slice"
+                layout.offset.is_none() && layout.rows_per_image.is_none(),
+                "guest must pass layout offset/rows none this slice"
+            );
+            assert_eq!(
+                layout.bytes_per_row,
+                Some(4),
+                "guest must pass bytes-per-row=some(4)"
             );
             assert_eq!(size.width, 1, "guest must pass width=1");
             assert_eq!(size.height, Some(1), "guest must pass height=some(1)");

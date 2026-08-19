@@ -359,6 +359,18 @@ interface ExperimentalHostCallbacks {
         unsupported("queueWriteTexture")
     }
 
+    /** L2: Guest texture handle + `list<u8>` + copy width/height/bytesPerRow. */
+    fun queueWriteTextureDescribed(
+        queue: Int,
+        texture: Int,
+        data: ByteArray,
+        width: Int,
+        height: Int,
+        bytesPerRow: Int,
+    ) {
+        unsupported("queueWriteTextureDescribed")
+    }
+
     /** W3+: texture view from host-created texture (no Guest descriptor). */
     fun textureCreateView(texture: Int): Int = unsupported("textureCreateView")
 
