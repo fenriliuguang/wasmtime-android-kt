@@ -1,7 +1,7 @@
 ;; S6+: get-pass + get-buffer + [method]gpu-render-pass-encoder.set-index-buffer
 ;; WIT: set-index-buffer: func(buffer, index-format, offset: option, size: option)
 ;; Guest passes borrow buffer, uint16, offset/size none; drops buffer; run returns 1.
-;; L2 still host-fixed VERTEX slot 0 (no new JNI).
+;; L2 described JNI forwards pass/buffer reps + Dawn uint16 (offset/size none → 0).
 ;; get-pass / get-buffer are test constructors (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu

@@ -433,12 +433,28 @@ pub fn exp_render_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(cb, "renderPassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
 }
 
+/// Host-fixed triangle pipeline (ignores guest pipeline). Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_render_pass_set_pipeline(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
         cb,
         "renderPassSetPipeline",
         "(I)V",
         vec![HostArg::Int(pass as i32)],
+    )
+}
+
+/// L2: Guest pass + pipeline reps (0 → stub in attach).
+pub fn exp_render_pass_set_pipeline_described(
+    cb: &GlobalRef,
+    pass: u32,
+    pipeline: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassSetPipelineDescribed",
+        "(II)V",
+        vec![HostArg::Int(pass as i32), HostArg::Int(pipeline as i32)],
     )
 }
 
@@ -520,12 +536,60 @@ pub fn exp_render_pass_set_bind_group(cb: &GlobalRef, pass: u32) -> Result<(), S
     )
 }
 
+/// Host-fixed VERTEX slot 0 (ignores guest slot/buffer). Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_render_pass_set_vertex_buffer(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
         cb,
         "renderPassSetVertexBuffer",
         "(I)V",
         vec![HostArg::Int(pass as i32)],
+    )
+}
+
+/// L2: Guest pass/buffer reps + slot + option offset/size (none → 0).
+pub fn exp_render_pass_set_vertex_buffer_described(
+    cb: &GlobalRef,
+    pass: u32,
+    slot: u32,
+    buffer: u32,
+    offset: u64,
+    size: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassSetVertexBufferDescribed",
+        "(IIIJJ)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(slot as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Long(offset as i64),
+            HostArg::Long(size as i64),
+        ],
+    )
+}
+
+/// L2: Guest pass/buffer reps + Dawn index-format + option offset/size (none → 0).
+pub fn exp_render_pass_set_index_buffer_described(
+    cb: &GlobalRef,
+    pass: u32,
+    buffer: u32,
+    format: u32,
+    offset: u64,
+    size: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassSetIndexBufferDescribed",
+        "(IIIJJ)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Int(format as i32),
+            HostArg::Long(offset as i64),
+            HostArg::Long(size as i64),
+        ],
     )
 }
 

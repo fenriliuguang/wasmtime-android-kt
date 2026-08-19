@@ -147,6 +147,14 @@ interface WasiWebGpuHost : AutoCloseable {
         size: Long,
     )
 
+    fun renderPassSetIndexBuffer(
+        pass: GpuHandle,
+        buffer: GpuHandle,
+        format: Int,
+        offset: Long,
+        size: Long,
+    )
+
     fun renderPassDraw(
         pass: GpuHandle,
         vertexCount: Int,

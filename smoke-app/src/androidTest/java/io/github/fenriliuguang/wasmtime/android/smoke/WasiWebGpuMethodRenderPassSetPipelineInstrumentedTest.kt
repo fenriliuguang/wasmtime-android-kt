@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]` slice: `get-pass` + `get-render-pipeline` then
+ * L2 `[method]` slice: `get-pass` + `get-render-pipeline` then
  * `[method]gpu-render-pass-encoder.set-pipeline` (borrow pipeline;
- * L2 still host-fixed triangle pipeline + offscreen view) via
+ * described pass+pipeline reps, 0 → triangle stub + offscreen view) via
  * [ExperimentalWebGpuBridge.attachRenderPassSetPipeline] + [callRunConcurrent].
  * Not compliance.
  */

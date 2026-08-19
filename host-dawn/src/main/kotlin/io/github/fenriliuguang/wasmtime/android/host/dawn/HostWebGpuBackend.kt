@@ -192,6 +192,30 @@ private class ForwardingHostCallbacks(
         )
     }
 
+    override fun renderPassSetPipelineDescribed(pass: Int, pipeline: Int) {
+        bindings.renderPassSetPipeline(pass, pipeline)
+    }
+
+    override fun renderPassSetVertexBufferDescribed(
+        pass: Int,
+        slot: Int,
+        buffer: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        bindings.renderPassSetVertexBuffer(pass, slot, buffer, offset, size)
+    }
+
+    override fun renderPassSetIndexBufferDescribed(
+        pass: Int,
+        buffer: Int,
+        format: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        bindings.renderPassSetIndexBuffer(pass, buffer, format, offset, size)
+    }
+
     override fun renderPassDrawDescribed(
         pass: Int,
         vertexCount: Int,

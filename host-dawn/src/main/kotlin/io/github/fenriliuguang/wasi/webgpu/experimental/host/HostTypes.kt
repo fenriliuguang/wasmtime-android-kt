@@ -144,6 +144,16 @@ object GpuTextureAspect {
 }
 
 /**
+ * Dawn IndexFormat pass-through (`androidx.webgpu.IndexFormat`).
+ * Undefined=0 is invalid for set-index-buffer.
+ */
+object GpuIndexFormat {
+    const val UNDEFINED: Int = 0x00000000
+    const val UINT16: Int = 0x00000001
+    const val UINT32: Int = 0x00000002
+}
+
+/**
  * Dawn TextureViewDimension pass-through (`androidx.webgpu.TextureViewDimension`).
  * Distinct from [GpuTextureViewDimension] (WIT ordinals). Undefined=0 lets Dawn apply 2D.
  */

@@ -506,6 +506,21 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         require(offset >= 0 && size >= 0) { "vertex buffer range invalid" }
     }
 
+    override fun renderPassSetIndexBuffer(
+        pass: GpuHandle,
+        buffer: GpuHandle,
+        format: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+        require(format == GpuIndexFormat.UINT16 || format == GpuIndexFormat.UINT32) {
+            "index format must be Uint16 or Uint32"
+        }
+        require(offset >= 0 && size >= 0) { "index buffer range invalid" }
+    }
+
     override fun renderPassDraw(
         pass: GpuHandle,
         vertexCount: Int,
