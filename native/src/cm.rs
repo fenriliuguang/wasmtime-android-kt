@@ -11,16 +11,17 @@ use crate::host::{
 };
 use crate::jvm;
 use crate::webgpu_abi::{
-    CreatePipelineError, CreatePipelineErrorKind, GetMappedRangeError, GpuBindGroupDescriptor,
-    GpuBindGroupLayoutDescriptor, GpuBufferDescriptor, GpuColor, GpuCommandBufferDescriptor,
-    GpuCommandEncoderDescriptor, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
-    GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuMapMode, GpuPipelineErrorReason,
-    GpuPipelineLayoutDescriptor, GpuQuerySet, GpuRenderBundleDescriptor, GpuRenderPassDescriptor,
-    GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
-    GpuShaderModuleDescriptor, GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout,
-    GpuTexelCopyTextureInfo, GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError,
-    RecordGpuPipelineConstantValue, RecordOptionGpuSize64, RequestDeviceError,
-    RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
+    CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
+    GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferDescriptor, GpuColor,
+    GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor, GpuComputePassDescriptor,
+    GpuComputePipelineDescriptor, GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuMapMode,
+    GpuPipelineErrorReason, GpuPipelineLayoutDescriptor, GpuQuerySet, GpuQuerySetDescriptor,
+    GpuQueryType, GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor,
+    GpuRenderPassDescriptor, GpuRenderPipelineDescriptor, GpuRequestAdapterOptions,
+    GpuSamplerDescriptor, GpuShaderModuleDescriptor, GpuTexelCopyBufferInfo,
+    GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor,
+    GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
+    RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -512,6 +513,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // set-index-buffer / set-vertex-buffer / draw-indexed / draw-indirect /
     // draw-indexed-indirect / push-debug-group / pop-debug-group / insert-debug-marker /
     // set-immediates.
+    // and S6+ remaining device create + destroy: create-render-bundle-encoder /
+    // create-query-set / device.destroy / buffer.destroy / texture.destroy /
+    // query-set.destroy / query-set.type / query-set.count.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -697,6 +701,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_device_get_queue(&cb, device_rep).map_err(wasmtime::Error::msg)?;
                     let resource = caller.data_mut().table.push(GpuQueue { rep: queue_rep })?;
                     Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.destroy",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    Ok(())
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -895,6 +908,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap(
+                "[method]gpu-texture.destroy",
+                |mut caller, (texture,): (Resource<GpuTexture>,)| {
+                    let _ = caller.data_mut().table.get(&texture)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .resource(
                 "gpu-buffer",
                 ResourceType::host::<GpuBuffer>(),
@@ -1011,6 +1033,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let _ = caller.data_mut().table.get(&buffer)?;
                     let _ = (data, offset, size);
                     Ok((Ok::<(), GetMappedRangeError>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-buffer.destroy",
+                |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok(())
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1523,6 +1554,44 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let resource = store.data_mut().table.push(GpuQuerySet)?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.create-query-set",
+                |mut caller,
+                 (device, _descriptor): (Resource<GpuDevice>, GpuQuerySetDescriptor)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let resource = caller.data_mut().table.push(GpuQuerySet)?;
+                    Ok((Ok::<_, CreateQuerySetError>(resource),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-query-set.destroy",
+                |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
+                    let _ = caller.data_mut().table.get(&query_set)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-query-set.type",
+                |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
+                    let _ = caller.data_mut().table.get(&query_set)?;
+                    Ok((GpuQueryType::Occlusion,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-query-set.count",
+                |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
+                    let _ = caller.data_mut().table.get(&query_set)?;
+                    Ok((1u32,))
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .resource(
@@ -2443,6 +2512,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     .push(GpuRenderBundleEncoder { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.create-render-bundle-encoder",
+                |mut caller,
+                 (device, descriptor): (
+                    Resource<GpuDevice>,
+                    GpuRenderBundleEncoderDescriptor,
+                )| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let _ = descriptor.color_formats.len();
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuRenderBundleEncoder { rep: 0 })?;
+                    Ok((resource,))
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
