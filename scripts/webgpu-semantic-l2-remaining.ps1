@@ -1,5 +1,6 @@
 # Classify hung product [method] wraps: described L2 vs host-fixed L2 vs lift-only.
-# Semantic-L2 agents: run this instead of reading cm.rs whole or scanning JNI by hand.
+# Semantic-L2 agents: run this instead of reading cm.rs whole. Group output by
+# caller resource, then deepen one JNI family per PR (see docs/agent/webgpu-semantic-l2.md).
 param(
     [switch]$IncludeAll,
     [switch]$IncludeCanvas
@@ -137,7 +138,7 @@ if ($shownUnhung.Count -gt 0) {
 }
 
 Write-Host ""
-Write-Host "=== host-fixed (prefer; one [method] per PR) ==="
+Write-Host "=== host-fixed (prefer; one JNI family per PR) ==="
 $shownHost
 Write-Host ""
 Write-Host "=== lift-only ==="

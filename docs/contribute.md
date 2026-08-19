@@ -94,5 +94,5 @@ Full rules: [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md).
 - [`build.md`](build.md)  
 - [`mapping/artifacts.md`](mapping/artifacts.md)  
 - [`agent/webgpu-shape-slice.md`](agent/webgpu-shape-slice.md) — S6+ `[method]` shape-hang playbook  
-- [`agent/webgpu-semantic-l2.md`](agent/webgpu-semantic-l2.md) — semantic L2 (one method, described JNI)  
+- [`agent/webgpu-semantic-l2.md`](agent/webgpu-semantic-l2.md) — semantic L2 (caller then JNI family, described JNI)  
 - [`../archive/README.md`](archive/README.md) — historical M0–M5  
