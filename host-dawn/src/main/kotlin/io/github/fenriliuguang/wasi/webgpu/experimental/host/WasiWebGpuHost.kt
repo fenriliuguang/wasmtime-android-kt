@@ -155,6 +155,15 @@ interface WasiWebGpuHost : AutoCloseable {
         firstInstance: Int = 0,
     )
 
+    fun renderPassDrawIndexed(
+        pass: GpuHandle,
+        indexCount: Int,
+        instanceCount: Int = 1,
+        firstIndex: Int = 0,
+        baseVertex: Int = 0,
+        firstInstance: Int = 0,
+    )
+
     fun renderPassEnd(pass: GpuHandle)
 
     // --- Command encoding (compute) ---

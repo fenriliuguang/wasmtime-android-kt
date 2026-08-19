@@ -1,4 +1,4 @@
-//! S6+: `get-pass` + `[method]gpu-render-pass-encoder.draw-indexed`
+//! L2: `get-pass` + `[method]gpu-render-pass-encoder.draw-indexed`
 //! WIT: `(borrow, index-count: u32, three option<u32>, option<i32> base-vertex)`.
 //! Guest passes index-count=3, other fields none; harness 1.
 

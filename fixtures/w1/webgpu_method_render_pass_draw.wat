@@ -2,7 +2,7 @@
 ;; WIT: draw: func(vertex-count: u32, instance-count: option<u32>,
 ;;      first-vertex: option<u32>, first-instance: option<u32>)
 ;; Guest passes vertex-count=3, other fields none; run returns harness 1.
-;; L2 still host-fixed draw(3).
+;; L2 described JNI forwards pass rep + vertex-count (options none → 1/0/0).
 ;; get-pass is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu

@@ -750,6 +750,20 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun renderPassDrawIndexed(
+        pass: GpuHandle,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    ) {
+        synchronized(gpuLock) {
+            val renderPass = handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+            renderPass.drawIndexed(indexCount, instanceCount, firstIndex, baseVertex, firstInstance)
+        }
+    }
+
     override fun renderPassEnd(pass: GpuHandle) {
         synchronized(gpuLock) {
             val renderPass = handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)

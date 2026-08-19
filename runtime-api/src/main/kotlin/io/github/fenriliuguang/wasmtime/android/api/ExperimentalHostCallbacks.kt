@@ -106,15 +106,43 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassEnd")
     }
 
+    /** L2: Guest pass rep (0 → smoke rebuild in the wrap). */
+    fun renderPassEndDescribed(pass: Int) {
+        unsupported("renderPassEndDescribed")
+    }
+
     /** S6+: JNI still host-fixed; Guest WIT borrow pipeline is lifted in native. */
     fun renderPassSetPipeline(pass: Int) {
         unsupported("renderPassSetPipeline")
     }
 
     /** S6+: JNI still host-fixed draw(3); Guest WIT options are lifted in native.
-     *  Also used by draw-indexed / draw-indirect / draw-indexed-indirect. */
+     *  Also used by draw-indirect / draw-indexed-indirect. */
     fun renderPassDraw(pass: Int) {
         unsupported("renderPassDraw")
+    }
+
+    /** L2: Guest pass rep + vertex-count / option instance-count / first-vertex / first-instance. */
+    fun renderPassDrawDescribed(
+        pass: Int,
+        vertexCount: Int,
+        instanceCount: Int,
+        firstVertex: Int,
+        firstInstance: Int,
+    ) {
+        unsupported("renderPassDrawDescribed")
+    }
+
+    /** L2: Guest pass rep + index-count / option instance-count / first-index / base-vertex / first-instance. */
+    fun renderPassDrawIndexedDescribed(
+        pass: Int,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    ) {
+        unsupported("renderPassDrawIndexedDescribed")
     }
 
     /** S6+: JNI still host-fixed empty bind-group; Guest WIT option is lifted in native. */

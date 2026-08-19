@@ -3559,22 +3559,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pass-encoder.end",
                 |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_end_described(&cb, l2_pass)
                         .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_render_pass_end(&cb, pass_rep).map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3612,29 +3617,41 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pass-encoder.draw",
                 |mut caller,
-                 (pass, _vertex_count, _instance_count, _first_vertex, _first_instance): (
+                 (pass, vertex_count, instance_count, first_vertex, first_instance): (
                     Resource<GpuRenderPassEncoder>,
                     u32,
                     Option<u32>,
                     Option<u32>,
                     Option<u32>,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_render_pass_draw(&cb, pass_rep).map_err(wasmtime::Error::msg)?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_draw_described(
+                        &cb,
+                        l2_pass,
+                        vertex_count,
+                        instance_count.unwrap_or(1),
+                        first_vertex.unwrap_or(0),
+                        first_instance.unwrap_or(0),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3795,11 +3812,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 |mut caller,
                  (
                     pass,
-                    _index_count,
-                    _instance_count,
-                    _first_index,
-                    _base_vertex,
-                    _first_instance,
+                    index_count,
+                    instance_count,
+                    first_index,
+                    base_vertex,
+                    first_instance,
                 ): (
                     Resource<GpuRenderPassEncoder>,
                     u32,
@@ -3808,22 +3825,35 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<i32>,
                     Option<u32>,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_render_pass_draw(&cb, pass_rep).map_err(wasmtime::Error::msg)?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_draw_indexed_described(
+                        &cb,
+                        l2_pass,
+                        index_count,
+                        instance_count.unwrap_or(1),
+                        first_index.unwrap_or(0),
+                        base_vertex.unwrap_or(0),
+                        first_instance.unwrap_or(0),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

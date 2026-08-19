@@ -326,8 +326,38 @@ class AbiCmHostBindings(
         )
     }
 
-    fun renderPassDraw(pass: Int, vertexCount: Int) {
-        host.renderPassDraw(GpuHandle(pass), vertexCount)
+    fun renderPassDraw(
+        pass: Int,
+        vertexCount: Int,
+        instanceCount: Int = 1,
+        firstVertex: Int = 0,
+        firstInstance: Int = 0,
+    ) {
+        host.renderPassDraw(
+            GpuHandle(pass),
+            vertexCount,
+            instanceCount,
+            firstVertex,
+            firstInstance,
+        )
+    }
+
+    fun renderPassDrawIndexed(
+        pass: Int,
+        indexCount: Int,
+        instanceCount: Int = 1,
+        firstIndex: Int = 0,
+        baseVertex: Int = 0,
+        firstInstance: Int = 0,
+    ) {
+        host.renderPassDrawIndexed(
+            GpuHandle(pass),
+            indexCount,
+            instanceCount,
+            firstIndex,
+            baseVertex,
+            firstInstance,
+        )
     }
 
     fun renderPassEnd(pass: Int) {

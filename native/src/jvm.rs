@@ -451,6 +451,66 @@ pub fn exp_render_pass_draw(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     )
 }
 
+/// L2: Guest pass rep + vertex-count / option instance-count / first-vertex / first-instance
+/// (none → 1 / 0 / 0).
+pub fn exp_render_pass_draw_described(
+    cb: &GlobalRef,
+    pass: u32,
+    vertex_count: u32,
+    instance_count: u32,
+    first_vertex: u32,
+    first_instance: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassDrawDescribed",
+        "(IIIII)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(vertex_count as i32),
+            HostArg::Int(instance_count as i32),
+            HostArg::Int(first_vertex as i32),
+            HostArg::Int(first_instance as i32),
+        ],
+    )
+}
+
+/// L2: Guest pass rep + index-count / option instance-count / first-index / base-vertex /
+/// first-instance (none → 1 / 0 / 0 / 0).
+pub fn exp_render_pass_draw_indexed_described(
+    cb: &GlobalRef,
+    pass: u32,
+    index_count: u32,
+    instance_count: u32,
+    first_index: u32,
+    base_vertex: i32,
+    first_instance: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassDrawIndexedDescribed",
+        "(IIIIII)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(index_count as i32),
+            HostArg::Int(instance_count as i32),
+            HostArg::Int(first_index as i32),
+            HostArg::Int(base_vertex),
+            HostArg::Int(first_instance as i32),
+        ],
+    )
+}
+
+/// L2: Guest pass rep (0 → smoke rebuild in the wrap).
+pub fn exp_render_pass_end_described(cb: &GlobalRef, pass: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassEndDescribed",
+        "(I)V",
+        vec![HostArg::Int(pass as i32)],
+    )
+}
+
 pub fn exp_render_pass_set_bind_group(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(
         cb,

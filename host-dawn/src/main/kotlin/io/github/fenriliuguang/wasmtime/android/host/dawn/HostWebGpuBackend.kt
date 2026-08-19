@@ -192,6 +192,38 @@ private class ForwardingHostCallbacks(
         )
     }
 
+    override fun renderPassDrawDescribed(
+        pass: Int,
+        vertexCount: Int,
+        instanceCount: Int,
+        firstVertex: Int,
+        firstInstance: Int,
+    ) {
+        bindings.renderPassDraw(pass, vertexCount, instanceCount, firstVertex, firstInstance)
+    }
+
+    override fun renderPassDrawIndexedDescribed(
+        pass: Int,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    ) {
+        bindings.renderPassDrawIndexed(
+            pass,
+            indexCount,
+            instanceCount,
+            firstIndex,
+            baseVertex,
+            firstInstance,
+        )
+    }
+
+    override fun renderPassEndDescribed(pass: Int) {
+        bindings.renderPassEnd(pass)
+    }
+
     override fun commandEncoderFinish(encoder: Int): Int = bindings.commandEncoderFinish(encoder)
 
     override fun queueSubmit1(queue: Int, commandBuffer: Int) {

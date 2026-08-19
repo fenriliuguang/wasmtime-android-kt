@@ -1,5 +1,5 @@
-;; W3: get-pass + [method]gpu-render-pass-encoder.end (void).
-;; Guest calls end then returns harness 1.
+;; W3 / L2: get-pass + [method]gpu-render-pass-encoder.end (void).
+;; Guest calls end then returns harness 1. Described JNI uses pass rep.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-render-pass-encoder" (type $gpu-render-pass-encoder (sub resource)))

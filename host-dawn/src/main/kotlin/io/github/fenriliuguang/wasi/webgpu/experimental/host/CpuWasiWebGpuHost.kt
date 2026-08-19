@@ -517,6 +517,19 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         require(vertexCount >= 0) { "vertexCount must be non-negative" }
     }
 
+    override fun renderPassDrawIndexed(
+        pass: GpuHandle,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    ) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+        require(indexCount >= 0) { "indexCount must be non-negative" }
+        require(firstIndex >= 0) { "firstIndex must be non-negative" }
+    }
+
     override fun renderPassEnd(pass: GpuHandle) {
         handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
         handles.tryDrop(pass)
