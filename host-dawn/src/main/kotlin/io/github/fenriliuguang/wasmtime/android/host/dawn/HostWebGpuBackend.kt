@@ -344,6 +344,17 @@ private class ForwardingHostCallbacks(
         bindings.queueWriteBuffer(queue, buffer, bufferOffset, data)
     }
 
+    override fun queueWriteTextureDescribed(
+        queue: Int,
+        texture: Int,
+        data: ByteArray,
+        width: Int,
+        height: Int,
+        bytesPerRow: Int,
+    ) {
+        bindings.queueWriteTexture(queue, texture, data, width, height, bytesPerRow)
+    }
+
     override fun surfacePresent(surface: Int) {
         bindings.surfacePresent(surface)
     }

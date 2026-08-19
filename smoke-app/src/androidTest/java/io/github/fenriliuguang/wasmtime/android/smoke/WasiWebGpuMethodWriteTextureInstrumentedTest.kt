@@ -13,8 +13,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]gpu-queue.write-texture-with-copy` (texel copy info, empty data,
- * size 1×1×1; L2 still host-fixed 1×1) via
+ * L2 `[method]gpu-queue.write-texture-with-copy` (texel copy info, 4-byte data `l2`,
+ * size 1×1×1; described JNI) via
  * [ExperimentalWebGpuBridge.attachWriteTexture].
  */
 @RunWith(AndroidJUnit4::class)

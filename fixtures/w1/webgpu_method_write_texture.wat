@@ -1,9 +1,9 @@
-;; S6+: get-queue + get-texture + [method]gpu-queue.write-texture-with-copy
+;; L2: get-queue + get-texture + [method]gpu-queue.write-texture-with-copy
 ;; WIT: write-texture-with-copy: func(destination, data, data-layout, size)
-;; Guest passes texture borrow, mip/origin/aspect none, empty data, layout none,
-;; size 1×1×1; drops texture; run returns harness 1.
+;; Guest passes texture borrow, mip/origin/aspect none, 4-byte data "l2\00\00",
+;; bytes-per-row=4, size 1×1×1; drops texture; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills through memory.
-;; L2 still host-fixed 1×1 write. get-queue / get-texture are test constructors.
+;; get-queue / get-texture are test constructors.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-texture" (type $gpu-texture (sub resource)))
@@ -81,14 +81,20 @@
     (import "" "get-texture" (func $get-texture (result i32)))
     (import "" "write" (func $write (param i32)))
     (import "" "drop-texture" (func $drop-texture (param i32)))
+    (data (i32.const 256) "\6c\32\00\00")
     (func (export "run") (result i32)
       (local $queue i32)
       (local $tex i32)
       (local.set $queue (call $get-queue))
       (local.set $tex (call $get-texture))
-      ;; Spill tuple; zeros = none / empty list. Extent starts at offset 88.
+      ;; Spill tuple; zeros = none. Extent starts at offset 88.
+      ;; list<u8> ptr/len at 48/52; layout.bytes-per-row option at 72/76.
             (i32.store (i32.const 0) (local.get $queue))
       (i32.store (i32.const 4) (local.get $tex))
+      (i32.store (i32.const 48) (i32.const 256))
+      (i32.store (i32.const 52) (i32.const 4))
+      (i32.store (i32.const 72) (i32.const 1))
+      (i32.store (i32.const 76) (i32.const 4))
       (i32.store (i32.const 88) (i32.const 1))
       (i32.store (i32.const 92) (i32.const 1))
       (i32.store (i32.const 96) (i32.const 1))

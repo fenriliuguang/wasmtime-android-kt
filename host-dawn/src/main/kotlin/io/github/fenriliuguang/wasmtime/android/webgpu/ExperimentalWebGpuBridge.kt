@@ -1801,7 +1801,7 @@ object ExperimentalWebGpuBridge {
 
     /**
      * W3+ / S6+: adapter + device + queue + host-fixed 1×1 COPY_DST texture write.
-     * `[method]gpu-queue.write-texture-with-copy` (JNI still host-fixed).
+     * `[method]gpu-queue.write-texture-with-copy` (L2 described bytes + size).
      */
     fun attachWriteTexture(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -1833,6 +1833,17 @@ object ExperimentalWebGpuBridge {
                         height = 1,
                         bytesPerRow = 4,
                     )
+                }
+
+                override fun queueWriteTextureDescribed(
+                    queue: Int,
+                    texture: Int,
+                    data: ByteArray,
+                    width: Int,
+                    height: Int,
+                    bytesPerRow: Int,
+                ) {
+                    bindings.queueWriteTexture(queue, texture, data, width, height, bytesPerRow)
                 }
             },
         )

@@ -1128,12 +1128,39 @@ pub fn exp_queue_write_buffer_described(
     )
 }
 
+/// Host-fixed 1×1 write leftover. Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_queue_write_texture(cb: &GlobalRef, queue: u32, texture: u32) -> Result<(), String> {
     call_void(
         cb,
         "queueWriteTexture",
         "(II)V",
         vec![HostArg::Int(queue as i32), HostArg::Int(texture as i32)],
+    )
+}
+
+/// L2: Guest texture handle + `list<u8>` + copy size / bytes-per-row.
+pub fn exp_queue_write_texture_described(
+    cb: &GlobalRef,
+    queue: u32,
+    texture: u32,
+    data: Vec<u8>,
+    width: u32,
+    height: u32,
+    bytes_per_row: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "queueWriteTextureDescribed",
+        "(II[BIII)V",
+        vec![
+            HostArg::Int(queue as i32),
+            HostArg::Int(texture as i32),
+            HostArg::Bytes(data),
+            HostArg::Int(width as i32),
+            HostArg::Int(height as i32),
+            HostArg::Int(bytes_per_row as i32),
+        ],
     )
 }
 
