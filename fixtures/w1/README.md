@@ -92,6 +92,17 @@
 | `webgpu_method_device_destroy.wasm` | `get-device` + **`[method]gpu-device.destroy` sync** void | `run: async func() -> u32` | construct device → destroy; harness returns 1 |
 | `webgpu_method_buffer_destroy.wasm` | `get-buffer` + **`[method]gpu-buffer.destroy` sync** void | `run: async func() -> u32` | construct buffer → destroy; harness returns 1 |
 | `webgpu_method_texture_destroy.wasm` | `get-texture` + **`[method]gpu-texture.destroy` sync** void | `run: async func() -> u32` | construct texture → destroy; harness returns 1 |
+| `webgpu_method_texture_width.wasm` | `get-texture` + **`[method]gpu-texture.width` sync** `u32` | `run: async func() -> u32` | construct texture → width (host-fixed 1); harness returns 1 |
+| `webgpu_method_texture_height.wasm` | `get-texture` + **`[method]gpu-texture.height` sync** `u32` | `run: async func() -> u32` | construct texture → height (host-fixed 1); harness returns 1 |
+| `webgpu_method_texture_depth_or_array_layers.wasm` | `get-texture` + **`[method]gpu-texture.depth-or-array-layers` sync** `u32` | `run: async func() -> u32` | construct texture → depth-or-array-layers (host-fixed 1); harness returns 1 |
+| `webgpu_method_texture_mip_level_count.wasm` | `get-texture` + **`[method]gpu-texture.mip-level-count` sync** `u32` | `run: async func() -> u32` | construct texture → mip-level-count (host-fixed 1); harness returns 1 |
+| `webgpu_method_texture_sample_count.wasm` | `get-texture` + **`[method]gpu-texture.sample-count` sync** `u32` | `run: async func() -> u32` | construct texture → sample-count (host-fixed 1); harness returns 1 |
+| `webgpu_method_texture_dimension.wasm` | `get-texture` + **`[method]gpu-texture.dimension` sync** `gpu-texture-dimension` | `run: async func() -> u32` | construct texture → dimension (host-fixed d2); harness returns 1 |
+| `webgpu_method_texture_format.wasm` | `get-texture` + **`[method]gpu-texture.format` sync** `gpu-texture-format` | `run: async func() -> u32` | construct texture → format (host-fixed rgba8unorm); harness returns 1 |
+| `webgpu_method_texture_usage.wasm` | `get-texture` + **`[method]gpu-texture.usage` sync** `gpu-texture-usage` | `run: async func() -> u32` | construct texture → usage (host-fixed empty flags); harness returns 1 |
+| `webgpu_method_texture_texture_binding_view_dimension.wasm` | `get-texture` + **`[method]gpu-texture.texture-binding-view-dimension` sync** `option<gpu-texture-view-dimension>` | `run: async func() -> u32` | construct texture → texture-binding-view-dimension (host-fixed none); harness returns 1 |
+| `webgpu_method_texture_label.wasm` | `get-texture` + **`[method]gpu-texture.label` sync** `string` | `run: async func() -> u32` | construct texture → label (host-fixed empty); harness returns 1 |
+| `webgpu_method_texture_set_label.wasm` | `get-texture` + **`[method]gpu-texture.set-label` sync** void | `run: async func() -> u32` | construct texture → set-label (guest empty); harness returns 1 |
 | `webgpu_method_query_set_destroy.wasm` | `get-query-set` + **`[method]gpu-query-set.destroy` sync** void | `run: async func() -> u32` | construct query-set → destroy; harness returns 1 |
 | `webgpu_method_query_set_type.wasm` | `get-query-set` + **`[method]gpu-query-set.type` sync** `gpu-query-type` | `run: async func() -> u32` | construct query-set → type (host-fixed occlusion) → drop enum; harness returns 1 |
 | `webgpu_method_query_set_count.wasm` | `get-query-set` + **`[method]gpu-query-set.count` sync** `u32` | `run: async func() -> u32` | construct query-set → count (host-fixed 1); harness returns 1 |
@@ -348,6 +359,28 @@ wasm-tools parse fixtures/w1/webgpu_method_buffer_destroy.wat -o fixtures/w1/web
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_buffer_destroy.wasm
 wasm-tools parse fixtures/w1/webgpu_method_texture_destroy.wat -o fixtures/w1/webgpu_method_texture_destroy.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_destroy.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_width.wat -o fixtures/w1/webgpu_method_texture_width.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_width.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_height.wat -o fixtures/w1/webgpu_method_texture_height.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_height.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_depth_or_array_layers.wat -o fixtures/w1/webgpu_method_texture_depth_or_array_layers.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_depth_or_array_layers.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_mip_level_count.wat -o fixtures/w1/webgpu_method_texture_mip_level_count.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_mip_level_count.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_sample_count.wat -o fixtures/w1/webgpu_method_texture_sample_count.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_sample_count.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_dimension.wat -o fixtures/w1/webgpu_method_texture_dimension.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_dimension.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_format.wat -o fixtures/w1/webgpu_method_texture_format.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_format.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_usage.wat -o fixtures/w1/webgpu_method_texture_usage.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_usage.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_texture_binding_view_dimension.wat -o fixtures/w1/webgpu_method_texture_texture_binding_view_dimension.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_texture_binding_view_dimension.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_label.wat -o fixtures/w1/webgpu_method_texture_label.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_label.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_set_label.wat -o fixtures/w1/webgpu_method_texture_set_label.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_set_label.wasm
 wasm-tools parse fixtures/w1/webgpu_method_query_set_destroy.wat -o fixtures/w1/webgpu_method_query_set_destroy.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_query_set_destroy.wasm
 wasm-tools parse fixtures/w1/webgpu_method_query_set_type.wat -o fixtures/w1/webgpu_method_query_set_type.wasm

@@ -1108,6 +1108,16 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `[method]gpu-texture.width` / `height` / `depth-or-array-layers` /
+     * `mip-level-count` / `sample-count` / `dimension` / `format` / `usage` /
+     * `texture-binding-view-dimension` / `label` / `set-label`.
+     * Native lifts; L2 unused (no new JNI).
+     */
+    fun attachTextureInfo(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: `[method]gpu-command-buffer.label` / `set-label`,
      * `[method]gpu-command-encoder.label` / `set-label`,
      * `[method]gpu-compilation-info.messages`, and
