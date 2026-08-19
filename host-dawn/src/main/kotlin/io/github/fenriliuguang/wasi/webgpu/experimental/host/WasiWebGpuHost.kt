@@ -248,7 +248,7 @@ interface WasiWebGpuHost : AutoCloseable {
         depth: Int,
     )
 
-    fun commandEncoderFinish(encoder: GpuHandle): GpuHandle
+    fun commandEncoderFinish(encoder: GpuHandle, label: String? = null): GpuHandle
 
     // --- Queue / buffer IO ---
 

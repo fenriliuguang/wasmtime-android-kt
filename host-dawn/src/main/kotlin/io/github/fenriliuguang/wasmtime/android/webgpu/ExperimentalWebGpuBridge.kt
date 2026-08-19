@@ -436,7 +436,7 @@ object ExperimentalWebGpuBridge {
         )
     }
 
-    /** W3/S7: adapter + device + encoder + finish. Shared by flat `command-encoder-finish` and `[method]gpu-command-encoder.finish` (S7 own; descriptor still none). */
+    /** W3/S7: adapter + device + encoder + finish. Shared by flat `command-encoder-finish` and `[method]gpu-command-encoder.finish` (L2 described label). */
     fun attachCommandEncoderFinish(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(
@@ -451,6 +451,9 @@ object ExperimentalWebGpuBridge {
 
                 override fun commandEncoderFinish(encoder: Int): Int =
                     bindings.commandEncoderFinish(encoder)
+
+                override fun commandEncoderFinishDescribed(encoder: Int, label: String): Int =
+                    bindings.commandEncoderFinish(encoder, label)
             },
         )
     }

@@ -1023,6 +1023,20 @@ pub fn exp_command_encoder_finish(cb: &GlobalRef, encoder: u32) -> Result<u32, S
     )
 }
 
+/// L2: Guest optional command-buffer label (none → empty string).
+pub fn exp_command_encoder_finish_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    label: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "commandEncoderFinishDescribed",
+        "(ILjava/lang/String;)I",
+        vec![HostArg::Int(encoder as i32), HostArg::Str(label)],
+    )
+}
+
 pub fn exp_queue_submit1(cb: &GlobalRef, queue: u32, commands: u32) -> Result<(), String> {
     call_void(
         cb,

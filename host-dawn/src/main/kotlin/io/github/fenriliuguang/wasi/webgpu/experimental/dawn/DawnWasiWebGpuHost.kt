@@ -950,7 +950,8 @@ class DawnWasiWebGpuHost private constructor(
         )
     }
 
-    override fun commandEncoderFinish(encoder: GpuHandle): GpuHandle {
+    @Suppress("UNUSED_PARAMETER")
+    override fun commandEncoderFinish(encoder: GpuHandle, label: String?): GpuHandle {
         synchronized(gpuLock) {
             val commandEncoder = handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder)
             val commandBuffer = commandEncoder.finish()

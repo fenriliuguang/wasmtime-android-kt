@@ -309,7 +309,8 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         require(width > 0 && height > 0 && depth > 0)
     }
 
-    override fun commandEncoderFinish(encoder: GpuHandle): GpuHandle {
+    @Suppress("UNUSED_PARAMETER")
+    override fun commandEncoderFinish(encoder: GpuHandle, label: String?): GpuHandle {
         val commandEncoder = handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
         commandEncoder.finished = true
         val commandBuffer = CommandBuffer(commandEncoder.copies.toList(), commandEncoder.dispatch)

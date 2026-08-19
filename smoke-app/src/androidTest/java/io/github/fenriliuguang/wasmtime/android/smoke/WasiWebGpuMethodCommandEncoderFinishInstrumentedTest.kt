@@ -14,7 +14,7 @@ import org.junit.runner.RunWith
 
 /**
  * S7 `[method]` slice: `get-encoder` then `[method]gpu-command-encoder.finish`
- * (`option<gpu-command-buffer-descriptor>` = none → `own<gpu-command-buffer>`;
+ * (`option<gpu-command-buffer-descriptor>` label=`l2` → `own<gpu-command-buffer>`;
  * drops the own; `run` returns 1) via
  * [ExperimentalWebGpuBridge.attachCommandEncoderFinish] + [callRunConcurrent].
  * Flat `command-encoder-finish` remains. Not compliance.
