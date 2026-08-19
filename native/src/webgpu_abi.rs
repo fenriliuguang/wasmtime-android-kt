@@ -11,6 +11,8 @@
 //! S6+ unmap / write-*-with-copy: `unmap-error`, `write-buffer-error`, texel copy info.
 //! S6+ pipeline create: render/compute pipeline descriptors (+ vertex/fragment graph).
 //! S6+ pipeline-async / mapped-range: `create-pipeline-error`, `get-mapped-range-error`.
+//! S6+ remaining device create + destroy: `gpu-query-set-descriptor`,
+//! `create-query-set-error`, `gpu-render-bundle-encoder-descriptor`.
 
 use crate::host::{
     GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuShaderModule, GpuTexture,
@@ -316,8 +318,30 @@ pub struct GpuSamplerDescriptor {
 }
 
 /// WIT `resource gpu-query-set` (S8 compute-pass descriptor graph).
+/// `get-query-set` / `create-query-set` push this; L2 still unused (lift-only).
 #[derive(Debug)]
 pub struct GpuQuerySet;
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuQueryType {
+    #[component(name = "occlusion")]
+    Occlusion,
+    #[component(name = "timestamp")]
+    Timestamp,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuQuerySetDescriptor {
+    #[component(name = "type")]
+    pub type_: GpuQueryType,
+    pub count: u32,
+    pub label: Option<String>,
+}
 
 #[derive(Debug, ComponentType, Lift, Lower)]
 #[component(record)]
@@ -1594,4 +1618,37 @@ pub enum GetMappedRangeErrorKind {
 pub struct GetMappedRangeError {
     pub kind: GetMappedRangeErrorKind,
     pub message: String,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum CreateQuerySetErrorKind {
+    #[component(name = "type-error")]
+    TypeError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct CreateQuerySetError {
+    pub kind: CreateQuerySetErrorKind,
+    pub message: String,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuRenderBundleEncoderDescriptor {
+    #[component(name = "depth-read-only")]
+    pub depth_read_only: Option<bool>,
+    #[component(name = "stencil-read-only")]
+    pub stencil_read_only: Option<bool>,
+    #[component(name = "color-formats")]
+    pub color_formats: Vec<Option<GpuTextureFormat>>,
+    #[component(name = "depth-stencil-format")]
+    pub depth_stencil_format: Option<GpuTextureFormat>,
+    #[component(name = "sample-count")]
+    pub sample_count: Option<u32>,
+    pub label: Option<String>,
 }
