@@ -65,4 +65,6 @@ cargo test --locked --test wasi_webgpu_method -- --test-threads=1 <module_a> <mo
 
 PR: `feat(webgpu): S6+ <cluster> take WIT types`, label `enhancement`.
 
+When `.\scripts\webgpu-shape-remaining.ps1` prints **Remaining: 0**, stop hanging names. Semantic L2 (guest fields → host) is [`webgpu-semantic-l2.md`](webgpu-semantic-l2.md).
+
 User prompt that works: list the `[method]` names and “follow `docs/agent/webgpu-shape-slice.md`”.

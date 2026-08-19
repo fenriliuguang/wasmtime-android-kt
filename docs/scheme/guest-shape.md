@@ -2,7 +2,7 @@
 
 **English** | [中文](guest-shape.zh.md)
 
-Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (vendored [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit), tag `v0.3.0-rc.2`). Agent shape-slice playbook: [`../agent/webgpu-shape-slice.md`](../agent/webgpu-shape-slice.md).
+Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (vendored [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit), tag `v0.3.0-rc.2`). Agent playbooks: [`../agent/webgpu-shape-slice.md`](../agent/webgpu-shape-slice.md) (hang names), [`../agent/webgpu-semantic-l2.md`](../agent/webgpu-semantic-l2.md) (guest fields → L2).
 
 Extracted from the 2026-08-16 shape RFC (now in [`../archive/`](../archive/README.md)). Dual-product scheduling in that RFC is **not** current; see [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md).
 
@@ -37,6 +37,7 @@ S3  [method]gpu-adapter.request-device async → result<own<gpu-device>, …>
 S4  [method]gpu-device.create-buffer with guest gpu-buffer-descriptor
 S5  [method]gpu-queue.submit : list<borrow<gpu-command-buffer>>
 S6+ Replace remaining frozen transitional methods — shape first, then semantics
+    Semantic L2: caller resource, then JNI family (2–4 methods) per PR; see webgpu-semantic-l2.md
 ```
 
 **Per-slice DoD (S1+):** WIT-isomorphic guest import; `cargo test --locked --tests` if `native/` changes; instrument twin or a written reason; changelog fragment; no new experimental flat names; no compliance claim.

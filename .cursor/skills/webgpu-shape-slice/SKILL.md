@@ -4,7 +4,8 @@ description: >-
   Runs a wasi:webgpu S6+ product [method] shape slice using the repo playbook
   (vendored WIT, copy-one-template, hub freeze, narrow tests, PR). Use when the
   user says 下一刀, S6+, hang [method], shape slice, webgpu remaining methods,
-  or asks to advance the wasi:webgpu product surface.
+  or asks to advance the wasi:webgpu product surface. If remaining hangs are 0,
+  use skill webgpu-semantic-l2 instead.
 ---
 
 # WebGPU shape slice
