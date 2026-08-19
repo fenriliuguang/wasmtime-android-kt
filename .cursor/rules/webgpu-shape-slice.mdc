@@ -5,7 +5,8 @@ alwaysApply: true
 
 # WebGPU shape slices
 
-For S6+ / `[method]` / 「下一刀」work, read `docs/agent/webgpu-shape-slice.md` and follow it.
+For S6+ hang `[method]` / shape slice work, read `docs/agent/webgpu-shape-slice.md` and follow it.
+If remaining hangs are 0, or the user asks 语义加深 / L2 / 真实编组, use `docs/agent/webgpu-semantic-l2.md` instead.
 
 - Do not WebFetch wasi-webgpu. Use `third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit` (Grep the resource).
 - Do not Read `native/src/cm.rs` without offset. Grep, then ~80 lines.
