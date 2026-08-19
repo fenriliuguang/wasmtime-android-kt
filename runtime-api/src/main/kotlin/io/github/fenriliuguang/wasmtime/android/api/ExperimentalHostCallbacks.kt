@@ -187,9 +187,14 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassSetIndexBufferDescribed")
     }
 
-    /** W3+: JNI ignores Guest stub pass; host begins then ends a compute pass. */
+    /** W3+: host-fixed begin-then-end leftover; L2 uses [computePassEndDescribed]. */
     fun computePassEnd(pass: Int) {
         unsupported("computePassEnd")
+    }
+
+    /** L2: Guest compute-pass rep (0 → smoke rebuild in the wrap). */
+    fun computePassEndDescribed(pass: Int) {
+        unsupported("computePassEndDescribed")
     }
 
     /** S6+: JNI still host-fixed; Guest WIT borrow pipeline is lifted in native. */
@@ -202,10 +207,15 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassSetBindGroup")
     }
 
-    /** S6+: JNI still host-fixed 1×1×1; Guest WIT option counts are lifted in native.
+    /** S6+: host-fixed 1×1×1 leftover; L2 uses [computePassDispatchWorkgroupsDescribed].
      *  Also used by dispatch-workgroups-indirect. */
     fun computePassDispatchWorkgroups(pass: Int) {
         unsupported("computePassDispatchWorkgroups")
+    }
+
+    /** L2: Guest pass rep + workgroup-count-x / option y/z (none → 1). */
+    fun computePassDispatchWorkgroupsDescribed(pass: Int, x: Int, y: Int, z: Int) {
+        unsupported("computePassDispatchWorkgroupsDescribed")
     }
 
     /** S6+: JNI still host-fixed 4-byte copy; Guest WIT borrow buffers are lifted in native. */

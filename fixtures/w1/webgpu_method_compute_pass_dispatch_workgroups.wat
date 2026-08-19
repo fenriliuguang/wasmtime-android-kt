@@ -1,7 +1,7 @@
 ;; S6+: get-compute-pass + [method]gpu-compute-pass-encoder.dispatch-workgroups
 ;; WIT: dispatch-workgroups: func(x: u32, y: option<u32>, z: option<u32>)
 ;; Guest passes x=1, y=some(1), z=some(1); run returns harness 1.
-;; L2 still host-fixed 1×1×1.
+;; L2 described JNI forwards pass rep + counts (options none → 1).
 ;; get-compute-pass is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu

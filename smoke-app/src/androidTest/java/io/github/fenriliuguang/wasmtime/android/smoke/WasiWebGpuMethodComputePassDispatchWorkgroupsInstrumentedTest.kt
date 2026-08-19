@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]` slice: `get-compute-pass` then
+ * L2 `[method]` slice: `get-compute-pass` then
  * `[method]gpu-compute-pass-encoder.dispatch-workgroups` (x=1, y/z=some(1);
- * L2 still host-fixed 1×1×1 after set-pipeline + empty bind-group) via
+ * described JNI after set-pipeline + empty bind-group) via
  * [ExperimentalWebGpuBridge.attachComputePassDispatchWorkgroups] +
  * [callRunConcurrent]. Not compliance.
  */
