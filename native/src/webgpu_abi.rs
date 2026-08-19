@@ -16,6 +16,7 @@
 //! S6+ adapter info cluster: `gpu-adapter-info`, `gpu-supported-features`,
 //! `gpu-supported-limits`.
 //! S6+ bind-group / layout / buffer label + buffer size / usage / map-state.
+//! S6+ command-buffer / encoder label + compilation-info / compilation-message.
 
 use crate::host::{
     GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuShaderModule, GpuTexture,
@@ -1680,4 +1681,26 @@ pub enum GpuBufferMapState {
     Pending,
     #[component(name = "mapped")]
     Mapped,
+}
+
+/// WIT `resource gpu-compilation-info`. Lift-only; L2 unused.
+#[derive(Debug)]
+pub struct GpuCompilationInfo;
+
+/// WIT `resource gpu-compilation-message`. Lift-only; L2 unused.
+#[derive(Debug)]
+pub struct GpuCompilationMessage;
+
+/// WIT `enum gpu-compilation-message-type`. Lift-only; L2 unused.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuCompilationMessageType {
+    #[component(name = "error")]
+    Error,
+    #[component(name = "warning")]
+    Warning,
+    #[component(name = "info")]
+    Info,
 }
