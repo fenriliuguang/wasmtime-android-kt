@@ -1692,7 +1692,7 @@ object ExperimentalWebGpuBridge {
         attachRenderPassDraw(store, host)
     }
 
-    /** W3/S5: adapter + device + queue + encoder + finish + submit1. Shared by flat `queue-submit1` and `[method]gpu-queue.submit` (S5 list still host-fixed L2). */
+    /** W3/S5: adapter + device + queue + encoder + finish + submit1. Shared by flat `queue-submit1` and `[method]gpu-queue.submit` (L2 described command-buffer list). */
     fun attachQueueSubmit1(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(
@@ -1712,6 +1712,10 @@ object ExperimentalWebGpuBridge {
 
                 override fun queueSubmit1(queue: Int, commandBuffer: Int) {
                     bindings.queueSubmit1(queue, commandBuffer)
+                }
+
+                override fun queueSubmitDescribed(queue: Int, commandBuffers: IntArray) {
+                    bindings.queueSubmit(queue, commandBuffers.toList())
                 }
             },
         )

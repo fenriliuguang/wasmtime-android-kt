@@ -339,6 +339,11 @@ interface ExperimentalHostCallbacks {
         unsupported("queueSubmit1")
     }
 
+    /** L2: Guest `list<borrow<gpu-command-buffer>>` handles. */
+    fun queueSubmitDescribed(queue: Int, commandBuffers: IntArray) {
+        unsupported("queueSubmitDescribed")
+    }
+
     /** S6+: JNI still host-fixed 4-byte write; Guest WIT list/borrow lifted in native. */
     fun queueWriteBuffer(queue: Int, buffer: Int) {
         unsupported("queueWriteBuffer")

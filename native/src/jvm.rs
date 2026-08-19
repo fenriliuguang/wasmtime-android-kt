@@ -1,6 +1,6 @@
 //! Process-wide `JavaVM` for host callbacks into Kotlin.
 
-use jni::objects::{GlobalRef, JObject, JString, JValue};
+use jni::objects::{GlobalRef, JIntArray, JObject, JString, JValue};
 use jni::sys::JavaVM as SysJavaVM;
 use jni::{JNIEnv, JavaVM};
 use std::cell::RefCell;
@@ -91,6 +91,7 @@ enum HostArg {
     Int(i32),
     Long(i64),
     Str(String),
+    Ints(Vec<i32>),
 }
 
 fn call_with_host_args<'a>(
@@ -101,15 +102,28 @@ fn call_with_host_args<'a>(
     args: &[HostArg],
 ) -> Result<jni::objects::JValueOwned<'a>, String> {
     let mut java_strings: Vec<JString<'a>> = Vec::new();
+    let mut java_int_arrays: Vec<JIntArray<'a>> = Vec::new();
     for arg in args {
-        if let HostArg::Str(s) = arg {
-            java_strings.push(
-                env.new_string(s)
-                    .map_err(|e| format!("host {name} new_string: {e}"))?,
-            );
+        match arg {
+            HostArg::Str(s) => {
+                java_strings.push(
+                    env.new_string(s)
+                        .map_err(|e| format!("host {name} new_string: {e}"))?,
+                );
+            }
+            HostArg::Ints(v) => {
+                let arr = env
+                    .new_int_array(v.len() as i32)
+                    .map_err(|e| format!("host {name} new_int_array: {e}"))?;
+                env.set_int_array_region(&arr, 0, v)
+                    .map_err(|e| format!("host {name} set_int_array_region: {e}"))?;
+                java_int_arrays.push(arr);
+            }
+            HostArg::Int(_) | HostArg::Long(_) => {}
         }
     }
     let mut str_i = 0usize;
+    let mut ints_i = 0usize;
     let jargs: Vec<JValue> = args
         .iter()
         .map(|arg| match arg {
@@ -118,6 +132,11 @@ fn call_with_host_args<'a>(
             HostArg::Str(_) => {
                 let v = JValue::Object(&java_strings[str_i]);
                 str_i += 1;
+                v
+            }
+            HostArg::Ints(_) => {
+                let v = JValue::Object(&java_int_arrays[ints_i]);
+                ints_i += 1;
                 v
             }
         })
@@ -1043,6 +1062,20 @@ pub fn exp_queue_submit1(cb: &GlobalRef, queue: u32, commands: u32) -> Result<()
         "queueSubmit1",
         "(II)V",
         vec![HostArg::Int(queue as i32), HostArg::Int(commands as i32)],
+    )
+}
+
+/// L2: Guest `list<borrow<gpu-command-buffer>>` handles (empty → empty `IntArray`).
+pub fn exp_queue_submit_described(
+    cb: &GlobalRef,
+    queue: u32,
+    command_buffers: Vec<i32>,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "queueSubmitDescribed",
+        "(I[I)V",
+        vec![HostArg::Int(queue as i32), HostArg::Ints(command_buffers)],
     )
 }
 
