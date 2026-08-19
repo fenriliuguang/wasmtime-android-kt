@@ -1121,6 +1121,18 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `[method]gpu-compute-pass-encoder.label` / `set-label` and
+     * `[method]gpu-compute-pipeline.label` / `set-label` /
+     * `get-bind-group-layout`. Native lifts; L2 unused (no new JNI).
+     */
+    fun attachComputePassPipelineLabel(
+        store: Store,
+        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+    ) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: same L2 as [attachRenderPassSetVertexBuffer]; product guest is
      * `[method]gpu-render-pass-encoder.set-index-buffer`.
      */
