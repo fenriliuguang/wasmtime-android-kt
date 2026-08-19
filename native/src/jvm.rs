@@ -441,6 +441,27 @@ pub fn exp_begin_render_pass_clear(cb: &GlobalRef, encoder: u32, view: u32) -> R
     )
 }
 
+/// L2: Guest encoder + first color-attachment view/load/store (view 0 → stub in attach).
+pub fn exp_begin_render_pass_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    view: u32,
+    load_op: u32,
+    store_op: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "beginRenderPassDescribed",
+        "(IIII)I",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(view as i32),
+            HostArg::Int(load_op as i32),
+            HostArg::Int(store_op as i32),
+        ],
+    )
+}
+
 pub fn exp_render_pass_end(cb: &GlobalRef, pass: u32) -> Result<(), String> {
     call_void(cb, "renderPassEnd", "(I)V", vec![HostArg::Int(pass as i32)])
 }

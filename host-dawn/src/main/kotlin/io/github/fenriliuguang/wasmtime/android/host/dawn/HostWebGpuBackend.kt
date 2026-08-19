@@ -2,6 +2,9 @@ package io.github.fenriliuguang.wasmtime.android.host.dawn
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassColorAttachment
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
@@ -54,6 +57,25 @@ private class ForwardingHostCallbacks(
 
     override fun deviceCreateCommandEncoder(device: Int): Int =
         bindings.deviceCreateCommandEncoder(device)
+
+    override fun beginRenderPassDescribed(
+        encoder: Int,
+        view: Int,
+        loadOp: Int,
+        storeOp: Int,
+    ): Int =
+        bindings.commandEncoderBeginRenderPass(
+            encoder,
+            RenderPassDescriptor(
+                colorAttachments = listOf(
+                    RenderPassColorAttachment(
+                        view = GpuHandle(view),
+                        loadOp = loadOp,
+                        storeOp = storeOp,
+                    ),
+                ),
+            ),
+        )
 
     override fun deviceCreateBufferDescribed(device: Int, size: Long, usage: Int): Int =
         bindings.deviceCreateBuffer(device, size = size, usage = usage)
