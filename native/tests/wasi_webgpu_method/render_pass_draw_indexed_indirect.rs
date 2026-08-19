@@ -1,4 +1,4 @@
-//! S6+: `get-pass` + `get-buffer` + `[method]gpu-render-pass-encoder.draw-indexed-indirect`
+//! L2: `get-pass` + `get-buffer` + `[method]gpu-render-pass-encoder.draw-indexed-indirect`
 //! WIT: `(borrow, borrow<gpu-buffer>, indirect-offset: u64)`.
 //! Guest passes offset=0; harness 1.
 

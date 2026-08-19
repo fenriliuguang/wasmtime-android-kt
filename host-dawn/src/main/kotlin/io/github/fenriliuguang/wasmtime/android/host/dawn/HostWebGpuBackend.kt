@@ -248,6 +248,14 @@ private class ForwardingHostCallbacks(
         )
     }
 
+    override fun renderPassDrawIndirectDescribed(pass: Int, buffer: Int, offset: Long) {
+        bindings.renderPassDrawIndirect(pass, buffer, offset)
+    }
+
+    override fun renderPassDrawIndexedIndirectDescribed(pass: Int, buffer: Int, offset: Long) {
+        bindings.renderPassDrawIndexedIndirect(pass, buffer, offset)
+    }
+
     override fun renderPassEndDescribed(pass: Int) {
         bindings.renderPassEnd(pass)
     }
