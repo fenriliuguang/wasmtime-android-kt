@@ -363,7 +363,12 @@ class DawnWasiWebGpuHost private constructor(
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {
         val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
         val sampler = gpuDevice.createSampler(
-            GPUSamplerDescriptor(label = descriptor.label),
+            GPUSamplerDescriptor(
+                label = descriptor.label,
+                magFilter = descriptor.magFilter,
+                minFilter = descriptor.minFilter,
+                addressModeU = descriptor.addressModeU,
+            ),
         )
         return handles.insert(ResourceKind.Sampler, sampler)
     }

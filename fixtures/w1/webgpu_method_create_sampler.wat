@@ -1,8 +1,9 @@
-;; S8: wasi:webgpu/webgpu@0.3.0-rc.2 get-device +
+;; L2: wasi:webgpu/webgpu@0.3.0-rc.2 get-device +
 ;; [method]gpu-device.create-sampler
 ;; WIT: create-sampler: func(descriptor: option<gpu-sampler-descriptor>)
 ;;      -> gpu-sampler
-;; Guest passes descriptor=none; drops own sampler; run returns harness 1.
+;; Guest passes some(descriptor) with address-mode-u=repeat, mag/min-filter=linear;
+;; other fields none; drops own sampler; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills args through memory.
 ;; get-device is a test constructor only (not product WIT).
 (component
@@ -56,7 +57,7 @@
   (core module $builtins
     (memory (export "mem") 1)
     (func (export "realloc") (param i32 i32 i32 i32) (result i32)
-      (i32.const 16)
+      (i32.const 256)
     )
   )
   (core instance $builtins (instantiate $builtins))
@@ -78,6 +79,17 @@
       (local $sampler i32)
       (local.set $device (call $get-device))
       (i32.store (i32.const 0) (local.get $device))
+      ;; option<gpu-sampler-descriptor> = some; record starts at 8
+      (i32.store8 (i32.const 4) (i32.const 1))
+      ;; address-mode-u = some(repeat)
+      (i32.store8 (i32.const 8) (i32.const 1))
+      (i32.store8 (i32.const 9) (i32.const 1))
+      ;; mag-filter = some(linear)
+      (i32.store8 (i32.const 14) (i32.const 1))
+      (i32.store8 (i32.const 15) (i32.const 1))
+      ;; min-filter = some(linear)
+      (i32.store8 (i32.const 16) (i32.const 1))
+      (i32.store8 (i32.const 17) (i32.const 1))
       (local.set $sampler (call $create-sampler (i32.const 0)))
       (call $drop-sampler (local.get $sampler))
       (i32.const 1)

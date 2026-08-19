@@ -61,6 +61,27 @@ object GpuTextureFormat {
     const val DEPTH24_PLUS: Int = 0x0000002e
 }
 
+/**
+ * Dawn AddressMode pass-through (`androidx.webgpu.AddressMode`).
+ * Undefined=0 lets Dawn apply ClampToEdge.
+ */
+object GpuAddressMode {
+    const val UNDEFINED: Int = 0x00000000
+    const val CLAMP_TO_EDGE: Int = 0x00000001
+    const val REPEAT: Int = 0x00000002
+    const val MIRROR_REPEAT: Int = 0x00000003
+}
+
+/**
+ * Dawn FilterMode pass-through (`androidx.webgpu.FilterMode`).
+ * Undefined=0 lets Dawn apply Nearest.
+ */
+object GpuFilterMode {
+    const val UNDEFINED: Int = 0x00000000
+    const val NEAREST: Int = 0x00000001
+    const val LINEAR: Int = 0x00000002
+}
+
 /** SamplerBindingType ordinals (wasi enum order). */
 object GpuSamplerBindingType {
     const val FILTERING: Int = 0
@@ -103,9 +124,12 @@ data class TextureDescriptor(
     val label: String? = null,
 )
 
-/** Minimal sampler descriptor (defaults match WebGPU); labels only for now. */
+/** Sampler descriptor; Dawn ints (0 = Undefined → host default). */
 data class SamplerDescriptor(
     val label: String? = null,
+    val magFilter: Int = GpuFilterMode.UNDEFINED,
+    val minFilter: Int = GpuFilterMode.UNDEFINED,
+    val addressModeU: Int = GpuAddressMode.UNDEFINED,
 )
 
 data class PipelineLayoutDescriptor(

@@ -325,12 +325,35 @@ pub fn exp_create_texture_described(
     )
 }
 
+/// Host-fixed sampler (no guest record). Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_create_sampler(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateSampler",
         "(I)I",
         vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest-decoded `gpu-sampler-descriptor` mag/min filter + address-mode-u (Dawn ints).
+pub fn exp_create_sampler_described(
+    cb: &GlobalRef,
+    device: u32,
+    mag_filter: u32,
+    min_filter: u32,
+    address_mode_u: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateSamplerDescribed",
+        "(IIII)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Int(mag_filter as i32),
+            HostArg::Int(min_filter as i32),
+            HostArg::Int(address_mode_u as i32),
+        ],
     )
 }
 

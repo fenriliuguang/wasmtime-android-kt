@@ -250,6 +250,17 @@ pub enum GpuAddressMode {
     MirrorRepeat,
 }
 
+impl GpuAddressMode {
+    /// Dawn `AddressMode` (`androidx.webgpu` alpha05): Undefined=0, ClampToEdge=1, Repeat=2, MirrorRepeat=3.
+    pub fn to_dawn_u32(self) -> u32 {
+        match self {
+            Self::ClampToEdge => 1,
+            Self::Repeat => 2,
+            Self::MirrorRepeat => 3,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
@@ -259,6 +270,16 @@ pub enum GpuFilterMode {
     Nearest,
     #[component(name = "linear")]
     Linear,
+}
+
+impl GpuFilterMode {
+    /// Dawn `FilterMode` (`androidx.webgpu` alpha05): Undefined=0, Nearest=1, Linear=2.
+    pub fn to_dawn_u32(self) -> u32 {
+        match self {
+            Self::Nearest => 1,
+            Self::Linear => 2,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]

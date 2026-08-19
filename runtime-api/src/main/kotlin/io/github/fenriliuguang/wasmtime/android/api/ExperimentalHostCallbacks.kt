@@ -68,6 +68,14 @@ interface ExperimentalHostCallbacks {
     /** W3+: host-fixed sampler descriptor (not from Guest). */
     fun deviceCreateSampler(device: Int): Int = unsupported("deviceCreateSampler")
 
+    /** L2: Guest-decoded `gpu-sampler-descriptor` mag/min filter + address-mode-u (Dawn ints). */
+    fun deviceCreateSamplerDescribed(
+        device: Int,
+        magFilter: Int,
+        minFilter: Int,
+        addressModeU: Int,
+    ): Int = unsupported("deviceCreateSamplerDescribed")
+
     /** S6+: guest `gpu-shader-module-descriptor`; L2 still host-fixed WGSL. */
     fun deviceCreateShaderModule(device: Int): Int = unsupported("deviceCreateShaderModule")
 

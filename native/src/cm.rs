@@ -2021,7 +2021,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-sampler",
-                |mut caller, (device, _descriptor): (
+                |mut caller, (device, descriptor): (
                     Resource<GpuDevice>,
                     Option<GpuSamplerDescriptor>,
                 )| {
@@ -2040,8 +2040,22 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         device_rep
                     };
-                    let sampler_rep = jvm::exp_create_sampler(&cb, l2_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let (mag_filter, min_filter, address_mode_u) = match &descriptor {
+                        None => (0, 0, 0),
+                        Some(d) => (
+                            d.mag_filter.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                            d.min_filter.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                            d.address_mode_u.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                        ),
+                    };
+                    let sampler_rep = jvm::exp_create_sampler_described(
+                        &cb,
+                        l2_device,
+                        mag_filter,
+                        min_filter,
+                        address_mode_u,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     if sampler_rep == 0 {
                         return Err(wasmtime::Error::msg("device-create-sampler returned 0"));
                     }

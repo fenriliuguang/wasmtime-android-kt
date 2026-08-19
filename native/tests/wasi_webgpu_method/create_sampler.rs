@@ -1,6 +1,7 @@
-//! S8: `get-device` + `[method]gpu-device.create-sampler`
+//! L2: `get-device` + `[method]gpu-device.create-sampler`
 //! WIT: `(borrow<gpu-device>, option<gpu-sampler-descriptor>) -> own<gpu-sampler>`.
-//! Guest passes none; drops own; `run` returns harness 1.
+//! Guest passes some(descriptor) address-mode-u=repeat, mag/min-filter=linear;
+//! drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -19,7 +20,7 @@ struct GpuSampler {
     rep: u32,
 }
 
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
@@ -32,7 +33,7 @@ enum GpuAddressMode {
     MirrorRepeat,
 }
 
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
@@ -135,10 +136,30 @@ fn register_method_create_sampler(linker: &mut Linker<TestHost>) -> wasmtime::Re
         "[method]gpu-device.create-sampler",
         |mut caller, (device, descriptor): (Resource<GpuDevice>, Option<GpuSamplerDescriptor>)| {
             caller.data_mut().table.get(&device).map(|_| ())?;
-            assert!(
-                descriptor.is_none(),
-                "guest must pass descriptor=none this slice"
+            let desc = descriptor.expect("guest must pass some(gpu-sampler-descriptor)");
+            assert_eq!(
+                desc.address_mode_u,
+                Some(GpuAddressMode::Repeat),
+                "guest must pass address-mode-u=repeat"
             );
+            assert!(desc.address_mode_v.is_none());
+            assert!(desc.address_mode_w.is_none());
+            assert_eq!(
+                desc.mag_filter,
+                Some(GpuFilterMode::Linear),
+                "guest must pass mag-filter=linear"
+            );
+            assert_eq!(
+                desc.min_filter,
+                Some(GpuFilterMode::Linear),
+                "guest must pass min-filter=linear"
+            );
+            assert!(desc.mipmap_filter.is_none());
+            assert!(desc.lod_min_clamp.is_none());
+            assert!(desc.lod_max_clamp.is_none());
+            assert!(desc.compare.is_none());
+            assert!(desc.max_anisotropy.is_none());
+            assert!(desc.label.is_none());
             let resource = caller.data_mut().table.push(GpuSampler { rep: 53 })?;
             Ok((resource,))
         },
