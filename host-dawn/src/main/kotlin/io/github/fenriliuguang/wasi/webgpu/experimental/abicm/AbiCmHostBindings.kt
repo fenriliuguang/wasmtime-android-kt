@@ -124,6 +124,34 @@ class AbiCmHostBindings(
     fun deviceCreateBindGroupLayout(device: Int, descriptor: BindGroupLayoutDescriptor): Int =
         host.deviceCreateBindGroupLayout(GpuHandle(device), descriptor).raw
 
+    fun deviceCreateBindGroupLayoutDescribed(
+        device: Int,
+        binding: Int,
+        visibility: Int,
+        bufferType: Int,
+    ): Int {
+        val entries = if (bufferType < 0) {
+            emptyList()
+        } else {
+            val type = when (bufferType) {
+                1 -> BufferBindingType.Storage
+                2 -> BufferBindingType.ReadOnlyStorage
+                else -> BufferBindingType.Uniform
+            }
+            listOf(
+                BindGroupLayoutEntry(
+                    binding = binding,
+                    visibility = visibility,
+                    buffer = BufferBindingLayout(type = type),
+                ),
+            )
+        }
+        return host.deviceCreateBindGroupLayout(
+            GpuHandle(device),
+            BindGroupLayoutDescriptor(entries = entries),
+        ).raw
+    }
+
     fun deviceCreateBindGroup(device: Int, descriptor: BindGroupDescriptor): Int =
         host.deviceCreateBindGroup(GpuHandle(device), descriptor).raw
 

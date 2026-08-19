@@ -262,8 +262,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + empty bind-group-layout.
-     * Guest passes `gpu-bind-group-layout-descriptor`; L2 still host-fixed empty entries.
+     * W3+: adapter + device + bind-group-layout.
+     * Guest passes `gpu-bind-group-layout-descriptor`; L2 described first buffer entry.
      * `[method]gpu-device.create-bind-group-layout`.
      */
     fun attachCreateBindGroupLayout(store: Store, host: WasiWebGpuHost) {
@@ -280,6 +280,18 @@ object ExperimentalWebGpuBridge {
                         device,
                         BindGroupLayoutDescriptor(entries = emptyList()),
                     )
+
+                override fun deviceCreateBindGroupLayoutDescribed(
+                    device: Int,
+                    binding: Int,
+                    visibility: Int,
+                    bufferType: Int,
+                ): Int = bindings.deviceCreateBindGroupLayoutDescribed(
+                    device,
+                    binding,
+                    visibility,
+                    bufferType,
+                )
             },
         )
     }
