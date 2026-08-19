@@ -1,4 +1,4 @@
-//! S6+: `get-pass` + `[method]gpu-render-pass-encoder.draw`
+//! L2: `get-pass` + `[method]gpu-render-pass-encoder.draw`
 //! WIT: `(borrow, vertex-count: u32, three option<u32>)`.
 //! Guest passes vertex-count=3, other fields none; `run` returns harness 1.
 

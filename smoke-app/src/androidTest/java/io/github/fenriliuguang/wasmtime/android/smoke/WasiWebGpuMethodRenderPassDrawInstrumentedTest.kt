@@ -13,10 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]` slice: `get-pass` then
- * `[method]gpu-render-pass-encoder.draw` (vertex-count=3, other options none;
- * L2 still host-fixed draw(3) after set-pipeline + offscreen view) via
- * [ExperimentalWebGpuBridge.attachRenderPassDraw] + [callRunConcurrent].
+ * L2 `[method]` slice: `get-pass` then
+ * `[method]gpu-render-pass-encoder.draw` (vertex-count=3, other options none)
+ * via [ExperimentalWebGpuBridge.attachRenderPassDraw] + [callRunConcurrent].
  * Not compliance.
  */
 @RunWith(AndroidJUnit4::class)

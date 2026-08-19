@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-render-pass-encoder.draw-indexed` via [ExperimentalWebGpuBridge.attachRenderPassDrawIndexed]. */
+/** L2 `[method]gpu-render-pass-encoder.draw-indexed` via [ExperimentalWebGpuBridge.attachRenderPassDrawIndexed]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodRenderPassDrawIndexedInstrumentedTest {
     @Test

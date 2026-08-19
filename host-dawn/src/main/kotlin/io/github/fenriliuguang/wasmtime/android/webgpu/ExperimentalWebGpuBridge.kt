@@ -944,10 +944,10 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3 slice: adapter + device + encoder + begin-render-pass-clear + render-pass-end.
-     *
-     * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Shared by flat `render-pass-end` and `[method]gpu-render-pass-encoder.end`.
+     * L2: adapter + device + encoder + begin-render-pass-clear + render-pass-end.
+     * Guest pass rep is forwarded when non-zero. Same Cpu offscreen TextureView
+     * substitution as [attachBeginRenderPassClear]. Shared by flat `render-pass-end`
+     * and `[method]gpu-render-pass-encoder.end`.
      */
     fun attachRenderPassEnd(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -987,6 +987,10 @@ object ExperimentalWebGpuBridge {
                 }
 
                 override fun renderPassEnd(pass: Int) {
+                    bindings.renderPassEnd(pass)
+                }
+
+                override fun renderPassEndDescribed(pass: Int) {
                     bindings.renderPassEnd(pass)
                 }
             },
@@ -1052,16 +1056,25 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+ / S6+: adapter + device + encoder + begin-render-pass-clear + host-fixed
-     * triangle pipeline set-pipeline + draw(3).
-     * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Guest passes vertex-count + option fields (JNI still host-fixed).
-     * `[method]gpu-render-pass-encoder.draw`.
+     * L2: adapter + device + encoder + begin-render-pass-clear + triangle pipeline
+     * + described draw / draw-indexed (guest counts). Host-fixed [renderPassDraw]
+     * remains for indirect attaches. Same Cpu offscreen TextureView substitution as
+     * [attachBeginRenderPassClear]. `[method]gpu-render-pass-encoder.draw` /
+     * `draw-indexed`.
      */
     fun attachRenderPassDraw(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         var colorView = 0
         var device = 0
+        fun bindTrianglePipeline(pass: Int) {
+            val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+            val pipeline = bindings.deviceCreateRenderPipelineTriangle(
+                device,
+                shader,
+                GpuTextureFormat.RGBA8_UNORM,
+            )
+            bindings.renderPassSetPipeline(pass, pipeline)
+        }
         store.setExperimentalHost(
             object : ExperimentalHostCallbacks {
                 override fun requestAdapter(): Int = bindings.requestAdapter()
@@ -1097,14 +1110,48 @@ object ExperimentalWebGpuBridge {
                 }
 
                 override fun renderPassDraw(pass: Int) {
-                    val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
-                    val pipeline = bindings.deviceCreateRenderPipelineTriangle(
-                        device,
-                        shader,
-                        GpuTextureFormat.RGBA8_UNORM,
-                    )
-                    bindings.renderPassSetPipeline(pass, pipeline)
+                    bindTrianglePipeline(pass)
                     bindings.renderPassDraw(pass, 3)
+                }
+
+                override fun renderPassDrawDescribed(
+                    pass: Int,
+                    vertexCount: Int,
+                    instanceCount: Int,
+                    firstVertex: Int,
+                    firstInstance: Int,
+                ) {
+                    bindTrianglePipeline(pass)
+                    bindings.renderPassDraw(
+                        pass,
+                        vertexCount,
+                        instanceCount,
+                        firstVertex,
+                        firstInstance,
+                    )
+                }
+
+                override fun renderPassDrawIndexedDescribed(
+                    pass: Int,
+                    indexCount: Int,
+                    instanceCount: Int,
+                    firstIndex: Int,
+                    baseVertex: Int,
+                    firstInstance: Int,
+                ) {
+                    bindTrianglePipeline(pass)
+                    bindings.renderPassDrawIndexed(
+                        pass,
+                        indexCount,
+                        instanceCount,
+                        firstIndex,
+                        baseVertex,
+                        firstInstance,
+                    )
+                }
+
+                override fun renderPassEndDescribed(pass: Int) {
+                    bindings.renderPassEnd(pass)
                 }
             },
         )
@@ -1388,8 +1435,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: same L2 as [attachRenderPassDraw]; product guests are
-     * `draw-indexed` / `draw-indirect` / `draw-indexed-indirect`.
+     * L2: same attach as [attachRenderPassDraw]; product guests are
+     * `draw-indexed` (described) / `draw-indirect` / `draw-indexed-indirect`
+     * (host-fixed draw JNI).
      */
     fun attachRenderPassDrawIndexed(store: Store, host: WasiWebGpuHost) {
         attachRenderPassDraw(store, host)
