@@ -13,8 +13,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]gpu-queue.write-buffer-with-copy` (borrow buffer, empty data,
- * L2 still host-fixed 4 bytes) via [ExperimentalWebGpuBridge.attachWriteBuffer].
+ * L2 `[method]gpu-queue.write-buffer-with-copy` (borrow buffer, 4-byte data `l2`,
+ * described JNI) via [ExperimentalWebGpuBridge.attachWriteBuffer].
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodWriteBufferInstrumentedTest {

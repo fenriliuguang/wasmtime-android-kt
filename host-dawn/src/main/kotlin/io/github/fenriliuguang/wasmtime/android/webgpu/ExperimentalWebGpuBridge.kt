@@ -1762,7 +1762,7 @@ object ExperimentalWebGpuBridge {
 
     /**
      * W3+ / S6+: adapter + device + queue + host-fixed create-buffer + write-buffer.
-     * Guest passes WIT borrow buffer + list data (JNI still host-fixed 4 bytes).
+     * Guest passes WIT borrow buffer + list data (L2 described bytes + offset).
      * `[method]gpu-queue.write-buffer-with-copy`.
      */
     fun attachWriteBuffer(store: Store, host: WasiWebGpuHost) {
@@ -1785,6 +1785,15 @@ object ExperimentalWebGpuBridge {
 
                 override fun queueWriteBuffer(queue: Int, buffer: Int) {
                     bindings.queueWriteBuffer(queue, buffer, 0L, STUB_BUFFER_BYTES)
+                }
+
+                override fun queueWriteBufferDescribed(
+                    queue: Int,
+                    buffer: Int,
+                    bufferOffset: Long,
+                    data: ByteArray,
+                ) {
+                    bindings.queueWriteBuffer(queue, buffer, bufferOffset, data)
                 }
             },
         )

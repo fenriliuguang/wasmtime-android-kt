@@ -335,6 +335,15 @@ private class ForwardingHostCallbacks(
         bindings.queueSubmit(queue, commandBuffers.toList())
     }
 
+    override fun queueWriteBufferDescribed(
+        queue: Int,
+        buffer: Int,
+        bufferOffset: Long,
+        data: ByteArray,
+    ) {
+        bindings.queueWriteBuffer(queue, buffer, bufferOffset, data)
+    }
+
     override fun surfacePresent(surface: Int) {
         bindings.surfacePresent(surface)
     }

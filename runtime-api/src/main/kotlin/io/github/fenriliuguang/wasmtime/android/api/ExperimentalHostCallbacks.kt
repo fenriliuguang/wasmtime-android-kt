@@ -349,6 +349,11 @@ interface ExperimentalHostCallbacks {
         unsupported("queueWriteBuffer")
     }
 
+    /** L2: Guest buffer handle + offset + `list<u8>` payload. */
+    fun queueWriteBufferDescribed(queue: Int, buffer: Int, bufferOffset: Long, data: ByteArray) {
+        unsupported("queueWriteBufferDescribed")
+    }
+
     /** S6+: JNI still host-fixed 1×1 write; Guest WIT texel copy info lifted in native. */
     fun queueWriteTexture(queue: Int, texture: Int) {
         unsupported("queueWriteTexture")
