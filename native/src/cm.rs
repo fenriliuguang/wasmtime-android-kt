@@ -531,6 +531,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // gpu-device-lost-info reason / message.
     // and S6+ render-bundle / render-bundle-encoder / render-pass-encoder label +
     // set-label and render-pipeline label / set-label / get-bind-group-layout.
+    // and S6+ gpu-supported-limits max-* getters (lift-only stub numerics).
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -659,6 +660,120 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let _ = caller.data_mut().table.get(&adapter)?;
                     let resource = caller.data_mut().table.push(GpuSupportedLimits)?;
                     Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-supported-limits", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuSupportedLimits)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-bind-groups",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-bind-groups-plus-vertex-buffers",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-bindings-per-bind-group",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-buffer-size",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u64,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-color-attachment-bytes-per-sample",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-color-attachments",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-compute-invocations-per-workgroup",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-compute-workgroup-size-x",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-compute-workgroup-size-y",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-compute-workgroup-size-z",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-compute-workgroups-per-dimension",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-compute-workgroup-storage-size",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
                 },
             )
             .map_err(|e| e.to_string())?;

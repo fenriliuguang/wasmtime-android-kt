@@ -1087,7 +1087,8 @@ object ExperimentalWebGpuBridge {
      * S6+: `[method]gpu-adapter.features` / `limits` / `info` and
      * `[method]gpu-adapter-info.vendor` / `architecture` / `device` /
      * `description` / `subgroup-min-size` / `subgroup-max-size` /
-     * `is-fallback-adapter`. Native lifts; L2 unused (no new JNI).
+     * `is-fallback-adapter`, and `[method]gpu-supported-limits.max-*`
+     * getters. Native lifts; L2 unused (no new JNI).
      */
     fun attachAdapterInfo(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
         store.setExperimentalHost(object : ExperimentalHostCallbacks {})
