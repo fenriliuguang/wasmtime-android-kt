@@ -2,11 +2,16 @@ package io.github.fenriliuguang.wasmtime.android.host.dawn
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPipelineDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassColorAttachment
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
@@ -128,6 +133,58 @@ private class ForwardingHostCallbacks(
                 compute = ProgrammableStage(
                     module = module,
                     entryPoint = entryPoint.ifEmpty { "main" },
+                ),
+                layout = pipelineLayout,
+                label = label.ifEmpty { null },
+            ),
+        )
+    }
+
+    override fun deviceCreateRenderPipelineDescribed(
+        device: Int,
+        vertexShader: Int,
+        vertexEntry: String,
+        fragmentShader: Int,
+        fragmentEntry: String,
+        format: Int,
+        layout: Int,
+        label: String,
+    ): Int {
+        val vertexModule =
+            if (vertexShader != 0) {
+                GpuHandle(vertexShader)
+            } else {
+                GpuHandle(bindings.deviceCreateShaderModule(device, COMPUTE_STUB_WGSL))
+            }
+        val fragmentModule =
+            if (fragmentShader != 0) {
+                GpuHandle(fragmentShader)
+            } else {
+                vertexModule
+            }
+        val pipelineLayout =
+            if (layout != 0) {
+                GpuHandle(layout)
+            } else {
+                GpuHandle(
+                    bindings.deviceCreatePipelineLayout(
+                        device,
+                        PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                    ),
+                )
+            }
+        val targetFormat = if (format != 0) format else GpuTextureFormat.RGBA8_UNORM
+        return bindings.deviceCreateRenderPipeline(
+            device,
+            RenderPipelineDescriptor(
+                vertex = VertexState(
+                    module = vertexModule,
+                    entryPoint = vertexEntry.ifEmpty { "vs_main" },
+                ),
+                fragment = FragmentState(
+                    module = fragmentModule,
+                    entryPoint = fragmentEntry.ifEmpty { "fs_main" },
+                    targets = listOf(ColorTargetState(format = targetFormat)),
                 ),
                 layout = pipelineLayout,
                 label = label.ifEmpty { null },

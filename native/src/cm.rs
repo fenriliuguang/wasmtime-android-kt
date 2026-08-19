@@ -507,7 +507,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described first entry)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 described BGL handles + label)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 described layout + label)
-    // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 still host-fixed stub shader + triangle)
+    // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 described vertex shader/entry + layout + label)
     // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 described shader/entry/layout/label)
     // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 described bytes + size)
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>; L2 described timestamp-write indices)
@@ -2674,7 +2674,26 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Resource<GpuDevice>,
                     GpuRenderPipelineDescriptor,
                 )| {
-                    let _ = caller.data_mut().table.get(&descriptor.vertex.module)?;
+                    let vertex_shader = caller
+                        .data_mut()
+                        .table
+                        .get(&descriptor.vertex.module)?
+                        .rep;
+                    let vertex_entry = descriptor.vertex.entry_point.clone().unwrap_or_default();
+                    let (fragment_shader, fragment_entry) = match &descriptor.fragment {
+                        Some(fragment) => {
+                            let fs = caller.data_mut().table.get(&fragment.module)?.rep as i32;
+                            (fs, fragment.entry_point.clone().unwrap_or_default())
+                        }
+                        None => (0, String::new()),
+                    };
+                    let layout_rep = match &descriptor.layout {
+                        GpuLayoutMode::Specific(layout) => {
+                            caller.data_mut().table.get(layout)?.rep as i32
+                        }
+                        GpuLayoutMode::Auto => 0,
+                    };
+                    let label = descriptor.label.clone().unwrap_or_default();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
@@ -2690,8 +2709,18 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         device_rep
                     };
-                    let pipeline_rep = jvm::exp_create_render_pipeline(&cb, l2_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let pipeline_rep = jvm::exp_create_render_pipeline_described(
+                        &cb,
+                        l2_device,
+                        vertex_shader,
+                        vertex_entry,
+                        fragment_shader,
+                        fragment_entry,
+                        0,
+                        layout_rep,
+                        label,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     if pipeline_rep == 0 {
                         return Err(wasmtime::Error::msg(
                             "device-create-render-pipeline returned 0",
@@ -2770,20 +2799,58 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     GpuRenderPipelineDescriptor,
                 )| {
                     Box::pin(async move {
-                        let (cb, device_rep) =
-                            accessor.with(|mut access| -> wasmtime::Result<_> {
-                                let _ = access.data_mut().table.get(&descriptor.vertex.module)?;
-                                let device_rep = access.data_mut().table.get(&device)?.rep;
-                                let cb = access
-                                    .data_mut()
-                                    .experimental_host_cb
-                                    .as_ref()
-                                    .ok_or_else(|| {
-                                        wasmtime::Error::msg("experimental host callback not set")
-                                    })
-                                    .cloned()?;
-                                Ok((cb, device_rep))
-                            })?;
+                        let (
+                            cb,
+                            device_rep,
+                            vertex_shader,
+                            vertex_entry,
+                            fragment_shader,
+                            fragment_entry,
+                            layout_rep,
+                            label,
+                        ) = accessor.with(|mut access| -> wasmtime::Result<_> {
+                            let vertex_shader = access
+                                .data_mut()
+                                .table
+                                .get(&descriptor.vertex.module)?
+                                .rep;
+                            let vertex_entry =
+                                descriptor.vertex.entry_point.clone().unwrap_or_default();
+                            let (fragment_shader, fragment_entry) = match &descriptor.fragment {
+                                Some(fragment) => {
+                                    let fs =
+                                        access.data_mut().table.get(&fragment.module)?.rep as i32;
+                                    (fs, fragment.entry_point.clone().unwrap_or_default())
+                                }
+                                None => (0, String::new()),
+                            };
+                            let layout_rep = match &descriptor.layout {
+                                GpuLayoutMode::Specific(layout) => {
+                                    access.data_mut().table.get(layout)?.rep as i32
+                                }
+                                GpuLayoutMode::Auto => 0,
+                            };
+                            let label = descriptor.label.clone().unwrap_or_default();
+                            let device_rep = access.data_mut().table.get(&device)?.rep;
+                            let cb = access
+                                .data_mut()
+                                .experimental_host_cb
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    wasmtime::Error::msg("experimental host callback not set")
+                                })
+                                .cloned()?;
+                            Ok((
+                                cb,
+                                device_rep,
+                                vertex_shader,
+                                vertex_entry,
+                                fragment_shader,
+                                fragment_entry,
+                                layout_rep,
+                                label,
+                            ))
+                        })?;
                         let (tx, rx) = oneshot::channel::<()>();
                         std::thread::spawn(move || {
                             let _ = tx.send(());
@@ -2797,8 +2864,18 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         } else {
                             device_rep
                         };
-                        let pipeline_rep = jvm::exp_create_render_pipeline(&cb, l2_device)
-                            .map_err(wasmtime::Error::msg)?;
+                        let pipeline_rep = jvm::exp_create_render_pipeline_described(
+                            &cb,
+                            l2_device,
+                            vertex_shader,
+                            vertex_entry,
+                            fragment_shader,
+                            fragment_entry,
+                            0,
+                            layout_rep,
+                            label,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
                         if pipeline_rep == 0 {
                             return Ok((Err(CreatePipelineError {
                                 kind: CreatePipelineErrorKind::GpuPipelineError(

@@ -2,11 +2,12 @@
 ;; [method]gpu-device.create-render-pipeline-async
 ;; WIT: create-render-pipeline-async: async func(descriptor)
 ;;      -> result<gpu-render-pipeline, create-pipeline-error>
-;; Guest passes shader borrow, buffers/primitive/depth/ms/fragment none,
-;; layout=auto, label=none; drops own pipeline on ok; run returns harness 1.
+;; Guest passes shader borrow, vertex entry-point="vs_main", buffers/primitive/depth/ms/fragment none,
+;; layout=auto, label="l2"; drops own pipeline on ok; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills through memory.
-;; Spill tuple: device @0, vertex.module @16, layout disc auto @180; retptr @512.
-;; L2 still host-fixed stub WGSL + triangle. True CM async.
+;; Spill tuple: device @0, vertex.module @16, vertex entry-point @20, layout disc auto @180,
+;; label @188; retptr @512; strings at 768/784.
+;; L2 described vertex shader/entry + layout + label. True CM async.
 ;; get-device / get-shader-module are test constructors only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -208,6 +209,8 @@
     (import "" "get-shader" (func $get-shader (result i32)))
     (import "" "create-rp" (func $create-rp (param i32 i32)))
     (import "" "drop-pipeline" (func $drop-pipeline (param i32)))
+    (data (i32.const 768) "vs_main")
+    (data (i32.const 784) "l2")
     (func (export "run") (result i32)
       (local $device i32)
       (local $shader i32)
@@ -220,7 +223,13 @@
       ;; Spill tuple; zeros = none. vertex.module @16, layout auto disc @180.
       (i32.store (i32.const 0) (local.get $device))
       (i32.store (i32.const 16) (local.get $shader))
+      (i32.store (i32.const 20) (i32.const 1))
+      (i32.store (i32.const 24) (i32.const 768))
+      (i32.store (i32.const 28) (i32.const 7))
       (i32.store (i32.const 180) (i32.const 1))
+      (i32.store (i32.const 188) (i32.const 1))
+      (i32.store (i32.const 192) (i32.const 784))
+      (i32.store (i32.const 196) (i32.const 2))
       (call $create-rp (i32.const 0) (local.get $retptr))
       (local.set $tag (i32.load (local.get $retptr)))
       (local.set $handle (i32.load offset=4 (local.get $retptr)))

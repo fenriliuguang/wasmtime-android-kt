@@ -1,7 +1,7 @@
-//! S6+: `get-device` + `get-shader-module` + `[method]gpu-device.create-render-pipeline-async`
+//! L2: `get-device` + `get-shader-module` + `[method]gpu-device.create-render-pipeline-async`
 //! WIT: async `(borrow<gpu-device>, gpu-render-pipeline-descriptor)
 //!      -> result<own<gpu-render-pipeline>, create-pipeline-error>`.
-//! Guest passes shader borrow, layout=auto, other options none; drops own on ok;
+//! Guest passes shader borrow, vertex entry-point="vs_main", layout=auto, label="l2"; drops own on ok;
 //! `run` returns harness 1. True CM async.
 
 use futures::channel::oneshot;
@@ -795,13 +795,13 @@ fn register_method_create_render_pipeline(linker: &mut Linker<TestHost>) -> wasm
                 })?;
                 assert!(matches!(descriptor.layout, GpuLayoutMode::Auto));
                 assert!(descriptor.vertex.buffers.is_none());
-                assert!(descriptor.vertex.entry_point.is_none());
+                assert_eq!(descriptor.vertex.entry_point.as_deref(), Some("vs_main"));
                 assert!(descriptor.vertex.constants.is_none());
                 assert!(descriptor.primitive.is_none());
                 assert!(descriptor.depth_stencil.is_none());
                 assert!(descriptor.multisample.is_none());
                 assert!(descriptor.fragment.is_none());
-                assert!(descriptor.label.is_none());
+                assert_eq!(descriptor.label.as_deref(), Some("l2"));
                 let (tx, rx) = oneshot::channel::<()>();
                 std::thread::spawn(move || {
                     let _ = tx.send(());
