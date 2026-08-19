@@ -83,6 +83,10 @@ private class ForwardingHostCallbacks(
         bindings.bufferMapAsync(buffer, mode, offset, size)
     }
 
+    override fun bufferUnmapDescribed(buffer: Int) {
+        bindings.bufferUnmap(buffer)
+    }
+
     override fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,

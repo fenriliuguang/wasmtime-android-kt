@@ -287,8 +287,20 @@ pub fn exp_buffer_map_async_described(
     )
 }
 
+/// Host-fixed map-then-unmap leftover. Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_buffer_unmap(cb: &GlobalRef, buffer: u32) -> Result<(), String> {
     call_void(cb, "bufferUnmap", "(I)V", vec![HostArg::Int(buffer as i32)])
+}
+
+/// L2: Guest buffer rep (0 → stub create in the wrap).
+pub fn exp_buffer_unmap_described(cb: &GlobalRef, buffer: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "bufferUnmapDescribed",
+        "(I)V",
+        vec![HostArg::Int(buffer as i32)],
+    )
 }
 
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {

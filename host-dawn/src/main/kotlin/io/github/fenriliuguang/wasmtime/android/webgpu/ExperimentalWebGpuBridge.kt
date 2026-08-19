@@ -133,9 +133,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+ / S6+: adapter + device + host-fixed MAP_READ buffer + map then unmap.
-     * Guest WIT `result<_, unmap-error>` (JNI still host-fixed).
-     * `[method]gpu-buffer.unmap`.
+     * L2: adapter + device + stub MAP_READ buffer + described unmap
+     * (guest buffer rep; 0 → stub create). `[method]gpu-buffer.unmap`.
      */
     fun attachBufferUnmap(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -154,6 +153,10 @@ object ExperimentalWebGpuBridge {
                     )
 
                 override fun bufferUnmap(buffer: Int) {
+                    bufferUnmapDescribed(buffer)
+                }
+
+                override fun bufferUnmapDescribed(buffer: Int) {
                     bindings.bufferMapAsync(
                         buffer,
                         GpuMapMode.READ,

@@ -57,9 +57,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferMapAsyncDescribed")
     }
 
-    /** S6+: JNI still host-fixed map-then-unmap; Guest WIT result is lifted in native. */
+    /** S6+: host-fixed map-then-unmap leftover; L2 uses [bufferUnmapDescribed]. */
     fun bufferUnmap(buffer: Int) {
         unsupported("bufferUnmap")
+    }
+
+    /** L2: Guest buffer rep (0 → stub create in the wrap). */
+    fun bufferUnmapDescribed(buffer: Int) {
+        unsupported("bufferUnmapDescribed")
     }
 
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */

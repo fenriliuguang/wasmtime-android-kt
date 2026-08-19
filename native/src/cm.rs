@@ -490,7 +490,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // (S4: sync (borrow, gpu-buffer-descriptor) -> own<gpu-buffer>) and
     // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (S6+: true async
     // result<_, map-async-error>; guest mode/offset/size; L2 still host-fixed MAP_READ buffer)
-    // and `[method]gpu-buffer.unmap` (S6+: result<_, unmap-error>; L2 still host-fixed map then unmap)
+    // and `[method]gpu-buffer.unmap` (S6+: result<_, unmap-error>; L2 described buffer rep)
     // and `[method]gpu-device.create-texture` (S6+: sync (borrow, gpu-texture-descriptor) -> own<gpu-texture>) and
     // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
     // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 still host-fixed WGSL)
@@ -1963,20 +1963,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-buffer.unmap",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
-                    let _ = caller.data_mut().table.get(&buffer)?;
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_buffer = if buffer_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        buffer_rep
+                    };
+                    jvm::exp_buffer_unmap_described(&cb, l2_buffer)
                         .map_err(wasmtime::Error::msg)?;
-                    let buffer_rep =
-                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?;
-                    jvm::exp_buffer_unmap(&cb, buffer_rep).map_err(wasmtime::Error::msg)?;
                     Ok((Ok::<(), UnmapError>(()),))
                 },
             )
