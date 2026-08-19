@@ -497,6 +497,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
     // and S6+ `[method]gpu-texture.*` info getters / label / set-label (lift-only stubs).
+    // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (lift-only stubs).
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 still host-fixed empty entries)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 still host-fixed empty bind-group-layouts)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 still host-fixed empty BGL + empty entries)
@@ -1828,6 +1829,86 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let resource = Resource::<RecordGpuPipelineConstantValue>::new_own(rep);
                     store.data_mut().table.delete(resource)?;
                     Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("[constructor]record-gpu-pipeline-constant-value", |mut store, ()| {
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(RecordGpuPipelineConstantValue)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-gpu-pipeline-constant-value.add",
+                |mut caller,
+                 (record, _key, _value): (
+                    Resource<RecordGpuPipelineConstantValue>,
+                    String,
+                    f64,
+                )| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-gpu-pipeline-constant-value.get",
+                |mut caller,
+                 (record, _key): (Resource<RecordGpuPipelineConstantValue>, String)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((None::<f64>,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-gpu-pipeline-constant-value.has",
+                |mut caller,
+                 (record, _key): (Resource<RecordGpuPipelineConstantValue>, String)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((false,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-gpu-pipeline-constant-value.remove",
+                |mut caller,
+                 (record, _key): (Resource<RecordGpuPipelineConstantValue>, String)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-gpu-pipeline-constant-value.keys",
+                |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((Vec::<String>::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-gpu-pipeline-constant-value.values",
+                |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((Vec::<f64>::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]record-gpu-pipeline-constant-value.entries",
+                |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
+                    let _ = caller.data_mut().table.get(&record)?;
+                    Ok((Vec::<(String, f64)>::new(),))
                 },
             )
             .map_err(|e| e.to_string())?;

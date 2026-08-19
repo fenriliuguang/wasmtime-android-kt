@@ -1118,6 +1118,18 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `[constructor]record-gpu-pipeline-constant-value` and
+     * `[method]record-gpu-pipeline-constant-value.add` / `get` / `has` /
+     * `remove` / `keys` / `values` / `entries`. Native lifts; L2 unused (no new JNI).
+     */
+    fun attachRecordPipelineConstantValue(
+        store: Store,
+        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+    ) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: `[method]gpu-command-buffer.label` / `set-label`,
      * `[method]gpu-command-encoder.label` / `set-label`,
      * `[method]gpu-compilation-info.messages`, and
