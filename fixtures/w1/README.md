@@ -21,9 +21,16 @@
 | `webgpu_method_create_buffer.wasm` | `get-device` + **`[method]gpu-device.create-buffer` sync** `own<gpu-buffer>` | `run: async func() -> u32` | construct device → create-buffer (`gpu-buffer-descriptor` size=4 COPY_DST\|VERTEX) → drop own; harness returns 1 |
 | `webgpu_method_create_texture.wasm` | `get-device` + **`[method]gpu-device.create-texture` sync** `own<gpu-texture>` | `run: async func() -> u32` | construct device → create-texture (`gpu-texture-descriptor` 1×1×1 rgba8unorm RENDER_ATTACHMENT) → drop own; harness returns 1 |
 | `webgpu_method_create_sampler.wasm` | `get-device` + **`[method]gpu-device.create-sampler` sync** `own<gpu-sampler>` | `run: async func() -> u32` | construct device → create-sampler (descriptor=none) → drop own; harness returns 1 |
+| `webgpu_method_sampler_label.wasm` | `get-sampler` + **`[method]gpu-sampler.label` sync** `string` | `run: async func() -> u32` | construct sampler → label (host empty); harness returns 1 |
+| `webgpu_method_sampler_set_label.wasm` | `get-sampler` + **`[method]gpu-sampler.set-label` sync** void | `run: async func() -> u32` | construct sampler → set-label (empty); harness returns 1 |
 | `webgpu_method_create_shader_module.wasm` | `get-device` + **`[method]gpu-device.create-shader-module` sync** `own<gpu-shader-module>` | `run: async func() -> u32` | construct device → create-shader-module (`gpu-shader-module-descriptor` empty code; L2 host-fixed WGSL) → drop own; harness returns 1 |
+| `webgpu_method_shader_module_get_compilation_info.wasm` | `get-shader-module` + **`[method]gpu-shader-module.get-compilation-info` async** `own<gpu-compilation-info>` | `run: async func() -> u32` | construct shader → get-compilation-info → drop own info; harness returns 1 |
+| `webgpu_method_shader_module_label.wasm` | `get-shader-module` + **`[method]gpu-shader-module.label` sync** `string` | `run: async func() -> u32` | construct shader → label (host empty); harness returns 1 |
+| `webgpu_method_shader_module_set_label.wasm` | `get-shader-module` + **`[method]gpu-shader-module.set-label` sync** void | `run: async func() -> u32` | construct shader → set-label (empty); harness returns 1 |
 | `webgpu_method_write_buffer.wasm` | `get-queue` + `get-buffer` + **`[method]gpu-queue.write-buffer-with-copy` sync** `result<_, write-buffer-error>` | `run: async func() -> u32` | construct queue + buffer → write (offset 0, empty data, offset/size none; L2 host-fixed 4 bytes) → ok → drop buffer; harness returns 1 |
 | `webgpu_method_texture_create_view.wasm` | `get-texture` + **`[method]gpu-texture.create-view` sync** `own<gpu-texture-view>` | `run: async func() -> u32` | construct texture → create-view (descriptor=none) → drop own; harness returns 1 |
+| `webgpu_method_texture_view_label.wasm` | `get-texture-view` + **`[method]gpu-texture-view.label` sync** `string` | `run: async func() -> u32` | construct view → label (host empty); harness returns 1 |
+| `webgpu_method_texture_view_set_label.wasm` | `get-texture-view` + **`[method]gpu-texture-view.set-label` sync** void | `run: async func() -> u32` | construct view → set-label (empty); harness returns 1 |
 | `webgpu_method_create_bind_group_layout.wasm` | `get-device` + **`[method]gpu-device.create-bind-group-layout` sync** `own<gpu-bind-group-layout>` | `run: async func() -> u32` | construct device → create-bind-group-layout (empty entries; L2 host-fixed empty) → drop own; harness returns 1 |
 | `webgpu_method_create_pipeline_layout.wasm` | `get-device` + **`[method]gpu-device.create-pipeline-layout` sync** `own<gpu-pipeline-layout>` | `run: async func() -> u32` | construct device → create-pipeline-layout (empty bind-group-layouts; L2 host-fixed empty) → drop own; harness returns 1 |
 | `webgpu_method_create_bind_group.wasm` | `get-device` + `get-bind-group-layout` + **`[method]gpu-device.create-bind-group` sync** `own<gpu-bind-group>` | `run: async func() -> u32` | construct device + layout → create-bind-group (empty entries; L2 host-fixed empty BGL + empty entries) → drop own; harness returns 1 |
@@ -216,6 +223,7 @@
 | `webgpu_method_gpu_wgsl_language_features.wasm` | `get-gpu` + **`[method]gpu.wgsl-language-features` sync** `own<wgsl-language-features>` | `run: async func() -> u32` | construct gpu → wgsl-language-features → drop own; harness returns 1 |
 | `webgpu_method_gpu_error_kind.wasm` | `get-gpu-error` + **`[method]gpu-error.kind` sync** `gpu-error-kind` | `run: async func() -> u32` | construct error → kind (host validation-error); harness returns 1 |
 | `webgpu_method_gpu_error_message.wasm` | `get-gpu-error` + **`[method]gpu-error.message` sync** `string` | `run: async func() -> u32` | construct error → message (host empty); harness returns 1 |
+| `webgpu_method_uncaptured_error_event_error.wasm` | `get-uncaptured-error-event` + **`[method]gpu-uncaptured-error-event.error` sync** `own<gpu-error>` | `run: async func() -> u32` | construct event → error → drop own error; harness returns 1 |
 | `webgpu_method_pipeline_layout_label.wasm` | `get-pipeline-layout` + **`[method]gpu-pipeline-layout.label` sync** `string` | `run: async func() -> u32` | construct layout → label (host empty); harness returns 1 |
 | `webgpu_method_pipeline_layout_set_label.wasm` | `get-pipeline-layout` + **`[method]gpu-pipeline-layout.set-label` sync** void | `run: async func() -> u32` | construct layout → set-label (empty); harness returns 1 |
 | `webgpu_method_query_set_label.wasm` | `get-query-set` + **`[method]gpu-query-set.label` sync** `string` | `run: async func() -> u32` | construct query-set → label (host empty); harness returns 1 |
@@ -267,12 +275,26 @@ wasm-tools parse fixtures/w1/webgpu_method_create_texture.wat -o fixtures/w1/web
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_create_texture.wasm
 wasm-tools parse fixtures/w1/webgpu_method_create_sampler.wat -o fixtures/w1/webgpu_method_create_sampler.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_create_sampler.wasm
+wasm-tools parse fixtures/w1/webgpu_method_sampler_label.wat -o fixtures/w1/webgpu_method_sampler_label.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_sampler_label.wasm
+wasm-tools parse fixtures/w1/webgpu_method_sampler_set_label.wat -o fixtures/w1/webgpu_method_sampler_set_label.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_sampler_set_label.wasm
 wasm-tools parse fixtures/w1/webgpu_method_create_shader_module.wat -o fixtures/w1/webgpu_method_create_shader_module.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_create_shader_module.wasm
+wasm-tools parse fixtures/w1/webgpu_method_shader_module_get_compilation_info.wat -o fixtures/w1/webgpu_method_shader_module_get_compilation_info.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_shader_module_get_compilation_info.wasm
+wasm-tools parse fixtures/w1/webgpu_method_shader_module_label.wat -o fixtures/w1/webgpu_method_shader_module_label.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_shader_module_label.wasm
+wasm-tools parse fixtures/w1/webgpu_method_shader_module_set_label.wat -o fixtures/w1/webgpu_method_shader_module_set_label.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_shader_module_set_label.wasm
 wasm-tools parse fixtures/w1/webgpu_method_write_buffer.wat -o fixtures/w1/webgpu_method_write_buffer.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_write_buffer.wasm
 wasm-tools parse fixtures/w1/webgpu_method_texture_create_view.wat -o fixtures/w1/webgpu_method_texture_create_view.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_create_view.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_view_label.wat -o fixtures/w1/webgpu_method_texture_view_label.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_view_label.wasm
+wasm-tools parse fixtures/w1/webgpu_method_texture_view_set_label.wat -o fixtures/w1/webgpu_method_texture_view_set_label.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_texture_view_set_label.wasm
 wasm-tools parse fixtures/w1/webgpu_method_create_bind_group_layout.wat -o fixtures/w1/webgpu_method_create_bind_group_layout.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_create_bind_group_layout.wasm
 wasm-tools parse fixtures/w1/webgpu_method_create_pipeline_layout.wat -o fixtures/w1/webgpu_method_create_pipeline_layout.wasm
@@ -657,6 +679,8 @@ wasm-tools parse fixtures/w1/webgpu_method_gpu_error_kind.wat -o fixtures/w1/web
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_gpu_error_kind.wasm
 wasm-tools parse fixtures/w1/webgpu_method_gpu_error_message.wat -o fixtures/w1/webgpu_method_gpu_error_message.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_gpu_error_message.wasm
+wasm-tools parse fixtures/w1/webgpu_method_uncaptured_error_event_error.wat -o fixtures/w1/webgpu_method_uncaptured_error_event_error.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_uncaptured_error_event_error.wasm
 wasm-tools parse fixtures/w1/webgpu_method_pipeline_layout_label.wat -o fixtures/w1/webgpu_method_pipeline_layout_label.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_pipeline_layout_label.wasm
 wasm-tools parse fixtures/w1/webgpu_method_pipeline_layout_set_label.wat -o fixtures/w1/webgpu_method_pipeline_layout_set_label.wasm
