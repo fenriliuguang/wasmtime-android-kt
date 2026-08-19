@@ -1,6 +1,6 @@
-//! S6+: `get-encoder` + `get-buffer` + `[method]gpu-command-encoder.clear-buffer`
+//! L2: `get-encoder` + `get-buffer` + `[method]gpu-command-encoder.clear-buffer`
 //! WIT: `(borrow encoder, borrow buffer, option offset, option size)`.
-//! Guest passes offset/size none; harness 1.
+//! Guest passes offset some(0), size some(4); harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -57,8 +57,8 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         )| {
             caller.data_mut().table.get(&encoder).map(|_| ())?;
             caller.data_mut().table.get(&buffer).map(|_| ())?;
-            assert!(offset.is_none());
-            assert!(size.is_none());
+            assert_eq!(offset, Some(0), "guest must pass offset=some(0)");
+            assert_eq!(size, Some(4), "guest must pass size=some(4)");
             called.store(true, Ordering::SeqCst);
             Ok(())
         },

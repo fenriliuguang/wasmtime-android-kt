@@ -1,10 +1,9 @@
-;; S6+: get-encoder + get-buffer + get-buffer +
+;; L2: get-encoder + get-buffer + get-buffer +
 ;; [method]gpu-command-encoder.copy-buffer-to-buffer
 ;; WIT: copy-buffer-to-buffer: func(source: borrow<gpu-buffer>,
 ;;      source-offset: option<u64>, destination: borrow<gpu-buffer>,
 ;;      destination-offset: option<u64>, size: option<u64>)
-;; Guest passes two buffers, offsets/size none; drops owns; run returns 1.
-;; L2 still host-fixed 4-byte copy.
+;; Guest passes two buffers, offsets some(0), size some(4); drops owns; run returns 1.
 ;; get-encoder / get-buffer are test constructors (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -52,10 +51,10 @@
       (call $copy
         (local.get $enc)
         (local.get $src)
-        (i32.const 0) (i64.const 0)
+        (i32.const 1) (i64.const 0)
         (local.get $dst)
-        (i32.const 0) (i64.const 0)
-        (i32.const 0) (i64.const 0))
+        (i32.const 1) (i64.const 0)
+        (i32.const 1) (i64.const 4))
       (call $drop-buffer (local.get $src))
       (call $drop-buffer (local.get $dst))
       (i32.const 1)

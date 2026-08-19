@@ -151,9 +151,31 @@ interface ExperimentalHostCallbacks {
 
     /** S6+: JNI still host-fixed 4-byte copy; Guest WIT borrow buffers are lifted in native.
      *  Also used by copy-buffer-to-texture / copy-texture-to-buffer /
-     *  copy-texture-to-texture / clear-buffer. */
+     *  copy-texture-to-texture. */
     fun commandEncoderCopyBufferToBuffer(encoder: Int) {
         unsupported("commandEncoderCopyBufferToBuffer")
+    }
+
+    /** L2: Guest encoder/buffer reps + option offsets/size (none → 0). */
+    fun commandEncoderCopyBufferToBufferDescribed(
+        encoder: Int,
+        source: Int,
+        sourceOffset: Long,
+        destination: Int,
+        destinationOffset: Long,
+        size: Long,
+    ) {
+        unsupported("commandEncoderCopyBufferToBufferDescribed")
+    }
+
+    /** L2: Guest encoder/buffer reps + option offset/size (none → 0). */
+    fun commandEncoderClearBufferDescribed(
+        encoder: Int,
+        buffer: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        unsupported("commandEncoderClearBufferDescribed")
     }
 
     fun commandEncoderFinish(encoder: Int): Int = unsupported("commandEncoderFinish")

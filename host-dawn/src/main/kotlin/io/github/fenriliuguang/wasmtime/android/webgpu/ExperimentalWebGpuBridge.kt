@@ -471,9 +471,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+ / S6+: adapter + device + encoder + host-fixed 4-byte copy-buffer-to-buffer.
-     * Guest passes WIT borrow src/dst (JNI still host-fixed; ignores Guest handles).
-     * `[method]gpu-command-encoder.copy-buffer-to-buffer`.
+     * L2: adapter + device + encoder + `[method]gpu-command-encoder.copy-buffer-to-buffer`
+     * / `clear-buffer` with Guest buffer reps (0 → stub 4-byte) and offsets/size.
+     * Host-fixed [commandEncoderCopyBufferToBuffer] remains for texture-copy attaches.
      */
     fun attachCopyBufferToBuffer(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -512,14 +512,73 @@ object ExperimentalWebGpuBridge {
                         STUB_BUFFER_SIZE,
                     )
                 }
+
+                override fun commandEncoderCopyBufferToBufferDescribed(
+                    encoder: Int,
+                    source: Int,
+                    sourceOffset: Long,
+                    destination: Int,
+                    destinationOffset: Long,
+                    size: Long,
+                ) {
+                    val src =
+                        if (source != 0) {
+                            source
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_BUFFER_SIZE,
+                                usage = GpuBufferUsage.COPY_SRC,
+                            )
+                        }
+                    val dst =
+                        if (destination != 0) {
+                            destination
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_BUFFER_SIZE,
+                                usage = GpuBufferUsage.COPY_DST,
+                            )
+                        }
+                    val copySize = if (size != 0L) size else STUB_BUFFER_SIZE
+                    bindings.commandEncoderCopyBufferToBuffer(
+                        encoder,
+                        src,
+                        sourceOffset,
+                        dst,
+                        destinationOffset,
+                        copySize,
+                    )
+                }
+
+                override fun commandEncoderClearBufferDescribed(
+                    encoder: Int,
+                    buffer: Int,
+                    offset: Long,
+                    size: Long,
+                ) {
+                    val buf =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_BUFFER_SIZE,
+                                usage = GpuBufferUsage.COPY_DST,
+                            )
+                        }
+                    val clearSize = if (size != 0L) size else STUB_BUFFER_SIZE
+                    bindings.commandEncoderClearBuffer(encoder, buf, offset, clearSize)
+                }
             },
         )
     }
 
     /**
-     * S6+: same L2 as [attachCopyBufferToBuffer]; product guests are
+     * S6+: same attach as [attachCopyBufferToBuffer]; product guests are
      * `copy-buffer-to-texture` / `copy-texture-to-buffer` /
-     * `copy-texture-to-texture` / `clear-buffer`.
+     * `copy-texture-to-texture` (host-fixed copy JNI) plus L2 `clear-buffer`.
      */
     fun attachCommandEncoderCopy(store: Store, host: WasiWebGpuHost) {
         attachCopyBufferToBuffer(store, host)

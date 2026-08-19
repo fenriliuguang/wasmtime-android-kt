@@ -1,7 +1,7 @@
-//! S6+: `get-encoder` + `get-buffer` +
+//! L2: `get-encoder` + `get-buffer` +
 //! `[method]gpu-command-encoder.copy-buffer-to-buffer`
 //! WIT: `(borrow encoder, borrow src, option offset, borrow dst, option offset, option size)`.
-//! Guest passes two buffers, offsets/size none; `run` returns harness 1.
+//! Guest passes offsets some(0), size some(4); `run` returns harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -64,15 +64,17 @@ fn register_method_copy_buffer_to_buffer(
             caller.data_mut().table.get(&encoder).map(|_| ())?;
             caller.data_mut().table.get(&source).map(|_| ())?;
             caller.data_mut().table.get(&destination).map(|_| ())?;
-            assert!(
-                source_offset.is_none(),
-                "guest must pass source-offset=none this slice"
+            assert_eq!(
+                source_offset,
+                Some(0),
+                "guest must pass source-offset=some(0)"
             );
-            assert!(
-                destination_offset.is_none(),
-                "guest must pass destination-offset=none this slice"
+            assert_eq!(
+                destination_offset,
+                Some(0),
+                "guest must pass destination-offset=some(0)"
             );
-            assert!(size.is_none(), "guest must pass size=none this slice");
+            assert_eq!(size, Some(4), "guest must pass size=some(4)");
             copied.store(true, Ordering::SeqCst);
             Ok(())
         },

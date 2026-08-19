@@ -352,6 +352,20 @@ class AbiCmHostBindings(
         )
     }
 
+    fun commandEncoderClearBuffer(
+        encoder: Int,
+        buffer: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        host.commandEncoderClearBuffer(
+            GpuHandle(encoder),
+            GpuHandle(buffer),
+            offset,
+            size,
+        )
+    }
+
     fun commandEncoderFinish(encoder: Int): Int =
         host.commandEncoderFinish(GpuHandle(encoder)).raw
 

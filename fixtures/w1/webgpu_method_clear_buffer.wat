@@ -1,7 +1,6 @@
-;; S6+: get-encoder + get-buffer + [method]gpu-command-encoder.clear-buffer
+;; L2: get-encoder + get-buffer + [method]gpu-command-encoder.clear-buffer
 ;; WIT: clear-buffer: func(buffer: borrow<gpu-buffer>, offset: option<u64>, size: option<u64>)
-;; Guest passes buffer, offset/size none; drops own; run returns harness 1.
-;; L2 still host-fixed 4-byte buffer copy.
+;; Guest passes buffer, offset some(0), size some(4); drops own; run returns harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-buffer" (type $gpu-buffer (sub resource)))
@@ -44,8 +43,8 @@
       (call $clear
         (local.get $enc)
         (local.get $buf)
-        (i32.const 0) (i64.const 0)
-        (i32.const 0) (i64.const 0))
+        (i32.const 1) (i64.const 0)
+        (i32.const 1) (i64.const 4))
       (call $drop-buffer (local.get $buf))
       (i32.const 1)
     )

@@ -815,6 +815,17 @@ class DawnWasiWebGpuHost private constructor(
         commandEncoder.copyBufferToBuffer(src, sourceOffset, dst, destinationOffset, size)
     }
 
+    override fun commandEncoderClearBuffer(
+        encoder: GpuHandle,
+        buffer: GpuHandle,
+        offset: Long,
+        size: Long,
+    ) {
+        val commandEncoder = handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+        commandEncoder.clearBuffer(gpuBuffer, offset, size)
+    }
+
     override fun commandEncoderFinish(encoder: GpuHandle): GpuHandle {
         synchronized(gpuLock) {
             val commandEncoder = handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder)

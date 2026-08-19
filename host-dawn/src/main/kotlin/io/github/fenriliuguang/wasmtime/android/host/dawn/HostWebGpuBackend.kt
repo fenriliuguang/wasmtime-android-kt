@@ -111,6 +111,33 @@ private class ForwardingHostCallbacks(
             ),
         )
 
+    override fun commandEncoderCopyBufferToBufferDescribed(
+        encoder: Int,
+        source: Int,
+        sourceOffset: Long,
+        destination: Int,
+        destinationOffset: Long,
+        size: Long,
+    ) {
+        bindings.commandEncoderCopyBufferToBuffer(
+            encoder,
+            source,
+            sourceOffset,
+            destination,
+            destinationOffset,
+            size,
+        )
+    }
+
+    override fun commandEncoderClearBufferDescribed(
+        encoder: Int,
+        buffer: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        bindings.commandEncoderClearBuffer(encoder, buffer, offset, size)
+    }
+
     override fun commandEncoderFinish(encoder: Int): Int = bindings.commandEncoderFinish(encoder)
 
     override fun queueSubmit1(queue: Int, commandBuffer: Int) {

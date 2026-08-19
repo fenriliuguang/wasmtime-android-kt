@@ -2978,7 +2978,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-command-encoder.copy-buffer-to-buffer",
                 |mut caller,
-                 (encoder, _source, _source_offset, _destination, _destination_offset, _size): (
+                 (encoder, source, source_offset, destination, destination_offset, size): (
                     Resource<GpuCommandEncoder>,
                     Resource<GpuBuffer>,
                     Option<u64>,
@@ -2986,21 +2986,35 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<u64>,
                     Option<u64>,
                 )| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let source_rep = caller.data_mut().table.get(&source)?.rep;
+                    let dest_rep = caller.data_mut().table.get(&destination)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_copy_buffer_to_buffer_described(
+                        &cb,
+                        l2_encoder,
+                        source_rep,
+                        source_offset.unwrap_or(0),
+                        dest_rep,
+                        destination_offset.unwrap_or(0),
+                        size.unwrap_or(0),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3102,28 +3116,38 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-command-encoder.clear-buffer",
                 |mut caller,
-                 (encoder, buffer, _offset, _size): (
+                 (encoder, buffer, offset, size): (
                     Resource<GpuCommandEncoder>,
                     Resource<GpuBuffer>,
                     Option<u64>,
                     Option<u64>,
                 )| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    let _ = caller.data_mut().table.get(&buffer)?;
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_clear_buffer_described(
+                        &cb,
+                        l2_encoder,
+                        buffer_rep,
+                        offset.unwrap_or(0),
+                        size.unwrap_or(0),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
