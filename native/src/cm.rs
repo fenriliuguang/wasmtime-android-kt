@@ -781,6 +781,123 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
+                "[method]gpu-supported-limits.max-dynamic-storage-buffers-per-pipeline-layout",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-dynamic-uniform-buffers-per-pipeline-layout",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-immediate-size",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-inter-stage-shader-variables",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-sampled-textures-per-shader-stage",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-samplers-per-shader-stage",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-storage-buffer-binding-size",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u64,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-storage-buffers-in-fragment-stage",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-storage-buffers-in-vertex-stage",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-storage-buffers-per-shader-stage",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-storage-textures-in-fragment-stage",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-storage-textures-in-vertex-stage",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-storage-textures-per-shader-stage",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
                 "[method]gpu-adapter.info",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
                     let _ = caller.data_mut().table.get(&adapter)?;
