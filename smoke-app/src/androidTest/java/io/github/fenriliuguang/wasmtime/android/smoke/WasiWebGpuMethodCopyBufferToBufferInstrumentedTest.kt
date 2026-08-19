@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]` slice: `get-encoder` + `get-buffer` then
+ * L2 `[method]` slice: `get-encoder` + `get-buffer` then
  * `[method]gpu-command-encoder.copy-buffer-to-buffer` (borrow src/dst,
- * offsets/size none; L2 still host-fixed 4-byte copy) via
+ * offsets some(0), size some(4)) via
  * [ExperimentalWebGpuBridge.attachCopyBufferToBuffer] + [callRunConcurrent].
  * Not compliance.
  */

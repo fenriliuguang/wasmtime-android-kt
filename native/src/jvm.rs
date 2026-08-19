@@ -505,12 +505,59 @@ pub fn exp_compute_pass_dispatch_workgroups(cb: &GlobalRef, pass: u32) -> Result
     )
 }
 
+/// Host-fixed 4-byte copy (ignores guest buffers). Kept for texture-copy attaches.
 pub fn exp_copy_buffer_to_buffer(cb: &GlobalRef, encoder: u32) -> Result<(), String> {
     call_void(
         cb,
         "commandEncoderCopyBufferToBuffer",
         "(I)V",
         vec![HostArg::Int(encoder as i32)],
+    )
+}
+
+/// L2: Guest encoder/buffer reps + option offsets/size (none → 0).
+pub fn exp_copy_buffer_to_buffer_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    source: u32,
+    source_offset: u64,
+    destination: u32,
+    destination_offset: u64,
+    size: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderCopyBufferToBufferDescribed",
+        "(IIJIJJ)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(source as i32),
+            HostArg::Long(source_offset as i64),
+            HostArg::Int(destination as i32),
+            HostArg::Long(destination_offset as i64),
+            HostArg::Long(size as i64),
+        ],
+    )
+}
+
+/// L2: Guest encoder/buffer reps + option offset/size (none → 0).
+pub fn exp_clear_buffer_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    buffer: u32,
+    offset: u64,
+    size: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderClearBufferDescribed",
+        "(IIJJ)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Long(offset as i64),
+            HostArg::Long(size as i64),
+        ],
     )
 }
 

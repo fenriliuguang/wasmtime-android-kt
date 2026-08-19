@@ -242,6 +242,16 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         commandEncoder.copies += CopyOp(source, sourceOffset, destination, destinationOffset, size)
     }
 
+    override fun commandEncoderClearBuffer(
+        encoder: GpuHandle,
+        buffer: GpuHandle,
+        offset: Long,
+        size: Long,
+    ) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+    }
+
     override fun commandEncoderFinish(encoder: GpuHandle): GpuHandle {
         val commandEncoder = handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
         commandEncoder.finished = true
