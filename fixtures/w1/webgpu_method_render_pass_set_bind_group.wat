@@ -3,7 +3,7 @@
 ;; WIT: set-bind-group: func(index, option<borrow<gpu-bind-group>>,
 ;;      option<list<u32>>, option<u64>, option<u32>) -> result<_, set-bind-group-error>
 ;; Guest passes index=0, bind-group=some, offsets none; result ok; drops own;
-;; run returns harness 1. L2 still host-fixed empty bind-group.
+;; run returns harness 1. L2 described JNI forwards pass/index/group (offsets none → empty).
 ;; get-pass / get-bind-group are test constructors (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu

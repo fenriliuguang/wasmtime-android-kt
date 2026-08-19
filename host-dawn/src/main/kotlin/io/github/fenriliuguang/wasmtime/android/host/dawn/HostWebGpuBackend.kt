@@ -196,6 +196,10 @@ private class ForwardingHostCallbacks(
         bindings.renderPassSetPipeline(pass, pipeline)
     }
 
+    override fun renderPassSetBindGroupDescribed(pass: Int, index: Int, bindGroup: Int) {
+        bindings.renderPassSetBindGroup(pass, index, bindGroup)
+    }
+
     override fun renderPassSetVertexBufferDescribed(
         pass: Int,
         slot: Int,

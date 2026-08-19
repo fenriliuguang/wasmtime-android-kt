@@ -150,9 +150,14 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassDrawIndexedDescribed")
     }
 
-    /** S6+: JNI still host-fixed empty bind-group; Guest WIT option is lifted in native. */
+    /** S6+: host-fixed empty bind-group leftover; L2 uses [renderPassSetBindGroupDescribed]. */
     fun renderPassSetBindGroup(pass: Int) {
         unsupported("renderPassSetBindGroup")
+    }
+
+    /** L2: Guest pass/bind-group reps + index (offsets none → empty). */
+    fun renderPassSetBindGroupDescribed(pass: Int, index: Int, bindGroup: Int) {
+        unsupported("renderPassSetBindGroupDescribed")
     }
 
     /** S6+: host-fixed VERTEX slot 0 leftover; L2 uses [renderPassSetVertexBufferDescribed]. */

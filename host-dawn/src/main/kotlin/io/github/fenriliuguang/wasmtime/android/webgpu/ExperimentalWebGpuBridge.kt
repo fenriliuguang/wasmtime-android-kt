@@ -1167,10 +1167,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+ / S6+: adapter + device + encoder + begin-render-pass-clear + host-fixed
-     * empty bind-group at index 0.
+     * L2: adapter + device + encoder + begin-render-pass-clear + described
+     * set-bind-group (guest index/group; group 0 → empty layout stub).
      * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Guest passes WIT option bind-group (JNI still host-fixed).
      * `[method]gpu-render-pass-encoder.set-bind-group`.
      */
     fun attachRenderPassSetBindGroup(store: Store, host: WasiWebGpuHost) {
@@ -1212,18 +1211,31 @@ object ExperimentalWebGpuBridge {
                 }
 
                 override fun renderPassSetBindGroup(pass: Int) {
-                    val bgl = bindings.deviceCreateBindGroupLayout(
-                        device,
-                        BindGroupLayoutDescriptor(entries = emptyList()),
-                    )
-                    val bindGroup = bindings.deviceCreateBindGroup(
-                        device,
-                        BindGroupDescriptor(
-                            layout = GpuHandle(bgl),
-                            entries = emptyList(),
-                        ),
-                    )
-                    bindings.renderPassSetBindGroup(pass, 0, bindGroup)
+                    renderPassSetBindGroupDescribed(pass, 0, 0)
+                }
+
+                override fun renderPassSetBindGroupDescribed(
+                    pass: Int,
+                    index: Int,
+                    bindGroup: Int,
+                ) {
+                    val resolved =
+                        if (bindGroup != 0) {
+                            bindGroup
+                        } else {
+                            val bgl = bindings.deviceCreateBindGroupLayout(
+                                device,
+                                BindGroupLayoutDescriptor(entries = emptyList()),
+                            )
+                            bindings.deviceCreateBindGroup(
+                                device,
+                                BindGroupDescriptor(
+                                    layout = GpuHandle(bgl),
+                                    entries = emptyList(),
+                                ),
+                            )
+                        }
+                    bindings.renderPassSetBindGroup(pass, index, resolved)
                 }
             },
         )
