@@ -523,6 +523,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // buffer size / usage / map-state.
     // and S6+ command-buffer / encoder label + compilation-info.messages +
     // compilation-message getters.
+    // and S6+ compute-pass-encoder / compute-pipeline label + set-label and
+    // compute-pipeline.get-bind-group-layout.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -1563,6 +1565,37 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let resource = store.data_mut().table.push(GpuComputePipeline { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pipeline.label",
+                |mut caller, (pipeline,): (Resource<GpuComputePipeline>,)| {
+                    let _ = caller.data_mut().table.get(&pipeline)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pipeline.set-label",
+                |mut caller, (pipeline, _label): (Resource<GpuComputePipeline>, String)| {
+                    let _ = caller.data_mut().table.get(&pipeline)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pipeline.get-bind-group-layout",
+                |mut caller, (pipeline, _index): (Resource<GpuComputePipeline>, u32)| {
+                    let _ = caller.data_mut().table.get(&pipeline)?;
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuBindGroupLayout { rep: 0 })?;
+                    Ok((resource,))
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
@@ -3089,6 +3122,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     .push(GpuComputePassEncoder { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pass-encoder.label",
+                |mut caller, (pass,): (Resource<GpuComputePassEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-compute-pass-encoder.set-label",
+                |mut caller, (pass, _label): (Resource<GpuComputePassEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
