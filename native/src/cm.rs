@@ -12,16 +12,17 @@ use crate::host::{
 use crate::jvm;
 use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
-    GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferDescriptor, GpuColor,
-    GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor, GpuComputePassDescriptor,
+    GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferDescriptor,
+    GpuColor, GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor, GpuComputePassDescriptor,
     GpuComputePipelineDescriptor, GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuMapMode,
     GpuPipelineErrorReason, GpuPipelineLayoutDescriptor, GpuQuerySet, GpuQuerySetDescriptor,
     GpuQueryType, GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor,
     GpuRenderPassDescriptor, GpuRenderPipelineDescriptor, GpuRequestAdapterOptions,
-    GpuSamplerDescriptor, GpuShaderModuleDescriptor, GpuTexelCopyBufferInfo,
-    GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor,
-    GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
-    RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
+    GpuSamplerDescriptor, GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits,
+    GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
+    GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue,
+    RecordOptionGpuSize64, RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError,
+    UnmapError, WriteBufferError,
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -516,6 +517,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ remaining device create + destroy: create-render-bundle-encoder /
     // create-query-set / device.destroy / buffer.destroy / texture.destroy /
     // query-set.destroy / query-set.type / query-set.count.
+    // and S6+ adapter info: adapter.features / limits / info + adapter-info getters.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -593,6 +595,138 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let resource = store.data_mut().table.push(GpuAdapter { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-supported-features",
+                ResourceType::host::<GpuSupportedFeatures>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuSupportedFeatures>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-supported-limits",
+                ResourceType::host::<GpuSupportedLimits>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuSupportedLimits>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-adapter-info",
+                ResourceType::host::<GpuAdapterInfo>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuAdapterInfo>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter.features",
+                |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
+                    let _ = caller.data_mut().table.get(&adapter)?;
+                    let resource = caller.data_mut().table.push(GpuSupportedFeatures)?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter.limits",
+                |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
+                    let _ = caller.data_mut().table.get(&adapter)?;
+                    let resource = caller.data_mut().table.push(GpuSupportedLimits)?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter.info",
+                |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
+                    let _ = caller.data_mut().table.get(&adapter)?;
+                    let resource = caller.data_mut().table.push(GpuAdapterInfo)?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-adapter-info", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuAdapterInfo)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter-info.vendor",
+                |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter-info.architecture",
+                |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter-info.device",
+                |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter-info.description",
+                |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter-info.subgroup-min-size",
+                |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter-info.subgroup-max-size",
+                |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-adapter-info.is-fallback-adapter",
+                |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((false,))
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .resource(

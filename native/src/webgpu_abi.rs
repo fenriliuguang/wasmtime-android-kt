@@ -13,6 +13,8 @@
 //! S6+ pipeline-async / mapped-range: `create-pipeline-error`, `get-mapped-range-error`.
 //! S6+ remaining device create + destroy: `gpu-query-set-descriptor`,
 //! `create-query-set-error`, `gpu-render-bundle-encoder-descriptor`.
+//! S6+ adapter info cluster: `gpu-adapter-info`, `gpu-supported-features`,
+//! `gpu-supported-limits`.
 
 use crate::host::{
     GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuShaderModule, GpuTexture,
@@ -1652,3 +1654,15 @@ pub struct GpuRenderBundleEncoderDescriptor {
     pub sample_count: Option<u32>,
     pub label: Option<String>,
 }
+
+/// WIT `resource gpu-adapter-info`. Lift-only; L2 unused.
+#[derive(Debug)]
+pub struct GpuAdapterInfo;
+
+/// WIT `resource gpu-supported-features`. Lift-only; L2 unused.
+#[derive(Debug)]
+pub struct GpuSupportedFeatures;
+
+/// WIT `resource gpu-supported-limits`. Lift-only; L2 unused.
+#[derive(Debug)]
+pub struct GpuSupportedLimits;

@@ -1084,6 +1084,16 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `[method]gpu-adapter.features` / `limits` / `info` and
+     * `[method]gpu-adapter-info.vendor` / `architecture` / `device` /
+     * `description` / `subgroup-min-size` / `subgroup-max-size` /
+     * `is-fallback-adapter`. Native lifts; L2 unused (no new JNI).
+     */
+    fun attachAdapterInfo(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: same L2 as [attachRenderPassSetVertexBuffer]; product guest is
      * `[method]gpu-render-pass-encoder.set-index-buffer`.
      */
