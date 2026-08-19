@@ -20,7 +20,13 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     private class BindGroup(val buffers: List<GpuHandle>)
     private class PipelineLayout
     private class Sampler
-    private class Texture(var texels: ByteArray? = null)
+    private class Texture(
+        var texels: ByteArray? = null,
+        val width: Int = 1,
+        val height: Int = 1,
+        val depthOrArrayLayers: Int = 1,
+        val mipLevelCount: Int = 1,
+    )
     private class TextureView
     private class ComputePipeline(val shader: ShaderModule)
     /** Fake Android surface for AbiCm/AbiMvp View↔Texture lifetime tests (not a real window). */
@@ -141,7 +147,15 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Device>(device, ResourceKind.Device)
         require(descriptor.size.width > 0 && descriptor.size.height > 0)
         require(descriptor.usage != 0) { "texture usage must be non-zero" }
-        return handles.insert(ResourceKind.Texture, Texture())
+        return handles.insert(
+            ResourceKind.Texture,
+            Texture(
+                width = descriptor.size.width,
+                height = descriptor.size.height,
+                depthOrArrayLayers = descriptor.size.depthOrArrayLayers,
+                mipLevelCount = descriptor.mipLevelCount,
+            ),
+        )
     }
 
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {
@@ -465,6 +479,18 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Texture>(texture, ResourceKind.Texture)
         return handles.insert(ResourceKind.TextureView, TextureView())
     }
+
+    override fun textureWidth(texture: GpuHandle): Int =
+        handles.get<Texture>(texture, ResourceKind.Texture).width
+
+    override fun textureHeight(texture: GpuHandle): Int =
+        handles.get<Texture>(texture, ResourceKind.Texture).height
+
+    override fun textureDepthOrArrayLayers(texture: GpuHandle): Int =
+        handles.get<Texture>(texture, ResourceKind.Texture).depthOrArrayLayers
+
+    override fun textureMipLevelCount(texture: GpuHandle): Int =
+        handles.get<Texture>(texture, ResourceKind.Texture).mipLevelCount
 
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

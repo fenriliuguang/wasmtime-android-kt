@@ -1,7 +1,7 @@
 
 ;; S6+: get-texture + [method]gpu-texture.width
 ;; WIT: width: func() -> u32. Host returns 1; harness 1.
-;; L2 unused (lift-only).
+;; L2 described texture handle → width (stub 1×1 when get-texture rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-texture" (type $gpu-texture (sub resource)))

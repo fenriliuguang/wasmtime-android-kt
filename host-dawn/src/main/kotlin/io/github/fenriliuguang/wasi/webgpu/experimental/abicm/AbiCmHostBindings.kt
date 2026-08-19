@@ -253,6 +253,15 @@ class AbiCmHostBindings(
         descriptor: TextureViewDescriptor = TextureViewDescriptor(),
     ): Int = host.textureCreateView(GpuHandle(texture), descriptor).raw
 
+    fun textureWidth(texture: Int): Int = host.textureWidth(GpuHandle(texture))
+
+    fun textureHeight(texture: Int): Int = host.textureHeight(GpuHandle(texture))
+
+    fun textureDepthOrArrayLayers(texture: Int): Int =
+        host.textureDepthOrArrayLayers(GpuHandle(texture))
+
+    fun textureMipLevelCount(texture: Int): Int = host.textureMipLevelCount(GpuHandle(texture))
+
     fun surfaceConfigure(surface: Int, device: Int, adapter: Int, width: Int, height: Int): Int =
         host.surfaceConfigure(
             GpuHandle(surface),

@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-texture.depth-or-array-layers` via [ExperimentalWebGpuBridge.attachTextureInfo]. */
+/** L2 `[method]gpu-texture.depth-or-array-layers` via [ExperimentalWebGpuBridge.attachTextureInfo]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodTextureDepthOrArrayLayersInstrumentedTest {
     @Test
