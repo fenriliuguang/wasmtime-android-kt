@@ -455,8 +455,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + encoder + begin-compute-pass (host-default descriptor).
-     * `[method]gpu-command-encoder.begin-compute-pass` (no Guest descriptor).
+     * L2: adapter + device + encoder + `[method]gpu-command-encoder.begin-compute-pass`
+     * with Guest timestamp-write indices forwarded through described JNI.
+     * Host still uses the default compute-pass descriptor.
      */
     fun attachBeginComputePass(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -472,6 +473,12 @@ object ExperimentalWebGpuBridge {
 
                 override fun beginComputePass(encoder: Int): Int =
                     bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun beginComputePassDescribed(
+                    encoder: Int,
+                    beginningOfPassWriteIndex: Int,
+                    endOfPassWriteIndex: Int,
+                ): Int = bindings.commandEncoderBeginComputePass(encoder)
             },
         )
     }

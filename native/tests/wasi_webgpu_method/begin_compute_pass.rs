@@ -1,7 +1,8 @@
-//! S8: `get-encoder` + `[method]gpu-command-encoder.begin-compute-pass`
+//! L2: `get-encoder` + `get-query-set` + `[method]gpu-command-encoder.begin-compute-pass`
 //! WIT: `(borrow<gpu-command-encoder>, option<gpu-compute-pass-descriptor>)
 //!      -> own<gpu-compute-pass-encoder>`.
-//! Guest passes none; drops own; `run` returns harness 1.
+//! Guest passes some(descriptor) timestamp-writes beginning=0 end=1;
+//! drops own pass + query-set; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -81,6 +82,10 @@ fn register_method_begin_compute_pass(linker: &mut Linker<TestHost>) -> wasmtime
         let resource = store.data_mut().table.push(GpuCommandEncoder { rep: 0 })?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap("get-query-set", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuQuerySet)?;
+        Ok((resource,))
+    })?;
     webgpu.func_wrap(
         "[method]gpu-command-encoder.begin-compute-pass",
         |mut caller,
@@ -89,10 +94,14 @@ fn register_method_begin_compute_pass(linker: &mut Linker<TestHost>) -> wasmtime
             Option<GpuComputePassDescriptor>,
         )| {
             caller.data_mut().table.get(&encoder).map(|_| ())?;
-            assert!(
-                descriptor.is_none(),
-                "guest must pass descriptor=none this slice"
-            );
+            let desc = descriptor.expect("guest must pass some(descriptor) this slice");
+            assert!(desc.label.is_none());
+            let ts = desc
+                .timestamp_writes
+                .expect("guest must pass some(timestamp-writes)");
+            caller.data_mut().table.get(&ts.query_set).map(|_| ())?;
+            assert_eq!(ts.beginning_of_pass_write_index, Some(0));
+            assert_eq!(ts.end_of_pass_write_index, Some(1));
             let resource = caller
                 .data_mut()
                 .table

@@ -507,7 +507,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 still host-fixed stub shader + triangle)
     // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 still host-fixed stub shader + empty layout)
     // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 still host-fixed 1×1)
-    // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>)
+    // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>; L2 described timestamp-write indices)
     // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 described first color-attachment view/load/store)
     // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void; L2 described pass rep)
     // and `[method]gpu-compute-pass-encoder.set-pipeline` (S6+: borrow<gpu-compute-pipeline>; L2 described pass+pipeline reps)
@@ -2962,11 +2962,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-command-encoder.begin-compute-pass",
                 |mut caller,
-                 (encoder, _descriptor): (
+                 (encoder, descriptor): (
                     Resource<GpuCommandEncoder>,
                     Option<GpuComputePassDescriptor>,
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let (begin_idx, end_idx) = match descriptor
+                        .as_ref()
+                        .and_then(|d| d.timestamp_writes.as_ref())
+                    {
+                        Some(ts) => {
+                            let begin_idx = ts.beginning_of_pass_write_index.unwrap_or(0);
+                            let end_idx = ts.end_of_pass_write_index.unwrap_or(0);
+                            let _ = caller.data_mut().table.get(&ts.query_set)?;
+                            (begin_idx, end_idx)
+                        }
+                        None => (0, 0),
+                    };
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -2983,8 +2995,13 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         encoder_rep
                     };
-                    let pass_rep = jvm::exp_begin_compute_pass(&cb, l2_encoder)
-                        .map_err(wasmtime::Error::msg)?;
+                    let pass_rep = jvm::exp_begin_compute_pass_described(
+                        &cb,
+                        l2_encoder,
+                        begin_idx,
+                        end_idx,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     if pass_rep == 0 {
                         return Err(wasmtime::Error::msg("begin-compute-pass returned 0"));
                     }
