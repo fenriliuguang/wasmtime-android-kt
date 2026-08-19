@@ -297,8 +297,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + empty pipeline-layout.
-     * Guest passes `gpu-pipeline-layout-descriptor`; L2 still host-fixed empty bind-group-layouts.
+     * W3+: adapter + device + pipeline-layout.
+     * Guest passes `gpu-pipeline-layout-descriptor`; L2 described BGL handles + label.
      * `[method]gpu-device.create-pipeline-layout`.
      */
     fun attachCreatePipelineLayout(store: Store, host: WasiWebGpuHost) {
@@ -310,10 +310,29 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
+                override fun deviceCreateBindGroupLayout(device: Int): Int =
+                    bindings.deviceCreateBindGroupLayout(
+                        device,
+                        BindGroupLayoutDescriptor(entries = emptyList()),
+                    )
+
                 override fun deviceCreatePipelineLayout(device: Int): Int =
                     bindings.deviceCreatePipelineLayout(
                         device,
                         PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                    )
+
+                override fun deviceCreatePipelineLayoutDescribed(
+                    device: Int,
+                    bindGroupLayouts: IntArray,
+                    label: String,
+                ): Int =
+                    bindings.deviceCreatePipelineLayout(
+                        device,
+                        PipelineLayoutDescriptor(
+                            bindGroupLayouts = bindGroupLayouts.map { GpuHandle(it) },
+                            label = label.ifEmpty { null },
+                        ),
                     )
             },
         )

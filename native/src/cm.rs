@@ -504,7 +504,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-texture.*` info getters / label / set-label (lift-only stubs).
     // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (lift-only stubs).
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described first entry)
-    // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 still host-fixed empty bind-group-layouts)
+    // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 described BGL handles + label)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 described layout + label)
     // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 still host-fixed stub shader + triangle)
     // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 still host-fixed stub shader + empty layout)
@@ -2409,11 +2409,21 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-pipeline-layout",
-                |mut caller, (device, _descriptor): (
+                |mut caller, (device, descriptor): (
                     Resource<GpuDevice>,
                     GpuPipelineLayoutDescriptor,
                 )| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let mut layouts = Vec::with_capacity(descriptor.bind_group_layouts.len());
+                    for opt in &descriptor.bind_group_layouts {
+                        match opt {
+                            Some(layout) => {
+                                layouts.push(caller.data_mut().table.get(layout)?.rep as i32);
+                            }
+                            None => layouts.push(0),
+                        }
+                    }
+                    let label = descriptor.label.clone().unwrap_or_default();
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -2428,8 +2438,21 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         device_rep
                     };
-                    let layout_rep = jvm::exp_create_pipeline_layout(&cb, l2_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let mut l2_layouts = Vec::with_capacity(layouts.len());
+                    for layout_rep in layouts {
+                        if layout_rep != 0 {
+                            l2_layouts.push(layout_rep);
+                            continue;
+                        }
+                        l2_layouts.push(
+                            jvm::exp_create_bind_group_layout(&cb, l2_device)
+                                .map_err(wasmtime::Error::msg)? as i32,
+                        );
+                    }
+                    let layout_rep = jvm::exp_create_pipeline_layout_described(
+                        &cb, l2_device, l2_layouts, label,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     if layout_rep == 0 {
                         return Err(wasmtime::Error::msg(
                             "device-create-pipeline-layout returned 0",
