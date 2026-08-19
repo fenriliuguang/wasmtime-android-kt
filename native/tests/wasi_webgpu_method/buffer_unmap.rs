@@ -1,4 +1,4 @@
-//! S6+: `get-buffer` + `[method]gpu-buffer.unmap`
+//! L2: `get-buffer` + `[method]gpu-buffer.unmap`
 //! WIT: `(borrow<gpu-buffer>) -> result<_, unmap-error>`.
 //! Guest unmaps; `run` returns harness 1.
 

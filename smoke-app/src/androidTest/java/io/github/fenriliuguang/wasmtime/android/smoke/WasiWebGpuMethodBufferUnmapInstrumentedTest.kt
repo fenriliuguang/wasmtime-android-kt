@@ -13,10 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]` slice: `get-buffer` then
- * `[method]gpu-buffer.unmap` (`result<_, unmap-error>`; L2 still host-fixed
- * map then unmap) via
- * [ExperimentalWebGpuBridge.attachBufferUnmap] + [callRunConcurrent].
+ * L2 `[method]` slice: `get-buffer` then
+ * `[method]gpu-buffer.unmap` (`result<_, unmap-error>`; described buffer rep)
+ * via [ExperimentalWebGpuBridge.attachBufferUnmap] + [callRunConcurrent].
  * Not compliance.
  */
 @RunWith(AndroidJUnit4::class)

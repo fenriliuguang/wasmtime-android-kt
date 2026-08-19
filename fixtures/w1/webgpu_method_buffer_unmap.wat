@@ -1,7 +1,7 @@
 ;; S6+: get-buffer + [method]gpu-buffer.unmap
 ;; WIT: unmap: func() -> result<_, unmap-error>
 ;; Guest unmaps; result ok; run returns harness 1.
-;; L2 still host-fixed map then unmap. get-buffer is a test constructor.
+;; L2 described JNI forwards buffer rep (0 → stub create). get-buffer is a test constructor.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $kind (variant (case "abort-error")))
