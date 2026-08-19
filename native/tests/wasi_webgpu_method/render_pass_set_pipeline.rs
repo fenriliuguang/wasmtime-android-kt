@@ -1,4 +1,4 @@
-//! S6+: `get-pass` + `get-render-pipeline` +
+//! L2: `get-pass` + `get-render-pipeline` +
 //! `[method]gpu-render-pass-encoder.set-pipeline`
 //! WIT: `(borrow<gpu-render-pass-encoder>, borrow<gpu-render-pipeline>)`.
 //! Guest borrows the pipeline; `run` returns harness 1.

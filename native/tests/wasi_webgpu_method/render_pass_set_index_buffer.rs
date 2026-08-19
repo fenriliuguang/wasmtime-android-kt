@@ -1,4 +1,4 @@
-//! S6+: `get-pass` + `get-buffer` + `[method]gpu-render-pass-encoder.set-index-buffer`
+//! L2: `get-pass` + `get-buffer` + `[method]gpu-render-pass-encoder.set-index-buffer`
 //! WIT: `(borrow, borrow<gpu-buffer>, gpu-index-format, option offset/size)`.
 //! Guest passes uint16, offset/size none; harness 1.
 

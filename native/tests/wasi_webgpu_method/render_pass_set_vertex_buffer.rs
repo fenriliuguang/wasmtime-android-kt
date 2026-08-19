@@ -1,4 +1,4 @@
-//! S6+: `get-pass` + `get-buffer` +
+//! L2: `get-pass` + `get-buffer` +
 //! `[method]gpu-render-pass-encoder.set-vertex-buffer`
 //! WIT: `(borrow, slot: u32, option<borrow<gpu-buffer>>, option offset/size)`.
 //! Guest passes slot=0, buffer=some, offset/size=none; `run` returns harness 1.

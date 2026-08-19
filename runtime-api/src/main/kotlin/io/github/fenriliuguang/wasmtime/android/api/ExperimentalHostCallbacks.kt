@@ -111,9 +111,14 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassEndDescribed")
     }
 
-    /** S6+: JNI still host-fixed; Guest WIT borrow pipeline is lifted in native. */
+    /** S6+: host-fixed triangle pipeline leftover; L2 uses [renderPassSetPipelineDescribed]. */
     fun renderPassSetPipeline(pass: Int) {
         unsupported("renderPassSetPipeline")
+    }
+
+    /** L2: Guest pass + pipeline reps (0 → stub in attach). */
+    fun renderPassSetPipelineDescribed(pass: Int, pipeline: Int) {
+        unsupported("renderPassSetPipelineDescribed")
     }
 
     /** S6+: JNI still host-fixed draw(3); Guest WIT options are lifted in native.
@@ -150,10 +155,31 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassSetBindGroup")
     }
 
-    /** S6+: JNI still host-fixed VERTEX slot 0; Guest WIT option is lifted in native.
-     *  Also used by `[method]gpu-render-pass-encoder.set-index-buffer`. */
+    /** S6+: host-fixed VERTEX slot 0 leftover; L2 uses [renderPassSetVertexBufferDescribed]. */
     fun renderPassSetVertexBuffer(pass: Int) {
         unsupported("renderPassSetVertexBuffer")
+    }
+
+    /** L2: Guest pass/buffer reps + slot + option offset/size (none → 0). */
+    fun renderPassSetVertexBufferDescribed(
+        pass: Int,
+        slot: Int,
+        buffer: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        unsupported("renderPassSetVertexBufferDescribed")
+    }
+
+    /** L2: Guest pass/buffer reps + Dawn index-format + option offset/size (none → 0). */
+    fun renderPassSetIndexBufferDescribed(
+        pass: Int,
+        buffer: Int,
+        format: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        unsupported("renderPassSetIndexBufferDescribed")
     }
 
     /** W3+: JNI ignores Guest stub pass; host begins then ends a compute pass. */

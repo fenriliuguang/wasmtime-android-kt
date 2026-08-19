@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]` slice: `get-pass` + `get-buffer` then
+ * L2 `[method]` slice: `get-pass` + `get-buffer` then
  * `[method]gpu-render-pass-encoder.set-vertex-buffer` (slot 0, some buffer,
- * offset/size none; L2 still host-fixed VERTEX slot 0 + offscreen view) via
+ * offset/size none; described JNI + offscreen view) via
  * [ExperimentalWebGpuBridge.attachRenderPassSetVertexBuffer] + [callRunConcurrent].
  * Not compliance.
  */

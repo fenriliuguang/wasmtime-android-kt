@@ -537,10 +537,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ render-bundle / render-bundle-encoder / render-pass-encoder label +
     // set-label and render-pipeline label / set-label / get-bind-group-layout.
     // and S6+ gpu-supported-limits max-* getters (lift-only stub numerics).
-    // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
+    // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 described pass+pipeline reps)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
-    // and `[method]gpu-render-pass-encoder.set-vertex-buffer` (S6+: slot + option buffer + option offset/size; L2 still host-fixed VERTEX slot 0)
+    // and `[method]gpu-render-pass-encoder.set-vertex-buffer` (S6+: slot + option buffer + option offset/size; L2 described JNI)
+    // and `[method]gpu-render-pass-encoder.set-index-buffer` (S6+: buffer + index-format + option offset/size; L2 described JNI)
     // and `[method]gpu-command-encoder.copy-buffer-to-buffer` (S6+: borrow src/dst + option offsets/size; L2 still host-fixed 4-byte copy)
     // and S6+ remaining encoder recording: copy-buffer-to-texture / copy-texture-to-buffer /
     // copy-texture-to-texture / clear-buffer / resolve-query-set / push-debug-group /
@@ -3588,26 +3589,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-pipeline",
                 |mut caller,
-                 (pass, _pipeline): (
+                 (pass, pipeline): (
                     Resource<GpuRenderPassEncoder>,
                     Resource<GpuRenderPipeline>,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_render_pass_set_pipeline(&cb, pass_rep)
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_set_pipeline_described(&cb, l2_pass, pipeline_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
@@ -3693,30 +3699,45 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-vertex-buffer",
                 |mut caller,
-                 (pass, _slot, _buffer, _offset, _size): (
+                 (pass, slot, buffer, offset, size): (
                     Resource<GpuRenderPassEncoder>,
                     u32,
                     Option<Resource<GpuBuffer>>,
                     Option<u64>,
                     Option<u64>,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let buffer_rep = match buffer {
+                        Some(ref b) => caller.data_mut().table.get(b)?.rep,
+                        None => 0,
+                    };
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_render_pass_set_vertex_buffer(&cb, pass_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_set_vertex_buffer_described(
+                        &cb,
+                        l2_pass,
+                        slot,
+                        buffer_rep,
+                        offset.unwrap_or(0),
+                        size.unwrap_or(0),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3777,31 +3798,46 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-index-buffer",
                 |mut caller,
-                 (pass, buffer, _format, _offset, _size): (
+                 (pass, buffer, format, offset, size): (
                     Resource<GpuRenderPassEncoder>,
                     Resource<GpuBuffer>,
                     GpuIndexFormat,
                     Option<u64>,
                     Option<u64>,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
-                    let _ = caller.data_mut().table.get(&buffer)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
+                    let format_u32 = match format {
+                        GpuIndexFormat::Uint16 => 1,
+                        GpuIndexFormat::Uint32 => 2,
+                    };
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_render_pass_set_vertex_buffer(&cb, pass_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_set_index_buffer_described(
+                        &cb,
+                        l2_pass,
+                        buffer_rep,
+                        format_u32,
+                        offset.unwrap_or(0),
+                        size.unwrap_or(0),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

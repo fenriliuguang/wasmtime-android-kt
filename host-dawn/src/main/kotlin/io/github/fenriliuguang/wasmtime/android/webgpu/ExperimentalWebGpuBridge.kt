@@ -9,6 +9,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuBufferUsage
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuIndexFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuMapMode
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
@@ -998,10 +999,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+ / S6+: adapter + device + encoder + begin-render-pass-clear + host-fixed
-     * triangle pipeline set-pipeline.
+     * L2: adapter + device + encoder + begin-render-pass-clear + described
+     * set-pipeline (guest pipeline rep; 0 → triangle stub).
      * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Guest passes WIT `borrow<gpu-render-pipeline>` (JNI still host-fixed).
      * `[method]gpu-render-pass-encoder.set-pipeline`.
      */
     fun attachRenderPassSetPipeline(store: Store, host: WasiWebGpuHost) {
@@ -1043,13 +1043,22 @@ object ExperimentalWebGpuBridge {
                 }
 
                 override fun renderPassSetPipeline(pass: Int) {
-                    val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
-                    val pipeline = bindings.deviceCreateRenderPipelineTriangle(
-                        device,
-                        shader,
-                        GpuTextureFormat.RGBA8_UNORM,
-                    )
-                    bindings.renderPassSetPipeline(pass, pipeline)
+                    renderPassSetPipelineDescribed(pass, 0)
+                }
+
+                override fun renderPassSetPipelineDescribed(pass: Int, pipeline: Int) {
+                    val resolved =
+                        if (pipeline != 0) {
+                            pipeline
+                        } else {
+                            val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                            bindings.deviceCreateRenderPipelineTriangle(
+                                device,
+                                shader,
+                                GpuTextureFormat.RGBA8_UNORM,
+                            )
+                        }
+                    bindings.renderPassSetPipeline(pass, resolved)
                 }
             },
         )
@@ -1221,10 +1230,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+ / S6+: adapter + device + encoder + begin-render-pass-clear + host-fixed
-     * VERTEX buffer at slot 0.
+     * L2: adapter + device + encoder + begin-render-pass-clear + described
+     * set-vertex-buffer (guest slot/buffer/offset/size; buffer 0 → VERTEX stub).
      * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
-     * Guest passes WIT option buffer (JNI still host-fixed).
      * `[method]gpu-render-pass-encoder.set-vertex-buffer`.
      */
     fun attachRenderPassSetVertexBuffer(store: Store, host: WasiWebGpuHost) {
@@ -1266,12 +1274,34 @@ object ExperimentalWebGpuBridge {
                 }
 
                 override fun renderPassSetVertexBuffer(pass: Int) {
-                    val buffer = bindings.deviceCreateBuffer(
-                        device,
-                        size = STUB_BUFFER_SIZE,
-                        usage = GpuBufferUsage.VERTEX,
+                    renderPassSetVertexBufferDescribed(pass, 0, 0, 0L, 0L)
+                }
+
+                override fun renderPassSetVertexBufferDescribed(
+                    pass: Int,
+                    slot: Int,
+                    buffer: Int,
+                    offset: Long,
+                    size: Long,
+                ) {
+                    val resolved =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_BUFFER_SIZE,
+                                usage = GpuBufferUsage.VERTEX,
+                            )
+                        }
+                    val resolvedSize = if (size != 0L) size else STUB_BUFFER_SIZE
+                    bindings.renderPassSetVertexBuffer(
+                        pass,
+                        slot,
+                        resolved,
+                        offset,
+                        resolvedSize,
                     )
-                    bindings.renderPassSetVertexBuffer(pass, 0, buffer, 0, STUB_BUFFER_SIZE)
                 }
             },
         )
@@ -1427,11 +1457,83 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: same L2 as [attachRenderPassSetVertexBuffer]; product guest is
+     * L2: adapter + device + encoder + begin-render-pass-clear + described
+     * set-index-buffer (guest buffer/format/offset/size; buffer 0 → INDEX stub).
+     * Same Cpu offscreen TextureView substitution as [attachBeginRenderPassClear].
      * `[method]gpu-render-pass-encoder.set-index-buffer`.
      */
     fun attachRenderPassSetIndexBuffer(store: Store, host: WasiWebGpuHost) {
-        attachRenderPassSetVertexBuffer(store, host)
+        val bindings = AbiCmHostBindings(host)
+        var colorView = 0
+        var device = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    device = bindings.adapterRequestDevice(adapter)
+                    val texture =
+                        bindings.deviceCreateTexture(
+                            device,
+                            TextureDescriptor(
+                                size = Extent3D(width = 1, height = 1),
+                                format = GpuTextureFormat.RGBA8_UNORM,
+                                usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                            ),
+                        )
+                    colorView = bindings.textureCreateView(texture)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginRenderPassClear(encoder: Int, view: Int): Int {
+                    val resolved = if (colorView != 0) colorView else view
+                    return bindings.commandEncoderBeginRenderPassClear(
+                        encoder,
+                        resolved,
+                        CLEAR_R,
+                        CLEAR_G,
+                        CLEAR_B,
+                        CLEAR_A,
+                    )
+                }
+
+                override fun renderPassSetIndexBufferDescribed(
+                    pass: Int,
+                    buffer: Int,
+                    format: Int,
+                    offset: Long,
+                    size: Long,
+                ) {
+                    val resolved =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_BUFFER_SIZE,
+                                usage = GpuBufferUsage.INDEX,
+                            )
+                        }
+                    val resolvedFormat =
+                        if (format != GpuIndexFormat.UNDEFINED) {
+                            format
+                        } else {
+                            GpuIndexFormat.UINT16
+                        }
+                    val resolvedSize = if (size != 0L) size else STUB_BUFFER_SIZE
+                    bindings.renderPassSetIndexBuffer(
+                        pass,
+                        resolved,
+                        resolvedFormat,
+                        offset,
+                        resolvedSize,
+                    )
+                }
+            },
+        )
     }
 
     /**
