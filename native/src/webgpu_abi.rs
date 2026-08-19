@@ -1756,3 +1756,20 @@ pub struct PopErrorScopeError {
     pub kind: PopErrorScopeErrorKind,
     pub message: String,
 }
+
+/// WIT `resource wgsl-language-features`. Lift-only; L2 unused.
+#[derive(Debug)]
+pub struct WgslLanguageFeatures;
+
+/// WIT `variant gpu-error-kind`. Lift-only; L2 unused.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum GpuErrorKind {
+    #[component(name = "validation-error")]
+    ValidationError,
+    #[component(name = "out-of-memory-error")]
+    OutOfMemoryError,
+    #[component(name = "internal-error")]
+    InternalError,
+}
