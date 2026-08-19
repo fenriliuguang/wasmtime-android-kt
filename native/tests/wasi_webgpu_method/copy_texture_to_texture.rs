@@ -1,4 +1,4 @@
-//! S6+: `get-encoder` + two `get-texture` +
+//! L2: `get-encoder` + two `get-texture` +
 //! `[method]gpu-command-encoder.copy-texture-to-texture`
 //! Guest passes mip/origin/aspect none, size 1×1×1; harness 1.
 

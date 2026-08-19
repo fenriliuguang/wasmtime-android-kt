@@ -473,11 +473,30 @@ object ExperimentalWebGpuBridge {
     /**
      * L2: adapter + device + encoder + `[method]gpu-command-encoder.copy-buffer-to-buffer`
      * / `clear-buffer` with Guest buffer reps (0 → stub 4-byte) and offsets/size.
-     * Host-fixed [commandEncoderCopyBufferToBuffer] remains for texture-copy attaches.
+     * Texture-copy described JNI (buffer/texture reps 0 → aligned stub) shares this attach.
      */
     fun attachCopyBufferToBuffer(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         var device = 0
+        fun stubTexelBuffer(usage: Int): Int =
+            bindings.deviceCreateBuffer(
+                device,
+                size = STUB_TEXEL_COPY_BYTES,
+                usage = usage,
+            )
+        fun stubTexelTexture(width: Int, height: Int, depth: Int): Int =
+            bindings.deviceCreateTexture(
+                device,
+                TextureDescriptor(
+                    size = Extent3D(
+                        width = width.coerceAtLeast(1),
+                        height = height.coerceAtLeast(1),
+                        depthOrArrayLayers = depth.coerceAtLeast(1),
+                    ),
+                    format = GpuTextureFormat.RGBA8_UNORM,
+                    usage = GpuTextureUsage.COPY_SRC or GpuTextureUsage.COPY_DST,
+                ),
+            )
         store.setExperimentalHost(
             object : ExperimentalHostCallbacks {
                 override fun requestAdapter(): Int = bindings.requestAdapter()
@@ -571,14 +590,104 @@ object ExperimentalWebGpuBridge {
                     val clearSize = if (size != 0L) size else STUB_BUFFER_SIZE
                     bindings.commandEncoderClearBuffer(encoder, buf, offset, clearSize)
                 }
+
+                override fun commandEncoderCopyBufferToTextureDescribed(
+                    encoder: Int,
+                    source: Int,
+                    destination: Int,
+                    width: Int,
+                    height: Int,
+                    depth: Int,
+                ) {
+                    val src =
+                        if (source != 0) {
+                            source
+                        } else {
+                            stubTexelBuffer(GpuBufferUsage.COPY_SRC)
+                        }
+                    val dst =
+                        if (destination != 0) {
+                            destination
+                        } else {
+                            stubTexelTexture(width, height, depth)
+                        }
+                    bindings.commandEncoderCopyBufferToTexture(
+                        encoder,
+                        src,
+                        dst,
+                        width,
+                        height,
+                        depth,
+                    )
+                }
+
+                override fun commandEncoderCopyTextureToBufferDescribed(
+                    encoder: Int,
+                    source: Int,
+                    destination: Int,
+                    width: Int,
+                    height: Int,
+                    depth: Int,
+                ) {
+                    val src =
+                        if (source != 0) {
+                            source
+                        } else {
+                            stubTexelTexture(width, height, depth)
+                        }
+                    val dst =
+                        if (destination != 0) {
+                            destination
+                        } else {
+                            stubTexelBuffer(GpuBufferUsage.COPY_DST)
+                        }
+                    bindings.commandEncoderCopyTextureToBuffer(
+                        encoder,
+                        src,
+                        dst,
+                        width,
+                        height,
+                        depth,
+                    )
+                }
+
+                override fun commandEncoderCopyTextureToTextureDescribed(
+                    encoder: Int,
+                    source: Int,
+                    destination: Int,
+                    width: Int,
+                    height: Int,
+                    depth: Int,
+                ) {
+                    val src =
+                        if (source != 0) {
+                            source
+                        } else {
+                            stubTexelTexture(width, height, depth)
+                        }
+                    val dst =
+                        if (destination != 0) {
+                            destination
+                        } else {
+                            stubTexelTexture(width, height, depth)
+                        }
+                    bindings.commandEncoderCopyTextureToTexture(
+                        encoder,
+                        src,
+                        dst,
+                        width,
+                        height,
+                        depth,
+                    )
+                }
             },
         )
     }
 
     /**
-     * S6+: same attach as [attachCopyBufferToBuffer]; product guests are
+     * L2: same attach as [attachCopyBufferToBuffer]; product guests are
      * `copy-buffer-to-texture` / `copy-texture-to-buffer` /
-     * `copy-texture-to-texture` (host-fixed copy JNI) plus L2 `clear-buffer`.
+     * `copy-texture-to-texture` (described copy-size JNI) plus L2 `clear-buffer`.
      */
     fun attachCommandEncoderCopy(store: Store, host: WasiWebGpuHost) {
         attachCopyBufferToBuffer(store, host)
@@ -1485,6 +1594,8 @@ object ExperimentalWebGpuBridge {
     private const val CLEAR_B = 0.72f
     private const val CLEAR_A = 1.0f
     private const val STUB_BUFFER_SIZE = 4L
+    /** 256-byte row alignment for described texel copies (1×1 RGBA8). */
+    private const val STUB_TEXEL_COPY_BYTES = 256L
     private val STUB_BUFFER_BYTES = byteArrayOf(1, 2, 3, 4)
     private val STUB_TEXTURE_BYTES = byteArrayOf(1, 2, 3, 4)
     private const val STUB_WGSL = "@compute @workgroup_size(1) fn main() {}"

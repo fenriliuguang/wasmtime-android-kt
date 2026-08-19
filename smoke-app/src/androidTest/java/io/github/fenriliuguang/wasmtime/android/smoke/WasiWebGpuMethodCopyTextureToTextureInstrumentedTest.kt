@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-command-encoder.copy-texture-to-texture` via [ExperimentalWebGpuBridge.attachCommandEncoderCopy]. */
+/** L2 `[method]gpu-command-encoder.copy-texture-to-texture` via [ExperimentalWebGpuBridge.attachCommandEncoderCopy]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodCopyTextureToTextureInstrumentedTest {
     @Test
