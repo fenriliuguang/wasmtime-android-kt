@@ -60,6 +60,7 @@ import androidx.webgpu.GPUTexture
 import androidx.webgpu.GPUTextureBindingLayout
 import androidx.webgpu.GPUTextureDescriptor
 import androidx.webgpu.GPUTextureView
+import androidx.webgpu.GPUTextureViewDescriptor
 import androidx.webgpu.GPUVertexAttribute
 import androidx.webgpu.GPUVertexBufferLayout
 import androidx.webgpu.GPUVertexState
@@ -106,6 +107,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.ShaderModuleDescrip
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SurfaceTextureResult
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SurfaceTextureStatus
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Color
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
@@ -618,10 +620,21 @@ class DawnWasiWebGpuHost private constructor(
         )
     }
 
-    override fun textureCreateView(texture: GpuHandle): GpuHandle {
+    override fun textureCreateView(
+        texture: GpuHandle,
+        descriptor: TextureViewDescriptor,
+    ): GpuHandle {
         synchronized(gpuLock) {
             val gpuTexture = handles.get<GPUTexture>(texture, ResourceKind.Texture)
-            return handles.insert(ResourceKind.TextureView, gpuTexture.createView())
+            return handles.insert(
+                ResourceKind.TextureView,
+                gpuTexture.createView(
+                    GPUTextureViewDescriptor(
+                        dimension = descriptor.dimension,
+                        aspect = descriptor.aspect,
+                    ),
+                ),
+            )
         }
     }
 

@@ -1,6 +1,6 @@
-﻿//! S8: `get-texture` + `[method]gpu-texture.create-view`
+﻿//! L2: `get-texture` + `[method]gpu-texture.create-view`
 //! WIT: `(borrow<gpu-texture>, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>`.
-//! Guest passes none; drops own; `run` returns harness 1.
+//! Guest passes some(descriptor) dimension=d2, aspect=all; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -18,7 +18,7 @@ struct GpuTextureView {
     #[allow(dead_code)]
     rep: u32,
 }
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
@@ -31,7 +31,7 @@ enum GpuTextureAspect {
     DepthOnly,
 }
 
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
@@ -328,10 +328,25 @@ fn register_method_texture_create_view(linker: &mut Linker<TestHost>) -> wasmtim
         |mut caller,
          (texture, descriptor): (Resource<GpuTexture>, Option<GpuTextureViewDescriptor>)| {
             caller.data_mut().table.get(&texture).map(|_| ())?;
-            assert!(
-                descriptor.is_none(),
-                "guest must pass descriptor=none this slice"
+            let desc = descriptor.expect("guest must pass some(gpu-texture-view-descriptor)");
+            assert!(desc.format.is_none());
+            assert_eq!(
+                desc.dimension,
+                Some(GpuTextureViewDimension::D2),
+                "guest must pass dimension=d2"
             );
+            assert!(desc.usage.is_none());
+            assert_eq!(
+                desc.aspect,
+                Some(GpuTextureAspect::All),
+                "guest must pass aspect=all"
+            );
+            assert!(desc.base_mip_level.is_none());
+            assert!(desc.mip_level_count.is_none());
+            assert!(desc.base_array_layer.is_none());
+            assert!(desc.array_layer_count.is_none());
+            assert!(desc.swizzle.is_none());
+            assert!(desc.label.is_none());
             let resource = caller.data_mut().table.push(GpuTextureView { rep: 41 })?;
             Ok((resource,))
         },

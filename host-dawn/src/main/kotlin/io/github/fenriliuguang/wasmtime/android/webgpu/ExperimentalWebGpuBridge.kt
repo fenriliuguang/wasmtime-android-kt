@@ -14,6 +14,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
@@ -1252,8 +1253,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + host-fixed 1×1 texture + create-view.
-     * `[method]gpu-texture.create-view` (no Guest descriptor).
+     * L2: adapter + device + host-fixed 1×1 texture + `[method]gpu-texture.create-view`
+     * with Guest `gpu-texture-view-descriptor` dimension/aspect forwarded to L2.
      */
     fun attachCreateTextureView(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -1274,8 +1275,18 @@ object ExperimentalWebGpuBridge {
                         ),
                     )
 
-                override fun textureCreateView(texture: Int): Int =
-                    bindings.textureCreateView(texture)
+                override fun textureCreateViewDescribed(
+                    texture: Int,
+                    dimension: Int,
+                    aspect: Int,
+                ): Int =
+                    bindings.textureCreateView(
+                        texture,
+                        TextureViewDescriptor(
+                            dimension = dimension,
+                            aspect = aspect,
+                        ),
+                    )
             },
         )
     }

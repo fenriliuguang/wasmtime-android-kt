@@ -20,6 +20,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ShaderModuleDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SurfaceTextureStatus
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexBufferLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
 
@@ -212,8 +213,10 @@ class AbiCmHostBindings(
     fun deviceCreateCommandEncoder(device: Int): Int =
         host.deviceCreateCommandEncoder(GpuHandle(device)).raw
 
-    fun textureCreateView(texture: Int): Int =
-        host.textureCreateView(GpuHandle(texture)).raw
+    fun textureCreateView(
+        texture: Int,
+        descriptor: TextureViewDescriptor = TextureViewDescriptor(),
+    ): Int = host.textureCreateView(GpuHandle(texture), descriptor).raw
 
     fun surfaceConfigure(surface: Int, device: Int, adapter: Int, width: Int, height: Int): Int =
         host.surfaceConfigure(

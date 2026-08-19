@@ -4,6 +4,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
 import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
 import io.github.fenriliuguang.wasmtime.android.api.WebGpuBackend
@@ -94,6 +95,19 @@ private class ForwardingHostCallbacks(
                 magFilter = magFilter,
                 minFilter = minFilter,
                 addressModeU = addressModeU,
+            ),
+        )
+
+    override fun textureCreateViewDescribed(
+        texture: Int,
+        dimension: Int,
+        aspect: Int,
+    ): Int =
+        bindings.textureCreateView(
+            texture,
+            TextureViewDescriptor(
+                dimension = dimension,
+                aspect = aspect,
             ),
         )
 

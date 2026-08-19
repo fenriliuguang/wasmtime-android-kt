@@ -132,6 +132,37 @@ data class SamplerDescriptor(
     val addressModeU: Int = GpuAddressMode.UNDEFINED,
 )
 
+/**
+ * Dawn TextureAspect pass-through (`androidx.webgpu.TextureAspect`).
+ * Undefined=0 lets Dawn apply All.
+ */
+object GpuTextureAspect {
+    const val UNDEFINED: Int = 0x00000000
+    const val ALL: Int = 0x00000001
+    const val STENCIL_ONLY: Int = 0x00000002
+    const val DEPTH_ONLY: Int = 0x00000003
+}
+
+/**
+ * Dawn TextureViewDimension pass-through (`androidx.webgpu.TextureViewDimension`).
+ * Distinct from [GpuTextureViewDimension] (WIT ordinals). Undefined=0 lets Dawn apply 2D.
+ */
+object GpuDawnTextureViewDimension {
+    const val UNDEFINED: Int = 0x00000000
+    const val D1: Int = 0x00000001
+    const val D2: Int = 0x00000002
+    const val D2_ARRAY: Int = 0x00000003
+    const val CUBE: Int = 0x00000004
+    const val CUBE_ARRAY: Int = 0x00000005
+    const val D3: Int = 0x00000006
+}
+
+/** Texture-view descriptor; Dawn ints (0 = Undefined → host default). */
+data class TextureViewDescriptor(
+    val dimension: Int = GpuDawnTextureViewDimension.UNDEFINED,
+    val aspect: Int = GpuTextureAspect.UNDEFINED,
+)
+
 data class PipelineLayoutDescriptor(
     val bindGroupLayouts: List<GpuHandle>,
     val label: String? = null,
