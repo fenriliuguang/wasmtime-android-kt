@@ -1,0 +1,129 @@
+//! S6+: `get-buffer` + `[method]gpu-buffer.usage`
+//! WIT: `(borrow) -> gpu-buffer-usage`. Host empty flags; harness 1.
+
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
+use wasmtime::component::{flags, Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::{Config, Engine, Store};
+
+#[derive(Debug)]
+struct GpuBuffer;
+
+flags! {
+    GpuBufferUsage {
+        #[component(name = "map-read")]
+        const MAP_READ;
+        #[component(name = "map-write")]
+        const MAP_WRITE;
+        #[component(name = "copy-src")]
+        const COPY_SRC;
+        #[component(name = "copy-dst")]
+        const COPY_DST;
+        #[component(name = "index")]
+        const INDEX;
+        #[component(name = "vertex")]
+        const VERTEX;
+        #[component(name = "uniform")]
+        const UNIFORM;
+        #[component(name = "storage")]
+        const STORAGE;
+        #[component(name = "indirect")]
+        const INDIRECT;
+        #[component(name = "query-resolve")]
+        const QUERY_RESOLVE;
+    }
+}
+
+struct TestHost {
+    table: ResourceTable,
+}
+
+fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime::Result<()> {
+    let mut webgpu = linker.instance("wasi:webgpu/webgpu@0.3.0-rc.2")?;
+    webgpu.resource(
+        "gpu-buffer",
+        ResourceType::host::<GpuBuffer>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuBuffer>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
+    webgpu.func_wrap("get-buffer", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuBuffer)?;
+        Ok((resource,))
+    })?;
+    webgpu.func_wrap(
+        "[method]gpu-buffer.usage",
+        move |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
+            caller.data_mut().table.get(&buffer).map(|_| ())?;
+            called.store(true, Ordering::SeqCst);
+            Ok((GpuBufferUsage::empty(),))
+        },
+    )?;
+    Ok(())
+}
+
+fn new_store(engine: &Engine) -> Store<TestHost> {
+    Store::new(
+        engine,
+        TestHost {
+            table: ResourceTable::new(),
+        },
+    )
+}
+
+#[test]
+fn wasi_webgpu_method_buffer_usage_smoke() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/w1/webgpu_method_buffer_usage.wasm"
+    ))?;
+    let component = Component::new(&engine, bytes)?;
+    let called = Arc::new(AtomicBool::new(false));
+    let mut linker: Linker<TestHost> = Linker::new(&engine);
+    register(&mut linker, called.clone())?;
+    let mut store = new_store(&engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let v = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })?;
+    assert_eq!(v, 1);
+    assert!(called.load(Ordering::SeqCst));
+    Ok(())
+}
+
+#[test]
+fn wasi_webgpu_method_buffer_usage_call_async() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/w1/webgpu_method_buffer_usage.wasm"
+    ))?;
+    let component = Component::new(&engine, bytes)?;
+    let called = Arc::new(AtomicBool::new(false));
+    let mut linker: Linker<TestHost> = Linker::new(&engine);
+    register(&mut linker, called.clone())?;
+    let mut store = new_store(&engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
+    let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
+    assert_eq!(v, 1);
+    assert!(called.load(Ordering::SeqCst));
+    Ok(())
+}

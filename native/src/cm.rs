@@ -13,16 +13,16 @@ use crate::jvm;
 use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
     GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferDescriptor,
-    GpuColor, GpuCommandBufferDescriptor, GpuCommandEncoderDescriptor, GpuComputePassDescriptor,
-    GpuComputePipelineDescriptor, GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuMapMode,
-    GpuPipelineErrorReason, GpuPipelineLayoutDescriptor, GpuQuerySet, GpuQuerySetDescriptor,
-    GpuQueryType, GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor,
-    GpuRenderPassDescriptor, GpuRenderPipelineDescriptor, GpuRequestAdapterOptions,
-    GpuSamplerDescriptor, GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits,
-    GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
-    GpuTextureDescriptor, GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue,
-    RecordOptionGpuSize64, RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError,
-    UnmapError, WriteBufferError,
+    GpuBufferMapState, GpuBufferUsage, GpuColor, GpuCommandBufferDescriptor,
+    GpuCommandEncoderDescriptor, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
+    GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuMapMode, GpuPipelineErrorReason,
+    GpuPipelineLayoutDescriptor, GpuQuerySet, GpuQuerySetDescriptor, GpuQueryType,
+    GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor,
+    GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
+    GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits, GpuTexelCopyBufferInfo,
+    GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor,
+    GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
+    RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -518,6 +518,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // create-query-set / device.destroy / buffer.destroy / texture.destroy /
     // query-set.destroy / query-set.type / query-set.count.
     // and S6+ adapter info: adapter.features / limits / info + adapter-info getters.
+    // and S6+ bind-group / bind-group-layout / buffer label + set-label and
+    // buffer size / usage / map-state.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -1068,6 +1070,51 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap(
+                "[method]gpu-buffer.size",
+                |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok((0u64,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-buffer.usage",
+                |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok((GpuBufferUsage::empty(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-buffer.map-state",
+                |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok((GpuBufferMapState::Unmapped,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-buffer.label",
+                |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-buffer.set-label",
+                |mut caller, (buffer, _label): (Resource<GpuBuffer>, String)| {
+                    let _ = caller.data_mut().table.get(&buffer)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap_concurrent(
                 "[method]gpu-buffer.map-async",
                 |accessor,
@@ -1320,6 +1367,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
+                "[method]gpu-bind-group-layout.label",
+                |mut caller, (layout,): (Resource<GpuBindGroupLayout>,)| {
+                    let _ = caller.data_mut().table.get(&layout)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-bind-group-layout.set-label",
+                |mut caller, (layout, _label): (Resource<GpuBindGroupLayout>, String)| {
+                    let _ = caller.data_mut().table.get(&layout)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
                 "[method]gpu-device.create-bind-group-layout",
                 |mut caller, (device, _descriptor): (
                     Resource<GpuDevice>,
@@ -1443,6 +1508,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let resource = store.data_mut().table.push(GpuBindGroup { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-bind-group.label",
+                |mut caller, (bind_group,): (Resource<GpuBindGroup>,)| {
+                    let _ = caller.data_mut().table.get(&bind_group)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-bind-group.set-label",
+                |mut caller, (bind_group, _label): (Resource<GpuBindGroup>, String)| {
+                    let _ = caller.data_mut().table.get(&bind_group)?;
+                    Ok(())
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .resource(
