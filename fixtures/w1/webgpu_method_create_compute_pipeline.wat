@@ -2,8 +2,8 @@
 ;; [method]gpu-device.create-compute-pipeline
 ;; WIT: create-compute-pipeline: func(descriptor: gpu-compute-pipeline-descriptor)
 ;;      -> gpu-compute-pipeline
-;; Guest passes shader borrow, entry/constants none, layout=auto, label=none;
-;; drops own pipeline; run returns harness 1. L2 still host-fixed stub WGSL + empty layout.
+;; Guest passes shader borrow, entry-point="main", constants none, layout=auto, label="l2";
+;; drops own pipeline; run returns harness 1. L2 described shader/entry/layout/label.
 ;; get-device / get-shader-module are test constructors only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -68,6 +68,7 @@
   (core func $dp_lower (canon resource.drop $gpu-compute-pipeline))
 
   (core module $m
+    (import "" "mem" (memory 1))
     (import "" "get-device" (func $get-device (result i32)))
     (import "" "get-shader" (func $get-shader (result i32)))
     (import "" "create-cp"
@@ -75,6 +76,8 @@
         (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
         (result i32)))
     (import "" "drop-pipeline" (func $drop-pipeline (param i32)))
+    (data (i32.const 32) "main")
+    (data (i32.const 48) "l2")
     (func (export "run") (result i32)
       (local $device i32)
       (local $shader i32)
@@ -85,22 +88,23 @@
         (call $create-cp
           (local.get $device)
           (local.get $shader)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)
+          (i32.const 1)
+          (i32.const 32)
+          (i32.const 4)
           (i32.const 0)
           (i32.const 0)
           (i32.const 1)
           (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)))
+          (i32.const 1)
+          (i32.const 48)
+          (i32.const 2)))
       (call $drop-pipeline (local.get $pipeline))
       (i32.const 1)
     )
   )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-device" (func $gd_lower))
       (export "get-shader" (func $gs_lower))
       (export "create-cp" (func $cc_lower))

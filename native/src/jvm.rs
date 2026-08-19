@@ -564,12 +564,37 @@ pub fn exp_create_render_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, St
     )
 }
 
+/// Host-fixed stub shader + empty layout leftover. Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_create_compute_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateComputePipeline",
         "(I)I",
         vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest shader handle + entry-point + layout handle (0 = auto) + optional label.
+pub fn exp_create_compute_pipeline_described(
+    cb: &GlobalRef,
+    device: u32,
+    shader: u32,
+    entry_point: String,
+    layout: i32,
+    label: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateComputePipelineDescribed",
+        "(IILjava/lang/String;ILjava/lang/String;)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Int(shader as i32),
+            HostArg::Str(entry_point),
+            HostArg::Int(layout),
+            HostArg::Str(label),
+        ],
     )
 }
 

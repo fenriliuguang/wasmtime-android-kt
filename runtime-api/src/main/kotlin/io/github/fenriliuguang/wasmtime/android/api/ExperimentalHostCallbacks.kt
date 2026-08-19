@@ -124,9 +124,18 @@ interface ExperimentalHostCallbacks {
      *  Also used by `[method]gpu-device.create-render-pipeline-async`. */
     fun deviceCreateRenderPipeline(device: Int): Int = unsupported("deviceCreateRenderPipeline")
 
-    /** S6+: guest `gpu-compute-pipeline-descriptor`; L2 still host-fixed stub shader + empty layout.
+    /** S6+: guest `gpu-compute-pipeline-descriptor`; L2 leftover host-fixed stub shader + empty layout.
      *  Also used by `[method]gpu-device.create-compute-pipeline-async`. */
     fun deviceCreateComputePipeline(device: Int): Int = unsupported("deviceCreateComputePipeline")
+
+    /** L2: Guest shader handle (0 = stub WGSL) + entry-point + layout handle (0 = auto/empty) + optional label. */
+    fun deviceCreateComputePipelineDescribed(
+        device: Int,
+        shader: Int,
+        entryPoint: String,
+        layout: Int,
+        label: String,
+    ): Int = unsupported("deviceCreateComputePipelineDescribed")
 
     /** W3+: host-default compute-pass descriptor leftover; L2 uses [beginComputePassDescribed]. */
     fun beginComputePass(encoder: Int): Int = unsupported("beginComputePass")
