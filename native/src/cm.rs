@@ -899,6 +899,42 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
+                "[method]gpu-supported-limits.max-texture-array-layers",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-texture-dimension1-d",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-texture-dimension2-d",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-texture-dimension3-d",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
                 "[method]gpu-adapter.info",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
                     let _ = caller.data_mut().table.get(&adapter)?;
