@@ -207,9 +207,14 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassSetPipelineDescribed")
     }
 
-    /** S6+: JNI still host-fixed empty bind-group; Guest WIT option is lifted in native. */
+    /** S6+: host-fixed empty bind-group leftover; L2 uses [computePassSetBindGroupDescribed]. */
     fun computePassSetBindGroup(pass: Int) {
         unsupported("computePassSetBindGroup")
+    }
+
+    /** L2: Guest compute-pass/bind-group reps + index (offsets none → empty). */
+    fun computePassSetBindGroupDescribed(pass: Int, index: Int, bindGroup: Int) {
+        unsupported("computePassSetBindGroupDescribed")
     }
 
     /** S6+: host-fixed 1×1×1 leftover; L2 uses [computePassDispatchWorkgroupsDescribed].

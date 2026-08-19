@@ -789,9 +789,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+ / S6+: adapter + device + encoder + begin-compute-pass + host-fixed
-     * empty bind-group at index 0.
-     * Guest passes WIT option bind-group (JNI still host-fixed).
+     * L2: adapter + device + encoder + begin-compute-pass + described
+     * set-bind-group (guest index/group; group 0 → empty layout stub).
      * Cpu only accepts bind-group index 0.
      * `[method]gpu-compute-pass-encoder.set-bind-group`.
      */
@@ -814,18 +813,31 @@ object ExperimentalWebGpuBridge {
                     bindings.commandEncoderBeginComputePass(encoder)
 
                 override fun computePassSetBindGroup(pass: Int) {
-                    val bgl = bindings.deviceCreateBindGroupLayout(
-                        device,
-                        BindGroupLayoutDescriptor(entries = emptyList()),
-                    )
-                    val bindGroup = bindings.deviceCreateBindGroup(
-                        device,
-                        BindGroupDescriptor(
-                            layout = GpuHandle(bgl),
-                            entries = emptyList(),
-                        ),
-                    )
-                    bindings.computePassSetBindGroup(pass, 0, bindGroup)
+                    computePassSetBindGroupDescribed(pass, 0, 0)
+                }
+
+                override fun computePassSetBindGroupDescribed(
+                    pass: Int,
+                    index: Int,
+                    bindGroup: Int,
+                ) {
+                    val resolved =
+                        if (bindGroup != 0) {
+                            bindGroup
+                        } else {
+                            val bgl = bindings.deviceCreateBindGroupLayout(
+                                device,
+                                BindGroupLayoutDescriptor(entries = emptyList()),
+                            )
+                            bindings.deviceCreateBindGroup(
+                                device,
+                                BindGroupDescriptor(
+                                    layout = GpuHandle(bgl),
+                                    entries = emptyList(),
+                                ),
+                            )
+                        }
+                    bindings.computePassSetBindGroup(pass, index, resolved)
                 }
             },
         )
