@@ -1624,8 +1624,9 @@ object ExperimentalWebGpuBridge {
     /**
      * S6+: `[method]gpu-device.create-render-bundle-encoder` /
      * `create-query-set` / `destroy` / `[method]gpu-buffer.destroy` /
-     * `[method]gpu-texture.destroy` / `[method]gpu-query-set.destroy` /
-     * `type` / `count`. Native lifts guest args; L2 unused (no new JNI).
+     * `[method]gpu-query-set.destroy` / `type` / `count`.
+     * `[method]gpu-texture.destroy` is L2 via [attachTextureInfo].
+     * Native lifts guest args; remaining still lift-only (no new JNI here).
      */
     fun attachDeviceQueryAndDestroy(
         store: Store,
@@ -1660,9 +1661,10 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[method]gpu-texture.width` / `height` / `depth-or-array-layers` /
-     * `mip-level-count` / `sample-count` / `dimension` / `format` / `usage`
-     * (L2 described texture handle → extent/meta) and remaining
-     * `texture-binding-view-dimension` / `label` / `set-label` (still lift-only).
+     * `mip-level-count` / `sample-count` / `dimension` / `format` / `usage` /
+     * `texture-binding-view-dimension` / `destroy`
+     * (L2 described texture handle → extent/meta/destroy) and remaining
+     * `label` / `set-label` (still lift-only).
      */
     fun attachTextureInfo(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -1706,6 +1708,13 @@ object ExperimentalWebGpuBridge {
 
                 override fun textureUsageDescribed(texture: Int): Int =
                     bindings.textureUsage(texture)
+
+                override fun textureBindingViewDimensionDescribed(texture: Int): Int =
+                    bindings.textureBindingViewDimension(texture)
+
+                override fun textureDestroyDescribed(texture: Int) {
+                    bindings.textureDestroy(texture)
+                }
             },
         )
     }

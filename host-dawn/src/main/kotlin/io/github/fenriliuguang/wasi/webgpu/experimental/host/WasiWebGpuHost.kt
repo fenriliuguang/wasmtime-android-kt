@@ -131,6 +131,11 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun textureUsage(texture: GpuHandle): Int
 
+    /** Dawn `TextureViewDimension` int; `0` means none / unspecified. */
+    fun textureBindingViewDimension(texture: GpuHandle): Int
+
+    fun textureDestroy(texture: GpuHandle)
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

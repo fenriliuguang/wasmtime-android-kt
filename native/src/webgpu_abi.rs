@@ -444,6 +444,19 @@ impl GpuTextureViewDimension {
             Self::D3 => 6,
         }
     }
+
+    /// Inverse of [Self::to_dawn_u32]; `0` / unknown → `None`.
+    pub fn from_dawn_u32(value: u32) -> Option<Self> {
+        match value {
+            1 => Some(Self::D1),
+            2 => Some(Self::D2),
+            3 => Some(Self::D2Array),
+            4 => Some(Self::Cube),
+            5 => Some(Self::CubeArray),
+            6 => Some(Self::D3),
+            _ => None,
+        }
+    }
 }
 
 flags! {

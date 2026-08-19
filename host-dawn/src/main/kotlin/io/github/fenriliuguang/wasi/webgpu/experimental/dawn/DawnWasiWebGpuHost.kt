@@ -687,6 +687,20 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun textureBindingViewDimension(texture: GpuHandle): Int {
+        synchronized(gpuLock) {
+            handles.get<GPUTexture>(texture, ResourceKind.Texture)
+            // Dawn GPUTexture does not expose the descriptor-only WIT field.
+            return 0
+        }
+    }
+
+    override fun textureDestroy(texture: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUTexture>(texture, ResourceKind.Texture).close()
+        }
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

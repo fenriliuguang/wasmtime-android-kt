@@ -448,6 +448,15 @@ interface ExperimentalHostCallbacks {
     /** L2: Guest texture handle → WebGPU/Dawn `GPUTextureUsage` bits. */
     fun textureUsageDescribed(texture: Int): Int = unsupported("textureUsageDescribed")
 
+    /** L2: Guest texture handle → Dawn `TextureViewDimension` (0 = none). */
+    fun textureBindingViewDimensionDescribed(texture: Int): Int =
+        unsupported("textureBindingViewDimensionDescribed")
+
+    /** L2: Guest texture handle → destroy. */
+    fun textureDestroyDescribed(texture: Int) {
+        unsupported("textureDestroyDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

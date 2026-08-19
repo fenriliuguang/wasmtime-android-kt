@@ -1,5 +1,5 @@
-//! S6+: `get-texture` + `[method]gpu-texture.destroy`
-//! WIT: `(borrow)`. Harness 1.
+//! L2: `get-texture` + `[method]gpu-texture.destroy`
+//! WIT: `(borrow)`. Host destroy; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
