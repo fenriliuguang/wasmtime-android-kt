@@ -1133,6 +1133,19 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `[method]gpu-device.adapter-info` / `features` / `limits` / `label` /
+     * `set-label` / `lost` / `push-error-scope` / `pop-error-scope` /
+     * `on-uncaptured-error` and `[method]gpu-device-lost-info.reason` / `message`.
+     * Native lifts; L2 unused (no new JNI).
+     */
+    fun attachDeviceInfoError(
+        store: Store,
+        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+    ) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: same L2 as [attachRenderPassSetVertexBuffer]; product guest is
      * `[method]gpu-render-pass-encoder.set-index-buffer`.
      */

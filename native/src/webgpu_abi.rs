@@ -1704,3 +1704,55 @@ pub enum GpuCompilationMessageType {
     #[component(name = "info")]
     Info,
 }
+
+/// WIT `resource gpu-device-lost-info`. Lift-only; L2 unused.
+#[derive(Debug)]
+pub struct GpuDeviceLostInfo;
+
+/// WIT `enum gpu-device-lost-reason`. Lift-only; L2 unused.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuDeviceLostReason {
+    #[component(name = "unknown")]
+    Unknown,
+    #[component(name = "destroyed")]
+    Destroyed,
+}
+
+/// WIT `resource gpu-error`. Lift-only; L2 unused.
+#[derive(Debug)]
+pub struct GpuError;
+
+/// WIT `enum gpu-error-filter`. Lift-only; L2 unused.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuErrorFilter {
+    #[component(name = "validation")]
+    Validation,
+    #[component(name = "out-of-memory")]
+    OutOfMemory,
+    #[component(name = "internal")]
+    Internal,
+}
+
+/// WIT `variant pop-error-scope-error-kind`. Lift-only; L2 unused.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+pub enum PopErrorScopeErrorKind {
+    #[component(name = "operation-error")]
+    OperationError,
+}
+
+/// WIT `record pop-error-scope-error`. Lift-only; L2 unused.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct PopErrorScopeError {
+    pub kind: PopErrorScopeErrorKind,
+    pub message: String,
+}
