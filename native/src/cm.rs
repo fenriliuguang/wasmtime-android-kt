@@ -21,11 +21,12 @@ use crate::webgpu_abi::{
     GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor,
     GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
     GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits, GpuDeviceLostInfo,
-    GpuDeviceLostReason, GpuError, GpuErrorFilter, PopErrorScopeError, GpuTexelCopyBufferInfo,
+    GpuDeviceLostReason, GpuError, GpuErrorFilter, GpuErrorKind, PopErrorScopeError, GpuTexelCopyBufferInfo,
     GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor, GpuTextureDimension,
     GpuTextureFormat, GpuTextureUsage, GpuTextureViewDescriptor, GpuTextureViewDimension,
-    MapAsyncError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
-    RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
+    MapAsyncError,     RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
+    RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WgslLanguageFeatures,
+    WriteBufferError,
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
@@ -604,6 +605,36 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         })?;
                         Ok((Some(resource),))
                     })
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "wgsl-language-features",
+                ResourceType::host::<WgslLanguageFeatures>(),
+                |mut store, rep| {
+                    let resource = Resource::<WgslLanguageFeatures>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu.get-preferred-canvas-format",
+                |mut caller, (gpu,): (Resource<Gpu>,)| {
+                    let _ = caller.data_mut().table.get(&gpu)?;
+                    Ok((GpuTextureFormat::Rgba8unorm,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu.wgsl-language-features",
+                |mut caller, (gpu,): (Resource<Gpu>,)| {
+                    let _ = caller.data_mut().table.get(&gpu)?;
+                    let resource = caller.data_mut().table.push(WgslLanguageFeatures)?;
+                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1222,6 +1253,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let resource = Resource::<GpuError>::new_own(rep);
                     store.data_mut().table.delete(resource)?;
                     Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-gpu-error", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuError)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-error.message",
+                |mut caller, (error,): (Resource<GpuError>,)| {
+                    let _ = caller.data_mut().table.get(&error)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-error.kind",
+                |mut caller, (error,): (Resource<GpuError>,)| {
+                    let _ = caller.data_mut().table.get(&error)?;
+                    Ok((GpuErrorKind::ValidationError,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2130,6 +2185,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap("get-pipeline-layout", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuPipelineLayout { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-pipeline-layout.label",
+                |mut caller, (layout,): (Resource<GpuPipelineLayout>,)| {
+                    let _ = caller.data_mut().table.get(&layout)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-pipeline-layout.set-label",
+                |mut caller, (layout, _label): (Resource<GpuPipelineLayout>, String)| {
+                    let _ = caller.data_mut().table.get(&layout)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .resource(
                 "gpu-bind-group",
                 ResourceType::host::<GpuBindGroup>(),
@@ -2559,6 +2638,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
                     let _ = caller.data_mut().table.get(&query_set)?;
                     Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-query-set.label",
+                |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
+                    let _ = caller.data_mut().table.get(&query_set)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-query-set.set-label",
+                |mut caller, (query_set, _label): (Resource<GpuQuerySet>, String)| {
+                    let _ = caller.data_mut().table.get(&query_set)?;
+                    Ok(())
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -3039,6 +3136,36 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let _ = caller.data_mut().table.get(&msg)?;
                     Ok((0u64,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-queue.label",
+                |mut caller, (queue,): (Resource<GpuQueue>,)| {
+                    let _ = caller.data_mut().table.get(&queue)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-queue.set-label",
+                |mut caller, (queue, _label): (Resource<GpuQueue>, String)| {
+                    let _ = caller.data_mut().table.get(&queue)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap_concurrent(
+                "[method]gpu-queue.on-submitted-work-done",
+                |accessor, (queue,): (Resource<GpuQueue>,)| {
+                    Box::pin(async move {
+                        accessor
+                            .with(|mut access| access.data_mut().table.get(&queue).map(|_| ()))?;
+                        Ok(())
+                    })
                 },
             )
             .map_err(|e| e.to_string())?;
