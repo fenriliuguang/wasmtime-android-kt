@@ -1,4 +1,4 @@
-//! S6+: `get-buffer` + `[method]gpu-buffer.map-state`
+//! L2: `get-buffer` + `[method]gpu-buffer.map-state`
 //! WIT: `(borrow) -> gpu-buffer-map-state`. Host returns unmapped; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

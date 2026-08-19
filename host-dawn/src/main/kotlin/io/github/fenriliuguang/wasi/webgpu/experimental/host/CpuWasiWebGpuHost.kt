@@ -408,6 +408,17 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         buf.mapped = false
     }
 
+    override fun bufferSize(buffer: GpuHandle): Long =
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer).size
+
+    override fun bufferUsage(buffer: GpuHandle): Int =
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer).usage
+
+    override fun bufferMapState(buffer: GpuHandle): Int {
+        val buf = handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+        return if (buf.mapped) GpuBufferMapState.MAPPED else GpuBufferMapState.UNMAPPED
+    }
+
     override fun instanceCreateSurfaceFromAndroidNativeWindow(nativeWindowHandle: Long): GpuHandle {
         require(nativeWindowHandle != 0L) { "window-handle is null" }
         return handles.insert(ResourceKind.Surface, Surface())

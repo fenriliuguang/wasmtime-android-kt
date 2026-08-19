@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-buffer.map-state` via [ExperimentalWebGpuBridge.attachBindGroupBufferLabel]. */
+/** L2 `[method]gpu-buffer.map-state` via [ExperimentalWebGpuBridge.attachBindGroupBufferLabel]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodBufferMapStateInstrumentedTest {
     @Test

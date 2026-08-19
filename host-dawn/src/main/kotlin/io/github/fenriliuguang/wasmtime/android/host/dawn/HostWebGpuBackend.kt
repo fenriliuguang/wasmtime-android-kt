@@ -249,6 +249,13 @@ private class ForwardingHostCallbacks(
         bindings.bufferUnmap(buffer)
     }
 
+    override fun bufferSizeDescribed(buffer: Int): Long = bindings.bufferSize(buffer)
+
+    override fun bufferUsageDescribed(buffer: Int): Int = bindings.bufferUsage(buffer)
+
+    override fun bufferMapStateDescribed(buffer: Int): Int = bindings.bufferMapState(buffer)
+    }
+
     override fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,

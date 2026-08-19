@@ -1649,14 +1649,36 @@ object ExperimentalWebGpuBridge {
     /**
      * S6+: `[method]gpu-bind-group.label` / `set-label`,
      * `[method]gpu-bind-group-layout.label` / `set-label`, and
-     * `[method]gpu-buffer.label` / `set-label` / `size` / `usage` / `map-state`.
-     * Native lifts; L2 unused (no new JNI).
+     * `[method]gpu-buffer.label` / `set-label` (still lift-only), plus L2
+     * `[method]gpu-buffer.size` / `usage` / `map-state`.
      */
     fun attachBindGroupBufferLabel(
         store: Store,
-        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+        host: WasiWebGpuHost,
     ) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateBuffer(device: Int): Int =
+                    bindings.deviceCreateBuffer(
+                        device,
+                        size = STUB_BUFFER_SIZE,
+                        usage = GpuBufferUsage.MAP_READ or GpuBufferUsage.COPY_DST,
+                    )
+
+                override fun bufferSizeDescribed(buffer: Int): Long = bindings.bufferSize(buffer)
+
+                override fun bufferUsageDescribed(buffer: Int): Int = bindings.bufferUsage(buffer)
+
+                override fun bufferMapStateDescribed(buffer: Int): Int =
+                    bindings.bufferMapState(buffer)
+            },
+        )
     }
 
     /**

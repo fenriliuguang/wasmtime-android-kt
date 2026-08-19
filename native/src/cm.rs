@@ -2046,8 +2046,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-buffer.size",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
-                    let _ = caller.data_mut().table.get(&buffer)?;
-                    Ok((0u64,))
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_buffer = if buffer_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        buffer_rep
+                    };
+                    let size = jvm::exp_buffer_size_described(&cb, l2_buffer)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((size,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2055,8 +2072,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-buffer.usage",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
-                    let _ = caller.data_mut().table.get(&buffer)?;
-                    Ok((GpuBufferUsage::empty(),))
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_buffer = if buffer_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        buffer_rep
+                    };
+                    let bits = jvm::exp_buffer_usage_described(&cb, l2_buffer)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuBufferUsage::from_webgpu_u32(bits),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2064,8 +2098,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-buffer.map-state",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
-                    let _ = caller.data_mut().table.get(&buffer)?;
-                    Ok((GpuBufferMapState::Unmapped,))
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_buffer = if buffer_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        buffer_rep
+                    };
+                    let state = jvm::exp_buffer_map_state_described(&cb, l2_buffer)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuBufferMapState::from_host_u32(state),))
                 },
             )
             .map_err(|e| e.to_string())?;

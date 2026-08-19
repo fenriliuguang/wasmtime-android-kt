@@ -1,6 +1,6 @@
 ;; S6+: get-buffer + [method]gpu-buffer.usage
-;; WIT: usage: func() -> gpu-buffer-usage. Host returns empty flags; harness 1.
-;; L2 unused (lift-only).
+;; WIT: usage: func() -> gpu-buffer-usage. Host usage bits; harness 1.
+;; L2 described buffer handle → usage (stub MAP_READ|COPY_DST when get-buffer rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $usage (flags "map-read" "map-write" "copy-src" "copy-dst" "index" "vertex" "uniform" "storage" "indirect" "query-resolve"))
