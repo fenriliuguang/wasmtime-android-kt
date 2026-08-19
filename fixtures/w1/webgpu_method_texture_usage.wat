@@ -1,7 +1,7 @@
 
 ;; S6+: get-texture + [method]gpu-texture.usage
-;; WIT: usage: func() -> gpu-texture-usage. Host empty flags; harness 1.
-;; L2 unused (lift-only).
+;; WIT: usage: func() -> gpu-texture-usage. Host usage bits; harness 1.
+;; L2 described texture handle → usage (stub 1×1 when get-texture rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $usage (flags "copy-src" "copy-dst" "texture-binding" "storage-binding" "render-attachment" "transient-attachment"))

@@ -123,6 +123,14 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun textureMipLevelCount(texture: GpuHandle): Int
 
+    fun textureSampleCount(texture: GpuHandle): Int
+
+    fun textureDimension(texture: GpuHandle): Int
+
+    fun textureFormat(texture: GpuHandle): Int
+
+    fun textureUsage(texture: GpuHandle): Int
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

@@ -487,6 +487,30 @@ impl GpuTextureUsage {
         }
         bits
     }
+
+    /// Inverse of [Self::to_webgpu_u32].
+    pub fn from_webgpu_u32(bits: u32) -> Self {
+        let mut usage = Self::empty();
+        if bits & (1 << 0) != 0 {
+            usage |= Self::COPY_SRC;
+        }
+        if bits & (1 << 1) != 0 {
+            usage |= Self::COPY_DST;
+        }
+        if bits & (1 << 2) != 0 {
+            usage |= Self::TEXTURE_BINDING;
+        }
+        if bits & (1 << 3) != 0 {
+            usage |= Self::STORAGE_BINDING;
+        }
+        if bits & (1 << 4) != 0 {
+            usage |= Self::RENDER_ATTACHMENT;
+        }
+        if bits & (1 << 5) != 0 {
+            usage |= Self::TRANSIENT_ATTACHMENT;
+        }
+        usage
+    }
 }
 
 flags! {
@@ -729,6 +753,14 @@ impl GpuTextureFormat {
             _ => 0x16,
         }
     }
+
+    /// Inverse of [Self::to_dawn_u32]; unknown Dawn values fall back to RGBA8Unorm.
+    pub fn from_dawn_u32(value: u32) -> Self {
+        match value {
+            0x16 => Self::Rgba8unorm,
+            _ => Self::Rgba8unorm,
+        }
+    }
 }
 
 #[derive(Clone, Debug, ComponentType, Lift, Lower)]
@@ -762,6 +794,17 @@ pub enum GpuTextureDimension {
     D2,
     #[component(name = "d3")]
     D3,
+}
+
+impl GpuTextureDimension {
+    /// Dawn `TextureDimension`: Undefined=0, 1D=1, 2D=2, 3D=3.
+    pub fn from_dawn_u32(value: u32) -> Self {
+        match value {
+            1 => Self::D1,
+            3 => Self::D3,
+            _ => Self::D2,
+        }
+    }
 }
 
 #[derive(Clone, Debug, ComponentType, Lift, Lower)]

@@ -1,5 +1,5 @@
-//! S6+: `get-texture` + `[method]gpu-texture.usage`
-//! WIT: `(borrow) -> gpu-texture-usage`. Host empty flags; harness 1.
+//! L2: `get-texture` + `[method]gpu-texture.usage`
+//! WIT: `(borrow) -> gpu-texture-usage`. Host empty flags in native wrap; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

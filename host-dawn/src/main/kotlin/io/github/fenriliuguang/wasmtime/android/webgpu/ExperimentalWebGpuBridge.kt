@@ -1660,8 +1660,8 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[method]gpu-texture.width` / `height` / `depth-or-array-layers` /
-     * `mip-level-count` (L2 described texture handle → extent) and remaining
-     * `sample-count` / `dimension` / `format` / `usage` /
+     * `mip-level-count` / `sample-count` / `dimension` / `format` / `usage`
+     * (L2 described texture handle → extent/meta) and remaining
      * `texture-binding-view-dimension` / `label` / `set-label` (still lift-only).
      */
     fun attachTextureInfo(store: Store, host: WasiWebGpuHost) {
@@ -1694,6 +1694,18 @@ object ExperimentalWebGpuBridge {
 
                 override fun textureMipLevelCountDescribed(texture: Int): Int =
                     bindings.textureMipLevelCount(texture)
+
+                override fun textureSampleCountDescribed(texture: Int): Int =
+                    bindings.textureSampleCount(texture)
+
+                override fun textureDimensionDescribed(texture: Int): Int =
+                    bindings.textureDimension(texture)
+
+                override fun textureFormatDescribed(texture: Int): Int =
+                    bindings.textureFormat(texture)
+
+                override fun textureUsageDescribed(texture: Int): Int =
+                    bindings.textureUsage(texture)
             },
         )
     }
