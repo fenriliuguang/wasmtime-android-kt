@@ -20,7 +20,8 @@ use crate::webgpu_abi::{
     GpuPipelineLayoutDescriptor, GpuQuerySet, GpuQuerySetDescriptor, GpuQueryType,
     GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor,
     GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
-    GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits, GpuTexelCopyBufferInfo,
+    GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits, GpuDeviceLostInfo,
+    GpuDeviceLostReason, GpuError, GpuErrorFilter, PopErrorScopeError, GpuTexelCopyBufferInfo,
     GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor,
     GpuTextureViewDescriptor, MapAsyncError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
     RequestDeviceError, RequestDeviceErrorKind, SetBindGroupError, UnmapError, WriteBufferError,
@@ -525,6 +526,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // compilation-message getters.
     // and S6+ compute-pass-encoder / compute-pipeline label + set-label and
     // compute-pipeline.get-bind-group-layout.
+    // and S6+ gpu-device adapter-info / features / limits / label / set-label /
+    // lost / push-error-scope / pop-error-scope / on-uncaptured-error and
+    // gpu-device-lost-info reason / message.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -851,6 +855,145 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let _ = caller.data_mut().table.get(&device)?;
                     Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-device-lost-info",
+                ResourceType::host::<GpuDeviceLostInfo>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuDeviceLostInfo>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-error",
+                ResourceType::host::<GpuError>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuError>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.features",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let resource = caller.data_mut().table.push(GpuSupportedFeatures)?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.limits",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let resource = caller.data_mut().table.push(GpuSupportedLimits)?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.adapter-info",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let resource = caller.data_mut().table.push(GpuAdapterInfo)?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.label",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.set-label",
+                |mut caller, (device, _label): (Resource<GpuDevice>, String)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.lost",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let info = caller.data_mut().table.push(GpuDeviceLostInfo)?;
+                    let fut = FutureReader::new(&mut caller, async move {
+                        Ok::<Resource<GpuDeviceLostInfo>, wasmtime::Error>(info)
+                    })?;
+                    Ok((fut,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.push-error-scope",
+                |mut caller, (device, _filter): (Resource<GpuDevice>, GpuErrorFilter)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap_concurrent(
+                "[method]gpu-device.pop-error-scope",
+                |accessor, (device,): (Resource<GpuDevice>,)| {
+                    Box::pin(async move {
+                        accessor
+                            .with(|mut access| access.data_mut().table.get(&device).map(|_| ()))?;
+                        Ok((Ok::<Option<Resource<GpuError>>, PopErrorScopeError>(None),))
+                    })
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device.on-uncaptured-error",
+                |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let _ = caller.data_mut().table.get(&device)?;
+                    let reader =
+                        StreamReader::<Resource<GpuError>>::new(&mut caller, vec![])?;
+                    Ok((reader,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-device-lost-info", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuDeviceLostInfo)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device-lost-info.reason",
+                |mut caller, (info,): (Resource<GpuDeviceLostInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((GpuDeviceLostReason::Unknown,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-device-lost-info.message",
+                |mut caller, (info,): (Resource<GpuDeviceLostInfo>,)| {
+                    let _ = caller.data_mut().table.get(&info)?;
+                    Ok((String::new(),))
                 },
             )
             .map_err(|e| e.to_string())?;
