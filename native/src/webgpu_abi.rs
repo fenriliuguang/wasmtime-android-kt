@@ -85,6 +85,42 @@ impl GpuBufferUsage {
         }
         bits
     }
+
+    /// Inverse of [Self::to_webgpu_u32].
+    pub fn from_webgpu_u32(bits: u32) -> Self {
+        let mut usage = Self::empty();
+        if bits & (1 << 0) != 0 {
+            usage |= Self::MAP_READ;
+        }
+        if bits & (1 << 1) != 0 {
+            usage |= Self::MAP_WRITE;
+        }
+        if bits & (1 << 2) != 0 {
+            usage |= Self::COPY_SRC;
+        }
+        if bits & (1 << 3) != 0 {
+            usage |= Self::COPY_DST;
+        }
+        if bits & (1 << 4) != 0 {
+            usage |= Self::INDEX;
+        }
+        if bits & (1 << 5) != 0 {
+            usage |= Self::VERTEX;
+        }
+        if bits & (1 << 6) != 0 {
+            usage |= Self::UNIFORM;
+        }
+        if bits & (1 << 7) != 0 {
+            usage |= Self::STORAGE;
+        }
+        if bits & (1 << 8) != 0 {
+            usage |= Self::INDIRECT;
+        }
+        if bits & (1 << 9) != 0 {
+            usage |= Self::QUERY_RESOLVE;
+        }
+        usage
+    }
 }
 
 #[derive(Clone, Debug, ComponentType, Lift, Lower)]
@@ -1791,7 +1827,7 @@ pub struct GpuSupportedFeatures;
 #[derive(Debug)]
 pub struct GpuSupportedLimits;
 
-/// WIT `enum gpu-buffer-map-state`. Lift-only; L2 unused.
+/// WIT `enum gpu-buffer-map-state`.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
@@ -1803,6 +1839,17 @@ pub enum GpuBufferMapState {
     Pending,
     #[component(name = "mapped")]
     Mapped,
+}
+
+impl GpuBufferMapState {
+    /// Host/Dawn ordinal: unmapped=0, pending=1, mapped=2.
+    pub fn from_host_u32(value: u32) -> Self {
+        match value {
+            1 => Self::Pending,
+            2 => Self::Mapped,
+            _ => Self::Unmapped,
+        }
+    }
 }
 
 /// WIT `resource gpu-compilation-info`. Lift-only; L2 unused.

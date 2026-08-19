@@ -198,6 +198,23 @@ fn call_i(
     })
 }
 
+fn call_j(
+    cb: &GlobalRef,
+    name: &'static str,
+    sig: &'static str,
+    args: Vec<HostArg>,
+) -> Result<u64, String> {
+    let cb = cb.clone();
+    with_env(move |env| {
+        let result = call_with_host_args(env, cb.as_obj(), name, sig, &args)?;
+        check_exception(env)?;
+        result
+            .j()
+            .map(|v| v as u64)
+            .map_err(|e| format!("host {name} result: {e}"))
+    })
+}
+
 fn call_void(
     cb: &GlobalRef,
     name: &'static str,
@@ -368,6 +385,36 @@ pub fn exp_buffer_unmap_described(cb: &GlobalRef, buffer: u32) -> Result<(), Str
         cb,
         "bufferUnmapDescribed",
         "(I)V",
+        vec![HostArg::Int(buffer as i32)],
+    )
+}
+
+/// L2: Guest buffer handle → size (`gpu-size64-out`).
+pub fn exp_buffer_size_described(cb: &GlobalRef, buffer: u32) -> Result<u64, String> {
+    call_j(
+        cb,
+        "bufferSizeDescribed",
+        "(I)J",
+        vec![HostArg::Int(buffer as i32)],
+    )
+}
+
+/// L2: Guest buffer handle → WebGPU/Dawn `GPUBufferUsage` bits.
+pub fn exp_buffer_usage_described(cb: &GlobalRef, buffer: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "bufferUsageDescribed",
+        "(I)I",
+        vec![HostArg::Int(buffer as i32)],
+    )
+}
+
+/// L2: Guest buffer handle → WIT `gpu-buffer-map-state` ordinal.
+pub fn exp_buffer_map_state_described(cb: &GlobalRef, buffer: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "bufferMapStateDescribed",
+        "(I)I",
         vec![HostArg::Int(buffer as i32)],
     )
 }

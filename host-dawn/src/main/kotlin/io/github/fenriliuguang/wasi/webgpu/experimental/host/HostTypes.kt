@@ -31,6 +31,13 @@ object GpuMapMode {
     const val WRITE: Int = 1 shl 1
 }
 
+/** WIT `gpu-buffer-map-state` ordinals (unmapped / pending / mapped). */
+object GpuBufferMapState {
+    const val UNMAPPED: Int = 0
+    const val PENDING: Int = 1
+    const val MAPPED: Int = 2
+}
+
 /** WebGPU GPUTextureUsage bitfield (same bits as wasi:webgpu / Dawn TextureUsage). */
 object GpuTextureUsage {
     const val COPY_SRC: Int = 1 shl 0

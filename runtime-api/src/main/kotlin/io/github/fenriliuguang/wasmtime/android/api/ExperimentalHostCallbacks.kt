@@ -71,6 +71,15 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferUnmapDescribed")
     }
 
+    /** L2: Guest buffer handle → size. */
+    fun bufferSizeDescribed(buffer: Int): Long = unsupported("bufferSizeDescribed")
+
+    /** L2: Guest buffer handle → WebGPU/Dawn `GPUBufferUsage` bits. */
+    fun bufferUsageDescribed(buffer: Int): Int = unsupported("bufferUsageDescribed")
+
+    /** L2: Guest buffer handle → WIT `gpu-buffer-map-state` ordinal. */
+    fun bufferMapStateDescribed(buffer: Int): Int = unsupported("bufferMapStateDescribed")
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 

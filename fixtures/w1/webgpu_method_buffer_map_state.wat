@@ -1,6 +1,6 @@
 ;; S6+: get-buffer + [method]gpu-buffer.map-state
 ;; WIT: map-state: func() -> gpu-buffer-map-state. Host returns unmapped; harness 1.
-;; L2 unused (lift-only).
+;; L2 described buffer handle → map-state (stub unmapped when get-buffer rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $ms (enum "unmapped" "pending" "mapped"))

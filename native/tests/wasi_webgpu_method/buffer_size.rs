@@ -1,5 +1,5 @@
-//! S6+: `get-buffer` + `[method]gpu-buffer.size`
-//! WIT: `(borrow) -> gpu-size64-out`. Host returns 0; harness 1.
+//! L2: `get-buffer` + `[method]gpu-buffer.size`
+//! WIT: `(borrow) -> gpu-size64-out`. Host stub size in JNI path; native wrap 0; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

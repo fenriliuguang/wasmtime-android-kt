@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-buffer.usage` via [ExperimentalWebGpuBridge.attachBindGroupBufferLabel]. */
+/** L2 `[method]gpu-buffer.usage` via [ExperimentalWebGpuBridge.attachBindGroupBufferLabel]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodBufferUsageInstrumentedTest {
     @Test

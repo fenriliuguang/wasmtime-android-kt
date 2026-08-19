@@ -1090,6 +1090,24 @@ class DawnWasiWebGpuHost private constructor(
         gpuBuffer.unmap()
     }
 
+    override fun bufferSize(buffer: GpuHandle): Long {
+        synchronized(gpuLock) {
+            return handles.get<GPUBuffer>(buffer, ResourceKind.Buffer).size
+        }
+    }
+
+    override fun bufferUsage(buffer: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return handles.get<GPUBuffer>(buffer, ResourceKind.Buffer).usage
+        }
+    }
+
+    override fun bufferMapState(buffer: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return handles.get<GPUBuffer>(buffer, ResourceKind.Buffer).mapState
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

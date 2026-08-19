@@ -1,6 +1,6 @@
 ;; S6+: get-buffer + [method]gpu-buffer.size
-;; WIT: size: func() -> gpu-size64-out. Host returns 0; harness 1.
-;; L2 unused (lift-only).
+;; WIT: size: func() -> gpu-size64-out. Host stub size; harness 1.
+;; L2 described buffer handle → size (stub 4-byte buffer when get-buffer rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-buffer" (type $gpu-buffer (sub resource)))
