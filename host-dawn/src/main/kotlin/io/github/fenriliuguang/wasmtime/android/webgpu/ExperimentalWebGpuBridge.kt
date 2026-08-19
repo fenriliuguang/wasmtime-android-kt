@@ -244,9 +244,7 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + create-shader-module. Guest passes
-     * `gpu-shader-module-descriptor`; L2 still host-fixed stub WGSL.
-     * `[method]gpu-device.create-shader-module`.
+     * L2: adapter + device + `[method]gpu-device.create-shader-module` with Guest WGSL `code`.
      */
     fun attachCreateShaderModule(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -257,8 +255,8 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
-                override fun deviceCreateShaderModule(device: Int): Int =
-                    bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                override fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
+                    bindings.deviceCreateShaderModule(device, code)
             },
         )
     }
@@ -419,7 +417,7 @@ object ExperimentalWebGpuBridge {
         attachCreateComputePipeline(store, host)
     }
 
-    /** W3/S6: adapter + device + encoder. Shared by flat `device-create-command-encoder` and `[method]gpu-device.create-command-encoder` (S6 own; descriptor still none). */
+    /** W3/S6: adapter + device + encoder. Shared by flat `device-create-command-encoder` and `[method]gpu-device.create-command-encoder`. */
     fun attachCreateCommandEncoder(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(
@@ -431,6 +429,9 @@ object ExperimentalWebGpuBridge {
 
                 override fun deviceCreateCommandEncoder(device: Int): Int =
                     bindings.deviceCreateCommandEncoder(device)
+
+                override fun deviceCreateCommandEncoderDescribed(device: Int, label: String): Int =
+                    bindings.deviceCreateCommandEncoder(device, label)
             },
         )
     }

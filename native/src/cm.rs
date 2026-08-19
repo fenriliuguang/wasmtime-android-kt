@@ -487,14 +487,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `gpu-device` + `get-device`
     // + `[method]gpu-device.queue` (S1: sync getter → `own<gpu-queue>`)
     // and `[method]gpu-device.create-command-encoder` (S6: sync
-    // (borrow, option<gpu-command-encoder-descriptor>) -> own<gpu-command-encoder>) and `[method]gpu-device.create-buffer`
+    // (borrow, option<gpu-command-encoder-descriptor>) -> own<gpu-command-encoder>; L2 described label) and `[method]gpu-device.create-buffer`
     // (S4: sync (borrow, gpu-buffer-descriptor) -> own<gpu-buffer>) and
     // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (S6+: true async
     // result<_, map-async-error>; guest mode/offset/size; L2 still host-fixed MAP_READ buffer)
     // and `[method]gpu-buffer.unmap` (S6+: result<_, unmap-error>; L2 described buffer rep)
     // and `[method]gpu-device.create-texture` (S6+: sync (borrow, gpu-texture-descriptor) -> own<gpu-texture>) and
     // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
-    // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 still host-fixed WGSL)
+    // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 described WGSL code)
     // and `[method]gpu-queue.write-buffer-with-copy` (S6+: borrow buffer + list data → result; L2 still host-fixed 4 bytes)
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>)
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>)
@@ -1524,11 +1524,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device.create-command-encoder",
                 |mut caller,
-                 (device, _descriptor): (
+                 (device, descriptor): (
                     Resource<GpuDevice>,
                     Option<GpuCommandEncoderDescriptor>,
                 )| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let label = descriptor
+                        .as_ref()
+                        .and_then(|d| d.label.clone())
+                        .unwrap_or_default();
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -1543,7 +1547,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         device_rep
                     };
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, l2_device)
+                    let encoder_rep = jvm::exp_create_command_encoder_described(&cb, l2_device, label)
                         .map_err(wasmtime::Error::msg)?;
                     if encoder_rep == 0 {
                         return Err(wasmtime::Error::msg(
@@ -2134,11 +2138,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-device.create-shader-module",
-                |mut caller, (device, _descriptor): (
+                |mut caller, (device, descriptor): (
                     Resource<GpuDevice>,
                     GpuShaderModuleDescriptor,
                 )| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let code = descriptor.code;
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -2153,7 +2158,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         device_rep
                     };
-                    let shader_rep = jvm::exp_create_shader_module(&cb, l2_device)
+                    let shader_rep = jvm::exp_create_shader_module_described(&cb, l2_device, code)
                         .map_err(wasmtime::Error::msg)?;
                     if shader_rep == 0 {
                         return Err(wasmtime::Error::msg(

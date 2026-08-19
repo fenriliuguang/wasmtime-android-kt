@@ -58,6 +58,12 @@ private class ForwardingHostCallbacks(
     override fun deviceCreateCommandEncoder(device: Int): Int =
         bindings.deviceCreateCommandEncoder(device)
 
+    override fun deviceCreateCommandEncoderDescribed(device: Int, label: String): Int =
+        bindings.deviceCreateCommandEncoder(device, label)
+
+    override fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
+        bindings.deviceCreateShaderModule(device, code)
+
     override fun beginComputePassDescribed(
         encoder: Int,
         beginningOfPassWriteIndex: Int,

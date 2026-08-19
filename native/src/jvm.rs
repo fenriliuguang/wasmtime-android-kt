@@ -1,6 +1,6 @@
 //! Process-wide `JavaVM` for host callbacks into Kotlin.
 
-use jni::objects::{GlobalRef, JObject, JValue};
+use jni::objects::{GlobalRef, JObject, JString, JValue};
 use jni::sys::JavaVM as SysJavaVM;
 use jni::{JNIEnv, JavaVM};
 use std::cell::RefCell;
@@ -87,19 +87,43 @@ fn check_exception(env: &mut JNIEnv) -> Result<(), String> {
     Ok(())
 }
 
-#[derive(Clone, Copy)]
 enum HostArg {
     Int(i32),
     Long(i64),
+    Str(String),
 }
 
-impl HostArg {
-    fn as_jvalue(self) -> JValue<'static, 'static> {
-        match self {
-            HostArg::Int(v) => JValue::Int(v),
-            HostArg::Long(v) => JValue::Long(v),
+fn call_with_host_args<'a>(
+    env: &mut JNIEnv<'a>,
+    cb: &JObject<'a>,
+    name: &'static str,
+    sig: &'static str,
+    args: &[HostArg],
+) -> Result<jni::objects::JValueOwned<'a>, String> {
+    let mut java_strings: Vec<JString<'a>> = Vec::new();
+    for arg in args {
+        if let HostArg::Str(s) = arg {
+            java_strings.push(
+                env.new_string(s)
+                    .map_err(|e| format!("host {name} new_string: {e}"))?,
+            );
         }
     }
+    let mut str_i = 0usize;
+    let jargs: Vec<JValue> = args
+        .iter()
+        .map(|arg| match arg {
+            HostArg::Int(v) => JValue::Int(*v),
+            HostArg::Long(v) => JValue::Long(*v),
+            HostArg::Str(_) => {
+                let v = JValue::Object(&java_strings[str_i]);
+                str_i += 1;
+                v
+            }
+        })
+        .collect();
+    env.call_method(cb, name, sig, &jargs)
+        .map_err(|e| format!("host {name}: {e}"))
 }
 
 pub fn call_u32_u32_to_u32(cb: &GlobalRef, a: u32, b: u32) -> Result<u32, String> {
@@ -129,10 +153,7 @@ fn call_i(
 ) -> Result<u32, String> {
     let cb = cb.clone();
     with_env(move |env| {
-        let jargs: Vec<JValue> = args.iter().copied().map(HostArg::as_jvalue).collect();
-        let result = env
-            .call_method(cb.as_obj(), name, sig, &jargs)
-            .map_err(|e| format!("host {name}: {e}"))?;
+        let result = call_with_host_args(env, cb.as_obj(), name, sig, &args)?;
         check_exception(env)?;
         result
             .i()
@@ -149,9 +170,7 @@ fn call_void(
 ) -> Result<(), String> {
     let cb = cb.clone();
     with_env(move |env| {
-        let jargs: Vec<JValue> = args.iter().copied().map(HostArg::as_jvalue).collect();
-        env.call_method(cb.as_obj(), name, sig, &jargs)
-            .map_err(|e| format!("host {name}: {e}"))?;
+        call_with_host_args(env, cb.as_obj(), name, sig, &args)?;
         check_exception(env)
     })
 }
@@ -224,6 +243,20 @@ pub fn exp_create_command_encoder(cb: &GlobalRef, device: u32) -> Result<u32, St
         "deviceCreateCommandEncoder",
         "(I)I",
         vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest optional encoder label (none → empty string).
+pub fn exp_create_command_encoder_described(
+    cb: &GlobalRef,
+    device: u32,
+    label: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateCommandEncoderDescribed",
+        "(ILjava/lang/String;)I",
+        vec![HostArg::Int(device as i32), HostArg::Str(label)],
     )
 }
 
@@ -369,12 +402,28 @@ pub fn exp_create_sampler_described(
     )
 }
 
+/// Host-fixed stub WGSL leftover. Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_create_shader_module(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateShaderModule",
         "(I)I",
         vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest WGSL `code` (hints/label still unused).
+pub fn exp_create_shader_module_described(
+    cb: &GlobalRef,
+    device: u32,
+    code: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateShaderModuleDescribed",
+        "(ILjava/lang/String;)I",
+        vec![HostArg::Int(device as i32), HostArg::Str(code)],
     )
 }
 
