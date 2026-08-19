@@ -15,6 +15,7 @@
 //! `create-query-set-error`, `gpu-render-bundle-encoder-descriptor`.
 //! S6+ adapter info cluster: `gpu-adapter-info`, `gpu-supported-features`,
 //! `gpu-supported-limits`.
+//! S6+ bind-group / layout / buffer label + buffer size / usage / map-state.
 
 use crate::host::{
     GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuShaderModule, GpuTexture,
@@ -1666,3 +1667,17 @@ pub struct GpuSupportedFeatures;
 /// WIT `resource gpu-supported-limits`. Lift-only; L2 unused.
 #[derive(Debug)]
 pub struct GpuSupportedLimits;
+
+/// WIT `enum gpu-buffer-map-state`. Lift-only; L2 unused.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuBufferMapState {
+    #[component(name = "unmapped")]
+    Unmapped,
+    #[component(name = "pending")]
+    Pending,
+    #[component(name = "mapped")]
+    Mapped,
+}
