@@ -26,6 +26,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         val height: Int = 1,
         val depthOrArrayLayers: Int = 1,
         val mipLevelCount: Int = 1,
+        val sampleCount: Int = 1,
+        val dimension: Int = GpuTextureDimension.D2,
+        val format: Int = GpuTextureFormat.RGBA8_UNORM,
+        val usage: Int = GpuTextureUsage.RENDER_ATTACHMENT,
     )
     private class TextureView
     private class ComputePipeline(val shader: ShaderModule)
@@ -154,6 +158,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
                 height = descriptor.size.height,
                 depthOrArrayLayers = descriptor.size.depthOrArrayLayers,
                 mipLevelCount = descriptor.mipLevelCount,
+                sampleCount = descriptor.sampleCount,
+                dimension = descriptor.dimension,
+                format = descriptor.format,
+                usage = descriptor.usage,
             ),
         )
     }
@@ -491,6 +499,18 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     override fun textureMipLevelCount(texture: GpuHandle): Int =
         handles.get<Texture>(texture, ResourceKind.Texture).mipLevelCount
+
+    override fun textureSampleCount(texture: GpuHandle): Int =
+        handles.get<Texture>(texture, ResourceKind.Texture).sampleCount
+
+    override fun textureDimension(texture: GpuHandle): Int =
+        handles.get<Texture>(texture, ResourceKind.Texture).dimension
+
+    override fun textureFormat(texture: GpuHandle): Int =
+        handles.get<Texture>(texture, ResourceKind.Texture).format
+
+    override fun textureUsage(texture: GpuHandle): Int =
+        handles.get<Texture>(texture, ResourceKind.Texture).usage
 
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

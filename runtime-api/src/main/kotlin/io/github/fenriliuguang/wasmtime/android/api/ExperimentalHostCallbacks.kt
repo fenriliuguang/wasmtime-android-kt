@@ -435,6 +435,19 @@ interface ExperimentalHostCallbacks {
     fun textureMipLevelCountDescribed(texture: Int): Int =
         unsupported("textureMipLevelCountDescribed")
 
+    /** L2: Guest texture handle → sample-count. */
+    fun textureSampleCountDescribed(texture: Int): Int =
+        unsupported("textureSampleCountDescribed")
+
+    /** L2: Guest texture handle → Dawn `TextureDimension` int. */
+    fun textureDimensionDescribed(texture: Int): Int = unsupported("textureDimensionDescribed")
+
+    /** L2: Guest texture handle → Dawn `TextureFormat` int. */
+    fun textureFormatDescribed(texture: Int): Int = unsupported("textureFormatDescribed")
+
+    /** L2: Guest texture handle → WebGPU/Dawn `GPUTextureUsage` bits. */
+    fun textureUsageDescribed(texture: Int): Int = unsupported("textureUsageDescribed")
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

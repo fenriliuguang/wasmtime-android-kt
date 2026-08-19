@@ -1,5 +1,5 @@
-//! S6+: `get-texture` + `[method]gpu-texture.sample-count`
-//! WIT: (borrow) -> u32. Host returns 1; harness 1.
+//! L2: `get-texture` + `[method]gpu-texture.sample-count`
+//! WIT: (borrow) -> u32. Host returns stub texture sample-count (1); harness 1.
 
 
 use std::sync::atomic::{AtomicBool, Ordering};

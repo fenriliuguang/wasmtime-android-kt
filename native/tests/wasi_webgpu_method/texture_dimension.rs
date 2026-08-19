@@ -1,4 +1,4 @@
-//! S6+: `get-texture` + `[method]gpu-texture.dimension`
+//! L2: `get-texture` + `[method]gpu-texture.dimension`
 //! WIT: `(borrow) -> gpu-texture-dimension`. Host returns d2; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

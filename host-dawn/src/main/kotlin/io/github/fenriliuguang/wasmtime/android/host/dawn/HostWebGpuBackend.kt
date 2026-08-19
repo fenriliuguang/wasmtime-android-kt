@@ -287,6 +287,15 @@ private class ForwardingHostCallbacks(
     override fun textureMipLevelCountDescribed(texture: Int): Int =
         bindings.textureMipLevelCount(texture)
 
+    override fun textureSampleCountDescribed(texture: Int): Int =
+        bindings.textureSampleCount(texture)
+
+    override fun textureDimensionDescribed(texture: Int): Int = bindings.textureDimension(texture)
+
+    override fun textureFormatDescribed(texture: Int): Int = bindings.textureFormat(texture)
+
+    override fun textureUsageDescribed(texture: Int): Int = bindings.textureUsage(texture)
+
     override fun commandEncoderCopyBufferToBufferDescribed(
         encoder: Int,
         source: Int,

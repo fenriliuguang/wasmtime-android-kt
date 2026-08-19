@@ -1863,8 +1863,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.sample-count",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((1u32,))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let sample = jvm::exp_texture_sample_count_described(&cb, l2_texture)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((sample,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1872,8 +1889,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.dimension",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((GpuTextureDimension::D2,))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let dawn = jvm::exp_texture_dimension_described(&cb, l2_texture)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuTextureDimension::from_dawn_u32(dawn),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1881,8 +1915,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.format",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((GpuTextureFormat::Rgba8unorm,))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let dawn = jvm::exp_texture_format_described(&cb, l2_texture)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuTextureFormat::from_dawn_u32(dawn),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1890,8 +1941,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.usage",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((GpuTextureUsage::empty(),))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let bits = jvm::exp_texture_usage_described(&cb, l2_texture)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuTextureUsage::from_webgpu_u32(bits),))
                 },
             )
             .map_err(|e| e.to_string())?;

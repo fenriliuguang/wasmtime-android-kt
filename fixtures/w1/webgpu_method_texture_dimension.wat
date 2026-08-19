@@ -1,7 +1,7 @@
 
 ;; S6+: get-texture + [method]gpu-texture.dimension
 ;; WIT: dimension: func() -> gpu-texture-dimension. Host returns d2; harness 1.
-;; L2 unused (lift-only).
+;; L2 described texture handle → Dawn dimension (stub 1×1 when get-texture rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $texdim (enum "d1" "d2" "d3"))
