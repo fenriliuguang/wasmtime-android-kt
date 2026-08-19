@@ -3,9 +3,13 @@ package io.github.fenriliuguang.wasmtime.android.webgpu
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupLayoutDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPipelineDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuBufferUsage
@@ -392,7 +396,7 @@ object ExperimentalWebGpuBridge {
     /**
      * W3+: adapter + device + stub shader + triangle render pipeline.
      * `[method]gpu-device.create-render-pipeline` (guest `gpu-render-pipeline-descriptor`;
-     * L2 still host-fixed stub shader + triangle).
+     * L2 described vertex/fragment shader handles + entry-points + format + layout + label).
      */
     fun attachCreateRenderPipeline(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -409,6 +413,58 @@ object ExperimentalWebGpuBridge {
                         device,
                         shader,
                         GpuTextureFormat.RGBA8_UNORM,
+                    )
+                }
+
+                override fun deviceCreateRenderPipelineDescribed(
+                    device: Int,
+                    vertexShader: Int,
+                    vertexEntry: String,
+                    fragmentShader: Int,
+                    fragmentEntry: String,
+                    format: Int,
+                    layout: Int,
+                    label: String,
+                ): Int {
+                    val vertexModule =
+                        if (vertexShader != 0) {
+                            GpuHandle(vertexShader)
+                        } else {
+                            GpuHandle(bindings.deviceCreateShaderModule(device, STUB_WGSL))
+                        }
+                    val fragmentModule =
+                        if (fragmentShader != 0) {
+                            GpuHandle(fragmentShader)
+                        } else {
+                            vertexModule
+                        }
+                    val pipelineLayout =
+                        if (layout != 0) {
+                            GpuHandle(layout)
+                        } else {
+                            GpuHandle(
+                                bindings.deviceCreatePipelineLayout(
+                                    device,
+                                    PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                                ),
+                            )
+                        }
+                    val targetFormat = if (format != 0) format else GpuTextureFormat.RGBA8_UNORM
+                    return bindings.deviceCreateRenderPipeline(
+                        device,
+                        RenderPipelineDescriptor(
+                            vertex = VertexState(
+                                module = vertexModule,
+                                entryPoint = vertexEntry.ifEmpty { "vs_main" },
+                            ),
+                            fragment = FragmentState(
+                                module = fragmentModule,
+                                entryPoint = fragmentEntry.ifEmpty { "fs_main" },
+                                targets = listOf(ColorTargetState(format = targetFormat)),
+                            ),
+                            layout = pipelineLayout,
+                            label = label.ifEmpty { null },
+                        ),
                     )
                 }
             },

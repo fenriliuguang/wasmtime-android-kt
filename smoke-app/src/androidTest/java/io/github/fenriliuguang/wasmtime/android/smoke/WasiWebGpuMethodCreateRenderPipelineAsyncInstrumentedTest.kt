@@ -15,8 +15,8 @@ import org.junit.runner.RunWith
 /**
  * S6+ `[method]` slice: guest imports `get-device` + `get-shader-module` then
  * `[method]gpu-device.create-render-pipeline-async`
- * (async result own pipeline / create-pipeline-error; shader borrow + layout auto;
- * drops the own on ok; `run` returns 1). L2 still host-fixed stub WGSL + triangle.
+ * (async result own pipeline / create-pipeline-error; shader borrow, vertex entry-point=`vs_main`, layout auto, label=`l2`;
+ * drops the own on ok; `run` returns 1). L2 described vertex/fragment shader handles + entry-points + format + layout + label.
  * via [ExperimentalWebGpuBridge.attachCreateRenderPipelineAsync] + [callRunConcurrent].
  * Not full wasi:webgpu compliance.
  */

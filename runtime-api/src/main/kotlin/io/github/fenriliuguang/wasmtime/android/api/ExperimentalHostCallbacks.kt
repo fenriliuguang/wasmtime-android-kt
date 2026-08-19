@@ -120,9 +120,21 @@ interface ExperimentalHostCallbacks {
     fun deviceCreateBindGroupDescribed(device: Int, layout: Int, label: String): Int =
         unsupported("deviceCreateBindGroupDescribed")
 
-    /** S6+: guest `gpu-render-pipeline-descriptor`; L2 still host-fixed stub shader + triangle.
+    /** S6+: guest `gpu-render-pipeline-descriptor`; L2 leftover host-fixed stub shader + triangle.
      *  Also used by `[method]gpu-device.create-render-pipeline-async`. */
     fun deviceCreateRenderPipeline(device: Int): Int = unsupported("deviceCreateRenderPipeline")
+
+    /** L2: Guest vertex/fragment shader handles + entry-points + format (0 = RGBA8) + layout (0 = auto) + label. */
+    fun deviceCreateRenderPipelineDescribed(
+        device: Int,
+        vertexShader: Int,
+        vertexEntry: String,
+        fragmentShader: Int,
+        fragmentEntry: String,
+        format: Int,
+        layout: Int,
+        label: String,
+    ): Int = unsupported("deviceCreateRenderPipelineDescribed")
 
     /** S6+: guest `gpu-compute-pipeline-descriptor`; L2 leftover host-fixed stub shader + empty layout.
      *  Also used by `[method]gpu-device.create-compute-pipeline-async`. */

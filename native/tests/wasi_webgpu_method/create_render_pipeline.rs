@@ -1,6 +1,6 @@
-//! S6+: `get-device` + `get-shader-module` + `[method]gpu-device.create-render-pipeline`
+//! L2: `get-device` + `get-shader-module` + `[method]gpu-device.create-render-pipeline`
 //! WIT: `(borrow<gpu-device>, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>`.
-//! Guest passes shader borrow, layout=auto, other options none; drops own; `run` returns harness 1.
+//! Guest passes shader borrow, vertex entry-point="vs_main", layout=auto, label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -762,13 +762,13 @@ fn register_method_create_render_pipeline(linker: &mut Linker<TestHost>) -> wasm
                 .map(|_| ())?;
             assert!(matches!(descriptor.layout, GpuLayoutMode::Auto));
             assert!(descriptor.vertex.buffers.is_none());
-            assert!(descriptor.vertex.entry_point.is_none());
+            assert_eq!(descriptor.vertex.entry_point.as_deref(), Some("vs_main"));
             assert!(descriptor.vertex.constants.is_none());
             assert!(descriptor.primitive.is_none());
             assert!(descriptor.depth_stencil.is_none());
             assert!(descriptor.multisample.is_none());
             assert!(descriptor.fragment.is_none());
-            assert!(descriptor.label.is_none());
+            assert_eq!(descriptor.label.as_deref(), Some("l2"));
             let resource = caller
                 .data_mut()
                 .table

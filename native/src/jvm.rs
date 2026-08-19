@@ -555,12 +555,43 @@ pub fn exp_create_bind_group_described(
     )
 }
 
+/// Host-fixed stub shader + triangle leftover. Kept for older attach objects.
+#[allow(dead_code)]
 pub fn exp_create_render_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateRenderPipeline",
         "(I)I",
         vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest vertex/fragment shader handles + entry-points + format (0 = host RGBA8) + layout (0 = auto) + label.
+pub fn exp_create_render_pipeline_described(
+    cb: &GlobalRef,
+    device: u32,
+    vertex_shader: u32,
+    vertex_entry: String,
+    fragment_shader: i32,
+    fragment_entry: String,
+    format: i32,
+    layout: i32,
+    label: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateRenderPipelineDescribed",
+        "(IILjava/lang/String;ILjava/lang/String;IILjava/lang/String;)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Int(vertex_shader as i32),
+            HostArg::Str(vertex_entry),
+            HostArg::Int(fragment_shader),
+            HostArg::Str(fragment_entry),
+            HostArg::Int(format),
+            HostArg::Int(layout),
+            HostArg::Str(label),
+        ],
     )
 }
 
