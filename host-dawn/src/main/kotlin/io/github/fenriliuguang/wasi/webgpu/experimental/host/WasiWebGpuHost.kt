@@ -198,6 +198,33 @@ interface WasiWebGpuHost : AutoCloseable {
         size: Long,
     )
 
+    fun commandEncoderCopyBufferToTexture(
+        encoder: GpuHandle,
+        source: GpuHandle,
+        destination: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    )
+
+    fun commandEncoderCopyTextureToBuffer(
+        encoder: GpuHandle,
+        source: GpuHandle,
+        destination: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    )
+
+    fun commandEncoderCopyTextureToTexture(
+        encoder: GpuHandle,
+        source: GpuHandle,
+        destination: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    )
+
     fun commandEncoderFinish(encoder: GpuHandle): GpuHandle
 
     // --- Queue / buffer IO ---

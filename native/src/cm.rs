@@ -3023,29 +3023,41 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-command-encoder.copy-buffer-to-texture",
                 |mut caller,
-                 (encoder, source, destination, _copy_size): (
+                 (encoder, source, destination, copy_size): (
                     Resource<GpuCommandEncoder>,
                     GpuTexelCopyBufferInfo,
                     GpuTexelCopyTextureInfo,
                     GpuExtent3D,
                 )| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    let _ = caller.data_mut().table.get(&source.buffer)?;
-                    let _ = caller.data_mut().table.get(&destination.texture)?;
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let source_rep = caller.data_mut().table.get(&source.buffer)?.rep;
+                    let dest_rep = caller.data_mut().table.get(&destination.texture)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_copy_buffer_to_texture_described(
+                        &cb,
+                        l2_encoder,
+                        source_rep,
+                        dest_rep,
+                        copy_size.width,
+                        copy_size.height.unwrap_or(1),
+                        copy_size.depth_or_array_layers.unwrap_or(1),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3054,29 +3066,41 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-command-encoder.copy-texture-to-buffer",
                 |mut caller,
-                 (encoder, source, destination, _copy_size): (
+                 (encoder, source, destination, copy_size): (
                     Resource<GpuCommandEncoder>,
                     GpuTexelCopyTextureInfo,
                     GpuTexelCopyBufferInfo,
                     GpuExtent3D,
                 )| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    let _ = caller.data_mut().table.get(&source.texture)?;
-                    let _ = caller.data_mut().table.get(&destination.buffer)?;
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let source_rep = caller.data_mut().table.get(&source.texture)?.rep;
+                    let dest_rep = caller.data_mut().table.get(&destination.buffer)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_copy_texture_to_buffer_described(
+                        &cb,
+                        l2_encoder,
+                        source_rep,
+                        dest_rep,
+                        copy_size.width,
+                        copy_size.height.unwrap_or(1),
+                        copy_size.depth_or_array_layers.unwrap_or(1),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3085,29 +3109,41 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-command-encoder.copy-texture-to-texture",
                 |mut caller,
-                 (encoder, source, destination, _copy_size): (
+                 (encoder, source, destination, copy_size): (
                     Resource<GpuCommandEncoder>,
                     GpuTexelCopyTextureInfo,
                     GpuTexelCopyTextureInfo,
                     GpuExtent3D,
                 )| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    let _ = caller.data_mut().table.get(&source.texture)?;
-                    let _ = caller.data_mut().table.get(&destination.texture)?;
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let source_rep = caller.data_mut().table.get(&source.texture)?.rep;
+                    let dest_rep = caller.data_mut().table.get(&destination.texture)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_copy_buffer_to_buffer(&cb, encoder_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_copy_texture_to_texture_described(
+                        &cb,
+                        l2_encoder,
+                        source_rep,
+                        dest_rep,
+                        copy_size.width,
+                        copy_size.height.unwrap_or(1),
+                        copy_size.depth_or_array_layers.unwrap_or(1),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

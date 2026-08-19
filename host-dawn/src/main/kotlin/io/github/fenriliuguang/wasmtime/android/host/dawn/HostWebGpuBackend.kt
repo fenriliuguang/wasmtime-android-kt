@@ -138,6 +138,60 @@ private class ForwardingHostCallbacks(
         bindings.commandEncoderClearBuffer(encoder, buffer, offset, size)
     }
 
+    override fun commandEncoderCopyBufferToTextureDescribed(
+        encoder: Int,
+        source: Int,
+        destination: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        bindings.commandEncoderCopyBufferToTexture(
+            encoder,
+            source,
+            destination,
+            width,
+            height,
+            depth,
+        )
+    }
+
+    override fun commandEncoderCopyTextureToBufferDescribed(
+        encoder: Int,
+        source: Int,
+        destination: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        bindings.commandEncoderCopyTextureToBuffer(
+            encoder,
+            source,
+            destination,
+            width,
+            height,
+            depth,
+        )
+    }
+
+    override fun commandEncoderCopyTextureToTextureDescribed(
+        encoder: Int,
+        source: Int,
+        destination: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        bindings.commandEncoderCopyTextureToTexture(
+            encoder,
+            source,
+            destination,
+            width,
+            height,
+            depth,
+        )
+    }
+
     override fun commandEncoderFinish(encoder: Int): Int = bindings.commandEncoderFinish(encoder)
 
     override fun queueSubmit1(queue: Int, commandBuffer: Int) {

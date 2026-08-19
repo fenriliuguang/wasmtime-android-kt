@@ -4,7 +4,7 @@
 ;;      destination: gpu-texel-copy-texture-info, copy-size: gpu-extent3-d)
 ;; Guest passes buffer/texture borrows, layout/mip/origin/aspect none, size 1×1×1;
 ;; drops owns; run returns harness 1. Flattened params exceed 16 (spill).
-;; L2 still host-fixed 4-byte buffer copy.
+;; L2 described JNI forwards encoder/buffer/texture reps + copy-size.
 ;; get-encoder / get-buffer / get-texture are test constructors (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu

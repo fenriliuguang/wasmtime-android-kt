@@ -149,9 +149,7 @@ interface ExperimentalHostCallbacks {
         unsupported("computePassDispatchWorkgroups")
     }
 
-    /** S6+: JNI still host-fixed 4-byte copy; Guest WIT borrow buffers are lifted in native.
-     *  Also used by copy-buffer-to-texture / copy-texture-to-buffer /
-     *  copy-texture-to-texture. */
+    /** S6+: JNI still host-fixed 4-byte copy; Guest WIT borrow buffers are lifted in native. */
     fun commandEncoderCopyBufferToBuffer(encoder: Int) {
         unsupported("commandEncoderCopyBufferToBuffer")
     }
@@ -176,6 +174,42 @@ interface ExperimentalHostCallbacks {
         size: Long,
     ) {
         unsupported("commandEncoderClearBufferDescribed")
+    }
+
+    /** L2: Guest encoder/buffer/texture reps + copy-size (option height/depth → 1). */
+    fun commandEncoderCopyBufferToTextureDescribed(
+        encoder: Int,
+        source: Int,
+        destination: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        unsupported("commandEncoderCopyBufferToTextureDescribed")
+    }
+
+    /** L2: Guest encoder/texture/buffer reps + copy-size (option height/depth → 1). */
+    fun commandEncoderCopyTextureToBufferDescribed(
+        encoder: Int,
+        source: Int,
+        destination: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        unsupported("commandEncoderCopyTextureToBufferDescribed")
+    }
+
+    /** L2: Guest encoder/texture reps + copy-size (option height/depth → 1). */
+    fun commandEncoderCopyTextureToTextureDescribed(
+        encoder: Int,
+        source: Int,
+        destination: Int,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        unsupported("commandEncoderCopyTextureToTextureDescribed")
     }
 
     fun commandEncoderFinish(encoder: Int): Int = unsupported("commandEncoderFinish")

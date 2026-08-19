@@ -252,6 +252,48 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<BufferResource>(buffer, ResourceKind.Buffer)
     }
 
+    override fun commandEncoderCopyBufferToTexture(
+        encoder: GpuHandle,
+        source: GpuHandle,
+        destination: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        handles.get<BufferResource>(source, ResourceKind.Buffer)
+        handles.get<Texture>(destination, ResourceKind.Texture)
+        require(width > 0 && height > 0 && depth > 0)
+    }
+
+    override fun commandEncoderCopyTextureToBuffer(
+        encoder: GpuHandle,
+        source: GpuHandle,
+        destination: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        handles.get<Texture>(source, ResourceKind.Texture)
+        handles.get<BufferResource>(destination, ResourceKind.Buffer)
+        require(width > 0 && height > 0 && depth > 0)
+    }
+
+    override fun commandEncoderCopyTextureToTexture(
+        encoder: GpuHandle,
+        source: GpuHandle,
+        destination: GpuHandle,
+        width: Int,
+        height: Int,
+        depth: Int,
+    ) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        handles.get<Texture>(source, ResourceKind.Texture)
+        handles.get<Texture>(destination, ResourceKind.Texture)
+        require(width > 0 && height > 0 && depth > 0)
+    }
+
     override fun commandEncoderFinish(encoder: GpuHandle): GpuHandle {
         val commandEncoder = handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
         commandEncoder.finished = true

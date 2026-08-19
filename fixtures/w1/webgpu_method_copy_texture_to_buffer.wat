@@ -2,7 +2,7 @@
 ;; [method]gpu-command-encoder.copy-texture-to-buffer
 ;; Guest passes texture/buffer borrows, layout/mip/origin/aspect none, size 1×1×1;
 ;; drops owns; run returns harness 1. Flattened params exceed 16 (spill).
-;; L2 still host-fixed 4-byte buffer copy.
+;; L2 described JNI forwards encoder/texture/buffer reps + copy-size.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-buffer" (type $gpu-buffer (sub resource)))
