@@ -18,7 +18,8 @@ use crate::webgpu_abi::{
     GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
     GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuMapMode, GpuPipelineErrorReason,
     GpuPipelineLayoutDescriptor, GpuQuerySet, GpuQuerySetDescriptor, GpuQueryType,
-    GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor,
+    GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor, GpuLoadOp, GpuRenderPassDescriptor,
+    GpuStoreOp,
     GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
     GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits, GpuDeviceLostInfo,
     GpuDeviceLostReason, GpuError, GpuErrorFilter, GpuErrorKind, GpuUncapturedErrorEvent,
@@ -507,7 +508,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 still host-fixed stub shader + empty layout)
     // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 still host-fixed 1×1)
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>)
-    // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 still host-fixed view)
+    // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 described first color-attachment view/load/store)
     // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void; L2 described pass rep)
     // and `[method]gpu-compute-pass-encoder.set-pipeline` (S6+: borrow<gpu-compute-pipeline>; L2 described pass+pipeline reps)
     // and `[method]gpu-compute-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 described JNI, offsets none → empty)
@@ -2897,8 +2898,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-command-encoder.begin-render-pass",
                 |mut caller, (encoder, descriptor): (Resource<GpuCommandEncoder>, GpuRenderPassDescriptor)| {
-                    let _ = descriptor.color_attachments.len();
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let (view_rep, load_op, store_op) = match descriptor
+                        .color_attachments
+                        .iter()
+                        .find_map(|att| att.as_ref())
+                    {
+                        Some(att) => {
+                            let load_op = att.load_op.to_dawn_u32();
+                            let store_op = att.store_op.to_dawn_u32();
+                            let view_rep = caller.data_mut().table.get(&att.view)?.rep;
+                            (view_rep, load_op, store_op)
+                        }
+                        None => (0, GpuLoadOp::Clear.to_dawn_u32(), GpuStoreOp::Store.to_dawn_u32()),
+                    };
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -2915,10 +2928,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         encoder_rep
                     };
-                    // L2 still host-fixed offscreen view (JNI substitutes a real view).
-                    let pass_rep =
-                        jvm::exp_begin_render_pass_clear(&cb, l2_encoder, 23)
-                            .map_err(wasmtime::Error::msg)?;
+                    let pass_rep = jvm::exp_begin_render_pass_described(
+                        &cb,
+                        l2_encoder,
+                        view_rep,
+                        load_op,
+                        store_op,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     if pass_rep == 0 {
                         return Err(wasmtime::Error::msg("begin-render-pass returned 0"));
                     }

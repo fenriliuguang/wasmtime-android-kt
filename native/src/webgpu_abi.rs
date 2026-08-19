@@ -909,6 +909,16 @@ pub enum GpuLoadOp {
     Clear,
 }
 
+impl GpuLoadOp {
+    /// Dawn `LoadOp` (`androidx.webgpu` alpha05): Undefined=0, Load=1, Clear=2.
+    pub fn to_dawn_u32(self) -> u32 {
+        match self {
+            Self::Load => 1,
+            Self::Clear => 2,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
@@ -918,6 +928,16 @@ pub enum GpuStoreOp {
     Store,
     #[component(name = "discard")]
     Discard,
+}
+
+impl GpuStoreOp {
+    /// Dawn `StoreOp` (`androidx.webgpu` alpha05): Undefined=0, Store=1, Discard=2.
+    pub fn to_dawn_u32(self) -> u32 {
+        match self {
+            Self::Store => 1,
+            Self::Discard => 2,
+        }
+    }
 }
 
 #[derive(Clone, Debug, ComponentType, Lift, Lower)]

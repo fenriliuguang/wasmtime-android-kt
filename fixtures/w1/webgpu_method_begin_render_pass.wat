@@ -1,11 +1,11 @@
-;; S6+: wasi:webgpu/webgpu@0.3.0-rc.2 get-encoder +
+;; L2: wasi:webgpu/webgpu@0.3.0-rc.2 get-encoder + get-texture-view +
 ;; [method]gpu-command-encoder.begin-render-pass
 ;; WIT: begin-render-pass: func(descriptor: gpu-render-pass-descriptor)
 ;;      -> gpu-render-pass-encoder
-;; Guest passes empty color-attachments and option fields none; drops own pass;
-;; run returns harness 1. L2 still host-fixed offscreen view.
+;; Guest passes one color-attachment (borrow view, load-op=clear, store-op=store);
+;; other descriptor fields none; drops own pass + view; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills args through memory.
-;; get-encoder is a test constructor only (not product WIT).
+;; get-encoder / get-texture-view are test constructors only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-texture-view" (type $gpu-texture-view (sub resource)))
@@ -84,9 +84,13 @@
     (export "[method]gpu-command-encoder.begin-render-pass" (func (type $begin-ty)))
     (type $own-encoder (own $gpu-command-encoder))
     (export "get-encoder" (func (result $own-encoder)))
+    (type $own-view (own $gpu-texture-view))
+    (export "get-texture-view" (func (result $own-view)))
   ))
   (alias export $webgpu "gpu-render-pass-encoder" (type $gpu-render-pass-encoder))
+  (alias export $webgpu "gpu-texture-view" (type $gpu-texture-view))
   (alias export $webgpu "get-encoder" (func $get-encoder))
+  (alias export $webgpu "get-texture-view" (func $get-view))
   (alias export $webgpu "[method]gpu-command-encoder.begin-render-pass" (func $begin))
 
   (core module $builtins
@@ -98,24 +102,40 @@
   (core instance $builtins (instantiate $builtins))
 
   (core func $ge_lower (canon lower (func $get-encoder)))
+  (core func $gv_lower (canon lower (func $get-view)))
   (core func $b_lower
     (canon lower (func $begin)
       (memory $builtins "mem")
       (realloc (func $builtins "realloc"))))
   (core func $dp_lower (canon resource.drop $gpu-render-pass-encoder))
+  (core func $dv_lower (canon resource.drop $gpu-texture-view))
 
   (core module $m
     (import "" "mem" (memory 1))
     (import "" "get-encoder" (func $get-encoder (result i32)))
+    (import "" "get-view" (func $get-view (result i32)))
     (import "" "begin" (func $begin (param i32) (result i32)))
     (import "" "drop-pass" (func $drop-pass (param i32)))
+    (import "" "drop-view" (func $drop-view (param i32)))
     (func (export "run") (result i32)
       (local $encoder i32)
+      (local $view i32)
       (local $pass i32)
       (local.set $encoder (call $get-encoder))
+      (local.set $view (call $get-view))
       (i32.store (i32.const 0) (local.get $encoder))
+      ;; descriptor at offset 8: list ptr=128, len=1
+      (i32.store (i32.const 8) (i32.const 128))
+      (i32.store (i32.const 12) (i32.const 1))
+      ;; option<color-attachment> at 128: some; payload at 136
+      (i32.store8 (i32.const 128) (i32.const 1))
+      (i32.store (i32.const 136) (local.get $view))
+      ;; load-op=clear (1), store-op=store (0)
+      (i32.store8 (i32.const 200) (i32.const 1))
+      (i32.store8 (i32.const 201) (i32.const 0))
       (local.set $pass (call $begin (i32.const 0)))
       (call $drop-pass (local.get $pass))
+      (call $drop-view (local.get $view))
       (i32.const 1)
     )
   )
@@ -123,8 +143,10 @@
     (with "" (instance
       (export "mem" (memory $builtins "mem"))
       (export "get-encoder" (func $ge_lower))
+      (export "get-view" (func $gv_lower))
       (export "begin" (func $b_lower))
       (export "drop-pass" (func $dp_lower))
+      (export "drop-view" (func $dv_lower))
     ))
   ))
   (func (export "run") async (result u32)

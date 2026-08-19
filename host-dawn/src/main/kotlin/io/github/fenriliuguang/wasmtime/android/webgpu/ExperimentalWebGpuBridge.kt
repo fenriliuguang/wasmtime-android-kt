@@ -13,6 +13,8 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuIndexFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuMapMode
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassColorAttachment
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
@@ -963,9 +965,8 @@ object ExperimentalWebGpuBridge {
     /**
      * W3 slice: adapter + device + encoder + begin-render-pass-clear.
      *
-     * Guest passes transitional stub view `23` (not a surface texture). After
-     * [adapterRequestDevice] this attach creates a 1×1 Cpu offscreen color
-     * TextureView and substitutes it so L2 sees a real handle. Shared by flat
+     * Guest passes a color-attachment view (rep 0 → this attach substitutes a
+     * 1×1 Cpu offscreen TextureView) plus load/store ops. Shared by flat
      * `command-encoder-begin-render-pass-clear` and
      * `[method]gpu-command-encoder.begin-render-pass`. Not present / wasi-gfx.
      */
@@ -1003,6 +1004,27 @@ object ExperimentalWebGpuBridge {
                         CLEAR_G,
                         CLEAR_B,
                         CLEAR_A,
+                    )
+                }
+
+                override fun beginRenderPassDescribed(
+                    encoder: Int,
+                    view: Int,
+                    loadOp: Int,
+                    storeOp: Int,
+                ): Int {
+                    val resolved = if (colorView != 0) colorView else view
+                    return bindings.commandEncoderBeginRenderPass(
+                        encoder,
+                        RenderPassDescriptor(
+                            colorAttachments = listOf(
+                                RenderPassColorAttachment(
+                                    view = GpuHandle(resolved),
+                                    loadOp = loadOp,
+                                    storeOp = storeOp,
+                                ),
+                            ),
+                        ),
                     )
                 }
             },

@@ -1,8 +1,8 @@
-//! S6+: `get-encoder` + `[method]gpu-command-encoder.begin-render-pass`
+//! L2: `get-encoder` + `get-texture-view` + `[method]gpu-command-encoder.begin-render-pass`
 //! WIT: `(borrow<gpu-command-encoder>, gpu-render-pass-descriptor)
 //!      -> own<gpu-render-pass-encoder>`.
-//! Guest passes empty color-attachments and option fields none; drops own;
-//! `run` returns harness 1.
+//! Guest passes one color-attachment (load-op=clear, store-op=store);
+//! drops own pass + view; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -173,15 +173,29 @@ fn register_method_begin_render_pass(linker: &mut Linker<TestHost>) -> wasmtime:
         let resource = store.data_mut().table.push(GpuCommandEncoder { rep: 0 })?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap("get-texture-view", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuTextureView)?;
+        Ok((resource,))
+    })?;
     webgpu.func_wrap(
         "[method]gpu-command-encoder.begin-render-pass",
         |mut caller,
          (encoder, descriptor): (Resource<GpuCommandEncoder>, GpuRenderPassDescriptor)| {
             caller.data_mut().table.get(&encoder).map(|_| ())?;
-            assert!(
-                descriptor.color_attachments.is_empty(),
-                "guest must pass empty color-attachments this slice"
+            assert_eq!(
+                descriptor.color_attachments.len(),
+                1,
+                "guest must pass one color-attachment this slice"
             );
+            let att = descriptor.color_attachments[0]
+                .as_ref()
+                .expect("guest color-attachment must be some");
+            caller.data_mut().table.get(&att.view).map(|_| ())?;
+            assert!(matches!(att.load_op, GpuLoadOp::Clear));
+            assert!(matches!(att.store_op, GpuStoreOp::Store));
+            assert!(att.depth_slice.is_none());
+            assert!(att.resolve_target.is_none());
+            assert!(att.clear_value.is_none());
             assert!(descriptor.depth_stencil_attachment.is_none());
             assert!(descriptor.occlusion_query_set.is_none());
             assert!(descriptor.timestamp_writes.is_none());
