@@ -2,9 +2,9 @@
 ;; [method]gpu-device.create-compute-pipeline-async
 ;; WIT: create-compute-pipeline-async: async func(descriptor)
 ;;      -> result<gpu-compute-pipeline, create-pipeline-error>
-;; Guest passes shader borrow, entry/constants none, layout=auto, label=none;
-;; drops own pipeline on ok; run returns harness 1. L2 still host-fixed stub WGSL
-;; + empty layout. True CM async.
+;; Guest passes shader borrow, entry-point="main", constants none, layout=auto, label="l2";
+;; drops own pipeline on ok; run returns harness 1. L2 described shader/entry/layout/label.
+;; True CM async.
 ;; get-device / get-shader-module are test constructors only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -83,6 +83,8 @@
       (func $create-cp
         (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)))
     (import "" "drop-pipeline" (func $drop-pipeline (param i32)))
+    (data (i32.const 32) "main")
+    (data (i32.const 48) "l2")
     (func (export "run") (result i32)
       (local $device i32)
       (local $shader i32)
@@ -95,16 +97,16 @@
       (call $create-cp
         (local.get $device)
         (local.get $shader)
-        (i32.const 0)
-        (i32.const 0)
-        (i32.const 0)
+        (i32.const 1)
+        (i32.const 32)
+        (i32.const 4)
         (i32.const 0)
         (i32.const 0)
         (i32.const 1)
         (i32.const 0)
-        (i32.const 0)
-        (i32.const 0)
-        (i32.const 0)
+        (i32.const 1)
+        (i32.const 48)
+        (i32.const 2)
         (local.get $retptr))
       (local.set $tag (i32.load (local.get $retptr)))
       (local.set $handle (i32.load offset=4 (local.get $retptr)))

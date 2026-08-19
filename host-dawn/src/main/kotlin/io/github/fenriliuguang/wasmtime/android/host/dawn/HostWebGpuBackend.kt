@@ -2,7 +2,9 @@ package io.github.fenriliuguang.wasmtime.android.host.dawn
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassColorAttachment
@@ -95,6 +97,43 @@ private class ForwardingHostCallbacks(
                 label = label.ifEmpty { null },
             ),
         )
+
+    override fun deviceCreateComputePipelineDescribed(
+        device: Int,
+        shader: Int,
+        entryPoint: String,
+        layout: Int,
+        label: String,
+    ): Int {
+        val module =
+            if (shader != 0) {
+                GpuHandle(shader)
+            } else {
+                GpuHandle(bindings.deviceCreateShaderModule(device, COMPUTE_STUB_WGSL))
+            }
+        val pipelineLayout =
+            if (layout != 0) {
+                GpuHandle(layout)
+            } else {
+                GpuHandle(
+                    bindings.deviceCreatePipelineLayout(
+                        device,
+                        PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                    ),
+                )
+            }
+        return bindings.deviceCreateComputePipeline(
+            device,
+            ComputePipelineDescriptor(
+                compute = ProgrammableStage(
+                    module = module,
+                    entryPoint = entryPoint.ifEmpty { "main" },
+                ),
+                layout = pipelineLayout,
+                label = label.ifEmpty { null },
+            ),
+        )
+    }
 
     override fun beginComputePassDescribed(
         encoder: Int,
@@ -395,3 +434,5 @@ private class ForwardingHostCallbacks(
         bindings.surfaceUnconfigure(surface)
     }
 }
+
+private const val COMPUTE_STUB_WGSL = "@compute @workgroup_size(1) fn main() {}"

@@ -1,6 +1,6 @@
-//! S6+: `get-device` + `get-shader-module` + `[method]gpu-device.create-compute-pipeline`
+//! L2: `get-device` + `get-shader-module` + `[method]gpu-device.create-compute-pipeline`
 //! WIT: `(borrow<gpu-device>, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>`.
-//! Guest passes shader borrow, layout=auto; drops own; `run` returns harness 1.
+//! Guest passes shader borrow, entry-point="main", layout=auto, label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -131,9 +131,9 @@ fn register_method_create_compute_pipeline(linker: &mut Linker<TestHost>) -> was
                 .get(&descriptor.compute.module)
                 .map(|_| ())?;
             assert!(matches!(descriptor.layout, GpuLayoutMode::Auto));
-            assert!(descriptor.compute.entry_point.is_none());
+            assert_eq!(descriptor.compute.entry_point.as_deref(), Some("main"));
             assert!(descriptor.compute.constants.is_none());
-            assert!(descriptor.label.is_none());
+            assert_eq!(descriptor.label.as_deref(), Some("l2"));
             let resource = caller
                 .data_mut()
                 .table

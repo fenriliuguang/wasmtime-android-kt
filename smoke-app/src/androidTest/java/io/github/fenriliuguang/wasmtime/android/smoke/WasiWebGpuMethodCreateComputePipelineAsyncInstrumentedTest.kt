@@ -15,8 +15,8 @@ import org.junit.runner.RunWith
 /**
  * S6+ `[method]` slice: guest imports `get-device` + `get-shader-module` then
  * `[method]gpu-device.create-compute-pipeline-async`
- * (async result own pipeline / create-pipeline-error; shader borrow + layout auto;
- * drops the own on ok; `run` returns 1). L2 still host-fixed stub WGSL + empty layout.
+ * (async result own pipeline / create-pipeline-error; shader borrow, entry-point=`main`, layout auto, label=`l2`;
+ * drops the own on ok; `run` returns 1). L2 described shader handle + entry-point + layout + label.
  * via [ExperimentalWebGpuBridge.attachCreateComputePipelineAsync] + [callRunConcurrent].
  * Not full wasi:webgpu compliance.
  */

@@ -427,7 +427,7 @@ object ExperimentalWebGpuBridge {
     /**
      * W3+: adapter + device + stub shader + empty pipeline-layout + compute pipeline.
      * `[method]gpu-device.create-compute-pipeline` (guest `gpu-compute-pipeline-descriptor`;
-     * L2 still host-fixed stub shader + explicit empty layout).
+     * L2 described shader handle + entry-point + layout handle + label).
      */
     fun attachCreateComputePipeline(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -452,6 +452,43 @@ object ExperimentalWebGpuBridge {
                                 module = GpuHandle(shader),
                                 entryPoint = "main",
                             ),
+                        ),
+                    )
+                }
+
+                override fun deviceCreateComputePipelineDescribed(
+                    device: Int,
+                    shader: Int,
+                    entryPoint: String,
+                    layout: Int,
+                    label: String,
+                ): Int {
+                    val module =
+                        if (shader != 0) {
+                            GpuHandle(shader)
+                        } else {
+                            GpuHandle(bindings.deviceCreateShaderModule(device, STUB_WGSL))
+                        }
+                    val pipelineLayout =
+                        if (layout != 0) {
+                            GpuHandle(layout)
+                        } else {
+                            GpuHandle(
+                                bindings.deviceCreatePipelineLayout(
+                                    device,
+                                    PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                                ),
+                            )
+                        }
+                    return bindings.deviceCreateComputePipeline(
+                        device,
+                        ComputePipelineDescriptor(
+                            compute = ProgrammableStage(
+                                module = module,
+                                entryPoint = entryPoint.ifEmpty { "main" },
+                            ),
+                            layout = pipelineLayout,
+                            label = label.ifEmpty { null },
                         ),
                     )
                 }
