@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S5 `[method]` slice: `get-queue` + `get-command-buffer` then
+ * L2 `[method]` slice: `get-queue` + `get-command-buffer` then
  * `[method]gpu-queue.submit` (`list<borrow<gpu-command-buffer>>`;
  * Guest passes one element; drops owns; `run` returns 1) via
  * [ExperimentalWebGpuBridge.attachQueueSubmit1] + [callRunConcurrent].

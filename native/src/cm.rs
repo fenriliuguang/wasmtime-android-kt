@@ -496,7 +496,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
     // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 described WGSL code)
     // and `[method]gpu-queue.write-buffer-with-copy` (S6+: borrow buffer + list data → result; L2 still host-fixed 4 bytes)
-    // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>)
+    // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>; L2 described handles)
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>; L2 described label)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
     // and S6+ `[method]gpu-texture.*` info getters / label / set-label (lift-only stubs).
@@ -3503,9 +3503,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Resource<GpuQueue>,
                     Vec<Resource<GpuCommandBuffer>>,
                 )| {
-                    let _ = caller.data_mut().table.get(&queue)?;
+                    let queue_rep = caller.data_mut().table.get(&queue)?.rep;
+                    let mut command_reps = Vec::with_capacity(commands.len());
                     for command in &commands {
-                        let _ = caller.data_mut().table.get(command)?;
+                        command_reps.push(caller.data_mut().table.get(command)?.rep);
                     }
                     let cb = caller
                         .data()
@@ -3513,17 +3514,36 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let queue_rep = jvm::exp_device_get_queue(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let commands_rep = jvm::exp_command_encoder_finish(&cb, encoder_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_queue_submit1(&cb, queue_rep, commands_rep)
+                    let mut device_rep = 0u32;
+                    let l2_queue = if queue_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_device_get_queue(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        queue_rep
+                    };
+                    let mut l2_commands = Vec::with_capacity(command_reps.len());
+                    for command_rep in command_reps {
+                        if command_rep != 0 {
+                            l2_commands.push(command_rep as i32);
+                            continue;
+                        }
+                        if device_rep == 0 {
+                            let adapter_rep =
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                            device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                .map_err(wasmtime::Error::msg)?;
+                        }
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let finished = jvm::exp_command_encoder_finish(&cb, encoder_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        l2_commands.push(finished as i32);
+                    }
+                    jvm::exp_queue_submit_described(&cb, l2_queue, l2_commands)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },

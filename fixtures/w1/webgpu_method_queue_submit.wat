@@ -1,4 +1,4 @@
-;; S5: wasi:webgpu/webgpu@0.3.0-rc.2 get-queue + get-command-buffer +
+;; L2: wasi:webgpu/webgpu@0.3.0-rc.2 get-queue + get-command-buffer +
 ;; [method]gpu-queue.submit
 ;; WIT: submit: func(command-buffers: list<borrow<gpu-command-buffer>>)
 ;; Guest passes a one-element list; drops owns; run returns harness 1.

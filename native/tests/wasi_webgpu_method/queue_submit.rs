@@ -1,4 +1,4 @@
-//! S5: `get-queue` + `get-command-buffer` + `[method]gpu-queue.submit`
+//! L2: `get-queue` + `get-command-buffer` + `[method]gpu-queue.submit`
 //! WIT: `(borrow<gpu-queue>, list<borrow<gpu-command-buffer>>) -> ()`.
 //! Guest passes a one-element list; drops owns; `run` returns harness 1.
 
@@ -51,7 +51,8 @@ fn register_method_queue_submit(
     })?;
     webgpu.func_wrap(
         "[method]gpu-queue.submit",
-        move |mut caller, (queue, commands): (Resource<GpuQueue>, Vec<Resource<GpuCommandBuffer>>)| {
+        move |mut caller,
+              (queue, commands): (Resource<GpuQueue>, Vec<Resource<GpuCommandBuffer>>)| {
             caller.data_mut().table.get(&queue).map(|_| ())?;
             assert_eq!(
                 commands.len(),
