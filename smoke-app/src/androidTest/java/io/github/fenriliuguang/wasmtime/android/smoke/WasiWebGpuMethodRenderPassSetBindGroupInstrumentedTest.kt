@@ -13,9 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]` slice: `get-pass` + `get-bind-group` then
+ * L2 `[method]` slice: `get-pass` + `get-bind-group` then
  * `[method]gpu-render-pass-encoder.set-bind-group` (index 0, some bind-group,
- * offsets none → result ok; L2 still host-fixed empty bind-group + offscreen view) via
+ * offsets none → result ok; described JNI + offscreen view) via
  * [ExperimentalWebGpuBridge.attachRenderPassSetBindGroup] + [callRunConcurrent].
  * Not compliance.
  */

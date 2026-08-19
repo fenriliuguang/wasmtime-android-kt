@@ -539,7 +539,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ gpu-supported-limits max-* getters (lift-only stub numerics).
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 described pass+pipeline reps)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
-    // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
+    // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 described JNI, offsets none → empty)
     // and `[method]gpu-render-pass-encoder.set-vertex-buffer` (S6+: slot + option buffer + option offset/size; L2 described JNI)
     // and `[method]gpu-render-pass-encoder.set-index-buffer` (S6+: buffer + index-format + option offset/size; L2 described JNI)
     // and `[method]gpu-command-encoder.copy-buffer-to-buffer` (S6+: borrow src/dst + option offsets/size; L2 still host-fixed 4-byte copy)
@@ -3666,7 +3666,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-bind-group",
                 |mut caller,
-                 (pass, _index, _bind_group, _offsets, _start, _length): (
+                 (pass, index, bind_group, _offsets, _start, _length): (
                     Resource<GpuRenderPassEncoder>,
                     u32,
                     Option<Resource<GpuBindGroup>>,
@@ -3674,23 +3674,36 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<u64>,
                     Option<u32>,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let bind_group_rep = match bind_group {
+                        Some(ref g) => caller.data_mut().table.get(g)?.rep,
+                        None => 0,
+                    };
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
-                        .map_err(wasmtime::Error::msg)?;
-                    let pass_rep = jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
-                        .map_err(wasmtime::Error::msg)?;
-                    jvm::exp_render_pass_set_bind_group(&cb, pass_rep)
-                        .map_err(wasmtime::Error::msg)?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_set_bind_group_described(
+                        &cb,
+                        l2_pass,
+                        index,
+                        bind_group_rep,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((Ok::<(), SetBindGroupError>(()),))
                 },
             )
