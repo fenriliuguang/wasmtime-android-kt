@@ -1133,6 +1133,20 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `[method]gpu-render-bundle.label` / `set-label`,
+     * `[method]gpu-render-bundle-encoder.label` / `set-label`,
+     * `[method]gpu-render-pass-encoder.label` / `set-label`, and
+     * `[method]gpu-render-pipeline.label` / `set-label` /
+     * `get-bind-group-layout`. Native lifts; L2 unused (no new JNI).
+     */
+    fun attachRenderBundlePassPipelineLabel(
+        store: Store,
+        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+    ) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: `[method]gpu-device.adapter-info` / `features` / `limits` / `label` /
      * `set-label` / `lost` / `push-error-scope` / `pop-error-scope` /
      * `on-uncaptured-error` and `[method]gpu-device-lost-info.reason` / `message`.

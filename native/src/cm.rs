@@ -529,6 +529,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ gpu-device adapter-info / features / limits / label / set-label /
     // lost / push-error-scope / pop-error-scope / on-uncaptured-error and
     // gpu-device-lost-info reason / message.
+    // and S6+ render-bundle / render-bundle-encoder / render-pass-encoder label +
+    // set-label and render-pipeline label / set-label / get-bind-group-layout.
     // and `[method]gpu-render-pass-encoder.set-pipeline` (S6+: borrow<gpu-render-pipeline>; L2 still host-fixed triangle pipeline)
     // and `[method]gpu-render-pass-encoder.draw` (S6+: vertex-count + option instance/first-*; L2 still host-fixed draw(3))
     // and `[method]gpu-render-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 still host-fixed empty bind-group)
@@ -1691,6 +1693,37 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let resource = store.data_mut().table.push(GpuRenderPipeline { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pipeline.label",
+                |mut caller, (pipeline,): (Resource<GpuRenderPipeline>,)| {
+                    let _ = caller.data_mut().table.get(&pipeline)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pipeline.set-label",
+                |mut caller, (pipeline, _label): (Resource<GpuRenderPipeline>, String)| {
+                    let _ = caller.data_mut().table.get(&pipeline)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pipeline.get-bind-group-layout",
+                |mut caller, (pipeline, _index): (Resource<GpuRenderPipeline>, u32)| {
+                    let _ = caller.data_mut().table.get(&pipeline)?;
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuBindGroupLayout { rep: 0 })?;
+                    Ok((resource,))
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .resource(
@@ -2974,6 +3007,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.label",
+                |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-pass-encoder.set-label",
+                |mut caller, (pass, _label): (Resource<GpuRenderPassEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&pass)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .resource(
                 "gpu-render-bundle",
                 ResourceType::host::<GpuRenderBundle>(),
@@ -2989,6 +3040,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let resource = store.data_mut().table.push(GpuRenderBundle { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle.label",
+                |mut caller, (bundle,): (Resource<GpuRenderBundle>,)| {
+                    let _ = caller.data_mut().table.get(&bundle)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle.set-label",
+                |mut caller, (bundle, _label): (Resource<GpuRenderBundle>, String)| {
+                    let _ = caller.data_mut().table.get(&bundle)?;
+                    Ok(())
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
@@ -3041,6 +3110,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     .push(GpuRenderBundleEncoder { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.label",
+                |mut caller, (encoder,): (Resource<GpuRenderBundleEncoder>,)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-render-bundle-encoder.set-label",
+                |mut caller, (encoder, _label): (Resource<GpuRenderBundleEncoder>, String)| {
+                    let _ = caller.data_mut().table.get(&encoder)?;
+                    Ok(())
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
