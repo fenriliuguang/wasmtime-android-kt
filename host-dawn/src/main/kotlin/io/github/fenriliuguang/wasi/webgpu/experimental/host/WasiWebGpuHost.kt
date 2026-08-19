@@ -115,6 +115,14 @@ interface WasiWebGpuHost : AutoCloseable {
         descriptor: TextureViewDescriptor = TextureViewDescriptor(),
     ): GpuHandle
 
+    fun textureWidth(texture: GpuHandle): Int
+
+    fun textureHeight(texture: GpuHandle): Int
+
+    fun textureDepthOrArrayLayers(texture: GpuHandle): Int
+
+    fun textureMipLevelCount(texture: GpuHandle): Int
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

@@ -1,6 +1,5 @@
-//! S6+: `get-texture` + `[method]gpu-texture.width`
-//! WIT: (borrow) -> u32. Host returns 1; harness 1.
-
+//! L2: `get-texture` + `[method]gpu-texture.width`
+//! WIT: (borrow) -> u32. Host returns stub texture width (1); harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -34,7 +33,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         "[method]gpu-texture.width",
         move |mut caller, (texture,): (Resource<GpuTexture>,)| {
             caller.data_mut().table.get(&texture).map(|_| ())?;
-            
+
             called.store(true, Ordering::SeqCst);
             Ok((1u32,))
         },

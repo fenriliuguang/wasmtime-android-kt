@@ -502,7 +502,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>; L2 described handles)
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>; L2 described label)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
-    // and S6+ `[method]gpu-texture.*` info getters / label / set-label (lift-only stubs).
+    // and S6+ `[method]gpu-texture.*` info getters / label / set-label (L2 described extent: width/height/depth/mip; remaining still lift-only).
     // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (lift-only stubs).
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described first entry)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 described BGL handles + label)
@@ -1759,8 +1759,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.width",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((1u32,))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let width = jvm::exp_texture_width_described(&cb, l2_texture)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((width,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1768,8 +1785,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.height",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((1u32,))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let height = jvm::exp_texture_height_described(&cb, l2_texture)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((height,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1777,8 +1811,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.depth-or-array-layers",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((1u32,))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let depth = jvm::exp_texture_depth_or_array_layers_described(&cb, l2_texture)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((depth,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1786,8 +1837,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.mip-level-count",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((1u32,))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_texture = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let mip = jvm::exp_texture_mip_level_count_described(&cb, l2_texture)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((mip,))
                 },
             )
             .map_err(|e| e.to_string())?;

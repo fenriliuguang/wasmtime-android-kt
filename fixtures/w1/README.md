@@ -99,10 +99,10 @@
 | `webgpu_method_device_destroy.wasm` | `get-device` + **`[method]gpu-device.destroy` sync** void | `run: async func() -> u32` | construct device → destroy; harness returns 1 |
 | `webgpu_method_buffer_destroy.wasm` | `get-buffer` + **`[method]gpu-buffer.destroy` sync** void | `run: async func() -> u32` | construct buffer → destroy; harness returns 1 |
 | `webgpu_method_texture_destroy.wasm` | `get-texture` + **`[method]gpu-texture.destroy` sync** void | `run: async func() -> u32` | construct texture → destroy; harness returns 1 |
-| `webgpu_method_texture_width.wasm` | `get-texture` + **`[method]gpu-texture.width` sync** `u32` | `run: async func() -> u32` | construct texture → width (host-fixed 1); harness returns 1 |
-| `webgpu_method_texture_height.wasm` | `get-texture` + **`[method]gpu-texture.height` sync** `u32` | `run: async func() -> u32` | construct texture → height (host-fixed 1); harness returns 1 |
-| `webgpu_method_texture_depth_or_array_layers.wasm` | `get-texture` + **`[method]gpu-texture.depth-or-array-layers` sync** `u32` | `run: async func() -> u32` | construct texture → depth-or-array-layers (host-fixed 1); harness returns 1 |
-| `webgpu_method_texture_mip_level_count.wasm` | `get-texture` + **`[method]gpu-texture.mip-level-count` sync** `u32` | `run: async func() -> u32` | construct texture → mip-level-count (host-fixed 1); harness returns 1 |
+| `webgpu_method_texture_width.wasm` | `get-texture` + **`[method]gpu-texture.width` sync** `u32` | `run: async func() -> u32` | construct texture → width (L2 described handle; stub 1×1) ; harness returns 1 |
+| `webgpu_method_texture_height.wasm` | `get-texture` + **`[method]gpu-texture.height` sync** `u32` | `run: async func() -> u32` | construct texture → height (L2 described handle; stub 1×1); harness returns 1 |
+| `webgpu_method_texture_depth_or_array_layers.wasm` | `get-texture` + **`[method]gpu-texture.depth-or-array-layers` sync** `u32` | `run: async func() -> u32` | construct texture → depth-or-array-layers (L2 described handle; stub 1×1); harness returns 1 |
+| `webgpu_method_texture_mip_level_count.wasm` | `get-texture` + **`[method]gpu-texture.mip-level-count` sync** `u32` | `run: async func() -> u32` | construct texture → mip-level-count (L2 described handle; stub 1×1); harness returns 1 |
 | `webgpu_method_texture_sample_count.wasm` | `get-texture` + **`[method]gpu-texture.sample-count` sync** `u32` | `run: async func() -> u32` | construct texture → sample-count (host-fixed 1); harness returns 1 |
 | `webgpu_method_texture_dimension.wasm` | `get-texture` + **`[method]gpu-texture.dimension` sync** `gpu-texture-dimension` | `run: async func() -> u32` | construct texture → dimension (host-fixed d2); harness returns 1 |
 | `webgpu_method_texture_format.wasm` | `get-texture` + **`[method]gpu-texture.format` sync** `gpu-texture-format` | `run: async func() -> u32` | construct texture → format (host-fixed rgba8unorm); harness returns 1 |

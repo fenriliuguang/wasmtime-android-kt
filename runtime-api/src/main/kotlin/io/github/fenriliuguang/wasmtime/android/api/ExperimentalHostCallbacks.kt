@@ -421,6 +421,20 @@ interface ExperimentalHostCallbacks {
         aspect: Int,
     ): Int = unsupported("textureCreateViewDescribed")
 
+    /** L2: Guest texture handle → width. */
+    fun textureWidthDescribed(texture: Int): Int = unsupported("textureWidthDescribed")
+
+    /** L2: Guest texture handle → height. */
+    fun textureHeightDescribed(texture: Int): Int = unsupported("textureHeightDescribed")
+
+    /** L2: Guest texture handle → depth-or-array-layers. */
+    fun textureDepthOrArrayLayersDescribed(texture: Int): Int =
+        unsupported("textureDepthOrArrayLayersDescribed")
+
+    /** L2: Guest texture handle → mip-level-count. */
+    fun textureMipLevelCountDescribed(texture: Int): Int =
+        unsupported("textureMipLevelCountDescribed")
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

@@ -639,6 +639,30 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun textureWidth(texture: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return handles.get<GPUTexture>(texture, ResourceKind.Texture).width
+        }
+    }
+
+    override fun textureHeight(texture: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return handles.get<GPUTexture>(texture, ResourceKind.Texture).height
+        }
+    }
+
+    override fun textureDepthOrArrayLayers(texture: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return handles.get<GPUTexture>(texture, ResourceKind.Texture).depthOrArrayLayers
+        }
+    }
+
+    override fun textureMipLevelCount(texture: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return handles.get<GPUTexture>(texture, ResourceKind.Texture).mipLevelCount
+        }
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

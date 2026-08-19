@@ -1660,12 +1660,42 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[method]gpu-texture.width` / `height` / `depth-or-array-layers` /
-     * `mip-level-count` / `sample-count` / `dimension` / `format` / `usage` /
-     * `texture-binding-view-dimension` / `label` / `set-label`.
-     * Native lifts; L2 unused (no new JNI).
+     * `mip-level-count` (L2 described texture handle → extent) and remaining
+     * `sample-count` / `dimension` / `format` / `usage` /
+     * `texture-binding-view-dimension` / `label` / `set-label` (still lift-only).
      */
-    fun attachTextureInfo(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    fun attachTextureInfo(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateTexture(device: Int): Int =
+                    bindings.deviceCreateTexture(
+                        device,
+                        TextureDescriptor(
+                            size = Extent3D(width = 1, height = 1),
+                            format = GpuTextureFormat.RGBA8_UNORM,
+                            usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                        ),
+                    )
+
+                override fun textureWidthDescribed(texture: Int): Int =
+                    bindings.textureWidth(texture)
+
+                override fun textureHeightDescribed(texture: Int): Int =
+                    bindings.textureHeight(texture)
+
+                override fun textureDepthOrArrayLayersDescribed(texture: Int): Int =
+                    bindings.textureDepthOrArrayLayers(texture)
+
+                override fun textureMipLevelCountDescribed(texture: Int): Int =
+                    bindings.textureMipLevelCount(texture)
+            },
+        )
     }
 
     /**

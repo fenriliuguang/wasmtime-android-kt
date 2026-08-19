@@ -1296,6 +1296,49 @@ pub fn exp_texture_create_view(cb: &GlobalRef, texture: u32) -> Result<u32, Stri
     )
 }
 
+/// L2: Guest texture handle → width (rep 0 stub-created in the wrap).
+pub fn exp_texture_width_described(cb: &GlobalRef, texture: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "textureWidthDescribed",
+        "(I)I",
+        vec![HostArg::Int(texture as i32)],
+    )
+}
+
+/// L2: Guest texture handle → height.
+pub fn exp_texture_height_described(cb: &GlobalRef, texture: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "textureHeightDescribed",
+        "(I)I",
+        vec![HostArg::Int(texture as i32)],
+    )
+}
+
+/// L2: Guest texture handle → depth-or-array-layers.
+pub fn exp_texture_depth_or_array_layers_described(
+    cb: &GlobalRef,
+    texture: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "textureDepthOrArrayLayersDescribed",
+        "(I)I",
+        vec![HostArg::Int(texture as i32)],
+    )
+}
+
+/// L2: Guest texture handle → mip-level-count.
+pub fn exp_texture_mip_level_count_described(cb: &GlobalRef, texture: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "textureMipLevelCountDescribed",
+        "(I)I",
+        vec![HostArg::Int(texture as i32)],
+    )
+}
+
 /// L2: Guest-decoded `gpu-texture-view-descriptor` dimension + aspect (Dawn ints).
 pub fn exp_texture_create_view_described(
     cb: &GlobalRef,
