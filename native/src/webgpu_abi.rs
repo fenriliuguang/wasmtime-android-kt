@@ -1773,3 +1773,7 @@ pub enum GpuErrorKind {
     #[component(name = "internal-error")]
     InternalError,
 }
+
+/// WIT `resource gpu-uncaptured-error-event`. Lift-only; L2 unused.
+#[derive(Debug)]
+pub struct GpuUncapturedErrorEvent;

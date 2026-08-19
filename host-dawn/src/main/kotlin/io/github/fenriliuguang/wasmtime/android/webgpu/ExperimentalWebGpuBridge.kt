@@ -1144,9 +1144,11 @@ object ExperimentalWebGpuBridge {
     /**
      * S6+: `[method]gpu-command-buffer.label` / `set-label`,
      * `[method]gpu-command-encoder.label` / `set-label`,
-     * `[method]gpu-compilation-info.messages`, and
+     * `[method]gpu-compilation-info.messages`,
      * `[method]gpu-compilation-message.message` / `type` / `line-num` /
-     * `line-pos` / `offset` / `length`. Native lifts; L2 unused (no new JNI).
+     * `line-pos` / `offset` / `length`, and
+     * `[method]gpu-shader-module.get-compilation-info` / `label` / `set-label`.
+     * Native lifts; L2 unused (no new JNI).
      */
     fun attachCommandCompilationLabel(
         store: Store,
@@ -1184,7 +1186,8 @@ object ExperimentalWebGpuBridge {
     /**
      * S6+: `[method]gpu-device.adapter-info` / `features` / `limits` / `label` /
      * `set-label` / `lost` / `push-error-scope` / `pop-error-scope` /
-     * `on-uncaptured-error` and `[method]gpu-device-lost-info.reason` / `message`.
+     * `on-uncaptured-error` and `[method]gpu-device-lost-info.reason` / `message`,
+     * `[method]gpu-uncaptured-error-event.error`.
      * Native lifts; L2 unused (no new JNI).
      */
     fun attachDeviceInfoError(

@@ -21,7 +21,8 @@ use crate::webgpu_abi::{
     GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor,
     GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
     GpuShaderModuleDescriptor, GpuSupportedFeatures, GpuSupportedLimits, GpuDeviceLostInfo,
-    GpuDeviceLostReason, GpuError, GpuErrorFilter, GpuErrorKind, PopErrorScopeError, GpuTexelCopyBufferInfo,
+    GpuDeviceLostReason, GpuError, GpuErrorFilter, GpuErrorKind, GpuUncapturedErrorEvent,
+    PopErrorScopeError, GpuTexelCopyBufferInfo,
     GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo, GpuTextureDescriptor, GpuTextureDimension,
     GpuTextureFormat, GpuTextureUsage, GpuTextureViewDescriptor, GpuTextureViewDimension,
     MapAsyncError,     RecordGpuPipelineConstantValue, RecordOptionGpuSize64,
@@ -1447,6 +1448,33 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .resource(
+                "gpu-uncaptured-error-event",
+                ResourceType::host::<GpuUncapturedErrorEvent>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuUncapturedErrorEvent>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-uncaptured-error-event", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuUncapturedErrorEvent)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-uncaptured-error-event.error",
+                |mut caller, (event,): (Resource<GpuUncapturedErrorEvent>,)| {
+                    let _ = caller.data_mut().table.get(&event)?;
+                    let resource = caller.data_mut().table.push(GpuError)?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .func_wrap("get-device-lost-info", |mut store, ()| {
                 let resource = store.data_mut().table.push(GpuDeviceLostInfo)?;
                 Ok((resource,))
@@ -1661,6 +1689,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .table
                         .push(GpuTextureView { rep: view_rep })?;
                     Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-texture-view", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuTextureView { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture-view.label",
+                |mut caller, (view,): (Resource<GpuTextureView>,)| {
+                    let _ = caller.data_mut().table.get(&view)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-texture-view.set-label",
+                |mut caller, (view, _label): (Resource<GpuTextureView>, String)| {
+                    let _ = caller.data_mut().table.get(&view)?;
+                    Ok(())
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1993,6 +2045,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         webgpu
+            .func_wrap("get-sampler", |mut store, ()| {
+                let resource = store.data_mut().table.push(GpuSampler { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-sampler.label",
+                |mut caller, (sampler,): (Resource<GpuSampler>,)| {
+                    let _ = caller.data_mut().table.get(&sampler)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-sampler.set-label",
+                |mut caller, (sampler, _label): (Resource<GpuSampler>, String)| {
+                    let _ = caller.data_mut().table.get(&sampler)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
             .resource(
                 "gpu-pipeline-layout",
                 ResourceType::host::<GpuPipelineLayout>(),
@@ -2056,6 +2132,40 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let resource = store.data_mut().table.push(GpuShaderModule { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap_concurrent(
+                "[method]gpu-shader-module.get-compilation-info",
+                |accessor, (shader,): (Resource<GpuShaderModule>,)| {
+                    Box::pin(async move {
+                        accessor.with(|mut access| {
+                            access.data_mut().table.get(&shader).map(|_| ())
+                        })?;
+                        let resource = accessor.with(|mut access| {
+                            access.data_mut().table.push(GpuCompilationInfo)
+                        })?;
+                        Ok((resource,))
+                    })
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-shader-module.label",
+                |mut caller, (shader,): (Resource<GpuShaderModule>,)| {
+                    let _ = caller.data_mut().table.get(&shader)?;
+                    Ok((String::new(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-shader-module.set-label",
+                |mut caller, (shader, _label): (Resource<GpuShaderModule>, String)| {
+                    let _ = caller.data_mut().table.get(&shader)?;
+                    Ok(())
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .resource(
