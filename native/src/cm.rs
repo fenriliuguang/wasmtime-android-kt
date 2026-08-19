@@ -658,6 +658,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
+                "[method]gpu-supported-features.has",
+                |mut caller, (features, _value): (Resource<GpuSupportedFeatures>, String)| {
+                    let _ = caller.data_mut().table.get(&features)?;
+                    Ok((false,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
                 "[method]gpu-adapter.limits",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
                     let _ = caller.data_mut().table.get(&adapter)?;
@@ -927,6 +936,69 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-supported-limits.max-texture-dimension3-d",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-uniform-buffer-binding-size",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u64,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-uniform-buffers-per-shader-stage",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-vertex-attributes",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-vertex-buffer-array-stride",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.max-vertex-buffers",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.min-storage-buffer-offset-alignment",
+                |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    let _ = caller.data_mut().table.get(&limits)?;
+                    Ok((1u32,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-supported-limits.min-uniform-buffer-offset-alignment",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
                     let _ = caller.data_mut().table.get(&limits)?;
                     Ok((1u32,))
