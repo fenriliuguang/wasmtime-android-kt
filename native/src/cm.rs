@@ -2223,9 +2223,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<u64>,
                     Option<u64>,
                 )| {
-                    let _ = caller.data_mut().table.get(&buffer)?;
-                    let _ = (offset, size);
-                    Ok((Ok::<Vec<u8>, GetMappedRangeError>(Vec::new()),))
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_buffer = if buffer_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        buffer_rep
+                    };
+                    let data = jvm::exp_buffer_get_mapped_range_described(
+                        &cb,
+                        l2_buffer,
+                        offset.unwrap_or(0),
+                        size.unwrap_or(4),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    Ok((Ok::<Vec<u8>, GetMappedRangeError>(data),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2239,8 +2260,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<u64>,
                     Option<u64>,
                 )| {
-                    let _ = caller.data_mut().table.get(&buffer)?;
-                    let _ = (data, offset, size);
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_buffer = if buffer_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_buffer(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        buffer_rep
+                    };
+                    let _ = size;
+                    jvm::exp_buffer_set_mapped_range_described(
+                        &cb,
+                        l2_buffer,
+                        data,
+                        offset.unwrap_or(0),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((Ok::<(), GetMappedRangeError>(()),))
                 },
             )

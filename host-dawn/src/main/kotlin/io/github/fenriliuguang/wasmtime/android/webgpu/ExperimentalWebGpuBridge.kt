@@ -177,11 +177,44 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[method]gpu-buffer.get-mapped-range-get-with-copy` /
-     * `[method]gpu-buffer.get-mapped-range-set-with-copy`.
-     * Native lifts guest types and returns empty list / ok; L2 still unused (no new JNI).
+     * `[method]gpu-buffer.get-mapped-range-set-with-copy`
+     * (L2 described buffer handle → mapped-range read/write; stub maps first).
      */
-    fun attachGetMappedRange(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    fun attachGetMappedRange(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateBuffer(device: Int): Int =
+                    bindings.deviceCreateBuffer(
+                        device,
+                        size = STUB_BUFFER_SIZE,
+                        usage = GpuBufferUsage.MAP_READ or GpuBufferUsage.COPY_DST,
+                    )
+
+                override fun bufferGetMappedRangeDescribed(
+                    buffer: Int,
+                    offset: Long,
+                    size: Long,
+                ): ByteArray {
+                    bindings.bufferMapAsync(buffer, GpuMapMode.READ, 0, STUB_BUFFER_SIZE)
+                    return bindings.bufferGetMappedRange(buffer, offset, size)
+                }
+
+                override fun bufferSetMappedRangeDescribed(
+                    buffer: Int,
+                    data: ByteArray,
+                    offset: Long,
+                ) {
+                    bindings.bufferMapAsync(buffer, GpuMapMode.WRITE, 0, STUB_BUFFER_SIZE)
+                    bindings.bufferSetMappedRange(buffer, offset, data)
+                }
+            },
+        )
     }
     fun attachCreateTexture(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)

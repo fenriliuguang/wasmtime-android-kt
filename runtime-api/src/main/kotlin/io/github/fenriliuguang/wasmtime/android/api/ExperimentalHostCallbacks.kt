@@ -85,6 +85,15 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferDestroyDescribed")
     }
 
+    /** L2: Guest buffer handle + offset/size → mapped-range bytes. */
+    fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
+        unsupported("bufferGetMappedRangeDescribed")
+
+    /** L2: Guest buffer handle + data + offset → write mapped range. */
+    fun bufferSetMappedRangeDescribed(buffer: Int, data: ByteArray, offset: Long) {
+        unsupported("bufferSetMappedRangeDescribed")
+    }
+
     /** L2: Guest query-set handle → destroy. */
     fun querySetDestroyDescribed(querySet: Int) {
         unsupported("querySetDestroyDescribed")

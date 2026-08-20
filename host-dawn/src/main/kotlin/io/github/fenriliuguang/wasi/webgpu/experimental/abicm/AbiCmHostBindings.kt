@@ -566,6 +566,10 @@ class AbiCmHostBindings(
     fun bufferGetMappedRange(buffer: Int, offset: Long, size: Long): ByteArray =
         host.bufferGetMappedRange(GpuHandle(buffer), offset, size)
 
+    fun bufferSetMappedRange(buffer: Int, offset: Long, data: ByteArray) {
+        host.bufferSetMappedRange(GpuHandle(buffer), offset, data)
+    }
+
     fun bufferUnmap(buffer: Int) {
         host.bufferUnmap(GpuHandle(buffer))
     }
