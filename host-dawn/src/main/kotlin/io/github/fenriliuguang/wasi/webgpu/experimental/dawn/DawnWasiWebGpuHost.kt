@@ -511,6 +511,38 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun renderBundleEncoderPushDebugGroup(encoder: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+                .pushDebugGroup(label)
+        }
+    }
+
+    override fun renderBundleEncoderPopDebugGroup(encoder: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+                .popDebugGroup()
+        }
+    }
+
+    override fun renderBundleEncoderInsertDebugMarker(encoder: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+                .insertDebugMarker(label)
+        }
+    }
+
+    override fun renderBundleEncoderSetImmediates(
+        encoder: GpuHandle,
+        rangeOffset: Int,
+        data: ByteArray,
+    ) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+            // androidx.webgpu alpha05 does not expose setImmediates; validate the handle only.
+        }
+    }
+
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {
         val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
         val sampler = gpuDevice.createSampler(

@@ -1848,11 +1848,11 @@ object ExperimentalWebGpuBridge {
     /**
      * L2: `[method]gpu-render-bundle-encoder.finish` / `draw` / `draw-indexed` /
      * `set-pipeline` / `set-vertex-buffer` / `set-index-buffer` /
-     * `set-bind-group` / `draw-indirect` / `draw-indexed-indirect`
-     * (guest encoder rep + counts/label/reps through described JNI;
+     * `set-bind-group` / `draw-indirect` / `draw-indexed-indirect` /
+     * `push-debug-group` / `pop-debug-group` / `insert-debug-marker` /
+     * `set-immediates`
+     * (guest encoder rep + counts/label/reps/bytes through described JNI;
      * 0 → stub encoder / pipeline / buffer / bind-group).
-     * Remaining `push-debug-group` / `pop-debug-group` / `insert-debug-marker` /
-     * `set-immediates` still lift-only on this attach.
      */
     fun attachRenderBundleState(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -2040,6 +2040,33 @@ object ExperimentalWebGpuBridge {
                         offset,
                         resolvedSize,
                     )
+                }
+
+                override fun renderBundleEncoderPushDebugGroupDescribed(
+                    encoder: Int,
+                    label: String,
+                ) {
+                    bindings.renderBundleEncoderPushDebugGroup(encoder, label)
+                }
+
+                override fun renderBundleEncoderPopDebugGroupDescribed(encoder: Int) {
+                    bindings.renderBundleEncoderPopDebugGroup(encoder)
+                }
+
+                override fun renderBundleEncoderInsertDebugMarkerDescribed(
+                    encoder: Int,
+                    label: String,
+                ) {
+                    bindings.renderBundleEncoderInsertDebugMarker(encoder, label)
+                }
+
+                override fun renderBundleEncoderSetImmediatesDescribed(
+                    encoder: Int,
+                    rangeOffset: Int,
+                    data: ByteArray,
+                    dataOffset: Long,
+                ) {
+                    bindings.renderBundleEncoderSetImmediates(encoder, rangeOffset, data)
                 }
             },
         )

@@ -772,6 +772,31 @@ interface ExperimentalHostCallbacks {
         unsupported("renderBundleEncoderDrawIndexedIndirectDescribed")
     }
 
+    /** L2: Guest bundle-encoder + group label. */
+    fun renderBundleEncoderPushDebugGroupDescribed(encoder: Int, label: String) {
+        unsupported("renderBundleEncoderPushDebugGroupDescribed")
+    }
+
+    /** L2: Guest bundle-encoder → pop debug group. */
+    fun renderBundleEncoderPopDebugGroupDescribed(encoder: Int) {
+        unsupported("renderBundleEncoderPopDebugGroupDescribed")
+    }
+
+    /** L2: Guest bundle-encoder + marker label. */
+    fun renderBundleEncoderInsertDebugMarkerDescribed(encoder: Int, label: String) {
+        unsupported("renderBundleEncoderInsertDebugMarkerDescribed")
+    }
+
+    /** L2: Guest bundle-encoder + immediates (range offset, bytes, data offset). */
+    fun renderBundleEncoderSetImmediatesDescribed(
+        encoder: Int,
+        rangeOffset: Int,
+        data: ByteArray,
+        dataOffset: Long,
+    ) {
+        unsupported("renderBundleEncoderSetImmediatesDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }
