@@ -419,6 +419,16 @@ pub fn exp_buffer_map_state_described(cb: &GlobalRef, buffer: u32) -> Result<u32
     )
 }
 
+/// L2: Guest buffer handle → destroy.
+pub fn exp_buffer_destroy_described(cb: &GlobalRef, buffer: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "bufferDestroyDescribed",
+        "(I)V",
+        vec![HostArg::Int(buffer as i32)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,

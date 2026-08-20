@@ -1,5 +1,5 @@
-//! S6+: `get-buffer` + `[method]gpu-buffer.destroy`
-//! WIT: `(borrow)`. Harness 1.
+//! L2: `get-buffer` + `[method]gpu-buffer.destroy`
+//! WIT: `(borrow)`. Host destroy; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

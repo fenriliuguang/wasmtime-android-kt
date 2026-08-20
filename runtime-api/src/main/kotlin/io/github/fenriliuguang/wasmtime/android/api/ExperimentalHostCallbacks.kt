@@ -80,6 +80,11 @@ interface ExperimentalHostCallbacks {
     /** L2: Guest buffer handle → WIT `gpu-buffer-map-state` ordinal. */
     fun bufferMapStateDescribed(buffer: Int): Int = unsupported("bufferMapStateDescribed")
 
+    /** L2: Guest buffer handle → destroy. */
+    fun bufferDestroyDescribed(buffer: Int) {
+        unsupported("bufferDestroyDescribed")
+    }
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 
