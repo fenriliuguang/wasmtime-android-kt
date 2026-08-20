@@ -722,6 +722,14 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Adapter>(adapter, ResourceKind.Adapter)
     }
 
+    private fun validateLimitsOwner(adapter: GpuHandle, device: GpuHandle) {
+        if (device.raw != 0) {
+            handles.get<Device>(device, ResourceKind.Device)
+        } else {
+            handles.get<Adapter>(adapter, ResourceKind.Adapter)
+        }
+    }
+
     override fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle): Int {
         if (device.raw != 0) {
             handles.get<Device>(device, ResourceKind.Device)
@@ -759,6 +767,26 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
             handles.get<Adapter>(adapter, ResourceKind.Adapter)
         }
         return 1L
+    }
+
+    override fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxColorAttachments(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
     }
 
     override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int =

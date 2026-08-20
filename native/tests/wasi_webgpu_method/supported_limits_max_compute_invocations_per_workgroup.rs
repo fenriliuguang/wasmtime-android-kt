@@ -1,4 +1,4 @@
-//! S6+: get-supported-limits + `[method]gpu-supported-limits.max-compute-invocations-per-workgroup`
+//! L2: get-supported-limits + `[method]gpu-supported-limits.max-compute-invocations-per-workgroup`
 //! WIT: (borrow) -> u32. Host returns 1; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -8,7 +8,10 @@ use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceTy
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuSupportedLimits;
+struct GpuSupportedLimits {
+    adapter: u32,
+    device: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -26,7 +29,10 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-supported-limits", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuSupportedLimits)?;
+        let resource = store.data_mut().table.push(GpuSupportedLimits {
+            adapter: 0,
+            device: 0,
+        })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
