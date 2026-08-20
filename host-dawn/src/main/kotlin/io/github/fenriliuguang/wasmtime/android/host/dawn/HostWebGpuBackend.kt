@@ -259,6 +259,12 @@ private class ForwardingHostCallbacks(
         bindings.bufferDestroy(buffer)
     }
 
+    override fun bufferLabelDescribed(buffer: Int): String = bindings.bufferLabel(buffer)
+
+    override fun bufferSetLabelDescribed(buffer: Int, label: String) {
+        bindings.bufferSetLabel(buffer, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 
