@@ -631,6 +631,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun commandEncoderSetLabel(handle: GpuHandle, label: String)
 
+    fun commandBufferLabel(handle: GpuHandle): String
+
+    fun commandBufferSetLabel(handle: GpuHandle, label: String)
+
     // --- Lifetime ---
 
     fun drop(handle: GpuHandle)
