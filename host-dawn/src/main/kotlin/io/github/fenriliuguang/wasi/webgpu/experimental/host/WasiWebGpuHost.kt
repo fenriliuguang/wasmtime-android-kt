@@ -619,6 +619,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun querySetSetLabel(handle: GpuHandle, label: String)
 
+    fun deviceLabel(handle: GpuHandle): String
+
+    fun deviceSetLabel(handle: GpuHandle, label: String)
+
     // --- Lifetime ---
 
     fun drop(handle: GpuHandle)

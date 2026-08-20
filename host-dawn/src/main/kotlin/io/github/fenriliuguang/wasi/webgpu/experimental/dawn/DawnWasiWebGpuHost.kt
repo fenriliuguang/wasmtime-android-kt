@@ -2088,6 +2088,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun deviceLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUDevice>(handle, ResourceKind.Device)
+            return ""
+        }
+    }
+
+    override fun deviceSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUDevice>(handle, ResourceKind.Device).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

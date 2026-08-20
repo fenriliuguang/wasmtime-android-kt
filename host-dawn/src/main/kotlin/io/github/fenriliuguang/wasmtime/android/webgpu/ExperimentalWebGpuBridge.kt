@@ -2993,6 +2993,12 @@ object ExperimentalWebGpuBridge {
                     }
                     bindings.uncapturedErrorEventError(l2Device)
                 }
+                override fun deviceLabelDescribed(handle: Int): String =
+                    bindings.deviceLabel(handle)
+
+                override fun deviceSetLabelDescribed(handle: Int, label: String) {
+                    bindings.deviceSetLabel(handle, label)
+                }
             },
         )
     }

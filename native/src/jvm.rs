@@ -492,6 +492,30 @@ pub fn exp_buffer_set_label_described(
     )
 }
 
+/// L2: Guest gpu-device handle → WIT `gpu-device.label`.
+pub fn exp_device_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "deviceLabelDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest gpu-device handle + label string.
+pub fn exp_device_set_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "deviceSetLabelDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(handle as i32), HostArg::Str(label)],
+    )
+}
+
 /// L2: Guest gpu-query-set handle → WIT `gpu-query-set.label`.
 pub fn exp_query_set_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
     call_string(

@@ -1889,16 +1889,48 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device.label",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
-                    Ok((String::new(),))
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let label = jvm::exp_device_label_described(&cb, l2)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((label,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-device.set-label",
-                |mut caller, (device, _label): (Resource<GpuDevice>, String)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                |mut caller, (device, label): (Resource<GpuDevice>, String)| {
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    jvm::exp_device_set_label_described(&cb, l2, label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

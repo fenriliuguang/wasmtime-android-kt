@@ -800,6 +800,12 @@ class AbiCmHostBindings(
         host.querySetSetLabel(GpuHandle(handle), label)
     }
 
+    fun deviceLabel(handle: Int): String = host.deviceLabel(GpuHandle(handle))
+
+    fun deviceSetLabel(handle: Int, label: String) {
+        host.deviceSetLabel(GpuHandle(handle), label)
+    }
+
     fun querySetType(querySet: Int): Int = host.querySetType(GpuHandle(querySet))
 
     fun querySetCount(querySet: Int): Int = host.querySetCount(GpuHandle(querySet))

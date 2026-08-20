@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-device handle → WIT `gpu-device.label`. */
+    fun deviceLabelDescribed(handle: Int): String = unsupported("deviceLabelDescribed")
+
+    /** L2: Guest gpu-device handle + label string. */
+    fun deviceSetLabelDescribed(handle: Int, label: String) {
+        unsupported("deviceSetLabelDescribed")
+    }
+
     /** L2: Guest gpu-query-set handle → WIT `gpu-query-set.label`. */
     fun querySetLabelDescribed(handle: Int): String = unsupported("querySetLabelDescribed")
 
