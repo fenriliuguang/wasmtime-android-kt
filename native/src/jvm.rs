@@ -896,6 +896,47 @@ pub fn exp_render_pass_set_stencil_reference_described(
     )
 }
 
+/// L2: Guest render-pass handle + occlusion query index.
+pub fn exp_render_pass_begin_occlusion_query_described(
+    cb: &GlobalRef,
+    pass: u32,
+    query_index: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassBeginOcclusionQueryDescribed",
+        "(II)V",
+        vec![HostArg::Int(pass as i32), HostArg::Int(query_index as i32)],
+    )
+}
+
+/// L2: Guest render-pass handle → end occlusion query.
+pub fn exp_render_pass_end_occlusion_query_described(
+    cb: &GlobalRef,
+    pass: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassEndOcclusionQueryDescribed",
+        "(I)V",
+        vec![HostArg::Int(pass as i32)],
+    )
+}
+
+/// L2: Guest render-pass handle + bundle reps (0 entries skipped in the attach).
+pub fn exp_render_pass_execute_bundles_described(
+    cb: &GlobalRef,
+    pass: u32,
+    bundles: Vec<i32>,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassExecuteBundlesDescribed",
+        "(I[I)V",
+        vec![HostArg::Int(pass as i32), HostArg::Ints(bundles)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,

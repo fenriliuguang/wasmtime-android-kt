@@ -5086,8 +5086,28 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-render-pass-encoder.begin-occlusion-query",
-                |mut caller, (pass, _query_index): (Resource<GpuRenderPassEncoder>, u32)| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                |mut caller, (pass, query_index): (Resource<GpuRenderPassEncoder>, u32)| {
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_begin_occlusion_query_described(&cb, l2_pass, query_index)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -5096,7 +5116,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pass-encoder.end-occlusion-query",
                 |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_end_occlusion_query_described(&cb, l2_pass)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -5162,10 +5202,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Resource<GpuRenderPassEncoder>,
                     Vec<Resource<GpuRenderBundle>>,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let mut bundle_reps: Vec<i32> = Vec::with_capacity(bundles.len());
                     for bundle in &bundles {
-                        let _ = caller.data_mut().table.get(bundle)?;
+                        bundle_reps.push(caller.data_mut().table.get(bundle)?.rep as i32);
                     }
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_execute_bundles_described(&cb, l2_pass, bundle_reps)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

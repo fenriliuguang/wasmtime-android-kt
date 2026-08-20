@@ -37,6 +37,7 @@ import androidx.webgpu.GPUPrimitiveState
 import androidx.webgpu.GPUQuerySet
 import androidx.webgpu.GPUQuerySetDescriptor
 import androidx.webgpu.GPUQueue
+import androidx.webgpu.GPURenderBundle
 import androidx.webgpu.GPURenderBundleEncoderDescriptor
 import androidx.webgpu.GPURenderPassColorAttachment
 import androidx.webgpu.GPURenderPassDepthStencilAttachment
@@ -1083,6 +1084,30 @@ class DawnWasiWebGpuHost private constructor(
         synchronized(gpuLock) {
             handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
                 .setStencilReference(reference)
+        }
+    }
+
+    override fun renderPassBeginOcclusionQuery(pass: GpuHandle, queryIndex: Int) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+                .beginOcclusionQuery(queryIndex)
+        }
+    }
+
+    override fun renderPassEndOcclusionQuery(pass: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+                .endOcclusionQuery()
+        }
+    }
+
+    override fun renderPassExecuteBundles(pass: GpuHandle, bundles: List<GpuHandle>) {
+        synchronized(gpuLock) {
+            val renderPass = handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+            val gpuBundles = bundles.map {
+                handles.get<GPURenderBundle>(it, ResourceKind.RenderBundle)
+            }.toTypedArray()
+            renderPass.executeBundles(gpuBundles)
         }
     }
 

@@ -37,6 +37,7 @@ enum class ResourceKind {
     RenderPassEncoder,
     QuerySet,
     RenderBundleEncoder,
+    RenderBundle,
 }
 
 /**

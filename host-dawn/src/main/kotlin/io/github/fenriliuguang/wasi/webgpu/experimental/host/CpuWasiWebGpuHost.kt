@@ -805,6 +805,19 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
     }
 
+    override fun renderPassBeginOcclusionQuery(pass: GpuHandle, queryIndex: Int) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+        require(queryIndex >= 0)
+    }
+
+    override fun renderPassEndOcclusionQuery(pass: GpuHandle) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+    }
+
+    override fun renderPassExecuteBundles(pass: GpuHandle, bundles: List<GpuHandle>) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+    }
+
     override fun drop(handle: GpuHandle) {
         handles.drop(handle)
     }
