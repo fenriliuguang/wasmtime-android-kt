@@ -319,6 +319,12 @@ private class ForwardingHostCallbacks(
         bindings.deviceSetLabel(handle, label)
     }
 
+    override fun queueLabelDescribed(handle: Int): String = bindings.queueLabel(handle)
+
+    override fun queueSetLabelDescribed(handle: Int, label: String) {
+        bindings.queueSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 

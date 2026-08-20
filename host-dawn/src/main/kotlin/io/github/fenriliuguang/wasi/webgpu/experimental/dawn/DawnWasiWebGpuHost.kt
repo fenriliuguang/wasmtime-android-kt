@@ -2101,6 +2101,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun queueLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUQueue>(handle, ResourceKind.Queue)
+            return ""
+        }
+    }
+
+    override fun queueSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUQueue>(handle, ResourceKind.Queue).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

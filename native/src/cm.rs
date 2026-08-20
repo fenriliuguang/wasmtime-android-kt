@@ -5282,16 +5282,50 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-queue.label",
                 |mut caller, (queue,): (Resource<GpuQueue>,)| {
-                    let _ = caller.data_mut().table.get(&queue)?;
-                    Ok((String::new(),))
+                    let queue_rep = caller.data_mut().table.get(&queue)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if queue_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_device_get_queue(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        queue_rep
+                    };
+                    let label = jvm::exp_queue_label_described(&cb, l2)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((label,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-queue.set-label",
-                |mut caller, (queue, _label): (Resource<GpuQueue>, String)| {
-                    let _ = caller.data_mut().table.get(&queue)?;
+                |mut caller, (queue, label): (Resource<GpuQueue>, String)| {
+                    let queue_rep = caller.data_mut().table.get(&queue)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if queue_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_device_get_queue(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        queue_rep
+                    };
+                    jvm::exp_queue_set_label_described(&cb, l2, label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

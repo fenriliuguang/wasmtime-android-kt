@@ -93,6 +93,12 @@ object ExperimentalWebGpuBridge {
                 override fun queueOnSubmittedWorkDoneDescribed(queue: Int) {
                     bindings.queueValidate(queue)
                 }
+                override fun queueLabelDescribed(handle: Int): String =
+                    bindings.queueLabel(handle)
+
+                override fun queueSetLabelDescribed(handle: Int, label: String) {
+                    bindings.queueSetLabel(handle, label)
+                }
             },
         )
     }
