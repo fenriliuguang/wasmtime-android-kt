@@ -442,6 +442,18 @@ private class ForwardingHostCallbacks(
     override fun adapterInfoIsFallbackAdapterDescribed(adapter: Int): Int =
         if (bindings.adapterInfoIsFallbackAdapter(adapter)) 1 else 0
 
+    override fun adapterInfoVendorDescribed(adapter: Int): String =
+        bindings.adapterInfoVendor(adapter)
+
+    override fun adapterInfoArchitectureDescribed(adapter: Int): String =
+        bindings.adapterInfoArchitecture(adapter)
+
+    override fun adapterInfoDeviceDescribed(adapter: Int): String =
+        bindings.adapterInfoDevice(adapter)
+
+    override fun adapterInfoDescriptionDescribed(adapter: Int): String =
+        bindings.adapterInfoDescription(adapter)
+
     override fun deviceAdapterDescribed(device: Int): Int = bindings.deviceAdapter(device)
 
     override fun deviceFeaturesDescribed(device: Int) {

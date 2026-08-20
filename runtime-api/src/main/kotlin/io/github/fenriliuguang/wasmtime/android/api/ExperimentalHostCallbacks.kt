@@ -159,6 +159,22 @@ interface ExperimentalHostCallbacks {
     fun adapterInfoIsFallbackAdapterDescribed(adapter: Int): Int =
         unsupported("adapterInfoIsFallbackAdapterDescribed")
 
+    /** L2: Guest adapter handle → WIT `gpu-adapter-info.vendor`. */
+    fun adapterInfoVendorDescribed(adapter: Int): String =
+        unsupported("adapterInfoVendorDescribed")
+
+    /** L2: Guest adapter handle → WIT `gpu-adapter-info.architecture`. */
+    fun adapterInfoArchitectureDescribed(adapter: Int): String =
+        unsupported("adapterInfoArchitectureDescribed")
+
+    /** L2: Guest adapter handle → WIT `gpu-adapter-info.device`. */
+    fun adapterInfoDeviceDescribed(adapter: Int): String =
+        unsupported("adapterInfoDeviceDescribed")
+
+    /** L2: Guest adapter handle → WIT `gpu-adapter-info.description`. */
+    fun adapterInfoDescriptionDescribed(adapter: Int): String =
+        unsupported("adapterInfoDescriptionDescribed")
+
     /** L2: Guest device handle → owning adapter handle for adapter-info getters. */
     fun deviceAdapterDescribed(device: Int): Int = unsupported("deviceAdapterDescribed")
 

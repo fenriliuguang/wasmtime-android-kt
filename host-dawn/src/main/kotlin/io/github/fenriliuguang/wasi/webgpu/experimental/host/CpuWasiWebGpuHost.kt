@@ -13,6 +13,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     private val handles = HandleTable()
 
     private class Adapter(
+        val vendor: String = "cpu-vendor",
+        val architecture: String = "cpu-arch",
+        val device: String = "cpu-device",
+        val description: String = "cpu-desc",
         val subgroupMinSize: Int = 4,
         val subgroupMaxSize: Int = 128,
         val isFallbackAdapter: Boolean = false,
@@ -724,6 +728,18 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     override fun adapterInfoIsFallbackAdapter(adapter: GpuHandle): Boolean =
         handles.get<Adapter>(adapter, ResourceKind.Adapter).isFallbackAdapter
+
+    override fun adapterInfoVendor(adapter: GpuHandle): String =
+        handles.get<Adapter>(adapter, ResourceKind.Adapter).vendor
+
+    override fun adapterInfoArchitecture(adapter: GpuHandle): String =
+        handles.get<Adapter>(adapter, ResourceKind.Adapter).architecture
+
+    override fun adapterInfoDevice(adapter: GpuHandle): String =
+        handles.get<Adapter>(adapter, ResourceKind.Adapter).device
+
+    override fun adapterInfoDescription(adapter: GpuHandle): String =
+        handles.get<Adapter>(adapter, ResourceKind.Adapter).description
 
     override fun deviceAdapter(device: GpuHandle): GpuHandle =
         handles.get<Device>(device, ResourceKind.Device).adapter

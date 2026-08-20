@@ -966,6 +966,34 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun adapterInfoVendor(adapter: GpuHandle): String {
+        synchronized(gpuLock) {
+            val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+            return gpuAdapter.info.vendor
+        }
+    }
+
+    override fun adapterInfoArchitecture(adapter: GpuHandle): String {
+        synchronized(gpuLock) {
+            val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+            return gpuAdapter.info.architecture
+        }
+    }
+
+    override fun adapterInfoDevice(adapter: GpuHandle): String {
+        synchronized(gpuLock) {
+            val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+            return gpuAdapter.info.device
+        }
+    }
+
+    override fun adapterInfoDescription(adapter: GpuHandle): String {
+        synchronized(gpuLock) {
+            val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+            return gpuAdapter.info.description
+        }
+    }
+
     override fun deviceAdapter(device: GpuHandle): GpuHandle {
         synchronized(gpuLock) {
             handles.get<GPUDevice>(device, ResourceKind.Device)

@@ -797,6 +797,17 @@ class AbiCmHostBindings(
     fun adapterInfoIsFallbackAdapter(adapter: Int): Boolean =
         host.adapterInfoIsFallbackAdapter(GpuHandle(adapter))
 
+    fun adapterInfoVendor(adapter: Int): String =
+        host.adapterInfoVendor(GpuHandle(adapter))
+
+    fun adapterInfoArchitecture(adapter: Int): String =
+        host.adapterInfoArchitecture(GpuHandle(adapter))
+
+    fun adapterInfoDevice(adapter: Int): String = host.adapterInfoDevice(GpuHandle(adapter))
+
+    fun adapterInfoDescription(adapter: Int): String =
+        host.adapterInfoDescription(GpuHandle(adapter))
+
     fun deviceAdapter(device: Int): Int = host.deviceAdapter(GpuHandle(device)).raw
 
     fun deviceValidate(device: Int) {

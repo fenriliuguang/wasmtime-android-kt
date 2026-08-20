@@ -249,6 +249,24 @@ fn call_bytes(
     })
 }
 
+fn call_string(
+    cb: &GlobalRef,
+    name: &'static str,
+    sig: &'static str,
+    args: Vec<HostArg>,
+) -> Result<String, String> {
+    let cb = cb.clone();
+    with_env(move |env| {
+        let result = call_with_host_args(env, cb.as_obj(), name, sig, &args)?;
+        check_exception(env)?;
+        let obj = result.l().map_err(|e| format!("host {name} result: {e}"))?;
+        let jstr = JString::from(obj);
+        env.get_string(&jstr)
+            .map(|s| s.into())
+            .map_err(|e| format!("host {name} get_string: {e}"))
+    })
+}
+
 pub fn exp_request_adapter(cb: &GlobalRef) -> Result<u32, String> {
     call_i(cb, "requestAdapter", "()I", vec![])
 }
@@ -657,6 +675,52 @@ pub fn exp_device_adapter_described(cb: &GlobalRef, device: u32) -> Result<u32, 
         "deviceAdapterDescribed",
         "(I)I",
         vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter handle → WIT `gpu-adapter-info.vendor`.
+pub fn exp_adapter_info_vendor_described(cb: &GlobalRef, adapter: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "adapterInfoVendorDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(adapter as i32)],
+    )
+}
+
+/// L2: Guest adapter handle → WIT `gpu-adapter-info.architecture`.
+pub fn exp_adapter_info_architecture_described(
+    cb: &GlobalRef,
+    adapter: u32,
+) -> Result<String, String> {
+    call_string(
+        cb,
+        "adapterInfoArchitectureDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(adapter as i32)],
+    )
+}
+
+/// L2: Guest adapter handle → WIT `gpu-adapter-info.device`.
+pub fn exp_adapter_info_device_described(cb: &GlobalRef, adapter: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "adapterInfoDeviceDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(adapter as i32)],
+    )
+}
+
+/// L2: Guest adapter handle → WIT `gpu-adapter-info.description`.
+pub fn exp_adapter_info_description_described(
+    cb: &GlobalRef,
+    adapter: u32,
+) -> Result<String, String> {
+    call_string(
+        cb,
+        "adapterInfoDescriptionDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(adapter as i32)],
     )
 }
 
