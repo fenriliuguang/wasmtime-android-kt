@@ -257,6 +257,14 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun supportedLimitsMaxInterStageShaderVariables(adapter: GpuHandle, device: GpuHandle): Int
 
+    fun supportedLimitsMaxSampledTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxSamplersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxStorageBufferBindingSize(adapter: GpuHandle, device: GpuHandle): Long
+
+    fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: GpuHandle, device: GpuHandle): Int
+
     fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int
 
     fun adapterInfoSubgroupMaxSize(adapter: GpuHandle): Int
