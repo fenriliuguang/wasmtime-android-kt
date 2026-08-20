@@ -1,6 +1,5 @@
 ;; S6+: get-adapter-info + [method]gpu-adapter-info.architecture
-;; WIT: architecture: func() -> string. Host empty string; harness 1.
-;; L2 unused (lift-only). get-adapter-info is a test constructor.
+;; L2 described adapter handle → architecture (Cpu stub cpu-arch); harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-adapter-info" (type $gpu-adapter-info (sub resource)))

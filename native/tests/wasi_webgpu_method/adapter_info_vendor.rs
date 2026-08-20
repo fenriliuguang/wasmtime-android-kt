@@ -1,5 +1,5 @@
-//! S6+: `get-adapter-info` + `[method]gpu-adapter-info.vendor`
-//! WIT: `(borrow) -> string`. Host empty string; harness 1.
+//! L2: `get-adapter-info` + `[method]gpu-adapter-info.vendor`
+//! WIT: `(borrow) -> string`. Host returns Cpu stub `cpu-vendor`; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -8,7 +8,9 @@ use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceTy
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuAdapterInfo;
+struct GpuAdapterInfo {
+    adapter: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -26,7 +28,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-adapter-info", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuAdapterInfo)?;
+        let resource = store.data_mut().table.push(GpuAdapterInfo { adapter: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
@@ -34,7 +36,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
             caller.data_mut().table.get(&info).map(|_| ())?;
             called.store(true, Ordering::SeqCst);
-            Ok((String::new(),))
+            Ok(("cpu-vendor".to_string(),))
         },
     )?;
     Ok(())

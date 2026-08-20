@@ -1107,8 +1107,21 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-adapter-info.vendor",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
-                    let _ = caller.data_mut().table.get(&info)?;
-                    Ok((String::new(),))
+                    let info_adapter = caller.data_mut().table.get(&info)?.adapter;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if info_adapter == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        info_adapter
+                    };
+                    let vendor = jvm::exp_adapter_info_vendor_described(&cb, l2_adapter)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((vendor,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1116,8 +1129,22 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-adapter-info.architecture",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
-                    let _ = caller.data_mut().table.get(&info)?;
-                    Ok((String::new(),))
+                    let info_adapter = caller.data_mut().table.get(&info)?.adapter;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if info_adapter == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        info_adapter
+                    };
+                    let architecture =
+                        jvm::exp_adapter_info_architecture_described(&cb, l2_adapter)
+                            .map_err(wasmtime::Error::msg)?;
+                    Ok((architecture,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1125,8 +1152,21 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-adapter-info.device",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
-                    let _ = caller.data_mut().table.get(&info)?;
-                    Ok((String::new(),))
+                    let info_adapter = caller.data_mut().table.get(&info)?.adapter;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if info_adapter == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        info_adapter
+                    };
+                    let device = jvm::exp_adapter_info_device_described(&cb, l2_adapter)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((device,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1134,8 +1174,21 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-adapter-info.description",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
-                    let _ = caller.data_mut().table.get(&info)?;
-                    Ok((String::new(),))
+                    let info_adapter = caller.data_mut().table.get(&info)?.adapter;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if info_adapter == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        info_adapter
+                    };
+                    let description = jvm::exp_adapter_info_description_described(&cb, l2_adapter)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((description,))
                 },
             )
             .map_err(|e| e.to_string())?;

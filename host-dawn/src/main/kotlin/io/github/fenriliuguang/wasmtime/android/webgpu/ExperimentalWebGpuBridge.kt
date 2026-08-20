@@ -2124,10 +2124,10 @@ object ExperimentalWebGpuBridge {
     /**
      * S6+: `[method]gpu-adapter.features` / `limits` / `info` (L2 described
      * adapter handle → host validate; returned resource still local lift) and
-     * `[method]gpu-adapter-info.vendor` / `architecture` / `device` /
-     * `description` / `subgroup-min-size` / `subgroup-max-size` /
-     * `is-fallback-adapter` (L2 described adapter handle → subgroup scalars / fallback flag;
-     * string getters still lift-only), and `[method]gpu-supported-limits.max-*`
+     * `[method]gpu-adapter-info.vendor` / `architecture` / `device` / `description`
+     * (L2 described adapter handle → string getters) / `subgroup-min-size` /
+     * `subgroup-max-size` / `is-fallback-adapter` (L2 described adapter handle →
+     * subgroup scalars / fallback flag), and `[method]gpu-supported-limits.max-*`
      * getters (still lift-only).
      */
     fun attachAdapterInfo(store: Store, host: WasiWebGpuHost) {
@@ -2161,6 +2161,26 @@ object ExperimentalWebGpuBridge {
                 override fun adapterInfoIsFallbackAdapterDescribed(adapter: Int): Int {
                     val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
                     return if (bindings.adapterInfoIsFallbackAdapter(l2Adapter)) 1 else 0
+                }
+
+                override fun adapterInfoVendorDescribed(adapter: Int): String {
+                    val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
+                    return bindings.adapterInfoVendor(l2Adapter)
+                }
+
+                override fun adapterInfoArchitectureDescribed(adapter: Int): String {
+                    val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
+                    return bindings.adapterInfoArchitecture(l2Adapter)
+                }
+
+                override fun adapterInfoDeviceDescribed(adapter: Int): String {
+                    val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
+                    return bindings.adapterInfoDevice(l2Adapter)
+                }
+
+                override fun adapterInfoDescriptionDescribed(adapter: Int): String {
+                    val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
+                    return bindings.adapterInfoDescription(l2Adapter)
                 }
 
                 override fun deviceAdapterDescribed(device: Int): Int {

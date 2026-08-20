@@ -231,6 +231,14 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun adapterInfoIsFallbackAdapter(adapter: GpuHandle): Boolean
 
+    fun adapterInfoVendor(adapter: GpuHandle): String
+
+    fun adapterInfoArchitecture(adapter: GpuHandle): String
+
+    fun adapterInfoDevice(adapter: GpuHandle): String
+
+    fun adapterInfoDescription(adapter: GpuHandle): String
+
     /** Owning adapter for a device (device.adapter-info L2). */
     fun deviceAdapter(device: GpuHandle): GpuHandle
 
