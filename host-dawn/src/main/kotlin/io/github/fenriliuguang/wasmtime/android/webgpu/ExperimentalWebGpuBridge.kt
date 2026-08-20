@@ -2727,6 +2727,18 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * S6+: `get-canvas-context` (test ctor) + `[method]gpu-canvas-context.configure` /
+     * `unconfigure` / `get-configuration` / `get-current-texture`. Native lifts;
+     * L2 unused (no new JNI).
+     */
+    fun attachCanvasContext(
+        store: Store,
+        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+    ) {
+        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    }
+
+    /**
      * S6+: `[constructor]record-option-gpu-size64` and
      * `[method]record-option-gpu-size64.add` / `get` / `has` /
      * `remove` / `keys` / `values` / `entries`. Native lifts; L2 unused (no new JNI).

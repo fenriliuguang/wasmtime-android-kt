@@ -21,6 +21,10 @@
 | `webgpu_method_create_buffer.wasm` | `get-device` + **`[method]gpu-device.create-buffer` sync** `own<gpu-buffer>` | `run: async func() -> u32` | construct device → create-buffer (`gpu-buffer-descriptor` size=4 COPY_DST\|VERTEX) → drop own; harness returns 1 |
 | `webgpu_method_create_texture.wasm` | `get-device` + **`[method]gpu-device.create-texture` sync** `own<gpu-texture>` | `run: async func() -> u32` | construct device → create-texture (`gpu-texture-descriptor` 1×1×1 rgba8unorm RENDER_ATTACHMENT) → drop own; harness returns 1 |
 | `webgpu_method_create_sampler.wasm` | `get-device` + **`[method]gpu-device.create-sampler` sync** `own<gpu-sampler>` | `run: async func() -> u32` | construct device → create-sampler (`option<gpu-sampler-descriptor>` some: address-mode-u=repeat, mag/min-filter=linear) → drop own; harness returns 1 |
+| `webgpu_method_canvas_context_configure.wasm` | `get-canvas-context` + `get-device` + **`[method]gpu-canvas-context.configure` sync** void | `run: async func() -> u32` | construct context+device → configure (format=rgba8unorm, options none); harness returns 1 |
+| `webgpu_method_canvas_context_unconfigure.wasm` | `get-canvas-context` + **`[method]gpu-canvas-context.unconfigure` sync** void | `run: async func() -> u32` | construct context → unconfigure; harness returns 1 |
+| `webgpu_method_canvas_context_get_configuration.wasm` | `get-canvas-context` + **`[method]gpu-canvas-context.get-configuration` sync** `option<gpu-canvas-configuration-owned>` | `run: async func() -> u32` | construct context → get-configuration (lift-only none); harness returns 1 |
+| `webgpu_method_canvas_context_get_current_texture.wasm` | `get-canvas-context` + **`[method]gpu-canvas-context.get-current-texture` sync** `own<gpu-texture>` | `run: async func() -> u32` | construct context → get-current-texture → drop own; harness returns 1 |
 | `webgpu_method_sampler_label.wasm` | `get-sampler` + **`[method]gpu-sampler.label` sync** `string` | `run: async func() -> u32` | construct sampler → label (L2 described handle; Cpu stub empty); harness returns 1 |
 | `webgpu_method_sampler_set_label.wasm` | `get-sampler` + **`[method]gpu-sampler.set-label` sync** void | `run: async func() -> u32` | construct sampler → set-label (L2 described handle + guest empty string); harness returns 1 |
 | `webgpu_method_create_shader_module.wasm` | `get-device` + **`[method]gpu-device.create-shader-module` sync** `own<gpu-shader-module>` | `run: async func() -> u32` | construct device → create-shader-module (WGSL `fn l2`) → drop own; harness returns 1 |
@@ -698,4 +702,12 @@ wasm-tools parse fixtures/w1/webgpu_method_queue_on_submitted_work_done.wat -o f
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_queue_on_submitted_work_done.wasm
 wasm-tools parse fixtures/w1/webgpu_method_queue_set_label.wat -o fixtures/w1/webgpu_method_queue_set_label.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_queue_set_label.wasm
+wasm-tools parse fixtures/w1/webgpu_method_canvas_context_configure.wat -o fixtures/w1/webgpu_method_canvas_context_configure.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_canvas_context_configure.wasm
+wasm-tools parse fixtures/w1/webgpu_method_canvas_context_unconfigure.wat -o fixtures/w1/webgpu_method_canvas_context_unconfigure.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_canvas_context_unconfigure.wasm
+wasm-tools parse fixtures/w1/webgpu_method_canvas_context_get_configuration.wat -o fixtures/w1/webgpu_method_canvas_context_get_configuration.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_canvas_context_get_configuration.wasm
+wasm-tools parse fixtures/w1/webgpu_method_canvas_context_get_current_texture.wat -o fixtures/w1/webgpu_method_canvas_context_get_current_texture.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_canvas_context_get_current_texture.wasm
 ```
