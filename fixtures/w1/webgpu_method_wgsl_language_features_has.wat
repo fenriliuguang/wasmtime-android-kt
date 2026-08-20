@@ -1,5 +1,5 @@
-;; S6+: get-gpu + [method]gpu.wgsl-language-features + [method]wgsl-language-features.has
-;; WIT: has(value: string) -> bool. Host returns false; harness 1. L2 unused (lift-only).
+;; L2: get-gpu + [method]gpu.wgsl-language-features + [method]wgsl-language-features.has
+;; WIT: has(value: string) -> bool. Host returns false; harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu" (type $gpu (sub resource)))

@@ -808,6 +808,11 @@ class AbiCmHostBindings(
     fun adapterInfoDescription(adapter: Int): String =
         host.adapterInfoDescription(GpuHandle(adapter))
 
+    fun supportedFeaturesHas(adapter: Int, value: String): Boolean =
+        host.supportedFeaturesHas(GpuHandle(adapter), value)
+
+    fun wgslLanguageFeaturesHas(value: String): Boolean = host.wgslLanguageFeaturesHas(value)
+
     fun deviceAdapter(device: Int): Int = host.deviceAdapter(GpuHandle(device)).raw
 
     fun deviceValidate(device: Int) {

@@ -175,6 +175,14 @@ interface ExperimentalHostCallbacks {
     fun adapterInfoDescriptionDescribed(adapter: Int): String =
         unsupported("adapterInfoDescriptionDescribed")
 
+    /** L2: Guest adapter handle + feature name → WIT `gpu-supported-features.has` (0/1). */
+    fun supportedFeaturesHasDescribed(adapter: Int, value: String): Int =
+        unsupported("supportedFeaturesHasDescribed")
+
+    /** L2: Guest WGSL feature name → WIT `wgsl-language-features.has` (0/1). */
+    fun wgslLanguageFeaturesHasDescribed(value: String): Int =
+        unsupported("wgslLanguageFeaturesHasDescribed")
+
     /** L2: Guest device handle → owning adapter handle for adapter-info getters. */
     fun deviceAdapterDescribed(device: Int): Int = unsupported("deviceAdapterDescribed")
 

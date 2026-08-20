@@ -1,4 +1,4 @@
-//! S6+: `get-adapter` + `[method]gpu-adapter.features` + `[method]gpu-supported-features.has`
+//! L2: `get-adapter` + `[method]gpu-adapter.features` + `[method]gpu-supported-features.has`
 //! WIT: has(value: string) -> bool. Host returns false; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -8,10 +8,14 @@ use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceTy
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuAdapter;
+struct GpuAdapter {
+    rep: u32,
+}
 
 #[derive(Debug)]
-struct GpuSupportedFeatures;
+struct GpuSupportedFeatures {
+    adapter: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -38,14 +42,16 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-adapter", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuAdapter)?;
+        let resource = store.data_mut().table.push(GpuAdapter { rep: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
         "[method]gpu-adapter.features",
         |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
-            caller.data_mut().table.get(&adapter).map(|_| ())?;
-            let resource = caller.data_mut().table.push(GpuSupportedFeatures)?;
+            let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
+            let resource = caller.data_mut().table.push(GpuSupportedFeatures {
+                adapter: adapter_rep,
+            })?;
             Ok((resource,))
         },
     )?;

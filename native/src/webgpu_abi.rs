@@ -1835,9 +1835,11 @@ pub struct GpuAdapterInfo {
     pub adapter: u32,
 }
 
-/// WIT `resource gpu-supported-features`. Lift-only; L2 unused.
+/// WIT `resource gpu-supported-features`. `gpu-adapter.features` stores owning adapter rep.
 #[derive(Debug)]
-pub struct GpuSupportedFeatures;
+pub struct GpuSupportedFeatures {
+    pub adapter: u32,
+}
 
 /// WIT `resource gpu-supported-limits`. Lift-only; L2 unused.
 #[derive(Debug)]
@@ -1982,9 +1984,11 @@ pub struct PopErrorScopeError {
     pub message: String,
 }
 
-/// WIT `resource wgsl-language-features`. Lift-only; L2 unused.
+/// WIT `resource wgsl-language-features`. `gpu.wgsl-language-features` pushes `{ gpu: 0 }`.
 #[derive(Debug)]
-pub struct WgslLanguageFeatures;
+pub struct WgslLanguageFeatures {
+    pub gpu: u32,
+}
 
 /// WIT `variant gpu-error-kind`.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]

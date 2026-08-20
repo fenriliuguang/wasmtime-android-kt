@@ -994,6 +994,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun supportedFeaturesHas(adapter: GpuHandle, value: String): Boolean {
+        synchronized(gpuLock) {
+            val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+            return gpuAdapter.features.has(value)
+        }
+    }
+
+    override fun wgslLanguageFeaturesHas(value: String): Boolean {
+        synchronized(gpuLock) {
+            return instance.wgslLanguageFeatures.has(value)
+        }
+    }
+
     override fun deviceAdapter(device: GpuHandle): GpuHandle {
         synchronized(gpuLock) {
             handles.get<GPUDevice>(device, ResourceKind.Device)

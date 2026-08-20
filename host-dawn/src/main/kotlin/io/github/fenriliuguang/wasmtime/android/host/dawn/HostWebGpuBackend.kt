@@ -454,6 +454,12 @@ private class ForwardingHostCallbacks(
     override fun adapterInfoDescriptionDescribed(adapter: Int): String =
         bindings.adapterInfoDescription(adapter)
 
+    override fun supportedFeaturesHasDescribed(adapter: Int, value: String): Int =
+        if (bindings.supportedFeaturesHas(adapter, value)) 1 else 0
+
+    override fun wgslLanguageFeaturesHasDescribed(value: String): Int =
+        if (bindings.wgslLanguageFeaturesHas(value)) 1 else 0
+
     override fun deviceAdapterDescribed(device: Int): Int = bindings.deviceAdapter(device)
 
     override fun deviceFeaturesDescribed(device: Int) {

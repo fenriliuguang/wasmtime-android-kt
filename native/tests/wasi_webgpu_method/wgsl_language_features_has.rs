@@ -1,4 +1,4 @@
-//! S6+: `get-gpu` + `[method]gpu.wgsl-language-features` + `[method]wgsl-language-features.has`
+//! L2: `get-gpu` + `[method]gpu.wgsl-language-features` + `[method]wgsl-language-features.has`
 //! WIT: has(value: string) -> bool. Host returns false; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -11,7 +11,9 @@ use wasmtime::{Config, Engine, Store};
 struct Gpu;
 
 #[derive(Debug)]
-struct WgslLanguageFeatures;
+struct WgslLanguageFeatures {
+    gpu: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -45,7 +47,10 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         "[method]gpu.wgsl-language-features",
         |mut caller, (gpu,): (Resource<Gpu>,)| {
             caller.data_mut().table.get(&gpu).map(|_| ())?;
-            let resource = caller.data_mut().table.push(WgslLanguageFeatures)?;
+            let resource = caller
+                .data_mut()
+                .table
+                .push(WgslLanguageFeatures { gpu: 0 })?;
             Ok((resource,))
         },
     )?;

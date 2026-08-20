@@ -45,6 +45,9 @@ object ExperimentalWebGpuBridge {
         store.setExperimentalHost(
             object : ExperimentalHostCallbacks {
                 override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun wgslLanguageFeaturesHasDescribed(value: String): Int =
+                    if (bindings.wgslLanguageFeaturesHas(value)) 1 else 0
             },
         )
     }
@@ -2181,6 +2184,11 @@ object ExperimentalWebGpuBridge {
                 override fun adapterInfoDescriptionDescribed(adapter: Int): String {
                     val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
                     return bindings.adapterInfoDescription(l2Adapter)
+                }
+
+                override fun supportedFeaturesHasDescribed(adapter: Int, value: String): Int {
+                    val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
+                    return if (bindings.supportedFeaturesHas(l2Adapter, value)) 1 else 0
                 }
 
                 override fun deviceAdapterDescribed(device: Int): Int {
