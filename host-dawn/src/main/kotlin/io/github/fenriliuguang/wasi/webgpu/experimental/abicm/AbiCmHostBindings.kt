@@ -782,6 +782,12 @@ class AbiCmHostBindings(
         host.samplerSetLabel(GpuHandle(handle), label)
     }
 
+    fun shaderModuleLabel(handle: Int): String = host.shaderModuleLabel(GpuHandle(handle))
+
+    fun shaderModuleSetLabel(handle: Int, label: String) {
+        host.shaderModuleSetLabel(GpuHandle(handle), label)
+    }
+
     fun querySetType(querySet: Int): Int = host.querySetType(GpuHandle(querySet))
 
     fun querySetCount(querySet: Int): Int = host.querySetCount(GpuHandle(querySet))

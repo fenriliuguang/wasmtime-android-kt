@@ -492,6 +492,30 @@ pub fn exp_buffer_set_label_described(
     )
 }
 
+/// L2: Guest gpu-shader-module handle → WIT `gpu-shader-module.label`.
+pub fn exp_shader_module_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "shaderModuleLabelDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest gpu-shader-module handle + label string.
+pub fn exp_shader_module_set_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "shaderModuleSetLabelDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(handle as i32), HostArg::Str(label)],
+    )
+}
+
 /// L2: Guest gpu-sampler handle → WIT `gpu-sampler.label`.
 pub fn exp_sampler_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
     call_string(

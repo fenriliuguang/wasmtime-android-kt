@@ -2049,6 +2049,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun shaderModuleLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUShaderModule>(handle, ResourceKind.ShaderModule)
+            return ""
+        }
+    }
+
+    override fun shaderModuleSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUShaderModule>(handle, ResourceKind.ShaderModule).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

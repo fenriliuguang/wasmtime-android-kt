@@ -1,4 +1,4 @@
-//! S6+: `get-shader-module` + `[method]gpu-shader-module.set-label`
+//! L2: `get-shader-module` + `[method]gpu-shader-module.set-label`
 //! WIT: `(borrow, label: string)`. Guest passes empty label; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

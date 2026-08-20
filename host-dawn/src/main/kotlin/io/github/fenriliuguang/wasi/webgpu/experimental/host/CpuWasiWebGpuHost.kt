@@ -623,6 +623,15 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Sampler>(handle, ResourceKind.Sampler)
     }
 
+    override fun shaderModuleLabel(handle: GpuHandle): String {
+        handles.get<ShaderModule>(handle, ResourceKind.ShaderModule)
+        return ""
+    }
+
+    override fun shaderModuleSetLabel(handle: GpuHandle, label: String) {
+        handles.get<ShaderModule>(handle, ResourceKind.ShaderModule)
+    }
+
     override fun instanceCreateSurfaceFromAndroidNativeWindow(nativeWindowHandle: Long): GpuHandle {
         require(nativeWindowHandle != 0L) { "window-handle is null" }
         return handles.insert(ResourceKind.Surface, Surface())
