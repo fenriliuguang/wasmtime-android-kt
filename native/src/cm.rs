@@ -3835,16 +3835,50 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pipeline.label",
                 |mut caller, (pipeline,): (Resource<GpuRenderPipeline>,)| {
-                    let _ = caller.data_mut().table.get(&pipeline)?;
-                    Ok((String::new(),))
+                    let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if pipeline_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_render_pipeline(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        pipeline_rep
+                    };
+                    let label = jvm::exp_render_pipeline_label_described(&cb, l2)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((label,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-render-pipeline.set-label",
-                |mut caller, (pipeline, _label): (Resource<GpuRenderPipeline>, String)| {
-                    let _ = caller.data_mut().table.get(&pipeline)?;
+                |mut caller, (pipeline, label): (Resource<GpuRenderPipeline>, String)| {
+                    let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if pipeline_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_render_pipeline(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        pipeline_rep
+                    };
+                    jvm::exp_render_pipeline_set_label_described(&cb, l2, label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

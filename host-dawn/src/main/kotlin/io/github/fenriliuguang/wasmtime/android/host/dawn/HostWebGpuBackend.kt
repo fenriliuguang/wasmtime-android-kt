@@ -367,6 +367,12 @@ private class ForwardingHostCallbacks(
         bindings.renderPassEncoderSetLabel(handle, label)
     }
 
+    override fun renderPipelineLabelDescribed(handle: Int): String = bindings.renderPipelineLabel(handle)
+
+    override fun renderPipelineSetLabelDescribed(handle: Int, label: String) {
+        bindings.renderPipelineSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 
