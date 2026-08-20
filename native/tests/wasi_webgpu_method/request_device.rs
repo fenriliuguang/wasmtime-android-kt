@@ -1,7 +1,7 @@
-//! S3: `get-adapter` + `[method]gpu-adapter.request-device`
+//! L2: `get-adapter` + `[method]gpu-adapter.request-device`
 //! WIT: async (borrow<gpu-adapter>, option<gpu-device-descriptor>)
 //!      -> result<own<gpu-device>, request-device-error>
-//! Guest passes none; drops own device on ok; `run` returns harness 1.
+//! Guest passes none (limits/label unused); drops own device on ok; harness 1.
 
 use futures::channel::oneshot;
 use wasmtime::component::{
@@ -149,9 +149,13 @@ fn register_method_request_device(linker: &mut Linker<TestHost>) -> wasmtime::Re
     })?;
     webgpu.func_wrap_concurrent(
         "[method]gpu-adapter.request-device",
-        |accessor, (adapter, _descriptor): (Resource<GpuAdapter>, Option<GpuDeviceDescriptor>)| {
+        |accessor, (adapter, descriptor): (Resource<GpuAdapter>, Option<GpuDeviceDescriptor>)| {
             Box::pin(async move {
                 accessor.with(|mut access| access.data_mut().table.get(&adapter).map(|_| ()))?;
+                assert!(
+                    descriptor.is_none(),
+                    "guest must pass descriptor=none this cut"
+                );
                 let (tx, rx) = oneshot::channel::<()>();
                 std::thread::spawn(move || {
                     let _ = tx.send(());

@@ -61,9 +61,10 @@ object ExperimentalWebGpuBridge {
 
     /**
      * W2 remainder: adapter + device (proposal-name async path still uses these
-     * L2 callbacks). S3 `[method]gpu-adapter.request-device` shares this attach:
+     * L2 `[method]gpu-adapter.request-device` shares this attach:
      * `get-adapter` is host-only (no Kotlin); the method then calls L2
-     * `requestAdapter` (when adapter.rep is 0) + `adapterRequestDevice`, and
+     * `requestAdapter` (when adapter.rep is 0) + `adapterRequestDeviceDescribed`
+     * (optional first required-feature; limits/label unused), and
      * returns `result<own<gpu-device>, request-device-error>`.
      */
     fun attachRequestDevice(store: Store, host: WasiWebGpuHost) {
@@ -74,6 +75,12 @@ object ExperimentalWebGpuBridge {
 
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
+
+                override fun adapterRequestDeviceDescribed(
+                    adapter: Int,
+                    hasFeature: Int,
+                    feature: Int,
+                ): Int = bindings.adapterRequestDevice(adapter)
             },
         )
     }

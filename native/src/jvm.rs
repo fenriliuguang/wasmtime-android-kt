@@ -280,6 +280,26 @@ pub fn exp_adapter_request_device(cb: &GlobalRef, adapter: u32) -> Result<u32, S
     )
 }
 
+/// L2: Guest `gpu-adapter.request-device`. `has_feature==0` means no required-features
+/// (descriptor none / empty). Limits and label stay unused this cut.
+pub fn exp_adapter_request_device_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    has_feature: u32,
+    feature: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "adapterRequestDeviceDescribed",
+        "(III)I",
+        vec![
+            HostArg::Int(adapter as i32),
+            HostArg::Int(has_feature as i32),
+            HostArg::Int(feature as i32),
+        ],
+    )
+}
+
 pub fn exp_device_get_queue(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,

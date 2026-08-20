@@ -12,6 +12,13 @@ interface ExperimentalHostCallbacks {
 
     fun adapterRequestDevice(adapter: Int): Int = unsupported("adapterRequestDevice")
 
+    /**
+     * L2: Guest `[method]gpu-adapter.request-device`.
+     * `hasFeature == 0` → no required-features (none / empty). Limits and label unused.
+     */
+    fun adapterRequestDeviceDescribed(adapter: Int, hasFeature: Int, feature: Int): Int =
+        unsupported("adapterRequestDeviceDescribed")
+
     fun deviceGetQueue(device: Int): Int = unsupported("deviceGetQueue")
 
     /** L2: Guest `[method]gpu-device.queue` (device handle; 0 → stub-create in the wrap). */
