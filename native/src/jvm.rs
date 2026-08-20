@@ -789,6 +789,63 @@ pub fn exp_supported_limits_max_compute_workgroup_storage_size_described(
     )
 }
 
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-dynamic-storage-buffers-per-pipeline-layout`.
+pub fn exp_supported_limits_max_dynamic_storage_buffers_per_pipeline_layout_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxDynamicStorageBuffersPerPipelineLayoutDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-dynamic-uniform-buffers-per-pipeline-layout`.
+pub fn exp_supported_limits_max_dynamic_uniform_buffers_per_pipeline_layout_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxDynamicUniformBuffersPerPipelineLayoutDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-immediate-size`.
+pub fn exp_supported_limits_max_immediate_size_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxImmediateSizeDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-inter-stage-shader-variables`.
+pub fn exp_supported_limits_max_inter_stage_shader_variables_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxInterStageShaderVariablesDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest adapter handle → host validates before the local adapter-info lift.
 pub fn exp_adapter_info_described(cb: &GlobalRef, adapter: u32) -> Result<(), String> {
     call_void(
