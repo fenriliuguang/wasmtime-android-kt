@@ -2922,9 +2922,9 @@ object ExperimentalWebGpuBridge {
 
     /**
      * L2 `[method]gpu-render-bundle-encoder.label` / `set-label` /
-     * `[method]gpu-render-bundle.label` / `set-label`,
-     * `[method]gpu-render-pass-encoder.label` / `set-label`, and
-     * `[method]gpu-render-pipeline.label` / `set-label` (still lift-only), plus L2
+     * `[method]gpu-render-bundle.label` / `set-label` /
+     * `[method]gpu-render-pass-encoder.label` / `set-label`,
+     * S6+: `[method]gpu-render-pipeline.label` / `set-label` (still lift-only), plus L2
      * `[method]gpu-render-pipeline.get-bind-group-layout` (0 → stub triangle pipeline).
      */
     fun attachRenderBundlePassPipelineLabel(
@@ -2979,6 +2979,48 @@ object ExperimentalWebGpuBridge {
 
                 override fun renderBundleSetLabelDescribed(handle: Int, label: String) {
                     bindings.renderBundleSetLabel(handle, label)
+                }
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun deviceCreateTexture(device: Int): Int =
+                    bindings.deviceCreateTexture(
+                        device,
+                        TextureDescriptor(
+                            size = Extent3D(width = 1, height = 1),
+                            format = GpuTextureFormat.RGBA8_UNORM,
+                            usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                        ),
+                    )
+
+                override fun textureCreateViewDescribed(
+                    texture: Int,
+                    dimension: Int,
+                    aspect: Int,
+                ): Int =
+                    bindings.textureCreateView(
+                        texture,
+                        TextureViewDescriptor(
+                            dimension = dimension,
+                            aspect = aspect,
+                        ),
+                    )
+
+                override fun beginRenderPassClear(encoder: Int, view: Int): Int =
+                    bindings.commandEncoderBeginRenderPassClear(
+                        encoder,
+                        view,
+                        CLEAR_R,
+                        CLEAR_G,
+                        CLEAR_B,
+                        CLEAR_A,
+                    )
+
+                override fun renderPassEncoderLabelDescribed(handle: Int): String =
+                    bindings.renderPassEncoderLabel(handle)
+
+                override fun renderPassEncoderSetLabelDescribed(handle: Int, label: String) {
+                    bindings.renderPassEncoderSetLabel(handle, label)
                 }
             },
         )
