@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-compute-pipeline handle → WIT `gpu-compute-pipeline.label`. */
+    fun computePipelineLabelDescribed(handle: Int): String = unsupported("computePipelineLabelDescribed")
+
+    /** L2: Guest gpu-compute-pipeline handle + label string. */
+    fun computePipelineSetLabelDescribed(handle: Int, label: String) {
+        unsupported("computePipelineSetLabelDescribed")
+    }
+
     /** L2: Guest gpu-compute-pass-encoder handle → WIT `gpu-compute-pass-encoder.label`. */
     fun computePassEncoderLabelDescribed(handle: Int): String = unsupported("computePassEncoderLabelDescribed")
 

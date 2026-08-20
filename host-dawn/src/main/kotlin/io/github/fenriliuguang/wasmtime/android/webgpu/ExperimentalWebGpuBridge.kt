@@ -2836,8 +2836,8 @@ object ExperimentalWebGpuBridge {
         }
 
     /**
-     * L2 `[method]gpu-compute-pass-encoder.label` / `set-label`, plus
-     * S6+: `[method]gpu-compute-pipeline.label` / `set-label` (still lift-only) and L2
+     * L2 `[method]gpu-compute-pass-encoder.label` / `set-label` /
+     * `[method]gpu-compute-pipeline.label` / `set-label` plus
      * `[method]gpu-compute-pipeline.get-bind-group-layout` (0 → stub compute pipeline).
      */
     fun attachComputePassPipelineLabel(
@@ -2891,6 +2891,30 @@ object ExperimentalWebGpuBridge {
 
                 override fun computePassEncoderSetLabelDescribed(handle: Int, label: String) {
                     bindings.computePassEncoderSetLabel(handle, label)
+                }
+                override fun deviceCreateComputePipeline(device: Int): Int {
+                    val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                    val layout = bindings.deviceCreatePipelineLayout(
+                        device,
+                        PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                    )
+                    return bindings.deviceCreateComputePipeline(
+                        device,
+                        ComputePipelineDescriptor(
+                            layout = GpuHandle(layout),
+                            compute = ProgrammableStage(
+                                module = GpuHandle(shader),
+                                entryPoint = "main",
+                            ),
+                        ),
+                    )
+                }
+
+                override fun computePipelineLabelDescribed(handle: Int): String =
+                    bindings.computePipelineLabel(handle)
+
+                override fun computePipelineSetLabelDescribed(handle: Int, label: String) {
+                    bindings.computePipelineSetLabel(handle, label)
                 }
             },
         )

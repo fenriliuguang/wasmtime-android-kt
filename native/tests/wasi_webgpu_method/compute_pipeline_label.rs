@@ -1,4 +1,4 @@
-//! S6+: `get-compute-pipeline` + `[method]gpu-compute-pipeline.label`
+//! L2: `get-compute-pipeline` + `[method]gpu-compute-pipeline.label`
 //! WIT: `(borrow) -> string`. Host empty string; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

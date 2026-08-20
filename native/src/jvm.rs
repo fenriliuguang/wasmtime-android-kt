@@ -492,6 +492,30 @@ pub fn exp_buffer_set_label_described(
     )
 }
 
+/// L2: Guest gpu-compute-pipeline handle → WIT `gpu-compute-pipeline.label`.
+pub fn exp_compute_pipeline_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "computePipelineLabelDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest gpu-compute-pipeline handle + label string.
+pub fn exp_compute_pipeline_set_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePipelineSetLabelDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(handle as i32), HostArg::Str(label)],
+    )
+}
+
 /// L2: Guest gpu-compute-pass-encoder handle → WIT `gpu-compute-pass-encoder.label`.
 pub fn exp_compute_pass_encoder_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
     call_string(
