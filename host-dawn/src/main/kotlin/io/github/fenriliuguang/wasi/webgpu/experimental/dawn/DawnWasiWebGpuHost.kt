@@ -853,6 +853,34 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun computePassPushDebugGroup(pass: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUComputePassEncoder>(pass, ResourceKind.ComputePassEncoder)
+                .pushDebugGroup(label)
+        }
+    }
+
+    override fun computePassPopDebugGroup(pass: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUComputePassEncoder>(pass, ResourceKind.ComputePassEncoder)
+                .popDebugGroup()
+        }
+    }
+
+    override fun computePassInsertDebugMarker(pass: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUComputePassEncoder>(pass, ResourceKind.ComputePassEncoder)
+                .insertDebugMarker(label)
+        }
+    }
+
+    override fun computePassSetImmediates(pass: GpuHandle, rangeOffset: Int, data: ByteArray) {
+        synchronized(gpuLock) {
+            handles.get<GPUComputePassEncoder>(pass, ResourceKind.ComputePassEncoder)
+            // androidx.webgpu alpha05 does not expose setImmediates; validate the handle only.
+        }
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,
