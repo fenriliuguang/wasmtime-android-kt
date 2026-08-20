@@ -884,6 +884,18 @@ class AbiCmHostBindings(
     fun supportedLimitsMaxVertexAttributes(adapter: Int, device: Int): Int =
         host.supportedLimitsMaxVertexAttributes(GpuHandle(adapter), GpuHandle(device))
 
+    fun supportedLimitsMaxVertexBufferArrayStride(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxVertexBufferArrayStride(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxVertexBuffers(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxVertexBuffers(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMinStorageBufferOffsetAlignment(adapter: Int, device: Int): Int =
+        host.supportedLimitsMinStorageBufferOffsetAlignment(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMinUniformBufferOffsetAlignment(adapter: Int, device: Int): Int =
+        host.supportedLimitsMinUniformBufferOffsetAlignment(GpuHandle(adapter), GpuHandle(device))
+
     fun adapterInfoSubgroupMinSize(adapter: Int): Int =
         host.adapterInfoSubgroupMinSize(GpuHandle(adapter))
 

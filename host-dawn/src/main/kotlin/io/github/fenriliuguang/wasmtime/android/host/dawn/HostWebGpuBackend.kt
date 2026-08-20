@@ -592,6 +592,26 @@ private class ForwardingHostCallbacks(
         return bindings.supportedLimitsMaxVertexAttributes(l2Adapter, device)
     }
 
+    override fun supportedLimitsMaxVertexBufferArrayStrideDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxVertexBufferArrayStride(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxVertexBuffersDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxVertexBuffers(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMinStorageBufferOffsetAlignmentDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMinStorageBufferOffsetAlignment(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMinUniformBufferOffsetAlignmentDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMinUniformBufferOffsetAlignment(l2Adapter, device)
+    }
+
     override fun adapterInfoDescribed(adapter: Int) {
         bindings.adapterValidate(adapter)
     }
