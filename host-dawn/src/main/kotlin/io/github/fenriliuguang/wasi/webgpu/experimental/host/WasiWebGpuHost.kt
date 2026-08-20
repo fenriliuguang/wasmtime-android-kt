@@ -174,6 +174,12 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun deviceDestroy(device: GpuHandle)
 
+    /** Push an error scope (WIT filter ordinal: validation=0, out-of-memory=1, internal=2). */
+    fun devicePushErrorScope(device: GpuHandle, filter: Int)
+
+    /** Pop an error scope; returns 0 when no error was captured (empty stack included). */
+    fun devicePopErrorScope(device: GpuHandle): Int
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

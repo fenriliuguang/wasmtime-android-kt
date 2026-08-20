@@ -805,6 +805,21 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun devicePushErrorScope(device: GpuHandle, filter: Int) {
+        synchronized(gpuLock) {
+            // Dawn ErrorFilter is 1-based (Undefined=0); WIT validation=0 / oom=1 / internal=2.
+            handles.get<GPUDevice>(device, ResourceKind.Device).pushErrorScope(filter + 1)
+        }
+    }
+
+    override fun devicePopErrorScope(device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            handles.get<GPUDevice>(device, ResourceKind.Device)
+            // Async popErrorScope callback plumbing is not in this lane; report none.
+            return 0
+        }
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

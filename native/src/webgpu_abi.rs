@@ -1922,6 +1922,17 @@ pub enum GpuErrorFilter {
     Internal,
 }
 
+impl GpuErrorFilter {
+    /// Host ordinal: validation=0, out-of-memory=1, internal=2.
+    pub fn to_host_u32(self) -> u32 {
+        match self {
+            Self::Validation => 0,
+            Self::OutOfMemory => 1,
+            Self::Internal => 2,
+        }
+    }
+}
+
 /// WIT `variant pop-error-scope-error-kind`. Lift-only; L2 unused.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(variant)]

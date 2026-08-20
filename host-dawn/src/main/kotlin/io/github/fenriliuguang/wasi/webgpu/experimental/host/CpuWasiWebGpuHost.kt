@@ -13,7 +13,9 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     private val handles = HandleTable()
 
     private class Adapter
-    private class Device
+    private class Device {
+        var errorScopeDepth: Int = 0
+    }
     private class Queue
     private class ShaderModule(val code: String)
     private class BindGroupLayout
@@ -607,6 +609,19 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     override fun deviceDestroy(device: GpuHandle) {
         handles.get<Device>(device, ResourceKind.Device)
+    }
+
+    override fun devicePushErrorScope(device: GpuHandle, filter: Int) {
+        val dev = handles.get<Device>(device, ResourceKind.Device)
+        dev.errorScopeDepth += 1
+    }
+
+    override fun devicePopErrorScope(device: GpuHandle): Int {
+        val dev = handles.get<Device>(device, ResourceKind.Device)
+        if (dev.errorScopeDepth > 0) {
+            dev.errorScopeDepth -= 1
+        }
+        return 0
     }
 
     override fun commandEncoderBeginRenderPassClear(
