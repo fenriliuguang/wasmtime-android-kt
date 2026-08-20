@@ -241,6 +241,14 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle): Int
 
+    fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: GpuHandle, device: GpuHandle): Int
+
     fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int
 
     fun adapterInfoSubgroupMaxSize(adapter: GpuHandle): Int

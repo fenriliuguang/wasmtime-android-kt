@@ -732,6 +732,63 @@ pub fn exp_supported_limits_max_compute_workgroup_size_x_described(
     )
 }
 
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroup-size-y`.
+pub fn exp_supported_limits_max_compute_workgroup_size_y_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxComputeWorkgroupSizeYDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroup-size-z`.
+pub fn exp_supported_limits_max_compute_workgroup_size_z_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxComputeWorkgroupSizeZDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroups-per-dimension`.
+pub fn exp_supported_limits_max_compute_workgroups_per_dimension_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxComputeWorkgroupsPerDimensionDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroup-storage-size`.
+pub fn exp_supported_limits_max_compute_workgroup_storage_size_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxComputeWorkgroupStorageSizeDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest adapter handle → host validates before the local adapter-info lift.
 pub fn exp_adapter_info_described(cb: &GlobalRef, adapter: u32) -> Result<(), String> {
     call_void(

@@ -472,6 +472,26 @@ private class ForwardingHostCallbacks(
         return bindings.supportedLimitsMaxComputeWorkgroupSizeX(l2Adapter, device)
     }
 
+    override fun supportedLimitsMaxComputeWorkgroupSizeYDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxComputeWorkgroupSizeY(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupSizeZDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxComputeWorkgroupSizeZ(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupsPerDimensionDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxComputeWorkgroupsPerDimension(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupStorageSizeDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxComputeWorkgroupStorageSize(l2Adapter, device)
+    }
+
     override fun adapterInfoDescribed(adapter: Int) {
         bindings.adapterValidate(adapter)
     }

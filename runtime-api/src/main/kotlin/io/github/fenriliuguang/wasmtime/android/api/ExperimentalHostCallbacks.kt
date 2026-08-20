@@ -175,6 +175,23 @@ interface ExperimentalHostCallbacks {
     fun supportedLimitsMaxComputeWorkgroupSizeXDescribed(adapter: Int, device: Int): Int =
         unsupported("supportedLimitsMaxComputeWorkgroupSizeXDescribed")
 
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroup-size-y`. */
+    fun supportedLimitsMaxComputeWorkgroupSizeYDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxComputeWorkgroupSizeYDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroup-size-z`. */
+    fun supportedLimitsMaxComputeWorkgroupSizeZDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxComputeWorkgroupSizeZDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroups-per-dimension`. */
+    fun supportedLimitsMaxComputeWorkgroupsPerDimensionDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxComputeWorkgroupsPerDimensionDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroup-storage-size`. */
+    fun supportedLimitsMaxComputeWorkgroupStorageSizeDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxComputeWorkgroupStorageSizeDescribed")
+
     /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
     fun adapterInfoDescribed(adapter: Int) {
         unsupported("adapterInfoDescribed")

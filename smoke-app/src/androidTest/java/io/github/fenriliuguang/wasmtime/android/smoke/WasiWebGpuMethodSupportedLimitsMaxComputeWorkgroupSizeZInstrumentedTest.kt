@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-supported-limits.max-compute-workgroup-size-z` via [ExperimentalWebGpuBridge.attachAdapterInfo]. */
+/** L2 `[method]gpu-supported-limits.max-compute-workgroup-size-z` via [ExperimentalWebGpuBridge.attachAdapterInfo]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodSupportedLimitsMaxComputeWorkgroupSizeZInstrumentedTest {
     @Test
