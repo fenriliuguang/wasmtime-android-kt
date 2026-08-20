@@ -314,6 +314,12 @@ object ExperimentalWebGpuBridge {
 
                 override fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
                     bindings.deviceCreateShaderModule(device, code)
+                override fun shaderModuleLabelDescribed(handle: Int): String =
+                    bindings.shaderModuleLabel(handle)
+
+                override fun shaderModuleSetLabelDescribed(handle: Int, label: String) {
+                    bindings.shaderModuleSetLabel(handle, label)
+                }
             },
         )
     }

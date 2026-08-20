@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-shader-module handle → WIT `gpu-shader-module.label`. */
+    fun shaderModuleLabelDescribed(handle: Int): String = unsupported("shaderModuleLabelDescribed")
+
+    /** L2: Guest gpu-shader-module handle + label string. */
+    fun shaderModuleSetLabelDescribed(handle: Int, label: String) {
+        unsupported("shaderModuleSetLabelDescribed")
+    }
+
     /** L2: Guest gpu-sampler handle → WIT `gpu-sampler.label`. */
     fun samplerLabelDescribed(handle: Int): String = unsupported("samplerLabelDescribed")
 

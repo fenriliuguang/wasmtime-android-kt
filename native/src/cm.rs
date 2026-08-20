@@ -3267,16 +3267,60 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-shader-module.label",
                 |mut caller, (shader,): (Resource<GpuShaderModule>,)| {
-                    let _ = caller.data_mut().table.get(&shader)?;
-                    Ok((String::new(),))
+                    let shader_rep = caller.data_mut().table.get(&shader)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if shader_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_shader_module_described(
+                            &cb,
+                            device_rep,
+                            "@compute @workgroup_size(1) fn main() {}".to_string(),
+                        )
+                        .map_err(wasmtime::Error::msg)?
+                    } else {
+                        shader_rep
+                    };
+                    let label = jvm::exp_shader_module_label_described(&cb, l2)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((label,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-shader-module.set-label",
-                |mut caller, (shader, _label): (Resource<GpuShaderModule>, String)| {
-                    let _ = caller.data_mut().table.get(&shader)?;
+                |mut caller, (shader, label): (Resource<GpuShaderModule>, String)| {
+                    let shader_rep = caller.data_mut().table.get(&shader)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if shader_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_shader_module_described(
+                            &cb,
+                            device_rep,
+                            "@compute @workgroup_size(1) fn main() {}".to_string(),
+                        )
+                        .map_err(wasmtime::Error::msg)?
+                    } else {
+                        shader_rep
+                    };
+                    jvm::exp_shader_module_set_label_described(&cb, l2, label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

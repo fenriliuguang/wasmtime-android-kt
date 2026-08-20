@@ -295,6 +295,12 @@ private class ForwardingHostCallbacks(
         bindings.samplerSetLabel(handle, label)
     }
 
+    override fun shaderModuleLabelDescribed(handle: Int): String = bindings.shaderModuleLabel(handle)
+
+    override fun shaderModuleSetLabelDescribed(handle: Int, label: String) {
+        bindings.shaderModuleSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 
