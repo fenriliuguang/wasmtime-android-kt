@@ -722,6 +722,45 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Adapter>(adapter, ResourceKind.Adapter)
     }
 
+    override fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle): Int {
+        if (device.raw != 0) {
+            handles.get<Device>(device, ResourceKind.Device)
+        } else {
+            handles.get<Adapter>(adapter, ResourceKind.Adapter)
+        }
+        return 1
+    }
+
+    override fun supportedLimitsMaxBindGroupsPlusVertexBuffers(
+        adapter: GpuHandle,
+        device: GpuHandle,
+    ): Int {
+        if (device.raw != 0) {
+            handles.get<Device>(device, ResourceKind.Device)
+        } else {
+            handles.get<Adapter>(adapter, ResourceKind.Adapter)
+        }
+        return 1
+    }
+
+    override fun supportedLimitsMaxBindingsPerBindGroup(adapter: GpuHandle, device: GpuHandle): Int {
+        if (device.raw != 0) {
+            handles.get<Device>(device, ResourceKind.Device)
+        } else {
+            handles.get<Adapter>(adapter, ResourceKind.Adapter)
+        }
+        return 1
+    }
+
+    override fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle): Long {
+        if (device.raw != 0) {
+            handles.get<Device>(device, ResourceKind.Device)
+        } else {
+            handles.get<Adapter>(adapter, ResourceKind.Adapter)
+        }
+        return 1L
+    }
+
     override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int =
         handles.get<Adapter>(adapter, ResourceKind.Adapter).subgroupMinSize
 

@@ -946,6 +946,61 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return if (device.raw != 0) {
+                handles.get<GPUDevice>(device, ResourceKind.Device).limits.maxBindGroups
+            } else {
+                handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).limits.maxBindGroups
+            }
+        }
+    }
+
+    override fun supportedLimitsMaxBindGroupsPlusVertexBuffers(
+        adapter: GpuHandle,
+        device: GpuHandle,
+    ): Int {
+        synchronized(gpuLock) {
+            return if (device.raw != 0) {
+                handles
+                    .get<GPUDevice>(device, ResourceKind.Device)
+                    .limits
+                    .maxBindGroupsPlusVertexBuffers
+            } else {
+                handles
+                    .get<GPUAdapter>(adapter, ResourceKind.Adapter)
+                    .limits
+                    .maxBindGroupsPlusVertexBuffers
+            }
+        }
+    }
+
+    override fun supportedLimitsMaxBindingsPerBindGroup(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return if (device.raw != 0) {
+                handles
+                    .get<GPUDevice>(device, ResourceKind.Device)
+                    .limits
+                    .maxBindingsPerBindGroup
+            } else {
+                handles
+                    .get<GPUAdapter>(adapter, ResourceKind.Adapter)
+                    .limits
+                    .maxBindingsPerBindGroup
+            }
+        }
+    }
+
+    override fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle): Long {
+        synchronized(gpuLock) {
+            return if (device.raw != 0) {
+                handles.get<GPUDevice>(device, ResourceKind.Device).limits.maxBufferSize
+            } else {
+                handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).limits.maxBufferSize
+            }
+        }
+    }
+
     override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)

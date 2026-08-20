@@ -619,6 +619,62 @@ pub fn exp_adapter_limits_described(cb: &GlobalRef, adapter: u32) -> Result<(), 
     )
 }
 
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-bind-groups`.
+pub fn exp_supported_limits_max_bind_groups_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxBindGroupsDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-bind-groups-plus-vertex-buffers`.
+pub fn exp_supported_limits_max_bind_groups_plus_vertex_buffers_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxBindGroupsPlusVertexBuffersDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-bindings-per-bind-group`.
+pub fn exp_supported_limits_max_bindings_per_bind_group_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxBindingsPerBindGroupDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-buffer-size`.
+pub fn exp_supported_limits_max_buffer_size_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "supportedLimitsMaxBufferSizeDescribed",
+        "(II)J",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest adapter handle → host validates before the local adapter-info lift.
 pub fn exp_adapter_info_described(cb: &GlobalRef, adapter: u32) -> Result<(), String> {
     call_void(

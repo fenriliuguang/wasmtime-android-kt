@@ -2138,7 +2138,7 @@ object ExperimentalWebGpuBridge {
      * (L2 described adapter handle → string getters) / `subgroup-min-size` /
      * `subgroup-max-size` / `is-fallback-adapter` (L2 described adapter handle →
      * subgroup scalars / fallback flag), and `[method]gpu-supported-limits.max-*`
-     * getters (still lift-only).
+     * getters (L2 described adapter/device reps → host limit scalars).
      */
     fun attachAdapterInfo(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -2152,6 +2152,48 @@ object ExperimentalWebGpuBridge {
 
                 override fun adapterLimitsDescribed(adapter: Int) {
                     bindings.adapterValidate(adapter)
+                }
+
+                override fun supportedLimitsMaxBindGroupsDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxBindGroups(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxBindGroupsPlusVertexBuffersDescribed(
+                    adapter: Int,
+                    device: Int,
+                ): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxBindGroupsPlusVertexBuffers(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxBindingsPerBindGroupDescribed(
+                    adapter: Int,
+                    device: Int,
+                ): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxBindingsPerBindGroup(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxBufferSizeDescribed(adapter: Int, device: Int): Long {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxBufferSize(l2Adapter, device)
                 }
 
                 override fun adapterInfoDescribed(adapter: Int) {
