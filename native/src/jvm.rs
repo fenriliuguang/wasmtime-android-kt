@@ -492,6 +492,30 @@ pub fn exp_buffer_set_label_described(
     )
 }
 
+/// L2: Guest gpu-render-bundle handle → WIT `gpu-render-bundle.label`.
+pub fn exp_render_bundle_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "renderBundleLabelDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest gpu-render-bundle handle + label string.
+pub fn exp_render_bundle_set_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleSetLabelDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(handle as i32), HostArg::Str(label)],
+    )
+}
+
 /// L2: Guest gpu-render-bundle-encoder handle → WIT `gpu-render-bundle-encoder.label`.
 pub fn exp_render_bundle_encoder_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
     call_string(

@@ -2179,6 +2179,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun renderBundleLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPURenderBundle>(handle, ResourceKind.RenderBundle)
+            return ""
+        }
+    }
+
+    override fun renderBundleSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderBundle>(handle, ResourceKind.RenderBundle).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

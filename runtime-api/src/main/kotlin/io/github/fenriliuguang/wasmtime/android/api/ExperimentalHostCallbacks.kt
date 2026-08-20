@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-render-bundle handle → WIT `gpu-render-bundle.label`. */
+    fun renderBundleLabelDescribed(handle: Int): String = unsupported("renderBundleLabelDescribed")
+
+    /** L2: Guest gpu-render-bundle handle + label string. */
+    fun renderBundleSetLabelDescribed(handle: Int, label: String) {
+        unsupported("renderBundleSetLabelDescribed")
+    }
+
     /** L2: Guest gpu-render-bundle-encoder handle → WIT `gpu-render-bundle-encoder.label`. */
     fun renderBundleEncoderLabelDescribed(handle: Int): String = unsupported("renderBundleEncoderLabelDescribed")
 
