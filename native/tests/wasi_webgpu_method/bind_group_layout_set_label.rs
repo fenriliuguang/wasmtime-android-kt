@@ -1,4 +1,4 @@
-//! S6+: `get-bind-group-layout` + `[method]gpu-bind-group-layout.set-label`
+//! L2: `get-bind-group-layout` + `[method]gpu-bind-group-layout.set-label`
 //! WIT: `(borrow, label: string)`. Guest passes empty label; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

@@ -2542,9 +2542,9 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `[method]gpu-bind-group-layout.label` / `set-label` (still lift-only), plus L2
-     * `[method]gpu-buffer.size` / `usage` / `map-state` / `destroy` / `label` /
-     * `set-label` and `[method]gpu-bind-group.label` / `set-label`.
+     * L2 `[method]gpu-bind-group.label` / `set-label` / `gpu-bind-group-layout.label` /
+     * `set-label` plus `[method]gpu-buffer.size` / `usage` / `map-state` / `destroy` /
+     * `label` / `set-label`.
      */
     fun attachBindGroupBufferLabel(
         store: Store,
@@ -2608,6 +2608,12 @@ object ExperimentalWebGpuBridge {
 
                 override fun bindGroupSetLabelDescribed(bindGroup: Int, label: String) {
                     bindings.bindGroupSetLabel(bindGroup, label)
+                }
+                override fun bindGroupLayoutLabelDescribed(handle: Int): String =
+                    bindings.bindGroupLayoutLabel(handle)
+
+                override fun bindGroupLayoutSetLabelDescribed(handle: Int, label: String) {
+                    bindings.bindGroupLayoutSetLabel(handle, label)
                 }
             },
         )

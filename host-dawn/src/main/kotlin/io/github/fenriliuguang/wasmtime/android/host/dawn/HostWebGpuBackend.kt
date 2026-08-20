@@ -271,6 +271,12 @@ private class ForwardingHostCallbacks(
         bindings.bindGroupSetLabel(bind_group, label)
     }
 
+    override fun bindGroupLayoutLabelDescribed(handle: Int): String = bindings.bindGroupLayoutLabel(handle)
+
+    override fun bindGroupLayoutSetLabelDescribed(handle: Int, label: String) {
+        bindings.bindGroupLayoutSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 
