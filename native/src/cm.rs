@@ -1488,7 +1488,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-gpu-error", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuError)?;
+                let resource = store.data_mut().table.push(GpuError { device: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -1496,8 +1496,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-error.message",
                 |mut caller, (error,): (Resource<GpuError>,)| {
-                    let _ = caller.data_mut().table.get(&error)?;
-                    Ok((String::new(),))
+                    let error_device = caller.data_mut().table.get(&error)?.device;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if error_device == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        error_device
+                    };
+                    let message = jvm::exp_gpu_error_message_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((message,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1505,8 +1521,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-error.kind",
                 |mut caller, (error,): (Resource<GpuError>,)| {
-                    let _ = caller.data_mut().table.get(&error)?;
-                    Ok((GpuErrorKind::ValidationError,))
+                    let error_device = caller.data_mut().table.get(&error)?.device;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if error_device == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        error_device
+                    };
+                    let kind = jvm::exp_gpu_error_kind_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuErrorKind::from_host_u32(kind),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1751,7 +1783,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu-uncaptured-error-event.error",
                 |mut caller, (event,): (Resource<GpuUncapturedErrorEvent>,)| {
                     let _ = caller.data_mut().table.get(&event)?;
-                    let resource = caller.data_mut().table.push(GpuError)?;
+                    let resource = caller.data_mut().table.push(GpuError { device: 0 })?;
                     Ok((resource,))
                 },
             )

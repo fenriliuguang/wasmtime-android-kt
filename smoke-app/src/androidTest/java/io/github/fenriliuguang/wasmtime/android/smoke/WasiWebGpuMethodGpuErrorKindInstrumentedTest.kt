@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-error.kind` via [ExperimentalWebGpuBridge.attachDeviceInfoError]. */
+/** L2 `[method]gpu-error.kind` via [ExperimentalWebGpuBridge.attachDeviceInfoError]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodGpuErrorKindInstrumentedTest {
     @Test

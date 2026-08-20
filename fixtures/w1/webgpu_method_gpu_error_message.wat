@@ -1,5 +1,5 @@
 ;; S6+: get-gpu-error + [method]gpu-error.message
-;; WIT: message: func() -> string. Host empty string; harness 1.
+;; L2 described device handle → message (Cpu stub cpu-gpu-error); harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-error" (type $gpu-error (sub resource)))

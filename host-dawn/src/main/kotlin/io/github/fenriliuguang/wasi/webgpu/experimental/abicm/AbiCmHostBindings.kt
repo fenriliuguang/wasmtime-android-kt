@@ -824,6 +824,10 @@ class AbiCmHostBindings(
     fun deviceLostInfoMessage(device: Int): String =
         host.deviceLostInfoMessage(GpuHandle(device))
 
+    fun gpuErrorKind(device: Int): Int = host.gpuErrorKind(GpuHandle(device))
+
+    fun gpuErrorMessage(device: Int): String = host.gpuErrorMessage(GpuHandle(device))
+
     fun devicePushErrorScope(device: Int, filter: Int) {
         host.devicePushErrorScope(GpuHandle(device), filter)
     }

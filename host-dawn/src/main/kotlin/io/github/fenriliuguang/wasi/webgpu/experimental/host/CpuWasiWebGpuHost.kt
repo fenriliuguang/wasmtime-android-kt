@@ -760,6 +760,16 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     override fun deviceLostInfoMessage(device: GpuHandle): String =
         handles.get<Device>(device, ResourceKind.Device).lostMessage
 
+    override fun gpuErrorKind(device: GpuHandle): Int {
+        handles.get<Device>(device, ResourceKind.Device)
+        return 0
+    }
+
+    override fun gpuErrorMessage(device: GpuHandle): String {
+        handles.get<Device>(device, ResourceKind.Device)
+        return "cpu-gpu-error"
+    }
+
     override fun devicePushErrorScope(device: GpuHandle, filter: Int) {
         val dev = handles.get<Device>(device, ResourceKind.Device)
         dev.errorScopeDepth += 1

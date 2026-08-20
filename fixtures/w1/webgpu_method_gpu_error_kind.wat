@@ -1,5 +1,5 @@
 ;; S6+: get-gpu-error + [method]gpu-error.kind
-;; WIT: kind: func() -> gpu-error-kind. Host validation-error; harness 1.
+;; L2 described device handle → kind (Cpu stub validation-error); harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $kind (variant (case "validation-error") (case "out-of-memory-error") (case "internal-error")))

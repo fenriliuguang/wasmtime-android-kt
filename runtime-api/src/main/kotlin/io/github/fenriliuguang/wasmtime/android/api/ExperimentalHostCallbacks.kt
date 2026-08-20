@@ -211,6 +211,12 @@ interface ExperimentalHostCallbacks {
     fun deviceLostInfoMessageDescribed(device: Int): String =
         unsupported("deviceLostInfoMessageDescribed")
 
+    /** L2: Guest device handle → WIT `gpu-error.kind` ordinal. */
+    fun gpuErrorKindDescribed(device: Int): Int = unsupported("gpuErrorKindDescribed")
+
+    /** L2: Guest device handle → WIT `gpu-error.message`. */
+    fun gpuErrorMessageDescribed(device: Int): String = unsupported("gpuErrorMessageDescribed")
+
     /** L2: Guest device handle + `gpu-error-filter` ordinal. */
     fun devicePushErrorScopeDescribed(device: Int, filter: Int) {
         unsupported("devicePushErrorScopeDescribed")
