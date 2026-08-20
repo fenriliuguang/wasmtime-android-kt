@@ -38,6 +38,12 @@ object GpuBufferMapState {
     const val MAPPED: Int = 2
 }
 
+/** WIT `gpu-query-type` ordinals (occlusion / timestamp). */
+object GpuQueryType {
+    const val OCCLUSION: Int = 0
+    const val TIMESTAMP: Int = 1
+}
+
 /** WebGPU GPUTextureUsage bitfield (same bits as wasi:webgpu / Dawn TextureUsage). */
 object GpuTextureUsage {
     const val COPY_SRC: Int = 1 shl 0

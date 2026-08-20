@@ -34,6 +34,8 @@ import androidx.webgpu.GPUInstance
 import androidx.webgpu.GPUPipelineLayout
 import androidx.webgpu.GPUPipelineLayoutDescriptor
 import androidx.webgpu.GPUPrimitiveState
+import androidx.webgpu.GPUQuerySet
+import androidx.webgpu.GPUQuerySetDescriptor
 import androidx.webgpu.GPUQueue
 import androidx.webgpu.GPURenderPassColorAttachment
 import androidx.webgpu.GPURenderPassDepthStencilAttachment
@@ -361,6 +363,19 @@ class DawnWasiWebGpuHost private constructor(
             ),
         )
         return handles.insert(ResourceKind.Texture, texture)
+    }
+
+    override fun deviceCreateQuerySet(device: GpuHandle, type: Int, count: Int): GpuHandle {
+        // Dawn QueryType is 1-based (Undefined=0); WIT occlusion=0 / timestamp=1.
+        val dawnType = type + 1
+        val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
+        val querySet = gpuDevice.createQuerySet(
+            GPUQuerySetDescriptor(
+                type = dawnType,
+                count = count,
+            ),
+        )
+        return handles.insert(ResourceKind.QuerySet, querySet)
     }
 
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {
@@ -698,6 +713,25 @@ class DawnWasiWebGpuHost private constructor(
     override fun textureDestroy(texture: GpuHandle) {
         synchronized(gpuLock) {
             handles.get<GPUTexture>(texture, ResourceKind.Texture).close()
+        }
+    }
+
+    override fun querySetType(querySet: GpuHandle): Int {
+        synchronized(gpuLock) {
+            val dawnType = handles.get<GPUQuerySet>(querySet, ResourceKind.QuerySet).type
+            return (dawnType - 1).coerceAtLeast(0)
+        }
+    }
+
+    override fun querySetCount(querySet: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return handles.get<GPUQuerySet>(querySet, ResourceKind.QuerySet).count
+        }
+    }
+
+    override fun querySetDestroy(querySet: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUQuerySet>(querySet, ResourceKind.QuerySet).close()
         }
     }
 

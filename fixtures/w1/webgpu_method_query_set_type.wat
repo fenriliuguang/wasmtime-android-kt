@@ -1,6 +1,6 @@
 ;; S6+: get-query-set + [method]gpu-query-set.type
 ;; WIT: type: func() -> gpu-query-type. Host returns occlusion; harness 1.
-;; L2 unused (lift-only).
+;; L2 described query-set handle → type (stub occlusion when get-query-set rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $qt (enum "occlusion" "timestamp"))

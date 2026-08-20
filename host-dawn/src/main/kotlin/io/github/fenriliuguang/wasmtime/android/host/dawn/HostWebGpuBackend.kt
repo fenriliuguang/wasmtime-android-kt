@@ -259,6 +259,16 @@ private class ForwardingHostCallbacks(
         bindings.bufferDestroy(buffer)
     }
 
+    override fun deviceCreateQuerySet(device: Int): Int = bindings.deviceCreateQuerySet(device)
+
+    override fun querySetDestroyDescribed(querySet: Int) {
+        bindings.querySetDestroy(querySet)
+    }
+
+    override fun querySetTypeDescribed(querySet: Int): Int = bindings.querySetType(querySet)
+
+    override fun querySetCountDescribed(querySet: Int): Int = bindings.querySetCount(querySet)
+
     override fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,

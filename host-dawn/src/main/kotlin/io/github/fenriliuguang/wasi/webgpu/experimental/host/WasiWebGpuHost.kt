@@ -38,6 +38,8 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun deviceCreateTexture(device: GpuHandle, descriptor: TextureDescriptor): GpuHandle
 
+    fun deviceCreateQuerySet(device: GpuHandle, type: Int, count: Int): GpuHandle
+
     fun deviceCreateSampler(
         device: GpuHandle,
         descriptor: SamplerDescriptor = SamplerDescriptor(),
@@ -135,6 +137,12 @@ interface WasiWebGpuHost : AutoCloseable {
     fun textureBindingViewDimension(texture: GpuHandle): Int
 
     fun textureDestroy(texture: GpuHandle)
+
+    fun querySetType(querySet: GpuHandle): Int
+
+    fun querySetCount(querySet: GpuHandle): Int
+
+    fun querySetDestroy(querySet: GpuHandle)
 
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(

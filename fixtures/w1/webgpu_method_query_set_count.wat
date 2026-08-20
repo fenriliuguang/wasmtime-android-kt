@@ -1,6 +1,6 @@
 ;; S6+: get-query-set + [method]gpu-query-set.count
 ;; WIT: count: func() -> gpu-size32-out. Host returns 1; harness 1.
-;; L2 unused (lift-only).
+;; L2 described query-set handle → count (stub 1 when get-query-set rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-query-set" (type $gpu-query-set (sub resource)))

@@ -33,6 +33,7 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         val textureBindingViewDimension: Int = 0,
     )
     private class TextureView
+    private class QuerySet(val type: Int, val count: Int)
     private class ComputePipeline(val shader: ShaderModule)
     /** Fake Android surface for AbiCm/AbiMvp View↔Texture lifetime tests (not a real window). */
     private class Surface(var configured: Boolean = false)
@@ -165,6 +166,12 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
                 usage = descriptor.usage,
             ),
         )
+    }
+
+    override fun deviceCreateQuerySet(device: GpuHandle, type: Int, count: Int): GpuHandle {
+        handles.get<Device>(device, ResourceKind.Device)
+        require(count > 0) { "query-set count must be positive" }
+        return handles.insert(ResourceKind.QuerySet, QuerySet(type = type, count = count))
     }
 
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {
@@ -533,6 +540,16 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     override fun textureDestroy(texture: GpuHandle) {
         handles.get<Texture>(texture, ResourceKind.Texture)
+    }
+
+    override fun querySetType(querySet: GpuHandle): Int =
+        handles.get<QuerySet>(querySet, ResourceKind.QuerySet).type
+
+    override fun querySetCount(querySet: GpuHandle): Int =
+        handles.get<QuerySet>(querySet, ResourceKind.QuerySet).count
+
+    override fun querySetDestroy(querySet: GpuHandle) {
+        handles.get<QuerySet>(querySet, ResourceKind.QuerySet)
     }
 
     override fun commandEncoderBeginRenderPassClear(
