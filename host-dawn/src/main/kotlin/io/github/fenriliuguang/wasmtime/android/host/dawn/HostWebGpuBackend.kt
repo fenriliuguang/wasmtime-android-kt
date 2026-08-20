@@ -657,6 +657,18 @@ private class ForwardingHostCallbacks(
         bindings.renderPassSetStencilReference(pass, reference)
     }
 
+    override fun renderPassBeginOcclusionQueryDescribed(pass: Int, queryIndex: Int) {
+        bindings.renderPassBeginOcclusionQuery(pass, queryIndex)
+    }
+
+    override fun renderPassEndOcclusionQueryDescribed(pass: Int) {
+        bindings.renderPassEndOcclusionQuery(pass)
+    }
+
+    override fun renderPassExecuteBundlesDescribed(pass: Int, bundles: IntArray) {
+        bindings.renderPassExecuteBundles(pass, bundles)
+    }
+
     override fun renderPassSetBlendConstantDescribed(
         pass: Int,
         r: Double,

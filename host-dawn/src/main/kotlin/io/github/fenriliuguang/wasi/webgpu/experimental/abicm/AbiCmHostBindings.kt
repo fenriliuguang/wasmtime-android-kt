@@ -488,6 +488,21 @@ class AbiCmHostBindings(
         host.renderPassSetStencilReference(GpuHandle(pass), reference)
     }
 
+    fun renderPassBeginOcclusionQuery(pass: Int, queryIndex: Int) {
+        host.renderPassBeginOcclusionQuery(GpuHandle(pass), queryIndex)
+    }
+
+    fun renderPassEndOcclusionQuery(pass: Int) {
+        host.renderPassEndOcclusionQuery(GpuHandle(pass))
+    }
+
+    fun renderPassExecuteBundles(pass: Int, bundles: IntArray) {
+        host.renderPassExecuteBundles(
+            GpuHandle(pass),
+            bundles.filter { it != 0 }.map { GpuHandle(it) },
+        )
+    }
+
     fun commandEncoderCopyBufferToBuffer(
         encoder: Int,
         source: Int,

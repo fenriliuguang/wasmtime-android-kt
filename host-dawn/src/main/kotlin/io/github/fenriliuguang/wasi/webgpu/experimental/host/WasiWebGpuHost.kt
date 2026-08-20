@@ -278,6 +278,13 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun renderPassSetStencilReference(pass: GpuHandle, reference: Int)
 
+    fun renderPassBeginOcclusionQuery(pass: GpuHandle, queryIndex: Int)
+
+    fun renderPassEndOcclusionQuery(pass: GpuHandle)
+
+    /** Execute recorded bundles on the pass (empty list validates the pass only). */
+    fun renderPassExecuteBundles(pass: GpuHandle, bundles: List<GpuHandle>)
+
     // --- Command encoding (compute) ---
 
     fun commandEncoderBeginComputePass(

@@ -663,6 +663,21 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassSetStencilReferenceDescribed")
     }
 
+    /** L2: Guest render-pass handle + occlusion query index. */
+    fun renderPassBeginOcclusionQueryDescribed(pass: Int, queryIndex: Int) {
+        unsupported("renderPassBeginOcclusionQueryDescribed")
+    }
+
+    /** L2: Guest render-pass handle → end occlusion query. */
+    fun renderPassEndOcclusionQueryDescribed(pass: Int) {
+        unsupported("renderPassEndOcclusionQueryDescribed")
+    }
+
+    /** L2: Guest render-pass handle + bundle reps (0 entries skipped in the attach). */
+    fun renderPassExecuteBundlesDescribed(pass: Int, bundles: IntArray) {
+        unsupported("renderPassExecuteBundlesDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

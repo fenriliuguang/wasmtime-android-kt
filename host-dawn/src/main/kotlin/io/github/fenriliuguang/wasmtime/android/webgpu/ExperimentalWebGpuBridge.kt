@@ -1808,6 +1808,18 @@ object ExperimentalWebGpuBridge {
                 override fun renderPassSetStencilReferenceDescribed(pass: Int, reference: Int) {
                     bindings.renderPassSetStencilReference(pass, reference)
                 }
+
+                override fun renderPassBeginOcclusionQueryDescribed(pass: Int, queryIndex: Int) {
+                    bindings.renderPassBeginOcclusionQuery(pass, queryIndex)
+                }
+
+                override fun renderPassEndOcclusionQueryDescribed(pass: Int) {
+                    bindings.renderPassEndOcclusionQuery(pass)
+                }
+
+                override fun renderPassExecuteBundlesDescribed(pass: Int, bundles: IntArray) {
+                    bindings.renderPassExecuteBundles(pass, bundles)
+                }
             },
         )
     }
