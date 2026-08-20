@@ -1111,6 +1111,13 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun compilationMessageMessage(shader: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUShaderModule>(shader, ResourceKind.ShaderModule)
+            return ""
+        }
+    }
+
     override fun renderPipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle {
         synchronized(gpuLock) {
             val gpuPipeline = handles.get<GPURenderPipeline>(pipeline, ResourceKind.RenderPipeline)

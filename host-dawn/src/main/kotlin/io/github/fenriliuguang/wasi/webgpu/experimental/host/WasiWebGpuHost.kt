@@ -281,6 +281,8 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun compilationMessageLength(shader: GpuHandle): Long
 
+    fun compilationMessageMessage(shader: GpuHandle): String
+
     fun renderPipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle
 
     fun computePipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle

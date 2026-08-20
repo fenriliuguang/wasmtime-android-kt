@@ -879,6 +879,19 @@ pub fn exp_compilation_message_length_described(
     )
 }
 
+/// L2: Guest shader-module handle → WIT `gpu-compilation-message.message`.
+pub fn exp_compilation_message_message_described(
+    cb: &GlobalRef,
+    shader: u32,
+) -> Result<String, String> {
+    call_string(
+        cb,
+        "compilationMessageMessageDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(shader as i32)],
+    )
+}
+
 /// L2: Guest device handle + `gpu-error-filter` ordinal.
 pub fn exp_device_push_error_scope_described(
     cb: &GlobalRef,

@@ -820,6 +820,11 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return 256
     }
 
+    override fun compilationMessageMessage(shader: GpuHandle): String {
+        handles.get<ShaderModule>(shader, ResourceKind.ShaderModule)
+        return "cpu-compilation-message"
+    }
+
     override fun renderPipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle {
         handles.get<RenderPipeline>(pipeline, ResourceKind.RenderPipeline)
         require(index >= 0)
