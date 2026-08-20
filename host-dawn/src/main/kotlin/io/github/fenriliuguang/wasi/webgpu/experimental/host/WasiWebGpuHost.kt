@@ -247,6 +247,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun deviceDestroy(device: GpuHandle)
 
+    fun deviceLostInfoReason(device: GpuHandle): Int
+
+    fun deviceLostInfoMessage(device: GpuHandle): String
+
     /** Push an error scope (WIT filter ordinal: validation=0, out-of-memory=1, internal=2). */
     fun devicePushErrorScope(device: GpuHandle, filter: Int)
 

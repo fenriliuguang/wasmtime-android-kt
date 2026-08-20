@@ -774,6 +774,29 @@ pub fn exp_device_lost_described(cb: &GlobalRef, device: u32) -> Result<(), Stri
     )
 }
 
+/// L2: Guest device handle → WIT `gpu-device-lost-info.reason` ordinal.
+pub fn exp_device_lost_info_reason_described(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceLostInfoReasonDescribed",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest device handle → WIT `gpu-device-lost-info.message`.
+pub fn exp_device_lost_info_message_described(
+    cb: &GlobalRef,
+    device: u32,
+) -> Result<String, String> {
+    call_string(
+        cb,
+        "deviceLostInfoMessageDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest device handle + `gpu-error-filter` ordinal.
 pub fn exp_device_push_error_scope_described(
     cb: &GlobalRef,

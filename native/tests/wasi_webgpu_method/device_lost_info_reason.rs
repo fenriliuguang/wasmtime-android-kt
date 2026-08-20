@@ -1,14 +1,18 @@
-//! S6+: `get-device-lost-info` + `[method]gpu-device-lost-info.reason`
-//! WIT: `(borrow) -> gpu-device-lost-reason`. Host unknown; harness 1.
+//! L2: `get-device-lost-info` + `[method]gpu-device-lost-info.reason`
+//! WIT: `(borrow) -> gpu-device-lost-reason`. Host returns Cpu stub unknown; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use wasmtime::component::{Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuDeviceLostInfo;
+struct GpuDeviceLostInfo {
+    device: u32,
+}
 
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
@@ -36,7 +40,10 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-device-lost-info", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuDeviceLostInfo)?;
+        let resource = store
+            .data_mut()
+            .table
+            .push(GpuDeviceLostInfo { device: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(

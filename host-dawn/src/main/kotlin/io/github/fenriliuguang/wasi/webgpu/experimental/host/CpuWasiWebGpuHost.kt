@@ -23,6 +23,8 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     )
     private class Device(val adapter: GpuHandle) {
         var errorScopeDepth: Int = 0
+        val lostReason: Int = 0
+        val lostMessage: String = "cpu-device-lost"
     }
     private class Queue
     private class ShaderModule(val code: String)
@@ -751,6 +753,12 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     override fun deviceDestroy(device: GpuHandle) {
         handles.get<Device>(device, ResourceKind.Device)
     }
+
+    override fun deviceLostInfoReason(device: GpuHandle): Int =
+        handles.get<Device>(device, ResourceKind.Device).lostReason
+
+    override fun deviceLostInfoMessage(device: GpuHandle): String =
+        handles.get<Device>(device, ResourceKind.Device).lostMessage
 
     override fun devicePushErrorScope(device: GpuHandle, filter: Int) {
         val dev = handles.get<Device>(device, ResourceKind.Device)

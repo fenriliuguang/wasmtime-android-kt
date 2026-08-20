@@ -1,5 +1,5 @@
 ;; S6+: get-device-lost-info + [method]gpu-device-lost-info.message
-;; WIT: message: func() -> string. Host empty string; harness 1.
+;; L2 described device handle → message (Cpu stub cpu-device-lost); harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-device-lost-info" (type $gpu-device-lost-info (sub resource)))
