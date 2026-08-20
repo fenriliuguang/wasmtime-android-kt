@@ -743,6 +743,13 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     override fun adapterInfoDescription(adapter: GpuHandle): String =
         handles.get<Adapter>(adapter, ResourceKind.Adapter).description
 
+    override fun supportedFeaturesHas(adapter: GpuHandle, value: String): Boolean {
+        handles.get<Adapter>(adapter, ResourceKind.Adapter)
+        return false
+    }
+
+    override fun wgslLanguageFeaturesHas(value: String): Boolean = false
+
     override fun deviceAdapter(device: GpuHandle): GpuHandle =
         handles.get<Device>(device, ResourceKind.Device).adapter
 

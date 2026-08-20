@@ -239,6 +239,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun adapterInfoDescription(adapter: GpuHandle): String
 
+    fun supportedFeaturesHas(adapter: GpuHandle, value: String): Boolean
+
+    fun wgslLanguageFeaturesHas(value: String): Boolean
+
     /** Owning adapter for a device (device.adapter-info L2). */
     fun deviceAdapter(device: GpuHandle): GpuHandle
 

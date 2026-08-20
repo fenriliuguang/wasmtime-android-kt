@@ -905,6 +905,33 @@ pub fn exp_compilation_info_messages_count_described(
     )
 }
 
+/// L2: Guest adapter handle + feature name → `gpu-supported-features.has`.
+pub fn exp_supported_features_has_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    value: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedFeaturesHasDescribed",
+        "(ILjava/lang/String;)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Str(value)],
+    )
+}
+
+/// L2: Guest feature name → `wgsl-language-features.has`.
+pub fn exp_wgsl_language_features_has_described(
+    cb: &GlobalRef,
+    value: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "wgslLanguageFeaturesHasDescribed",
+        "(Ljava/lang/String;)I",
+        vec![HostArg::Str(value)],
+    )
+}
+
 /// L2: Guest device handle + `gpu-error-filter` ordinal.
 pub fn exp_device_push_error_scope_described(
     cb: &GlobalRef,

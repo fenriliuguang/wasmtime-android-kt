@@ -634,7 +634,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu.wgsl-language-features",
                 |mut caller, (gpu,): (Resource<Gpu>,)| {
                     let _ = caller.data_mut().table.get(&gpu)?;
-                    let resource = caller.data_mut().table.push(WgslLanguageFeatures)?;
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(WgslLanguageFeatures { gpu: 0 })?;
                     Ok((resource,))
                 },
             )
@@ -642,9 +645,17 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]wgsl-language-features.has",
-                |mut caller, (features, _value): (Resource<WgslLanguageFeatures>, String)| {
-                    let _ = caller.data_mut().table.get(&features)?;
-                    Ok((false,))
+                |mut caller, (features, value): (Resource<WgslLanguageFeatures>, String)| {
+                    let _features_gpu = caller.data_mut().table.get(&features)?.gpu;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let has = jvm::exp_wgsl_language_features_has_described(&cb, value)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((has != 0,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -705,7 +716,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     };
                     jvm::exp_adapter_features_described(&cb, l2_adapter)
                         .map_err(wasmtime::Error::msg)?;
-                    let resource = caller.data_mut().table.push(GpuSupportedFeatures)?;
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuSupportedFeatures {
+                            adapter: l2_adapter,
+                        })?;
                     Ok((resource,))
                 },
             )
@@ -713,9 +729,22 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-supported-features.has",
-                |mut caller, (features, _value): (Resource<GpuSupportedFeatures>, String)| {
-                    let _ = caller.data_mut().table.get(&features)?;
-                    Ok((false,))
+                |mut caller, (features, value): (Resource<GpuSupportedFeatures>, String)| {
+                    let features_adapter = caller.data_mut().table.get(&features)?.adapter;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if features_adapter == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        features_adapter
+                    };
+                    let has = jvm::exp_supported_features_has_described(&cb, l2_adapter, value)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((has != 0,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1563,7 +1592,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     };
                     jvm::exp_device_features_described(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let resource = caller.data_mut().table.push(GpuSupportedFeatures)?;
+                    let adapter_rep = jvm::exp_device_adapter_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuSupportedFeatures {
+                            adapter: adapter_rep,
+                        })?;
                     Ok((resource,))
                 },
             )
