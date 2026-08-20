@@ -186,6 +186,16 @@ interface ExperimentalHostCallbacks {
         unsupported("deviceOnUncapturedErrorDescribed")
     }
 
+    /** L2: Guest queue handle → host validate (completion future stays local ready). */
+    fun queueOnSubmittedWorkDoneDescribed(queue: Int) {
+        unsupported("queueOnSubmittedWorkDoneDescribed")
+    }
+
+    /** L2: Guest shader-module handle → host validate (compilation-info stays local lift). */
+    fun shaderModuleGetCompilationInfoDescribed(shader: Int) {
+        unsupported("shaderModuleGetCompilationInfoDescribed")
+    }
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 

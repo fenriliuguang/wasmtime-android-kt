@@ -180,6 +180,12 @@ interface WasiWebGpuHost : AutoCloseable {
     /** Pop an error scope; returns 0 when no error was captured (empty stack included). */
     fun devicePopErrorScope(device: GpuHandle): Int
 
+    /** Validate a queue handle (on-submitted-work-done L2). */
+    fun queueValidate(queue: GpuHandle)
+
+    /** Validate a shader-module handle (get-compilation-info L2). */
+    fun shaderModuleValidate(shader: GpuHandle)
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

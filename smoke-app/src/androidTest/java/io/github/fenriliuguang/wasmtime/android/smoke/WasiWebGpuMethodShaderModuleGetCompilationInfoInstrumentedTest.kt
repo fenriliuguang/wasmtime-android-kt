@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]gpu-shader-module.get-compilation-info` via
+ * L2 `[method]gpu-shader-module.get-compilation-info` via
  * [ExperimentalWebGpuBridge.attachCommandCompilationLabel].
  */
 @RunWith(AndroidJUnit4::class)

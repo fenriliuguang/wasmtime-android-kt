@@ -646,6 +646,14 @@ class AbiCmHostBindings(
 
     fun devicePopErrorScope(device: Int): Int = host.devicePopErrorScope(GpuHandle(device))
 
+    fun queueValidate(queue: Int) {
+        host.queueValidate(GpuHandle(queue))
+    }
+
+    fun shaderModuleValidate(shader: Int) {
+        host.shaderModuleValidate(GpuHandle(shader))
+    }
+
     private fun storageEntry(binding: Int, type: BufferBindingType) = BindGroupLayoutEntry(
         binding = binding,
         visibility = GpuShaderStage.COMPUTE,

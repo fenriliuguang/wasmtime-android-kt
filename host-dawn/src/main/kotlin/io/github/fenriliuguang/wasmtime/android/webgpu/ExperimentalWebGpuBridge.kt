@@ -79,6 +79,10 @@ object ExperimentalWebGpuBridge {
                     bindings.adapterRequestDevice(adapter)
 
                 override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
+
+                override fun queueOnSubmittedWorkDoneDescribed(queue: Int) {
+                    bindings.queueValidate(queue)
+                }
             },
         )
     }
@@ -1917,15 +1921,30 @@ object ExperimentalWebGpuBridge {
      * `[method]gpu-command-encoder.label` / `set-label`,
      * `[method]gpu-compilation-info.messages`,
      * `[method]gpu-compilation-message.message` / `type` / `line-num` /
-     * `line-pos` / `offset` / `length`, and
-     * `[method]gpu-shader-module.get-compilation-info` / `label` / `set-label`.
-     * Native lifts; L2 unused (no new JNI).
+     * `line-pos` / `offset` / `length`, and `[method]gpu-shader-module.label` /
+     * `set-label` (still lift-only), plus L2
+     * `[method]gpu-shader-module.get-compilation-info` (described handle validate).
      */
     fun attachCommandCompilationLabel(
         store: Store,
-        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+        host: WasiWebGpuHost,
     ) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateShaderModule(device: Int): Int =
+                    bindings.deviceCreateShaderModule(device, STUB_WGSL)
+
+                override fun shaderModuleGetCompilationInfoDescribed(shader: Int) {
+                    bindings.shaderModuleValidate(shader)
+                }
+            },
+        )
     }
 
     /**
