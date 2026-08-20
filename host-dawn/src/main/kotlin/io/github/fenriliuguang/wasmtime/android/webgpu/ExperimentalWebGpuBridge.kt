@@ -2304,6 +2304,42 @@ object ExperimentalWebGpuBridge {
                     return bindings.supportedLimitsMaxInterStageShaderVariables(l2Adapter, device)
                 }
 
+                override fun supportedLimitsMaxSampledTexturesPerShaderStageDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxSampledTexturesPerShaderStage(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxSamplersPerShaderStageDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxSamplersPerShaderStage(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxStorageBufferBindingSizeDescribed(adapter: Int, device: Int): Long {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxStorageBufferBindingSize(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxStorageBuffersInFragmentStageDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxStorageBuffersInFragmentStage(l2Adapter, device)
+                }
+
                 override fun adapterInfoDescribed(adapter: Int) {
                     bindings.adapterValidate(adapter)
                 }

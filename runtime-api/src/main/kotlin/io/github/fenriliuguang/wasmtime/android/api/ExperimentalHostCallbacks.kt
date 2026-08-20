@@ -209,6 +209,23 @@ interface ExperimentalHostCallbacks {
     fun supportedLimitsMaxInterStageShaderVariablesDescribed(adapter: Int, device: Int): Int =
         unsupported("supportedLimitsMaxInterStageShaderVariablesDescribed")
 
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-sampled-textures-per-shader-stage`. */
+    fun supportedLimitsMaxSampledTexturesPerShaderStageDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxSampledTexturesPerShaderStageDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-samplers-per-shader-stage`. */
+    fun supportedLimitsMaxSamplersPerShaderStageDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxSamplersPerShaderStageDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-buffer-binding-size`. */
+    fun supportedLimitsMaxStorageBufferBindingSizeDescribed(adapter: Int, device: Int): Long =
+        unsupported("supportedLimitsMaxStorageBufferBindingSizeDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-buffers-in-fragment-stage`. */
+    fun supportedLimitsMaxStorageBuffersInFragmentStageDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxStorageBuffersInFragmentStageDescribed")
+
     /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
     fun adapterInfoDescribed(adapter: Int) {
         unsupported("adapterInfoDescribed")

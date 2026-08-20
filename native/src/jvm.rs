@@ -846,6 +846,63 @@ pub fn exp_supported_limits_max_inter_stage_shader_variables_described(
     )
 }
 
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-sampled-textures-per-shader-stage`.
+pub fn exp_supported_limits_max_sampled_textures_per_shader_stage_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxSampledTexturesPerShaderStageDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-samplers-per-shader-stage`.
+pub fn exp_supported_limits_max_samplers_per_shader_stage_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxSamplersPerShaderStageDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-buffer-binding-size`.
+pub fn exp_supported_limits_max_storage_buffer_binding_size_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "supportedLimitsMaxStorageBufferBindingSizeDescribed",
+        "(II)J",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-buffers-in-fragment-stage`.
+pub fn exp_supported_limits_max_storage_buffers_in_fragment_stage_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxStorageBuffersInFragmentStageDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest adapter handle → host validates before the local adapter-info lift.
 pub fn exp_adapter_info_described(cb: &GlobalRef, adapter: u32) -> Result<(), String> {
     call_void(
