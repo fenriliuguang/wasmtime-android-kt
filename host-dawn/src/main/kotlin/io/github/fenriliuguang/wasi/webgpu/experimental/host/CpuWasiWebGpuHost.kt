@@ -815,6 +815,11 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return 100
     }
 
+    override fun compilationMessageLength(shader: GpuHandle): Long {
+        handles.get<ShaderModule>(shader, ResourceKind.ShaderModule)
+        return 256
+    }
+
     override fun renderPipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle {
         handles.get<RenderPipeline>(pipeline, ResourceKind.RenderPipeline)
         require(index >= 0)

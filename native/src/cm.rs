@@ -4567,8 +4567,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-compilation-message.length",
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
-                    let _ = caller.data_mut().table.get(&msg)?;
-                    Ok((0u64,))
+                    let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_shader = if msg_shader == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_shader_module_described(
+                            &cb,
+                            device_rep,
+                            "@compute @workgroup_size(1) fn main() {}".to_string(),
+                        )
+                        .map_err(wasmtime::Error::msg)?
+                    } else {
+                        msg_shader
+                    };
+                    let length =
+                        jvm::exp_compilation_message_length_described(&cb, l2_shader)
+                            .map_err(wasmtime::Error::msg)?;
+                    Ok((length,))
                 },
             )
             .map_err(|e| e.to_string())?;

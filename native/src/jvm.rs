@@ -866,6 +866,19 @@ pub fn exp_compilation_message_offset_described(
     )
 }
 
+/// L2: Guest shader-module handle → WIT `gpu-compilation-message.length`.
+pub fn exp_compilation_message_length_described(
+    cb: &GlobalRef,
+    shader: u32,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "compilationMessageLengthDescribed",
+        "(I)J",
+        vec![HostArg::Int(shader as i32)],
+    )
+}
+
 /// L2: Guest device handle + `gpu-error-filter` ordinal.
 pub fn exp_device_push_error_scope_described(
     cb: &GlobalRef,

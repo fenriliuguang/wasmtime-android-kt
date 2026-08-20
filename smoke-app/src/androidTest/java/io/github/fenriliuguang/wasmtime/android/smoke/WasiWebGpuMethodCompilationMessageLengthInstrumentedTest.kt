@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-compilation-message.length` via [ExperimentalWebGpuBridge.attachCommandCompilationLabel]. */
+/** L2 `[method]gpu-compilation-message.length` via [ExperimentalWebGpuBridge.attachCommandCompilationLabel]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodCompilationMessageLengthInstrumentedTest {
     @Test
