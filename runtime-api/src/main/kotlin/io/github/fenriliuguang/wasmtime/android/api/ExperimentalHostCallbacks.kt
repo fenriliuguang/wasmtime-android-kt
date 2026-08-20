@@ -226,6 +226,23 @@ interface ExperimentalHostCallbacks {
     fun supportedLimitsMaxStorageBuffersInFragmentStageDescribed(adapter: Int, device: Int): Int =
         unsupported("supportedLimitsMaxStorageBuffersInFragmentStageDescribed")
 
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-buffers-in-vertex-stage`. */
+    fun supportedLimitsMaxStorageBuffersInVertexStageDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxStorageBuffersInVertexStageDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-buffers-per-shader-stage`. */
+    fun supportedLimitsMaxStorageBuffersPerShaderStageDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxStorageBuffersPerShaderStageDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-textures-in-fragment-stage`. */
+    fun supportedLimitsMaxStorageTexturesInFragmentStageDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxStorageTexturesInFragmentStageDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-textures-in-vertex-stage`. */
+    fun supportedLimitsMaxStorageTexturesInVertexStageDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxStorageTexturesInVertexStageDescribed")
+
     /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
     fun adapterInfoDescribed(adapter: Int) {
         unsupported("adapterInfoDescribed")
