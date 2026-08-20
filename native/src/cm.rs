@@ -4747,7 +4747,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-viewport",
                 |mut caller,
-                 (pass, _x, _y, _width, _height, _min_depth, _max_depth): (
+                 (pass, x, y, width, height, min_depth, max_depth): (
                     Resource<GpuRenderPassEncoder>,
                     f32,
                     f32,
@@ -4756,7 +4756,29 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     f32,
                     f32,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_set_viewport_described(
+                        &cb, l2_pass, x, y, width, height, min_depth, max_depth,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -4765,14 +4787,36 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-scissor-rect",
                 |mut caller,
-                 (pass, _x, _y, _width, _height): (
+                 (pass, x, y, width, height): (
                     Resource<GpuRenderPassEncoder>,
                     u32,
                     u32,
                     u32,
                     u32,
                 )| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_set_scissor_rect_described(
+                        &cb, l2_pass, x, y, width, height,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -4780,8 +4824,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-blend-constant",
-                |mut caller, (pass, _color): (Resource<GpuRenderPassEncoder>, GpuColor)| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                |mut caller, (pass, color): (Resource<GpuRenderPassEncoder>, GpuColor)| {
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_set_blend_constant_described(
+                        &cb, l2_pass, color.r, color.g, color.b, color.a,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -4789,8 +4855,28 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-render-pass-encoder.set-stencil-reference",
-                |mut caller, (pass, _reference): (Resource<GpuRenderPassEncoder>, u32)| {
-                    let _ = caller.data_mut().table.get(&pass)?;
+                |mut caller, (pass, reference): (Resource<GpuRenderPassEncoder>, u32)| {
+                    let pass_rep = caller.data_mut().table.get(&pass)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_pass = if pass_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_begin_render_pass_clear(&cb, encoder_rep, 23)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        pass_rep
+                    };
+                    jvm::exp_render_pass_set_stencil_reference_described(&cb, l2_pass, reference)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

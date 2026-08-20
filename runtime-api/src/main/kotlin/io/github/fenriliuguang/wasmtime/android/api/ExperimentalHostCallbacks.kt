@@ -629,6 +629,40 @@ interface ExperimentalHostCallbacks {
         unsupported("textureDestroyDescribed")
     }
 
+    /** L2: Guest render-pass handle + viewport floats. */
+    fun renderPassSetViewportDescribed(
+        pass: Int,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        minDepth: Float,
+        maxDepth: Float,
+    ) {
+        unsupported("renderPassSetViewportDescribed")
+    }
+
+    /** L2: Guest render-pass handle + scissor rect. */
+    fun renderPassSetScissorRectDescribed(pass: Int, x: Int, y: Int, width: Int, height: Int) {
+        unsupported("renderPassSetScissorRectDescribed")
+    }
+
+    /** L2: Guest render-pass handle + blend constant color. */
+    fun renderPassSetBlendConstantDescribed(
+        pass: Int,
+        r: Double,
+        g: Double,
+        b: Double,
+        a: Double,
+    ) {
+        unsupported("renderPassSetBlendConstantDescribed")
+    }
+
+    /** L2: Guest render-pass handle + stencil reference. */
+    fun renderPassSetStencilReferenceDescribed(pass: Int, reference: Int) {
+        unsupported("renderPassSetStencilReferenceDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

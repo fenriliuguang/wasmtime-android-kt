@@ -1044,6 +1044,48 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun renderPassSetViewport(
+        pass: GpuHandle,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        minDepth: Float,
+        maxDepth: Float,
+    ) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+                .setViewport(x, y, width, height, minDepth, maxDepth)
+        }
+    }
+
+    override fun renderPassSetScissorRect(pass: GpuHandle, x: Int, y: Int, width: Int, height: Int) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+                .setScissorRect(x, y, width, height)
+        }
+    }
+
+    override fun renderPassSetBlendConstant(
+        pass: GpuHandle,
+        r: Double,
+        g: Double,
+        b: Double,
+        a: Double,
+    ) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+                .setBlendConstant(GPUColor(r, g, b, a))
+        }
+    }
+
+    override fun renderPassSetStencilReference(pass: GpuHandle, reference: Int) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+                .setStencilReference(reference)
+        }
+    }
+
     override fun commandEncoderBeginComputePass(
         encoder: GpuHandle,
         descriptor: ComputePassDescriptor,

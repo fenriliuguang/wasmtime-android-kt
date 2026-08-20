@@ -773,6 +773,38 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.tryDrop(pass)
     }
 
+    override fun renderPassSetViewport(
+        pass: GpuHandle,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        minDepth: Float,
+        maxDepth: Float,
+    ) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+        require(width >= 0f && height >= 0f)
+    }
+
+    override fun renderPassSetScissorRect(pass: GpuHandle, x: Int, y: Int, width: Int, height: Int) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+        require(x >= 0 && y >= 0 && width >= 0 && height >= 0)
+    }
+
+    override fun renderPassSetBlendConstant(
+        pass: GpuHandle,
+        r: Double,
+        g: Double,
+        b: Double,
+        a: Double,
+    ) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+    }
+
+    override fun renderPassSetStencilReference(pass: GpuHandle, reference: Int) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+    }
+
     override fun drop(handle: GpuHandle) {
         handles.drop(handle)
     }
