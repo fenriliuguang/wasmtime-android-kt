@@ -932,6 +932,16 @@ pub fn exp_wgsl_language_features_has_described(
     )
 }
 
+/// L2: `gpu.get-preferred-canvas-format` → Dawn `GPUTextureFormat` ordinal.
+pub fn exp_gpu_get_preferred_canvas_format_described(cb: &GlobalRef) -> Result<u32, String> {
+    call_i(cb, "gpuGetPreferredCanvasFormatDescribed", "()I", vec![])
+}
+
+/// L2: `gpu.wgsl-language-features` creator → host validates before local lift.
+pub fn exp_gpu_wgsl_language_features_described(cb: &GlobalRef) -> Result<(), String> {
+    call_void(cb, "gpuWgslLanguageFeaturesDescribed", "()V", vec![])
+}
+
 /// L2: Guest device handle + `gpu-error-filter` ordinal.
 pub fn exp_device_push_error_scope_described(
     cb: &GlobalRef,

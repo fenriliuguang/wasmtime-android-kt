@@ -625,7 +625,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu.get-preferred-canvas-format",
                 |mut caller, (gpu,): (Resource<Gpu>,)| {
                     let _ = caller.data_mut().table.get(&gpu)?;
-                    Ok((GpuTextureFormat::Rgba8unorm,))
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let dawn = jvm::exp_gpu_get_preferred_canvas_format_described(&cb)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuTextureFormat::from_dawn_u32(dawn),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -634,6 +642,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu.wgsl-language-features",
                 |mut caller, (gpu,): (Resource<Gpu>,)| {
                     let _ = caller.data_mut().table.get(&gpu)?;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    jvm::exp_gpu_wgsl_language_features_described(&cb)
+                        .map_err(wasmtime::Error::msg)?;
                     let resource = caller
                         .data_mut()
                         .table

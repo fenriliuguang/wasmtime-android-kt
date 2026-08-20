@@ -121,6 +121,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuLoadOp
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuPrimitiveTopology
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuStoreOp
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexBufferLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
@@ -1004,6 +1005,20 @@ class DawnWasiWebGpuHost private constructor(
     override fun wgslLanguageFeaturesHas(value: String): Boolean {
         synchronized(gpuLock) {
             return instance.wgslLanguageFeatures.has(value)
+        }
+    }
+
+    override fun gpuGetPreferredCanvasFormat(): Int {
+        synchronized(gpuLock) {
+            // androidx.webgpu alpha05 has no GPU.getPreferredCanvasFormat; match Cpu stub.
+            return GpuTextureFormat.RGBA8_UNORM
+        }
+    }
+
+    override fun gpuWgslLanguageFeatures() {
+        synchronized(gpuLock) {
+            // Touch instance features so Dawn wiring stays live for wgsl-language-features.has.
+            instance.wgslLanguageFeatures
         }
     }
 

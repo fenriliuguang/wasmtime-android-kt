@@ -1,5 +1,5 @@
 
-;; S6+: get-gpu + [method]gpu.get-preferred-canvas-format
+;; L2: get-gpu + [method]gpu.get-preferred-canvas-format
 ;; WIT: get-preferred-canvas-format: func() -> gpu-texture-format. Host returns rgba8unorm; harness 1.
 ;; L2 unused (lift-only).
 (component

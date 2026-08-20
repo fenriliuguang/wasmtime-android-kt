@@ -183,6 +183,15 @@ interface ExperimentalHostCallbacks {
     fun wgslLanguageFeaturesHasDescribed(value: String): Int =
         unsupported("wgslLanguageFeaturesHasDescribed")
 
+    /** L2: WIT `gpu.get-preferred-canvas-format` → Dawn texture-format ordinal. */
+    fun gpuGetPreferredCanvasFormatDescribed(): Int =
+        unsupported("gpuGetPreferredCanvasFormatDescribed")
+
+    /** L2: WIT `gpu.wgsl-language-features` creator → host validates before local lift. */
+    fun gpuWgslLanguageFeaturesDescribed() {
+        unsupported("gpuWgslLanguageFeaturesDescribed")
+    }
+
     /** L2: Guest device handle → owning adapter handle for adapter-info getters. */
     fun deviceAdapterDescribed(device: Int): Int = unsupported("deviceAdapterDescribed")
 

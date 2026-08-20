@@ -460,6 +460,13 @@ private class ForwardingHostCallbacks(
     override fun wgslLanguageFeaturesHasDescribed(value: String): Int =
         if (bindings.wgslLanguageFeaturesHas(value)) 1 else 0
 
+    override fun gpuGetPreferredCanvasFormatDescribed(): Int =
+        bindings.gpuGetPreferredCanvasFormat()
+
+    override fun gpuWgslLanguageFeaturesDescribed() {
+        bindings.gpuWgslLanguageFeatures()
+    }
+
     override fun deviceAdapterDescribed(device: Int): Int = bindings.deviceAdapter(device)
 
     override fun deviceFeaturesDescribed(device: Int) {

@@ -1,4 +1,4 @@
-;; S6+: get-gpu + [method]gpu.wgsl-language-features
+;; L2: get-gpu + [method]gpu.wgsl-language-features
 ;; WIT: wgsl-language-features: func() -> own<wgsl-language-features>. Drop own; harness 1.
 ;; L2 unused (lift-only). get-gpu is a test constructor.
 (component

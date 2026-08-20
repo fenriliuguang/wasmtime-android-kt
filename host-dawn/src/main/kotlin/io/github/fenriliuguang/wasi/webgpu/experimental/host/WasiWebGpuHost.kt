@@ -243,6 +243,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun wgslLanguageFeaturesHas(value: String): Boolean
 
+    fun gpuGetPreferredCanvasFormat(): Int
+
+    fun gpuWgslLanguageFeatures()
+
     /** Owning adapter for a device (device.adapter-info L2). */
     fun deviceAdapter(device: GpuHandle): GpuHandle
 

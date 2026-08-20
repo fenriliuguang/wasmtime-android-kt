@@ -813,6 +813,12 @@ class AbiCmHostBindings(
 
     fun wgslLanguageFeaturesHas(value: String): Boolean = host.wgslLanguageFeaturesHas(value)
 
+    fun gpuGetPreferredCanvasFormat(): Int = host.gpuGetPreferredCanvasFormat()
+
+    fun gpuWgslLanguageFeatures() {
+        host.gpuWgslLanguageFeatures()
+    }
+
     fun deviceAdapter(device: Int): Int = host.deviceAdapter(GpuHandle(device)).raw
 
     fun deviceValidate(device: Int) {
