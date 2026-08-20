@@ -2347,16 +2347,56 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture-view.label",
                 |mut caller, (view,): (Resource<GpuTextureView>,)| {
-                    let _ = caller.data_mut().table.get(&view)?;
-                    Ok((String::new(),))
+                    let view_rep = caller.data_mut().table.get(&view)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if view_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let texture_rep = jvm::exp_create_texture(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_texture_create_view_described(&cb, texture_rep, 0, 0)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        view_rep
+                    };
+                    let label = jvm::exp_texture_view_label_described(&cb, l2)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((label,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-texture-view.set-label",
-                |mut caller, (view, _label): (Resource<GpuTextureView>, String)| {
-                    let _ = caller.data_mut().table.get(&view)?;
+                |mut caller, (view, label): (Resource<GpuTextureView>, String)| {
+                    let view_rep = caller.data_mut().table.get(&view)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if view_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let texture_rep = jvm::exp_create_texture(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_texture_create_view_described(&cb, texture_rep, 0, 0)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        view_rep
+                    };
+                    jvm::exp_texture_view_set_label_described(&cb, l2, label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

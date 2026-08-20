@@ -599,6 +599,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun textureSetLabel(handle: GpuHandle, label: String)
 
+    fun textureViewLabel(handle: GpuHandle): String
+
+    fun textureViewSetLabel(handle: GpuHandle, label: String)
+
     // --- Lifetime ---
 
     fun drop(handle: GpuHandle)

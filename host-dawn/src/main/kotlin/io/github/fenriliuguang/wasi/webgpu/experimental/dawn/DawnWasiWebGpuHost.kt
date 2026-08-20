@@ -2023,6 +2023,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun textureViewLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUTextureView>(handle, ResourceKind.TextureView)
+            return ""
+        }
+    }
+
+    override fun textureViewSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUTextureView>(handle, ResourceKind.TextureView).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

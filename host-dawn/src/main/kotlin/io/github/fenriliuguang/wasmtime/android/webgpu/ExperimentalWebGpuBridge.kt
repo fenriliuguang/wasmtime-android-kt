@@ -3125,6 +3125,12 @@ object ExperimentalWebGpuBridge {
                             aspect = aspect,
                         ),
                     )
+                override fun textureViewLabelDescribed(handle: Int): String =
+                    bindings.textureViewLabel(handle)
+
+                override fun textureViewSetLabelDescribed(handle: Int, label: String) {
+                    bindings.textureViewSetLabel(handle, label)
+                }
             },
         )
     }

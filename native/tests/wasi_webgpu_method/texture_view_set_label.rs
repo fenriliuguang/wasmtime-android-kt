@@ -1,4 +1,4 @@
-//! S6+: `get-texture-view` + `[method]gpu-texture-view.set-label`
+//! L2: `get-texture-view` + `[method]gpu-texture-view.set-label`
 //! WIT: `(borrow, label: string)`. Guest passes empty label; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
