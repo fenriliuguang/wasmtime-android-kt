@@ -643,6 +643,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun computePipelineSetLabel(handle: GpuHandle, label: String)
 
+    fun renderBundleEncoderLabel(handle: GpuHandle): String
+
+    fun renderBundleEncoderSetLabel(handle: GpuHandle, label: String)
+
     // --- Lifetime ---
 
     fun drop(handle: GpuHandle)
