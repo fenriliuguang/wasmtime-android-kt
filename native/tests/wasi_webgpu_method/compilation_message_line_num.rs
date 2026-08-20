@@ -1,5 +1,5 @@
-//! S6+: `get-compilation-message` + `[method]gpu-compilation-message.line-num`
-//! WIT: `(borrow) -> u64`. Host returns 0; harness 1.
+//! L2: `get-compilation-message` + `[method]gpu-compilation-message.line-num`
+//! WIT: `(borrow) -> u64`. Host returns Cpu stub 42; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -8,7 +8,9 @@ use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceTy
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuCompilationMessage;
+struct GpuCompilationMessage {
+    shader_module: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -26,7 +28,12 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-compilation-message", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuCompilationMessage)?;
+        let resource = store
+            .data_mut()
+            .table
+            .push(GpuCompilationMessage {
+                shader_module: 0,
+            })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
@@ -34,7 +41,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
             caller.data_mut().table.get(&msg).map(|_| ())?;
             called.store(true, Ordering::SeqCst);
-            Ok((0u64,))
+            Ok((42u64,))
         },
     )?;
     Ok(())
