@@ -1,5 +1,5 @@
 ;; S6+: get-uncaptured-error-event + [method]gpu-uncaptured-error-event.error
-;; WIT: error: func() -> gpu-error. Host pushes empty error; harness 1.
+;; L2 described device handle → own gpu-error with device rep; harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-error" (type $gpu-error (sub resource)))

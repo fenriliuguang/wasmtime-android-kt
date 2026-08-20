@@ -770,6 +770,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return "cpu-gpu-error"
     }
 
+    override fun uncapturedErrorEventError(device: GpuHandle) {
+        handles.get<Device>(device, ResourceKind.Device)
+    }
+
     override fun devicePushErrorScope(device: GpuHandle, filter: Int) {
         val dev = handles.get<Device>(device, ResourceKind.Device)
         dev.errorScopeDepth += 1

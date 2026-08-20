@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S6+ `[method]gpu-uncaptured-error-event.error` via
+ * L2 `[method]gpu-uncaptured-error-event.error` via
  * [ExperimentalWebGpuBridge.attachDeviceInfoError].
  */
 @RunWith(AndroidJUnit4::class)

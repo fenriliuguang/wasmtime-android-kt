@@ -2438,7 +2438,7 @@ object ExperimentalWebGpuBridge {
      * `on-uncaptured-error` and `[method]gpu-device-lost-info.reason` / `message`
      * (L2 described device handle → reason/message), `[method]gpu-error.kind` / `message`
      * (L2 described device handle → kind/message), `[method]gpu-uncaptured-error-event.error`
-     * (still lift-only).
+     * (L2 described device handle → own gpu-error with device rep).
      */
     fun attachDeviceInfoError(
         store: Store,
@@ -2521,6 +2521,16 @@ object ExperimentalWebGpuBridge {
 
                 override fun deviceOnUncapturedErrorDescribed(device: Int) {
                     bindings.deviceValidate(device)
+                }
+
+                override fun uncapturedErrorEventErrorDescribed(device: Int) {
+                    val l2Device = if (device == 0) {
+                        val adapter = bindings.requestAdapter()
+                        bindings.adapterRequestDevice(adapter)
+                    } else {
+                        device
+                    }
+                    bindings.uncapturedErrorEventError(l2Device)
                 }
             },
         )

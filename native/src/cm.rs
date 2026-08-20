@@ -1774,7 +1774,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-uncaptured-error-event", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuUncapturedErrorEvent)?;
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(GpuUncapturedErrorEvent { device: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -1782,8 +1785,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-uncaptured-error-event.error",
                 |mut caller, (event,): (Resource<GpuUncapturedErrorEvent>,)| {
-                    let _ = caller.data_mut().table.get(&event)?;
-                    let resource = caller.data_mut().table.push(GpuError { device: 0 })?;
+                    let event_device = caller.data_mut().table.get(&event)?.device;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if event_device == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        event_device
+                    };
+                    jvm::exp_uncaptured_error_event_error_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuError { device: l2_device })?;
                     Ok((resource,))
                 },
             )

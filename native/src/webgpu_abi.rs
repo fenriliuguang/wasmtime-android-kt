@@ -1995,6 +1995,8 @@ impl GpuErrorKind {
     }
 }
 
-/// WIT `resource gpu-uncaptured-error-event`. Lift-only; L2 unused.
+/// WIT `resource gpu-uncaptured-error-event`. `get-uncaptured-error-event` pushes `{ device: 0 }`.
 #[derive(Debug)]
-pub struct GpuUncapturedErrorEvent;
+pub struct GpuUncapturedErrorEvent {
+    pub device: u32,
+}

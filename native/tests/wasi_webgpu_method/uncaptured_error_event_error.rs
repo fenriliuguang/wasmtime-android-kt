@@ -1,5 +1,5 @@
-//! S6+: `get-uncaptured-error-event` + `[method]gpu-uncaptured-error-event.error`
-//! WIT: `(borrow) -> gpu-error`. Host pushes empty error; harness 1.
+//! L2: `get-uncaptured-error-event` + `[method]gpu-uncaptured-error-event.error`
+//! WIT: `(borrow) -> own<gpu-error>`. Host validates device; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -8,10 +8,14 @@ use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceTy
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuUncapturedErrorEvent;
+struct GpuUncapturedErrorEvent {
+    device: u32,
+}
 
 #[derive(Debug)]
-struct GpuError;
+struct GpuError {
+    device: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -38,7 +42,10 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-uncaptured-error-event", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuUncapturedErrorEvent)?;
+        let resource = store
+            .data_mut()
+            .table
+            .push(GpuUncapturedErrorEvent { device: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
@@ -46,7 +53,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |mut caller, (event,): (Resource<GpuUncapturedErrorEvent>,)| {
             caller.data_mut().table.get(&event).map(|_| ())?;
             called.store(true, Ordering::SeqCst);
-            let resource = caller.data_mut().table.push(GpuError)?;
+            let resource = caller.data_mut().table.push(GpuError { device: 1 })?;
             Ok((resource,))
         },
     )?;

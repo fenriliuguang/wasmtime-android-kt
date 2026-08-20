@@ -851,6 +851,19 @@ pub fn exp_device_on_uncaptured_error_described(cb: &GlobalRef, device: u32) -> 
     )
 }
 
+/// L2: Guest device handle → host validate before lifting `gpu-error` from event.
+pub fn exp_uncaptured_error_event_error_described(
+    cb: &GlobalRef,
+    device: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "uncapturedErrorEventErrorDescribed",
+        "(I)V",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest queue handle → host validate (completion future stays local ready).
 pub fn exp_queue_on_submitted_work_done_described(
     cb: &GlobalRef,
