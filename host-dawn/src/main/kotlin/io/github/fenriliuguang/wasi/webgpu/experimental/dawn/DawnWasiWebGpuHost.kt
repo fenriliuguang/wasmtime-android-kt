@@ -2192,6 +2192,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun renderPassEncoderLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPURenderPassEncoder>(handle, ResourceKind.RenderPassEncoder)
+            return ""
+        }
+    }
+
+    override fun renderPassEncoderSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderPassEncoder>(handle, ResourceKind.RenderPassEncoder).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }
