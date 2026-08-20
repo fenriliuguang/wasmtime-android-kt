@@ -1,4 +1,4 @@
-//! S6+: `get-encoder` + `[method]gpu-command-encoder.label`
+//! L2: `get-encoder` + `[method]gpu-command-encoder.label`
 //! WIT: `(borrow) -> string`. Host empty string; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

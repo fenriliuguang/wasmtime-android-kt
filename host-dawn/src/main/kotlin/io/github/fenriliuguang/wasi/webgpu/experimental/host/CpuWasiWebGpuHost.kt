@@ -668,6 +668,15 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Queue>(handle, ResourceKind.Queue)
     }
 
+    override fun commandEncoderLabel(handle: GpuHandle): String {
+        handles.get<CommandEncoder>(handle, ResourceKind.CommandEncoder)
+        return ""
+    }
+
+    override fun commandEncoderSetLabel(handle: GpuHandle, label: String) {
+        handles.get<CommandEncoder>(handle, ResourceKind.CommandEncoder)
+    }
+
     override fun instanceCreateSurfaceFromAndroidNativeWindow(nativeWindowHandle: Long): GpuHandle {
         require(nativeWindowHandle != 0L) { "window-handle is null" }
         return handles.insert(ResourceKind.Surface, Surface())

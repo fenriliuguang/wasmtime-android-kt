@@ -2739,8 +2739,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * L2 `[method]gpu-command-encoder.label` / `set-label`,
      * S6+: `[method]gpu-command-buffer.label` / `set-label`,
-     * `[method]gpu-command-encoder.label` / `set-label`,
      * `[method]gpu-compilation-info.messages` (L2 described guest shader-module handle → message list),
      * `[method]gpu-compilation-message.message` (L2 described guest shader-module handle),
      * `[method]gpu-shader-module.label` / `set-label` (still lift-only), plus L2
@@ -2803,6 +2803,15 @@ object ExperimentalWebGpuBridge {
                 override fun compilationInfoMessagesCountDescribed(shader: Int): Int {
                     val l2Shader = resolveShaderModule(bindings, shader)
                     return bindings.compilationInfoMessagesCount(l2Shader)
+                }
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun commandEncoderLabelDescribed(handle: Int): String =
+                    bindings.commandEncoderLabel(handle)
+
+                override fun commandEncoderSetLabelDescribed(handle: Int, label: String) {
+                    bindings.commandEncoderSetLabel(handle, label)
                 }
             },
         )
