@@ -812,6 +812,12 @@ class AbiCmHostBindings(
         host.queueSetLabel(GpuHandle(handle), label)
     }
 
+    fun commandEncoderLabel(handle: Int): String = host.commandEncoderLabel(GpuHandle(handle))
+
+    fun commandEncoderSetLabel(handle: Int, label: String) {
+        host.commandEncoderSetLabel(GpuHandle(handle), label)
+    }
+
     fun querySetType(querySet: Int): Int = host.querySetType(GpuHandle(querySet))
 
     fun querySetCount(querySet: Int): Int = host.querySetCount(GpuHandle(querySet))

@@ -492,6 +492,30 @@ pub fn exp_buffer_set_label_described(
     )
 }
 
+/// L2: Guest gpu-command-encoder handle → WIT `gpu-command-encoder.label`.
+pub fn exp_command_encoder_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "commandEncoderLabelDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest gpu-command-encoder handle + label string.
+pub fn exp_command_encoder_set_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderSetLabelDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(handle as i32), HostArg::Str(label)],
+    )
+}
+
 /// L2: Guest gpu-queue handle → WIT `gpu-queue.label`.
 pub fn exp_queue_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
     call_string(

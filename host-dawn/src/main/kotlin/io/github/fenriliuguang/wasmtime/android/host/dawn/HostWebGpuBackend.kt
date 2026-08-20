@@ -325,6 +325,12 @@ private class ForwardingHostCallbacks(
         bindings.queueSetLabel(handle, label)
     }
 
+    override fun commandEncoderLabelDescribed(handle: Int): String = bindings.commandEncoderLabel(handle)
+
+    override fun commandEncoderSetLabelDescribed(handle: Int, label: String) {
+        bindings.commandEncoderSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 

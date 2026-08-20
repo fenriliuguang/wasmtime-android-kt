@@ -2114,6 +2114,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun commandEncoderLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUCommandEncoder>(handle, ResourceKind.CommandEncoder)
+            return ""
+        }
+    }
+
+    override fun commandEncoderSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUCommandEncoder>(handle, ResourceKind.CommandEncoder).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }
