@@ -1829,9 +1829,11 @@ pub struct GpuRenderBundleEncoderDescriptor {
     pub label: Option<String>,
 }
 
-/// WIT `resource gpu-adapter-info`. Lift-only; L2 unused.
+/// WIT `resource gpu-adapter-info`. `get-adapter-info` pushes `{ adapter: 0 }`.
 #[derive(Debug)]
-pub struct GpuAdapterInfo;
+pub struct GpuAdapterInfo {
+    pub adapter: u32,
+}
 
 /// WIT `resource gpu-supported-features`. Lift-only; L2 unused.
 #[derive(Debug)]

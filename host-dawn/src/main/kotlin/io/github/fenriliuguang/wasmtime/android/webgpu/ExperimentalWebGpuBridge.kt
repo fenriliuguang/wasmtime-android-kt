@@ -2126,7 +2126,8 @@ object ExperimentalWebGpuBridge {
      * adapter handle → host validate; returned resource still local lift) and
      * `[method]gpu-adapter-info.vendor` / `architecture` / `device` /
      * `description` / `subgroup-min-size` / `subgroup-max-size` /
-     * `is-fallback-adapter`, and `[method]gpu-supported-limits.max-*`
+     * `is-fallback-adapter` (L2 described adapter handle → subgroup scalars / fallback flag;
+     * string getters still lift-only), and `[method]gpu-supported-limits.max-*`
      * getters (still lift-only).
      */
     fun attachAdapterInfo(store: Store, host: WasiWebGpuHost) {
@@ -2145,6 +2146,31 @@ object ExperimentalWebGpuBridge {
 
                 override fun adapterInfoDescribed(adapter: Int) {
                     bindings.adapterValidate(adapter)
+                }
+
+                override fun adapterInfoSubgroupMinSizeDescribed(adapter: Int): Int {
+                    val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
+                    return bindings.adapterInfoSubgroupMinSize(l2Adapter)
+                }
+
+                override fun adapterInfoSubgroupMaxSizeDescribed(adapter: Int): Int {
+                    val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
+                    return bindings.adapterInfoSubgroupMaxSize(l2Adapter)
+                }
+
+                override fun adapterInfoIsFallbackAdapterDescribed(adapter: Int): Int {
+                    val l2Adapter = if (adapter == 0) bindings.requestAdapter() else adapter
+                    return if (bindings.adapterInfoIsFallbackAdapter(l2Adapter)) 1 else 0
+                }
+
+                override fun deviceAdapterDescribed(device: Int): Int {
+                    val l2Device = if (device == 0) {
+                        val adapter = bindings.requestAdapter()
+                        bindings.adapterRequestDevice(adapter)
+                    } else {
+                        device
+                    }
+                    return bindings.deviceAdapter(l2Device)
                 }
             },
         )

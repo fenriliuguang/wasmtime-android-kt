@@ -433,6 +433,17 @@ private class ForwardingHostCallbacks(
         bindings.adapterValidate(adapter)
     }
 
+    override fun adapterInfoSubgroupMinSizeDescribed(adapter: Int): Int =
+        bindings.adapterInfoSubgroupMinSize(adapter)
+
+    override fun adapterInfoSubgroupMaxSizeDescribed(adapter: Int): Int =
+        bindings.adapterInfoSubgroupMaxSize(adapter)
+
+    override fun adapterInfoIsFallbackAdapterDescribed(adapter: Int): Int =
+        if (bindings.adapterInfoIsFallbackAdapter(adapter)) 1 else 0
+
+    override fun deviceAdapterDescribed(device: Int): Int = bindings.deviceAdapter(device)
+
     override fun deviceFeaturesDescribed(device: Int) {
         bindings.deviceValidate(device)
     }

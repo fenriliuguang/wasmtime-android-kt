@@ -225,6 +225,15 @@ interface WasiWebGpuHost : AutoCloseable {
     /** Validate an adapter handle (features / limits / info getter L2). */
     fun adapterValidate(adapter: GpuHandle)
 
+    fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int
+
+    fun adapterInfoSubgroupMaxSize(adapter: GpuHandle): Int
+
+    fun adapterInfoIsFallbackAdapter(adapter: GpuHandle): Boolean
+
+    /** Owning adapter for a device (device.adapter-info L2). */
+    fun deviceAdapter(device: GpuHandle): GpuHandle
+
     /** Validate a device handle (features / limits / adapter-info getter L2). */
     fun deviceValidate(device: GpuHandle)
 

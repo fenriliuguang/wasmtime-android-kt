@@ -150,6 +150,7 @@ class DawnWasiWebGpuHost private constructor(
     private val callbackExecutor: Executor = Executor(Runnable::run)
     private val eventPoller = Executors.newSingleThreadExecutor()
     private val pipelineLayouts = HashMap<Int, GPUPipelineLayout>()
+    private val deviceAdapters = HashMap<GpuHandle, GpuHandle>()
     /** Serializes Dawn GPU work with [GPUInstance.processEvents] (Mali SIGSEGV under races). */
     private val gpuLock = Any()
     @Volatile private var closed = false
@@ -210,7 +211,9 @@ class DawnWasiWebGpuHost private constructor(
         val device = awaitRequest<GPUDevice>("requestDevice") { callback ->
             gpuAdapter.requestDevice(callbackExecutor, descriptor, callback)
         }
-        return handles.insert(ResourceKind.Device, device)
+        val deviceHandle = handles.insert(ResourceKind.Device, device)
+        deviceAdapters[deviceHandle] = adapter
+        return deviceHandle
     }
 
     override fun deviceGetQueue(device: GpuHandle): GpuHandle {
@@ -939,6 +942,35 @@ class DawnWasiWebGpuHost private constructor(
     override fun adapterValidate(adapter: GpuHandle) {
         synchronized(gpuLock) {
             handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+        }
+    }
+
+    override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int {
+        synchronized(gpuLock) {
+            val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+            return gpuAdapter.info.subgroupMinSize
+        }
+    }
+
+    override fun adapterInfoSubgroupMaxSize(adapter: GpuHandle): Int {
+        synchronized(gpuLock) {
+            val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+            return gpuAdapter.info.subgroupMaxSize
+        }
+    }
+
+    override fun adapterInfoIsFallbackAdapter(adapter: GpuHandle): Boolean {
+        synchronized(gpuLock) {
+            val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+            return gpuAdapter.info.isFallbackAdapter
+        }
+    }
+
+    override fun deviceAdapter(device: GpuHandle): GpuHandle {
+        synchronized(gpuLock) {
+            handles.get<GPUDevice>(device, ResourceKind.Device)
+            return deviceAdapters[device]
+                ?: throw HostException.InvalidHandle(device, "no adapter mapping")
         }
     }
 

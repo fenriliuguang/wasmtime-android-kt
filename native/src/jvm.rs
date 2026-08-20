@@ -611,6 +611,55 @@ pub fn exp_adapter_info_described(cb: &GlobalRef, adapter: u32) -> Result<(), St
     )
 }
 
+/// L2: Guest adapter handle → WIT `gpu-adapter-info.subgroup-min-size`.
+pub fn exp_adapter_info_subgroup_min_size_described(
+    cb: &GlobalRef,
+    adapter: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "adapterInfoSubgroupMinSizeDescribed",
+        "(I)I",
+        vec![HostArg::Int(adapter as i32)],
+    )
+}
+
+/// L2: Guest adapter handle → WIT `gpu-adapter-info.subgroup-max-size`.
+pub fn exp_adapter_info_subgroup_max_size_described(
+    cb: &GlobalRef,
+    adapter: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "adapterInfoSubgroupMaxSizeDescribed",
+        "(I)I",
+        vec![HostArg::Int(adapter as i32)],
+    )
+}
+
+/// L2: Guest adapter handle → WIT `gpu-adapter-info.is-fallback-adapter` (0/1).
+pub fn exp_adapter_info_is_fallback_adapter_described(
+    cb: &GlobalRef,
+    adapter: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "adapterInfoIsFallbackAdapterDescribed",
+        "(I)I",
+        vec![HostArg::Int(adapter as i32)],
+    )
+}
+
+/// L2: Guest device handle → owning adapter handle (for adapter-info getters).
+pub fn exp_device_adapter_described(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceAdapterDescribed",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest device handle → host validates before the local features lift.
 pub fn exp_device_features_described(cb: &GlobalRef, device: u32) -> Result<(), String> {
     call_void(

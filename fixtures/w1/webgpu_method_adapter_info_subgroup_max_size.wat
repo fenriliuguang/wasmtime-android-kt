@@ -1,6 +1,5 @@
 ;; S6+: get-adapter-info + [method]gpu-adapter-info.subgroup-max-size
-;; WIT: subgroup-max-size: func() -> u32. Host returns 1; harness 1.
-;; L2 unused (lift-only).
+;; L2 described adapter handle → subgroup-max-size (Cpu stub 128); harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-adapter-info" (type $gpu-adapter-info (sub resource)))

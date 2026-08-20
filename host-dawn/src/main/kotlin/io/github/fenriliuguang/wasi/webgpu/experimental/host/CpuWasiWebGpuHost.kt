@@ -12,8 +12,12 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     private val handles = HandleTable()
 
-    private class Adapter
-    private class Device {
+    private class Adapter(
+        val subgroupMinSize: Int = 4,
+        val subgroupMaxSize: Int = 128,
+        val isFallbackAdapter: Boolean = false,
+    )
+    private class Device(val adapter: GpuHandle) {
         var errorScopeDepth: Int = 0
     }
     private class Queue
@@ -87,7 +91,7 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     override fun adapterRequestDevice(adapter: GpuHandle): GpuHandle {
         handles.get<Adapter>(adapter, ResourceKind.Adapter)
-        return handles.insert(ResourceKind.Device, Device())
+        return handles.insert(ResourceKind.Device, Device(adapter))
     }
 
     override fun deviceGetQueue(device: GpuHandle): GpuHandle {
@@ -711,6 +715,18 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     override fun adapterValidate(adapter: GpuHandle) {
         handles.get<Adapter>(adapter, ResourceKind.Adapter)
     }
+
+    override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int =
+        handles.get<Adapter>(adapter, ResourceKind.Adapter).subgroupMinSize
+
+    override fun adapterInfoSubgroupMaxSize(adapter: GpuHandle): Int =
+        handles.get<Adapter>(adapter, ResourceKind.Adapter).subgroupMaxSize
+
+    override fun adapterInfoIsFallbackAdapter(adapter: GpuHandle): Boolean =
+        handles.get<Adapter>(adapter, ResourceKind.Adapter).isFallbackAdapter
+
+    override fun deviceAdapter(device: GpuHandle): GpuHandle =
+        handles.get<Device>(device, ResourceKind.Device).adapter
 
     override fun deviceValidate(device: GpuHandle) {
         handles.get<Device>(device, ResourceKind.Device)
