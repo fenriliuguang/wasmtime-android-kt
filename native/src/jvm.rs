@@ -817,6 +817,55 @@ pub fn exp_gpu_error_message_described(cb: &GlobalRef, device: u32) -> Result<St
     )
 }
 
+/// L2: Guest shader-module handle → WIT `gpu-compilation-message.type` ordinal.
+pub fn exp_compilation_message_type_described(cb: &GlobalRef, shader: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "compilationMessageTypeDescribed",
+        "(I)I",
+        vec![HostArg::Int(shader as i32)],
+    )
+}
+
+/// L2: Guest shader-module handle → WIT `gpu-compilation-message.line-num`.
+pub fn exp_compilation_message_line_num_described(
+    cb: &GlobalRef,
+    shader: u32,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "compilationMessageLineNumDescribed",
+        "(I)J",
+        vec![HostArg::Int(shader as i32)],
+    )
+}
+
+/// L2: Guest shader-module handle → WIT `gpu-compilation-message.line-pos`.
+pub fn exp_compilation_message_line_pos_described(
+    cb: &GlobalRef,
+    shader: u32,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "compilationMessageLinePosDescribed",
+        "(I)J",
+        vec![HostArg::Int(shader as i32)],
+    )
+}
+
+/// L2: Guest shader-module handle → WIT `gpu-compilation-message.offset`.
+pub fn exp_compilation_message_offset_described(
+    cb: &GlobalRef,
+    shader: u32,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "compilationMessageOffsetDescribed",
+        "(I)J",
+        vec![HostArg::Int(shader as i32)],
+    )
+}
+
 /// L2: Guest device handle + `gpu-error-filter` ordinal.
 pub fn exp_device_push_error_scope_described(
     cb: &GlobalRef,

@@ -246,6 +246,22 @@ interface ExperimentalHostCallbacks {
         unsupported("shaderModuleGetCompilationInfoDescribed")
     }
 
+    /** L2: Guest shader-module handle → WIT `gpu-compilation-message.type` ordinal. */
+    fun compilationMessageTypeDescribed(shader: Int): Int =
+        unsupported("compilationMessageTypeDescribed")
+
+    /** L2: Guest shader-module handle → WIT `gpu-compilation-message.line-num`. */
+    fun compilationMessageLineNumDescribed(shader: Int): Long =
+        unsupported("compilationMessageLineNumDescribed")
+
+    /** L2: Guest shader-module handle → WIT `gpu-compilation-message.line-pos`. */
+    fun compilationMessageLinePosDescribed(shader: Int): Long =
+        unsupported("compilationMessageLinePosDescribed")
+
+    /** L2: Guest shader-module handle → WIT `gpu-compilation-message.offset`. */
+    fun compilationMessageOffsetDescribed(shader: Int): Long =
+        unsupported("compilationMessageOffsetDescribed")
+
     /** L2: Guest render-pipeline rep (0 → stub in the attach) + group index → BGL rep. */
     fun renderPipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
         unsupported("renderPipelineGetBindGroupLayoutDescribed")

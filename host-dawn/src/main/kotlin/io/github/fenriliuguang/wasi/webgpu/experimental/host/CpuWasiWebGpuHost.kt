@@ -795,6 +795,26 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<ShaderModule>(shader, ResourceKind.ShaderModule)
     }
 
+    override fun compilationMessageType(shader: GpuHandle): Int {
+        handles.get<ShaderModule>(shader, ResourceKind.ShaderModule)
+        return 0
+    }
+
+    override fun compilationMessageLineNum(shader: GpuHandle): Long {
+        handles.get<ShaderModule>(shader, ResourceKind.ShaderModule)
+        return 42
+    }
+
+    override fun compilationMessageLinePos(shader: GpuHandle): Long {
+        handles.get<ShaderModule>(shader, ResourceKind.ShaderModule)
+        return 7
+    }
+
+    override fun compilationMessageOffset(shader: GpuHandle): Long {
+        handles.get<ShaderModule>(shader, ResourceKind.ShaderModule)
+        return 100
+    }
+
     override fun renderPipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle {
         handles.get<RenderPipeline>(pipeline, ResourceKind.RenderPipeline)
         require(index >= 0)

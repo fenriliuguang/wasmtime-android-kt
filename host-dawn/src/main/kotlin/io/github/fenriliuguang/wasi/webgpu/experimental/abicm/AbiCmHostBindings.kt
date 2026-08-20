@@ -846,6 +846,18 @@ class AbiCmHostBindings(
         host.shaderModuleValidate(GpuHandle(shader))
     }
 
+    fun compilationMessageType(shader: Int): Int =
+        host.compilationMessageType(GpuHandle(shader))
+
+    fun compilationMessageLineNum(shader: Int): Long =
+        host.compilationMessageLineNum(GpuHandle(shader))
+
+    fun compilationMessageLinePos(shader: Int): Long =
+        host.compilationMessageLinePos(GpuHandle(shader))
+
+    fun compilationMessageOffset(shader: Int): Long =
+        host.compilationMessageOffset(GpuHandle(shader))
+
     fun renderPipelineGetBindGroupLayout(pipeline: Int, index: Int): Int =
         host.renderPipelineGetBindGroupLayout(GpuHandle(pipeline), index).raw
 

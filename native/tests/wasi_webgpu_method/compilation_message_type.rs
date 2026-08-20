@@ -1,5 +1,5 @@
-//! S6+: `get-compilation-message` + `[method]gpu-compilation-message.type`
-//! WIT: `(borrow) -> gpu-compilation-message-type`. Host returns error; harness 1.
+//! L2: `get-compilation-message` + `[method]gpu-compilation-message.type`
+//! WIT: `(borrow) -> gpu-compilation-message-type`. Host returns Cpu stub error; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -10,7 +10,9 @@ use wasmtime::component::{
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuCompilationMessage;
+struct GpuCompilationMessage {
+    shader_module: u32,
+}
 
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
@@ -41,7 +43,12 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-compilation-message", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuCompilationMessage)?;
+        let resource = store
+            .data_mut()
+            .table
+            .push(GpuCompilationMessage {
+                shader_module: 0,
+            })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(

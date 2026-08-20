@@ -510,6 +510,18 @@ private class ForwardingHostCallbacks(
         bindings.shaderModuleValidate(shader)
     }
 
+    override fun compilationMessageTypeDescribed(shader: Int): Int =
+        bindings.compilationMessageType(shader)
+
+    override fun compilationMessageLineNumDescribed(shader: Int): Long =
+        bindings.compilationMessageLineNum(shader)
+
+    override fun compilationMessageLinePosDescribed(shader: Int): Long =
+        bindings.compilationMessageLinePos(shader)
+
+    override fun compilationMessageOffsetDescribed(shader: Int): Long =
+        bindings.compilationMessageOffset(shader)
+
     override fun renderPipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
         bindings.renderPipelineGetBindGroupLayout(pipeline, index)
 

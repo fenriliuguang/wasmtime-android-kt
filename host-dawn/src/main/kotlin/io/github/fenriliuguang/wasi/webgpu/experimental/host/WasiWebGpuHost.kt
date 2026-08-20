@@ -270,6 +270,15 @@ interface WasiWebGpuHost : AutoCloseable {
     /** Validate a shader-module handle (get-compilation-info L2). */
     fun shaderModuleValidate(shader: GpuHandle)
 
+    /** WIT `gpu-compilation-message.type` ordinal (error=0, warning=1, info=2). */
+    fun compilationMessageType(shader: GpuHandle): Int
+
+    fun compilationMessageLineNum(shader: GpuHandle): Long
+
+    fun compilationMessageLinePos(shader: GpuHandle): Long
+
+    fun compilationMessageOffset(shader: GpuHandle): Long
+
     fun renderPipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle
 
     fun computePipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle

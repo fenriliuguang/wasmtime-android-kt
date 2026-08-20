@@ -1872,9 +1872,11 @@ impl GpuBufferMapState {
 #[derive(Debug)]
 pub struct GpuCompilationInfo;
 
-/// WIT `resource gpu-compilation-message`. Lift-only; L2 unused.
+/// WIT `resource gpu-compilation-message`. `get-compilation-message` pushes `{ shader_module: 0 }`.
 #[derive(Debug)]
-pub struct GpuCompilationMessage;
+pub struct GpuCompilationMessage {
+    pub shader_module: u32,
+}
 
 /// WIT `enum gpu-compilation-message-type`. Lift-only; L2 unused.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
@@ -1888,6 +1890,17 @@ pub enum GpuCompilationMessageType {
     Warning,
     #[component(name = "info")]
     Info,
+}
+
+impl GpuCompilationMessageType {
+    /// Host ordinal: error=0, warning=1, info=2.
+    pub fn from_host_u32(value: u32) -> Self {
+        match value {
+            1 => Self::Warning,
+            2 => Self::Info,
+            _ => Self::Error,
+        }
+    }
 }
 
 /// WIT `resource gpu-device-lost-info`. `get-device-lost-info` pushes `{ device: 0 }`.

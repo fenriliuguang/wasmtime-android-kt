@@ -2328,6 +2328,9 @@ object ExperimentalWebGpuBridge {
      * `set-label` (still lift-only), plus L2
      * `[method]gpu-shader-module.get-compilation-info` (described handle validate).
      */
+     * S6+ / L2: `[method]gpu-compilation-message.*` scalar getters (type / line-num / line-pos / offset)
+     * via guest shader-module handle; also `shaderModuleGetCompilationInfoDescribed`.
+     */
     fun attachCommandCompilationLabel(
         store: Store,
         host: WasiWebGpuHost,
@@ -2343,12 +2346,44 @@ object ExperimentalWebGpuBridge {
                 override fun deviceCreateShaderModule(device: Int): Int =
                     bindings.deviceCreateShaderModule(device, STUB_WGSL)
 
+                override fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
+                    bindings.deviceCreateShaderModule(device, code)
+
                 override fun shaderModuleGetCompilationInfoDescribed(shader: Int) {
                     bindings.shaderModuleValidate(shader)
+                }
+
+                override fun compilationMessageTypeDescribed(shader: Int): Int {
+                    val l2Shader = resolveShaderModule(bindings, shader)
+                    return bindings.compilationMessageType(l2Shader)
+                }
+
+                override fun compilationMessageLineNumDescribed(shader: Int): Long {
+                    val l2Shader = resolveShaderModule(bindings, shader)
+                    return bindings.compilationMessageLineNum(l2Shader)
+                }
+
+                override fun compilationMessageLinePosDescribed(shader: Int): Long {
+                    val l2Shader = resolveShaderModule(bindings, shader)
+                    return bindings.compilationMessageLinePos(l2Shader)
+                }
+
+                override fun compilationMessageOffsetDescribed(shader: Int): Long {
+                    val l2Shader = resolveShaderModule(bindings, shader)
+                    return bindings.compilationMessageOffset(l2Shader)
                 }
             },
         )
     }
+
+    private fun resolveShaderModule(bindings: AbiCmHostBindings, shader: Int): Int =
+        if (shader != 0) {
+            shader
+        } else {
+            val adapter = bindings.requestAdapter()
+            val device = bindings.adapterRequestDevice(adapter)
+            bindings.deviceCreateShaderModule(device, STUB_WGSL)
+        }
 
     /**
      * S6+: `[method]gpu-compute-pass-encoder.label` / `set-label` and
