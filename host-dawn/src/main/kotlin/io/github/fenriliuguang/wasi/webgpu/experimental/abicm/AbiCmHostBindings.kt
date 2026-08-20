@@ -503,6 +503,22 @@ class AbiCmHostBindings(
         )
     }
 
+    fun renderPassPushDebugGroup(pass: Int, label: String) {
+        host.renderPassPushDebugGroup(GpuHandle(pass), label)
+    }
+
+    fun renderPassPopDebugGroup(pass: Int) {
+        host.renderPassPopDebugGroup(GpuHandle(pass))
+    }
+
+    fun renderPassInsertDebugMarker(pass: Int, label: String) {
+        host.renderPassInsertDebugMarker(GpuHandle(pass), label)
+    }
+
+    fun renderPassSetImmediates(pass: Int, rangeOffset: Int, data: ByteArray) {
+        host.renderPassSetImmediates(GpuHandle(pass), rangeOffset, data)
+    }
+
     fun commandEncoderCopyBufferToBuffer(
         encoder: Int,
         source: Int,

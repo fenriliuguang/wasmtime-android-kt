@@ -678,6 +678,31 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassExecuteBundlesDescribed")
     }
 
+    /** L2: Guest render-pass handle + group label. */
+    fun renderPassPushDebugGroupDescribed(pass: Int, label: String) {
+        unsupported("renderPassPushDebugGroupDescribed")
+    }
+
+    /** L2: Guest render-pass handle → pop debug group. */
+    fun renderPassPopDebugGroupDescribed(pass: Int) {
+        unsupported("renderPassPopDebugGroupDescribed")
+    }
+
+    /** L2: Guest render-pass handle + marker label. */
+    fun renderPassInsertDebugMarkerDescribed(pass: Int, label: String) {
+        unsupported("renderPassInsertDebugMarkerDescribed")
+    }
+
+    /** L2: Guest render-pass handle + immediates (range offset, bytes, data offset). */
+    fun renderPassSetImmediatesDescribed(
+        pass: Int,
+        rangeOffset: Int,
+        data: ByteArray,
+        dataOffset: Long,
+    ) {
+        unsupported("renderPassSetImmediatesDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

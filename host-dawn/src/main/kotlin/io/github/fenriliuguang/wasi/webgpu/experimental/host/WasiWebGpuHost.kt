@@ -285,6 +285,15 @@ interface WasiWebGpuHost : AutoCloseable {
     /** Execute recorded bundles on the pass (empty list validates the pass only). */
     fun renderPassExecuteBundles(pass: GpuHandle, bundles: List<GpuHandle>)
 
+    fun renderPassPushDebugGroup(pass: GpuHandle, label: String)
+
+    fun renderPassPopDebugGroup(pass: GpuHandle)
+
+    fun renderPassInsertDebugMarker(pass: GpuHandle, label: String)
+
+    /** Set immediates bytes on a render pass (host validates; Dawn pass-through when supported). */
+    fun renderPassSetImmediates(pass: GpuHandle, rangeOffset: Int, data: ByteArray)
+
     // --- Command encoding (compute) ---
 
     fun commandEncoderBeginComputePass(

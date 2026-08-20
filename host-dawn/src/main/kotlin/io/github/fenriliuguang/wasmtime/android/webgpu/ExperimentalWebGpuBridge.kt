@@ -1820,6 +1820,27 @@ object ExperimentalWebGpuBridge {
                 override fun renderPassExecuteBundlesDescribed(pass: Int, bundles: IntArray) {
                     bindings.renderPassExecuteBundles(pass, bundles)
                 }
+
+                override fun renderPassPushDebugGroupDescribed(pass: Int, label: String) {
+                    bindings.renderPassPushDebugGroup(pass, label)
+                }
+
+                override fun renderPassPopDebugGroupDescribed(pass: Int) {
+                    bindings.renderPassPopDebugGroup(pass)
+                }
+
+                override fun renderPassInsertDebugMarkerDescribed(pass: Int, label: String) {
+                    bindings.renderPassInsertDebugMarker(pass, label)
+                }
+
+                override fun renderPassSetImmediatesDescribed(
+                    pass: Int,
+                    rangeOffset: Int,
+                    data: ByteArray,
+                    dataOffset: Long,
+                ) {
+                    bindings.renderPassSetImmediates(pass, rangeOffset, data)
+                }
             },
         )
     }

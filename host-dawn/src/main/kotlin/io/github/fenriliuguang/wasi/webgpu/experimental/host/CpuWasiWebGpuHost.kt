@@ -818,6 +818,23 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
     }
 
+    override fun renderPassPushDebugGroup(pass: GpuHandle, label: String) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+    }
+
+    override fun renderPassPopDebugGroup(pass: GpuHandle) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+    }
+
+    override fun renderPassInsertDebugMarker(pass: GpuHandle, label: String) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+    }
+
+    override fun renderPassSetImmediates(pass: GpuHandle, rangeOffset: Int, data: ByteArray) {
+        handles.get<RenderPassEncoder>(pass, ResourceKind.RenderPassEncoder)
+        require(rangeOffset >= 0)
+    }
+
     override fun drop(handle: GpuHandle) {
         handles.drop(handle)
     }
