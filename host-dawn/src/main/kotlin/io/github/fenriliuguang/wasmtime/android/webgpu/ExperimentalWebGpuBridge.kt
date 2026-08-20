@@ -397,6 +397,12 @@ object ExperimentalWebGpuBridge {
                             label = label.ifEmpty { null },
                         ),
                     )
+                override fun pipelineLayoutLabelDescribed(handle: Int): String =
+                    bindings.pipelineLayoutLabel(handle)
+
+                override fun pipelineLayoutSetLabelDescribed(handle: Int, label: String) {
+                    bindings.pipelineLayoutSetLabel(handle, label)
+                }
             },
         )
     }

@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-pipeline-layout handle → WIT `gpu-pipeline-layout.label`. */
+    fun pipelineLayoutLabelDescribed(handle: Int): String = unsupported("pipelineLayoutLabelDescribed")
+
+    /** L2: Guest gpu-pipeline-layout handle + label string. */
+    fun pipelineLayoutSetLabelDescribed(handle: Int, label: String) {
+        unsupported("pipelineLayoutSetLabelDescribed")
+    }
+
     /** L2: Guest gpu-shader-module handle → WIT `gpu-shader-module.label`. */
     fun shaderModuleLabelDescribed(handle: Int): String = unsupported("shaderModuleLabelDescribed")
 
