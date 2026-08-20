@@ -47,6 +47,25 @@ interface WasiWebGpuHost : AutoCloseable {
         sampleCount: Int,
     ): GpuHandle
 
+    fun renderBundleEncoderFinish(encoder: GpuHandle, label: String? = null): GpuHandle
+
+    fun renderBundleEncoderDraw(
+        encoder: GpuHandle,
+        vertexCount: Int,
+        instanceCount: Int,
+        firstVertex: Int,
+        firstInstance: Int,
+    )
+
+    fun renderBundleEncoderDrawIndexed(
+        encoder: GpuHandle,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    )
+
     fun deviceCreateSampler(
         device: GpuHandle,
         descriptor: SamplerDescriptor = SamplerDescriptor(),

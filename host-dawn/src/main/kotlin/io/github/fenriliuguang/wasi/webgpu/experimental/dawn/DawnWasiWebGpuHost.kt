@@ -38,6 +38,8 @@ import androidx.webgpu.GPUQuerySet
 import androidx.webgpu.GPUQuerySetDescriptor
 import androidx.webgpu.GPUQueue
 import androidx.webgpu.GPURenderBundle
+import androidx.webgpu.GPURenderBundleDescriptor
+import androidx.webgpu.GPURenderBundleEncoder
 import androidx.webgpu.GPURenderBundleEncoderDescriptor
 import androidx.webgpu.GPURenderPassColorAttachment
 import androidx.webgpu.GPURenderPassDepthStencilAttachment
@@ -393,6 +395,42 @@ class DawnWasiWebGpuHost private constructor(
             ),
         )
         return handles.insert(ResourceKind.RenderBundleEncoder, encoder)
+    }
+
+    override fun renderBundleEncoderFinish(encoder: GpuHandle, label: String?): GpuHandle {
+        synchronized(gpuLock) {
+            val bundleEncoder =
+                handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+            val bundle = bundleEncoder.finish(GPURenderBundleDescriptor(label = label))
+            return handles.insert(ResourceKind.RenderBundle, bundle)
+        }
+    }
+
+    override fun renderBundleEncoderDraw(
+        encoder: GpuHandle,
+        vertexCount: Int,
+        instanceCount: Int,
+        firstVertex: Int,
+        firstInstance: Int,
+    ) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+                .draw(vertexCount, instanceCount, firstVertex, firstInstance)
+        }
+    }
+
+    override fun renderBundleEncoderDrawIndexed(
+        encoder: GpuHandle,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    ) {
+        synchronized(gpuLock) {
+            handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+                .drawIndexed(indexCount, instanceCount, firstIndex, baseVertex, firstInstance)
+        }
     }
 
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {

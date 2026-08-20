@@ -171,6 +171,43 @@ class AbiCmHostBindings(
         sampleCount: Int,
     ): Int = host.deviceCreateRenderBundleEncoder(GpuHandle(device), colorFormat, sampleCount).raw
 
+    fun renderBundleEncoderFinish(encoder: Int, label: String? = null): Int =
+        host.renderBundleEncoderFinish(GpuHandle(encoder), label).raw
+
+    fun renderBundleEncoderDraw(
+        encoder: Int,
+        vertexCount: Int,
+        instanceCount: Int,
+        firstVertex: Int,
+        firstInstance: Int,
+    ) {
+        host.renderBundleEncoderDraw(
+            GpuHandle(encoder),
+            vertexCount,
+            instanceCount,
+            firstVertex,
+            firstInstance,
+        )
+    }
+
+    fun renderBundleEncoderDrawIndexed(
+        encoder: Int,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    ) {
+        host.renderBundleEncoderDrawIndexed(
+            GpuHandle(encoder),
+            indexCount,
+            instanceCount,
+            firstIndex,
+            baseVertex,
+            firstInstance,
+        )
+    }
+
     fun deviceCreateSampler(device: Int, descriptor: SamplerDescriptor = SamplerDescriptor()): Int =
         host.deviceCreateSampler(GpuHandle(device), descriptor).raw
 
