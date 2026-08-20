@@ -233,6 +233,14 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle): Long
 
+    fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxColorAttachments(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle): Int
+
     fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int
 
     fun adapterInfoSubgroupMaxSize(adapter: GpuHandle): Int

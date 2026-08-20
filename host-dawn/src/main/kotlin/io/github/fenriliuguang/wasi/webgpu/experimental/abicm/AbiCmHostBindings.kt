@@ -800,6 +800,18 @@ class AbiCmHostBindings(
     fun supportedLimitsMaxBufferSize(adapter: Int, device: Int): Long =
         host.supportedLimitsMaxBufferSize(GpuHandle(adapter), GpuHandle(device))
 
+    fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxColorAttachmentBytesPerSample(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxColorAttachments(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxColorAttachments(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxComputeInvocationsPerWorkgroup(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxComputeWorkgroupSizeX(GpuHandle(adapter), GpuHandle(device))
+
     fun adapterInfoSubgroupMinSize(adapter: Int): Int =
         host.adapterInfoSubgroupMinSize(GpuHandle(adapter))
 

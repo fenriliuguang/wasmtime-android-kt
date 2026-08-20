@@ -90,6 +90,29 @@ impl StreamConsumer<HostState> for CollectConsumer {
     }
 }
 
+
+fn l2_supported_limits_handles(
+    caller: &mut StoreContextMut<'_, HostState>,
+    limits: &Resource<GpuSupportedLimits>,
+) -> wasmtime::Result<(jni::objects::GlobalRef, u32, u32)> {
+    let (adapter, device) = {
+        let entry = caller.data_mut().table.get(limits)?;
+        (entry.adapter, entry.device)
+    };
+    let cb = caller
+        .data()
+        .experimental_host_cb
+        .as_ref()
+        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+        .cloned()?;
+    let l2_adapter = if adapter == 0 && device == 0 {
+        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+    } else {
+        adapter
+    };
+    Ok((cb, l2_adapter, device))
+}
+
 fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     linker
         .root()
@@ -920,8 +943,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-color-attachment-bytes-per-sample",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_color_attachment_bytes_per_sample_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -929,8 +955,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-color-attachments",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_color_attachments_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -938,8 +967,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-invocations-per-workgroup",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_compute_invocations_per_workgroup_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -947,8 +979,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroup-size-x",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_compute_workgroup_size_x_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;

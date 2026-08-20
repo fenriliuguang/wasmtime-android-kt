@@ -946,6 +946,13 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    private fun dawnSupportedLimits(adapter: GpuHandle, device: GpuHandle) =
+        if (device.raw != 0) {
+            handles.get<GPUDevice>(device, ResourceKind.Device).limits
+        } else {
+            handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).limits
+        }
+
     override fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle): Int {
         synchronized(gpuLock) {
             return if (device.raw != 0) {
@@ -998,6 +1005,30 @@ class DawnWasiWebGpuHost private constructor(
             } else {
                 handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).limits.maxBufferSize
             }
+        }
+    }
+
+    override fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxColorAttachmentBytesPerSample
+        }
+    }
+
+    override fun supportedLimitsMaxColorAttachments(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxColorAttachments
+        }
+    }
+
+    override fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxComputeInvocationsPerWorkgroup
+        }
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxComputeWorkgroupSizeX
         }
     }
 

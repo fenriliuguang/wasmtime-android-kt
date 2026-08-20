@@ -158,6 +158,23 @@ interface ExperimentalHostCallbacks {
     fun supportedLimitsMaxBufferSizeDescribed(adapter: Int, device: Int): Long =
         unsupported("supportedLimitsMaxBufferSizeDescribed")
 
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-color-attachment-bytes-per-sample`. */
+    fun supportedLimitsMaxColorAttachmentBytesPerSampleDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxColorAttachmentBytesPerSampleDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-color-attachments`. */
+    fun supportedLimitsMaxColorAttachmentsDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxColorAttachmentsDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-invocations-per-workgroup`. */
+    fun supportedLimitsMaxComputeInvocationsPerWorkgroupDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxComputeInvocationsPerWorkgroupDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroup-size-x`. */
+    fun supportedLimitsMaxComputeWorkgroupSizeXDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxComputeWorkgroupSizeXDescribed")
+
     /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
     fun adapterInfoDescribed(adapter: Int) {
         unsupported("adapterInfoDescribed")

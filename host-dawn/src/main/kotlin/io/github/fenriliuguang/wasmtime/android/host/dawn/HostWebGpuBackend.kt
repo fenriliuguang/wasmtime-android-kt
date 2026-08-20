@@ -452,6 +452,26 @@ private class ForwardingHostCallbacks(
         return bindings.supportedLimitsMaxBufferSize(l2Adapter, device)
     }
 
+    override fun supportedLimitsMaxColorAttachmentBytesPerSampleDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxColorAttachmentBytesPerSample(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxColorAttachmentsDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxColorAttachments(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxComputeInvocationsPerWorkgroupDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxComputeInvocationsPerWorkgroup(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupSizeXDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxComputeWorkgroupSizeX(l2Adapter, device)
+    }
+
     override fun adapterInfoDescribed(adapter: Int) {
         bindings.adapterValidate(adapter)
     }

@@ -675,6 +675,63 @@ pub fn exp_supported_limits_max_buffer_size_described(
     )
 }
 
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-color-attachment-bytes-per-sample`.
+pub fn exp_supported_limits_max_color_attachment_bytes_per_sample_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxColorAttachmentBytesPerSampleDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-color-attachments`.
+pub fn exp_supported_limits_max_color_attachments_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxColorAttachmentsDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-invocations-per-workgroup`.
+pub fn exp_supported_limits_max_compute_invocations_per_workgroup_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxComputeInvocationsPerWorkgroupDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroup-size-x`.
+pub fn exp_supported_limits_max_compute_workgroup_size_x_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxComputeWorkgroupSizeXDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest adapter handle → host validates before the local adapter-info lift.
 pub fn exp_adapter_info_described(cb: &GlobalRef, adapter: u32) -> Result<(), String> {
     call_void(
