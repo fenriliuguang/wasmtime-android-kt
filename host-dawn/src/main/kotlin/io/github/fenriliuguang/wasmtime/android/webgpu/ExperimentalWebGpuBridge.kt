@@ -2412,6 +2412,42 @@ object ExperimentalWebGpuBridge {
                     return bindings.supportedLimitsMaxTextureDimension2D(l2Adapter, device)
                 }
 
+                override fun supportedLimitsMaxTextureDimension3DDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxTextureDimension3D(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxUniformBufferBindingSizeDescribed(adapter: Int, device: Int): Long {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxUniformBufferBindingSize(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxUniformBuffersPerShaderStageDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxUniformBuffersPerShaderStage(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxVertexAttributesDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxVertexAttributes(l2Adapter, device)
+                }
+
                 override fun adapterInfoDescribed(adapter: Int) {
                     bindings.adapterValidate(adapter)
                 }

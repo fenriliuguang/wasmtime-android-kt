@@ -889,6 +889,26 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return 1
     }
 
+    override fun supportedLimitsMaxTextureDimension3D(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxUniformBufferBindingSize(adapter: GpuHandle, device: GpuHandle): Long {
+        validateLimitsOwner(adapter, device)
+        return 1L
+    }
+
+    override fun supportedLimitsMaxUniformBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxVertexAttributes(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
     override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int =
         handles.get<Adapter>(adapter, ResourceKind.Adapter).subgroupMinSize
 
