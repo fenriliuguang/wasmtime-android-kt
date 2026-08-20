@@ -764,6 +764,12 @@ class AbiCmHostBindings(
         host.bindGroupLayoutSetLabel(GpuHandle(handle), label)
     }
 
+    fun textureLabel(handle: Int): String = host.textureLabel(GpuHandle(handle))
+
+    fun textureSetLabel(handle: Int, label: String) {
+        host.textureSetLabel(GpuHandle(handle), label)
+    }
+
     fun querySetType(querySet: Int): Int = host.querySetType(GpuHandle(querySet))
 
     fun querySetCount(querySet: Int): Int = host.querySetCount(GpuHandle(querySet))

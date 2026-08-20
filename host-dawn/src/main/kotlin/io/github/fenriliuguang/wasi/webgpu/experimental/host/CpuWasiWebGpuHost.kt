@@ -596,6 +596,15 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<BindGroupLayout>(handle, ResourceKind.BindGroupLayout)
     }
 
+    override fun textureLabel(handle: GpuHandle): String {
+        handles.get<Texture>(handle, ResourceKind.Texture)
+        return ""
+    }
+
+    override fun textureSetLabel(handle: GpuHandle, label: String) {
+        handles.get<Texture>(handle, ResourceKind.Texture)
+    }
+
     override fun instanceCreateSurfaceFromAndroidNativeWindow(nativeWindowHandle: Long): GpuHandle {
         require(nativeWindowHandle != 0L) { "window-handle is null" }
         return handles.insert(ResourceKind.Surface, Surface())

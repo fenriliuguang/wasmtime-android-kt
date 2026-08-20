@@ -277,6 +277,12 @@ private class ForwardingHostCallbacks(
         bindings.bindGroupLayoutSetLabel(handle, label)
     }
 
+    override fun textureLabelDescribed(handle: Int): String = bindings.textureLabel(handle)
+
+    override fun textureSetLabelDescribed(handle: Int, label: String) {
+        bindings.textureSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 

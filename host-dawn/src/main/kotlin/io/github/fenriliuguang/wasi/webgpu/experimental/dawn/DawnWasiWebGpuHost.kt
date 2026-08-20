@@ -2010,6 +2010,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun textureLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUTexture>(handle, ResourceKind.Texture)
+            return ""
+        }
+    }
+
+    override fun textureSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUTexture>(handle, ResourceKind.Texture).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }
