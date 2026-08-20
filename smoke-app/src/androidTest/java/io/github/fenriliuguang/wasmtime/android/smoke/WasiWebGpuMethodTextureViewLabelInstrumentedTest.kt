@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-texture-view.label` via [ExperimentalWebGpuBridge.attachCreateTextureView]. */
+/** L2 `[method]gpu-texture-view.label` via [ExperimentalWebGpuBridge.attachCreateTextureView]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodTextureViewLabelInstrumentedTest {
     @Test
