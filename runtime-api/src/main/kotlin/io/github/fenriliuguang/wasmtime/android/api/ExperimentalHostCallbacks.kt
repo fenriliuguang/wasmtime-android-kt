@@ -703,6 +703,33 @@ interface ExperimentalHostCallbacks {
         unsupported("renderPassSetImmediatesDescribed")
     }
 
+    /** L2: Guest bundle-encoder + optional bundle label → bundle rep. */
+    fun renderBundleEncoderFinishDescribed(encoder: Int, label: String): Int =
+        unsupported("renderBundleEncoderFinishDescribed")
+
+    /** L2: Guest bundle-encoder + draw counts. */
+    fun renderBundleEncoderDrawDescribed(
+        encoder: Int,
+        vertexCount: Int,
+        instanceCount: Int,
+        firstVertex: Int,
+        firstInstance: Int,
+    ) {
+        unsupported("renderBundleEncoderDrawDescribed")
+    }
+
+    /** L2: Guest bundle-encoder + indexed draw counts. */
+    fun renderBundleEncoderDrawIndexedDescribed(
+        encoder: Int,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    ) {
+        unsupported("renderBundleEncoderDrawIndexedDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

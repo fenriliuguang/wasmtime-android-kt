@@ -1846,14 +1846,67 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `[method]gpu-render-bundle-encoder.finish` / `set-pipeline` /
-     * `set-bind-group` / `draw` / `set-index-buffer` / `set-vertex-buffer` /
-     * `draw-indexed` / `draw-indirect` / `draw-indexed-indirect` /
+     * L2: `[method]gpu-render-bundle-encoder.finish` / `draw` / `draw-indexed`
+     * (guest encoder rep + counts/label through described JNI; 0 → stub encoder).
+     * Remaining `set-pipeline` / `set-bind-group` / `set-index-buffer` /
+     * `set-vertex-buffer` / `draw-indirect` / `draw-indexed-indirect` /
      * `push-debug-group` / `pop-debug-group` / `insert-debug-marker` /
-     * `set-immediates`. Native lifts guest args; L2 unused (no new JNI).
+     * `set-immediates` still lift-only on this attach.
      */
-    fun attachRenderBundleState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    fun attachRenderBundleState(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateRenderBundleEncoderDescribed(
+                    device: Int,
+                    colorFormat: Int,
+                    sampleCount: Int,
+                ): Int =
+                    bindings.deviceCreateRenderBundleEncoder(device, colorFormat, sampleCount)
+
+                override fun renderBundleEncoderFinishDescribed(encoder: Int, label: String): Int =
+                    bindings.renderBundleEncoderFinish(encoder, label.ifEmpty { null })
+
+                override fun renderBundleEncoderDrawDescribed(
+                    encoder: Int,
+                    vertexCount: Int,
+                    instanceCount: Int,
+                    firstVertex: Int,
+                    firstInstance: Int,
+                ) {
+                    bindings.renderBundleEncoderDraw(
+                        encoder,
+                        vertexCount,
+                        instanceCount,
+                        firstVertex,
+                        firstInstance,
+                    )
+                }
+
+                override fun renderBundleEncoderDrawIndexedDescribed(
+                    encoder: Int,
+                    indexCount: Int,
+                    instanceCount: Int,
+                    firstIndex: Int,
+                    baseVertex: Int,
+                    firstInstance: Int,
+                ) {
+                    bindings.renderBundleEncoderDrawIndexed(
+                        encoder,
+                        indexCount,
+                        instanceCount,
+                        firstIndex,
+                        baseVertex,
+                        firstInstance,
+                    )
+                }
+            },
+        )
     }
 
     /**

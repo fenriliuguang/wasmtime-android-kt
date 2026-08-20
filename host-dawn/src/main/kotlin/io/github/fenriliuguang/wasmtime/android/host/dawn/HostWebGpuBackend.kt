@@ -277,6 +277,43 @@ private class ForwardingHostCallbacks(
         sampleCount: Int,
     ): Int = bindings.deviceCreateRenderBundleEncoder(device, colorFormat, sampleCount)
 
+    override fun renderBundleEncoderFinishDescribed(encoder: Int, label: String): Int =
+        bindings.renderBundleEncoderFinish(encoder, label.ifEmpty { null })
+
+    override fun renderBundleEncoderDrawDescribed(
+        encoder: Int,
+        vertexCount: Int,
+        instanceCount: Int,
+        firstVertex: Int,
+        firstInstance: Int,
+    ) {
+        bindings.renderBundleEncoderDraw(
+            encoder,
+            vertexCount,
+            instanceCount,
+            firstVertex,
+            firstInstance,
+        )
+    }
+
+    override fun renderBundleEncoderDrawIndexedDescribed(
+        encoder: Int,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    ) {
+        bindings.renderBundleEncoderDrawIndexed(
+            encoder,
+            indexCount,
+            instanceCount,
+            firstIndex,
+            baseVertex,
+            firstInstance,
+        )
+    }
+
     override fun querySetDestroyDescribed(querySet: Int) {
         bindings.querySetDestroy(querySet)
     }

@@ -794,6 +794,69 @@ pub fn exp_compute_pass_set_immediates_described(
     )
 }
 
+/// L2: Guest bundle-encoder + optional bundle label → bundle rep.
+pub fn exp_render_bundle_encoder_finish_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    label: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "renderBundleEncoderFinishDescribed",
+        "(ILjava/lang/String;)I",
+        vec![HostArg::Int(encoder as i32), HostArg::Str(label)],
+    )
+}
+
+/// L2: Guest bundle-encoder + draw counts.
+pub fn exp_render_bundle_encoder_draw_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    vertex_count: u32,
+    instance_count: u32,
+    first_vertex: u32,
+    first_instance: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderDrawDescribed",
+        "(IIIII)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(vertex_count as i32),
+            HostArg::Int(instance_count as i32),
+            HostArg::Int(first_vertex as i32),
+            HostArg::Int(first_instance as i32),
+        ],
+    )
+}
+
+/// L2: Guest bundle-encoder + indexed draw counts.
+#[allow(clippy::too_many_arguments)]
+pub fn exp_render_bundle_encoder_draw_indexed_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    index_count: u32,
+    instance_count: u32,
+    first_index: u32,
+    base_vertex: i32,
+    first_instance: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderDrawIndexedDescribed",
+        "(IIIIII)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(index_count as i32),
+            HostArg::Int(instance_count as i32),
+            HostArg::Int(first_index as i32),
+            HostArg::Int(base_vertex),
+            HostArg::Int(first_instance as i32),
+        ],
+    )
+}
+
 /// L2: Guest compute-pipeline rep (0 → stub in the attach) + group index → BGL rep.
 pub fn exp_compute_pipeline_get_bind_group_layout_described(
     cb: &GlobalRef,

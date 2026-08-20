@@ -37,6 +37,7 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     private class TextureView
     private class QuerySet(val type: Int, val count: Int)
     private class RenderBundleEncoder
+    private class RenderBundle
     private class ComputePipeline(val shader: ShaderModule)
     /** Fake Android surface for AbiCm/AbiMvp View↔Texture lifetime tests (not a real window). */
     private class Surface(var configured: Boolean = false)
@@ -185,6 +186,34 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Device>(device, ResourceKind.Device)
         require(sampleCount > 0) { "bundle-encoder sample count must be positive" }
         return handles.insert(ResourceKind.RenderBundleEncoder, RenderBundleEncoder())
+    }
+
+    override fun renderBundleEncoderFinish(encoder: GpuHandle, label: String?): GpuHandle {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+        return handles.insert(ResourceKind.RenderBundle, RenderBundle())
+    }
+
+    override fun renderBundleEncoderDraw(
+        encoder: GpuHandle,
+        vertexCount: Int,
+        instanceCount: Int,
+        firstVertex: Int,
+        firstInstance: Int,
+    ) {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+        require(vertexCount >= 0 && instanceCount >= 0)
+    }
+
+    override fun renderBundleEncoderDrawIndexed(
+        encoder: GpuHandle,
+        indexCount: Int,
+        instanceCount: Int,
+        firstIndex: Int,
+        baseVertex: Int,
+        firstInstance: Int,
+    ) {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+        require(indexCount >= 0 && instanceCount >= 0)
     }
 
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {
