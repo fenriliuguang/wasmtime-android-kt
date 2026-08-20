@@ -2023,10 +2023,10 @@ pub struct GpuUncapturedErrorEvent {
     pub device: u32,
 }
 
-/// WIT `resource gpu-canvas-context`. `get-canvas-context` pushes `{ rep: 0 }`.
+/// WIT `resource gpu-canvas-context`. `get-canvas-context` pushes `{ rep: 0 }`;
+/// L2 `configure` writes the host canvas-context handle back.
 #[derive(Debug)]
 pub struct GpuCanvasContext {
-    #[allow(dead_code)]
     pub rep: u32,
 }
 

@@ -149,6 +149,13 @@ interface WasiWebGpuHost : AutoCloseable {
     fun surfacePresent(surface: GpuHandle)
 
     /**
+     * Guest `[method]gpu-canvas-context.configure`: store device/format/usage.
+     * [context] `0` allocates a new [ResourceKind.CanvasContext] handle.
+     * Not a product `surface-*` (no Android window / Dawn GPUSurface).
+     */
+    fun canvasContextConfigure(context: Int, device: GpuHandle, format: Int, usage: Int): GpuHandle
+
+    /**
      * Empty vertex-buffer TriangleList; shader must export `vs_main` / `fs_main`
      * (typically `@builtin(vertex_index)`).
      * @deprecated Prefer [deviceCreateRenderPipeline] (slice E).

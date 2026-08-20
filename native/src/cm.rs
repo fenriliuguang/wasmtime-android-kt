@@ -2339,9 +2339,36 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-canvas-context.configure",
                 |mut caller, (ctx, config): (Resource<GpuCanvasContext>, GpuCanvasConfiguration)| {
-                    let _ = caller.data_mut().table.get(&ctx)?;
-                    let _ = caller.data_mut().table.get(&config.device)?;
-                    let _ = config;
+                    let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
+                    let device_rep = caller.data_mut().table.get(&config.device)?.rep;
+                    let format = config.format.to_dawn_u32();
+                    let usage = config.usage.map(|u| u.to_webgpu_u32()).unwrap_or(0);
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| {
+                            wasmtime::Error::msg("experimental host callback not set")
+                        })
+                        .cloned()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let handle = jvm::exp_canvas_context_configure_described(
+                        &cb, ctx_rep, l2_device, format, usage,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    if handle == 0 {
+                        return Err(wasmtime::Error::msg(
+                            "canvas-context-configure returned 0",
+                        ));
+                    }
+                    caller.data_mut().table.get_mut(&ctx)?.rep = handle;
                     Ok(())
                 },
             )

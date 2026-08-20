@@ -28,6 +28,13 @@ interface ExperimentalHostCallbacks {
     fun surfaceGetCurrentTextureView(surface: Int): Int =
         unsupported("surfaceGetCurrentTextureView")
 
+    /**
+     * L2: Guest `[method]gpu-canvas-context.configure` (device/format/usage).
+     * `context == 0` allocates a canvas-context handle. Not a product `surface-*`.
+     */
+    fun canvasContextConfigureDescribed(context: Int, device: Int, format: Int, usage: Int): Int =
+        unsupported("canvasContextConfigureDescribed")
+
     fun deviceCreateCommandEncoder(device: Int): Int = unsupported("deviceCreateCommandEncoder")
 
     /** L2: Guest optional `gpu-command-encoder-descriptor` label (none → empty). */

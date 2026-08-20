@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-canvas-context.configure` via [ExperimentalWebGpuBridge.attachCanvasContext]. */
+/** L2 `[method]gpu-canvas-context.configure` via [ExperimentalWebGpuBridge.attachCanvasContext]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodCanvasContextConfigureInstrumentedTest {
     @Test
