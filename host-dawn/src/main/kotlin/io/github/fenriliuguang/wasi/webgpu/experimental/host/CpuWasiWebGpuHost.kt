@@ -624,6 +624,14 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return 0
     }
 
+    override fun queueValidate(queue: GpuHandle) {
+        handles.get<Queue>(queue, ResourceKind.Queue)
+    }
+
+    override fun shaderModuleValidate(shader: GpuHandle) {
+        handles.get<ShaderModule>(shader, ResourceKind.ShaderModule)
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

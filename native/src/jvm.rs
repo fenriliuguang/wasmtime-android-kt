@@ -691,6 +691,32 @@ pub fn exp_device_on_uncaptured_error_described(cb: &GlobalRef, device: u32) -> 
     )
 }
 
+/// L2: Guest queue handle → host validate (completion future stays local ready).
+pub fn exp_queue_on_submitted_work_done_described(
+    cb: &GlobalRef,
+    queue: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "queueOnSubmittedWorkDoneDescribed",
+        "(I)V",
+        vec![HostArg::Int(queue as i32)],
+    )
+}
+
+/// L2: Guest shader-module handle → host validate (compilation-info stays local lift).
+pub fn exp_shader_module_get_compilation_info_described(
+    cb: &GlobalRef,
+    shader: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "shaderModuleGetCompilationInfoDescribed",
+        "(I)V",
+        vec![HostArg::Int(shader as i32)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,

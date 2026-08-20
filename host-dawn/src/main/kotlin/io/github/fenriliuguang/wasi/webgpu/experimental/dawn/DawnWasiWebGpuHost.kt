@@ -820,6 +820,18 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun queueValidate(queue: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUQueue>(queue, ResourceKind.Queue)
+        }
+    }
+
+    override fun shaderModuleValidate(shader: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUShaderModule>(shader, ResourceKind.ShaderModule)
+        }
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

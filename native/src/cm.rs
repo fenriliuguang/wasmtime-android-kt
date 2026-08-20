@@ -2645,9 +2645,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu-shader-module.get-compilation-info",
                 |accessor, (shader,): (Resource<GpuShaderModule>,)| {
                     Box::pin(async move {
-                        accessor.with(|mut access| {
-                            access.data_mut().table.get(&shader).map(|_| ())
-                        })?;
+                        let (cb, shader_rep) =
+                            accessor.with(|mut access| -> wasmtime::Result<_> {
+                                let shader_rep = access.data_mut().table.get(&shader)?.rep;
+                                let cb = access
+                                    .data_mut()
+                                    .experimental_host_cb
+                                    .as_ref()
+                                    .ok_or_else(|| {
+                                        wasmtime::Error::msg("experimental host callback not set")
+                                    })
+                                    .cloned()?;
+                                Ok((cb, shader_rep))
+                            })?;
+                        let l2_shader = if shader_rep == 0 {
+                            let adapter_rep =
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                            let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                .map_err(wasmtime::Error::msg)?;
+                            jvm::exp_create_shader_module(&cb, device_rep)
+                                .map_err(wasmtime::Error::msg)?
+                        } else {
+                            shader_rep
+                        };
+                        jvm::exp_shader_module_get_compilation_info_described(&cb, l2_shader)
+                            .map_err(wasmtime::Error::msg)?;
                         let resource = accessor.with(|mut access| {
                             access.data_mut().table.push(GpuCompilationInfo)
                         })?;
@@ -4282,8 +4304,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu-queue.on-submitted-work-done",
                 |accessor, (queue,): (Resource<GpuQueue>,)| {
                     Box::pin(async move {
-                        accessor
-                            .with(|mut access| access.data_mut().table.get(&queue).map(|_| ()))?;
+                        let (cb, queue_rep) =
+                            accessor.with(|mut access| -> wasmtime::Result<_> {
+                                let queue_rep = access.data_mut().table.get(&queue)?.rep;
+                                let cb = access
+                                    .data_mut()
+                                    .experimental_host_cb
+                                    .as_ref()
+                                    .ok_or_else(|| {
+                                        wasmtime::Error::msg("experimental host callback not set")
+                                    })
+                                    .cloned()?;
+                                Ok((cb, queue_rep))
+                            })?;
+                        let l2_queue = if queue_rep == 0 {
+                            let adapter_rep =
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                            let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                .map_err(wasmtime::Error::msg)?;
+                            jvm::exp_device_get_queue(&cb, device_rep)
+                                .map_err(wasmtime::Error::msg)?
+                        } else {
+                            queue_rep
+                        };
+                        jvm::exp_queue_on_submitted_work_done_described(&cb, l2_queue)
+                            .map_err(wasmtime::Error::msg)?;
                         Ok(())
                     })
                 },

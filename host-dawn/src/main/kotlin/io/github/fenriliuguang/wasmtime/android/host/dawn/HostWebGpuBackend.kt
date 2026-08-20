@@ -358,6 +358,14 @@ private class ForwardingHostCallbacks(
         bindings.deviceValidate(device)
     }
 
+    override fun queueOnSubmittedWorkDoneDescribed(queue: Int) {
+        bindings.queueValidate(queue)
+    }
+
+    override fun shaderModuleGetCompilationInfoDescribed(shader: Int) {
+        bindings.shaderModuleValidate(shader)
+    }
+
     override fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,
