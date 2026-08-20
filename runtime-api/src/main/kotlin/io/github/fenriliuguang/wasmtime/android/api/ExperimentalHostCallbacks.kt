@@ -730,6 +730,33 @@ interface ExperimentalHostCallbacks {
         unsupported("renderBundleEncoderDrawIndexedDescribed")
     }
 
+    /** L2: Guest bundle-encoder + pipeline rep (0 → stub in the attach). */
+    fun renderBundleEncoderSetPipelineDescribed(encoder: Int, pipeline: Int) {
+        unsupported("renderBundleEncoderSetPipelineDescribed")
+    }
+
+    /** L2: Guest bundle-encoder + vertex-buffer slot/rep/offset/size (0 → stub in the attach). */
+    fun renderBundleEncoderSetVertexBufferDescribed(
+        encoder: Int,
+        slot: Int,
+        buffer: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        unsupported("renderBundleEncoderSetVertexBufferDescribed")
+    }
+
+    /** L2: Guest bundle-encoder + index-buffer rep/format/offset/size (0 → stub in the attach). */
+    fun renderBundleEncoderSetIndexBufferDescribed(
+        encoder: Int,
+        buffer: Int,
+        format: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        unsupported("renderBundleEncoderSetIndexBufferDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

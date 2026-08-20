@@ -1846,21 +1846,25 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * L2: `[method]gpu-render-bundle-encoder.finish` / `draw` / `draw-indexed`
-     * (guest encoder rep + counts/label through described JNI; 0 → stub encoder).
-     * Remaining `set-pipeline` / `set-bind-group` / `set-index-buffer` /
-     * `set-vertex-buffer` / `draw-indirect` / `draw-indexed-indirect` /
+     * L2: `[method]gpu-render-bundle-encoder.finish` / `draw` / `draw-indexed` /
+     * `set-pipeline` / `set-vertex-buffer` / `set-index-buffer`
+     * (guest encoder rep + counts/label/buffer reps through described JNI;
+     * 0 → stub encoder / pipeline / buffer).
+     * Remaining `set-bind-group` / `draw-indirect` / `draw-indexed-indirect` /
      * `push-debug-group` / `pop-debug-group` / `insert-debug-marker` /
      * `set-immediates` still lift-only on this attach.
      */
     fun attachRenderBundleState(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
+        var device = 0
         store.setExperimentalHost(
             object : ExperimentalHostCallbacks {
                 override fun requestAdapter(): Int = bindings.requestAdapter()
 
-                override fun adapterRequestDevice(adapter: Int): Int =
-                    bindings.adapterRequestDevice(adapter)
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    device = bindings.adapterRequestDevice(adapter)
+                    return device
+                }
 
                 override fun deviceCreateRenderBundleEncoderDescribed(
                     device: Int,
@@ -1903,6 +1907,78 @@ object ExperimentalWebGpuBridge {
                         firstIndex,
                         baseVertex,
                         firstInstance,
+                    )
+                }
+
+                override fun renderBundleEncoderSetPipelineDescribed(
+                    encoder: Int,
+                    pipeline: Int,
+                ) {
+                    val resolved =
+                        if (pipeline != 0) {
+                            pipeline
+                        } else {
+                            val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                            bindings.deviceCreateRenderPipelineTriangle(
+                                device,
+                                shader,
+                                GpuTextureFormat.RGBA8_UNORM,
+                            )
+                        }
+                    bindings.renderBundleEncoderSetPipeline(encoder, resolved)
+                }
+
+                override fun renderBundleEncoderSetVertexBufferDescribed(
+                    encoder: Int,
+                    slot: Int,
+                    buffer: Int,
+                    offset: Long,
+                    size: Long,
+                ) {
+                    val resolved =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_BUFFER_SIZE,
+                                usage = GpuBufferUsage.VERTEX,
+                            )
+                        }
+                    val resolvedSize = if (size != 0L) size else STUB_BUFFER_SIZE
+                    bindings.renderBundleEncoderSetVertexBuffer(
+                        encoder,
+                        slot,
+                        resolved,
+                        offset,
+                        resolvedSize,
+                    )
+                }
+
+                override fun renderBundleEncoderSetIndexBufferDescribed(
+                    encoder: Int,
+                    buffer: Int,
+                    format: Int,
+                    offset: Long,
+                    size: Long,
+                ) {
+                    val resolved =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_BUFFER_SIZE,
+                                usage = GpuBufferUsage.INDEX,
+                            )
+                        }
+                    val resolvedSize = if (size != 0L) size else STUB_BUFFER_SIZE
+                    bindings.renderBundleEncoderSetIndexBuffer(
+                        encoder,
+                        resolved,
+                        format,
+                        offset,
+                        resolvedSize,
                     )
                 }
             },
