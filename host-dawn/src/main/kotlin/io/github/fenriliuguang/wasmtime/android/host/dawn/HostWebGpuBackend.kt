@@ -429,6 +429,29 @@ private class ForwardingHostCallbacks(
         bindings.adapterValidate(adapter)
     }
 
+    override fun supportedLimitsMaxBindGroupsDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxBindGroups(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxBindGroupsPlusVertexBuffersDescribed(
+        adapter: Int,
+        device: Int,
+    ): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxBindGroupsPlusVertexBuffers(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxBindingsPerBindGroupDescribed(adapter: Int, device: Int): Int {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxBindingsPerBindGroup(l2Adapter, device)
+    }
+
+    override fun supportedLimitsMaxBufferSizeDescribed(adapter: Int, device: Int): Long {
+        val l2Adapter = if (adapter == 0 && device == 0) bindings.requestAdapter() else adapter
+        return bindings.supportedLimitsMaxBufferSize(l2Adapter, device)
+    }
+
     override fun adapterInfoDescribed(adapter: Int) {
         bindings.adapterValidate(adapter)
     }

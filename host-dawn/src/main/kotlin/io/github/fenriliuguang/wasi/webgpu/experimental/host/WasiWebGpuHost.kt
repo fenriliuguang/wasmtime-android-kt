@@ -225,6 +225,14 @@ interface WasiWebGpuHost : AutoCloseable {
     /** Validate an adapter handle (features / limits / info getter L2). */
     fun adapterValidate(adapter: GpuHandle)
 
+    fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxBindGroupsPlusVertexBuffers(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxBindingsPerBindGroup(adapter: GpuHandle, device: GpuHandle): Int
+
+    fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle): Long
+
     fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int
 
     fun adapterInfoSubgroupMaxSize(adapter: GpuHandle): Int

@@ -1841,9 +1841,12 @@ pub struct GpuSupportedFeatures {
     pub adapter: u32,
 }
 
-/// WIT `resource gpu-supported-limits`. Lift-only; L2 unused.
+/// WIT `resource gpu-supported-limits`. `gpu-adapter.limits` stores adapter rep; `gpu-device.limits` stores device rep.
 #[derive(Debug)]
-pub struct GpuSupportedLimits;
+pub struct GpuSupportedLimits {
+    pub adapter: u32,
+    pub device: u32,
+}
 
 /// WIT `enum gpu-buffer-map-state`.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]

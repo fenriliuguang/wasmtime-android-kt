@@ -142,6 +142,22 @@ interface ExperimentalHostCallbacks {
         unsupported("adapterLimitsDescribed")
     }
 
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-bind-groups`. */
+    fun supportedLimitsMaxBindGroupsDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxBindGroupsDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-bind-groups-plus-vertex-buffers`. */
+    fun supportedLimitsMaxBindGroupsPlusVertexBuffersDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxBindGroupsPlusVertexBuffersDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-bindings-per-bind-group`. */
+    fun supportedLimitsMaxBindingsPerBindGroupDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxBindingsPerBindGroupDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-buffer-size`. */
+    fun supportedLimitsMaxBufferSizeDescribed(adapter: Int, device: Int): Long =
+        unsupported("supportedLimitsMaxBufferSizeDescribed")
+
     /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
     fun adapterInfoDescribed(adapter: Int) {
         unsupported("adapterInfoDescribed")

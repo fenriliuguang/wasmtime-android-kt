@@ -782,14 +782,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     };
                     jvm::exp_adapter_limits_described(&cb, l2_adapter)
                         .map_err(wasmtime::Error::msg)?;
-                    let resource = caller.data_mut().table.push(GpuSupportedLimits)?;
+                    let resource = caller.data_mut().table.push(GpuSupportedLimits {
+                        adapter: l2_adapter,
+                        device: 0,
+                    })?;
                     Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-supported-limits", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuSupportedLimits)?;
+                let resource = store.data_mut().table.push(GpuSupportedLimits {
+                    adapter: 0,
+                    device: 0,
+                })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -797,8 +803,28 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-bind-groups",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (limits_adapter, limits_device) = {
+                        let entry = caller.data_mut().table.get(&limits)?;
+                        (entry.adapter, entry.device)
+                    };
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if limits_adapter == 0 && limits_device == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        limits_adapter
+                    };
+                    let value = jvm::exp_supported_limits_max_bind_groups_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -806,8 +832,29 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-bind-groups-plus-vertex-buffers",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (limits_adapter, limits_device) = {
+                        let entry = caller.data_mut().table.get(&limits)?;
+                        (entry.adapter, entry.device)
+                    };
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if limits_adapter == 0 && limits_device == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        limits_adapter
+                    };
+                    let value =
+                        jvm::exp_supported_limits_max_bind_groups_plus_vertex_buffers_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -815,8 +862,28 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-bindings-per-bind-group",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (limits_adapter, limits_device) = {
+                        let entry = caller.data_mut().table.get(&limits)?;
+                        (entry.adapter, entry.device)
+                    };
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if limits_adapter == 0 && limits_device == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        limits_adapter
+                    };
+                    let value = jvm::exp_supported_limits_max_bindings_per_bind_group_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -824,8 +891,28 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-buffer-size",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u64,))
+                    let (limits_adapter, limits_device) = {
+                        let entry = caller.data_mut().table.get(&limits)?;
+                        (entry.adapter, entry.device)
+                    };
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if limits_adapter == 0 && limits_device == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        limits_adapter
+                    };
+                    let value = jvm::exp_supported_limits_max_buffer_size_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1641,7 +1728,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     };
                     jvm::exp_device_limits_described(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let resource = caller.data_mut().table.push(GpuSupportedLimits)?;
+                    let resource = caller.data_mut().table.push(GpuSupportedLimits {
+                        adapter: 0,
+                        device: l2_device,
+                    })?;
                     Ok((resource,))
                 },
             )
