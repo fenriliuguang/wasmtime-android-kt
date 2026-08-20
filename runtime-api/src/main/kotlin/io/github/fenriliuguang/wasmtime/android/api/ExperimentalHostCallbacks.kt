@@ -47,6 +47,22 @@ interface ExperimentalHostCallbacks {
     fun canvasContextGetCurrentTextureDescribed(context: Int): Int =
         unsupported("canvasContextGetCurrentTextureDescribed")
 
+    /** L2: Guest `[method]gpu-canvas-context.get-configuration` option discriminant (`0`/`1`). */
+    fun canvasContextHasConfigurationDescribed(context: Int): Int =
+        unsupported("canvasContextHasConfigurationDescribed")
+
+    /** L2: Stored configure device handle (only when has-configuration is 1). */
+    fun canvasContextConfigurationDeviceDescribed(context: Int): Int =
+        unsupported("canvasContextConfigurationDeviceDescribed")
+
+    /** L2: Stored configure Dawn format (only when has-configuration is 1). */
+    fun canvasContextConfigurationFormatDescribed(context: Int): Int =
+        unsupported("canvasContextConfigurationFormatDescribed")
+
+    /** L2: Stored configure WebGPU usage bits (only when has-configuration is 1). */
+    fun canvasContextConfigurationUsageDescribed(context: Int): Int =
+        unsupported("canvasContextConfigurationUsageDescribed")
+
     fun deviceCreateCommandEncoder(device: Int): Int = unsupported("deviceCreateCommandEncoder")
 
     /** L2: Guest optional `gpu-command-encoder-descriptor` label (none → empty). */

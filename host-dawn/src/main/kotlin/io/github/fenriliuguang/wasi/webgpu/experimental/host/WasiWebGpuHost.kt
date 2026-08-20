@@ -166,6 +166,21 @@ interface WasiWebGpuHost : AutoCloseable {
     fun canvasContextGetCurrentTexture(context: Int): GpuHandle
 
     /**
+     * Guest `[method]gpu-canvas-context.get-configuration` option discriminant.
+     * [context] `0` or unconfigured → `0`; configured → `1`.
+     */
+    fun canvasContextHasConfiguration(context: Int): Int
+
+    /** Stored configure device handle. Call only when [canvasContextHasConfiguration] is `1`. */
+    fun canvasContextConfigurationDevice(context: Int): Int
+
+    /** Stored configure Dawn format. Call only when [canvasContextHasConfiguration] is `1`. */
+    fun canvasContextConfigurationFormat(context: Int): Int
+
+    /** Stored configure WebGPU usage bits. Call only when [canvasContextHasConfiguration] is `1`. */
+    fun canvasContextConfigurationUsage(context: Int): Int
+
+    /**
      * Empty vertex-buffer TriangleList; shader must export `vs_main` / `fs_main`
      * (typically `@builtin(vertex_index)`).
      * @deprecated Prefer [deviceCreateRenderPipeline] (slice E).

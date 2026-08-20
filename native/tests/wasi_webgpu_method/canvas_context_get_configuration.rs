@@ -1,5 +1,5 @@
-//! S6+: `get-canvas-context` + `[method]gpu-canvas-context.get-configuration`
-//! WIT: `(borrow) -> option<gpu-canvas-configuration-owned>`. Lift-only none; harness 1.
+//! L2: `get-canvas-context` + `[method]gpu-canvas-context.get-configuration`
+//! WIT: `(borrow) -> option<gpu-canvas-configuration-owned>`. Unconfigured → none; harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,

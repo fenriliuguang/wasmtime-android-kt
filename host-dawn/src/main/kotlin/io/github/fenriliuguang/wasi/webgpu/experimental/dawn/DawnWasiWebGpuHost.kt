@@ -774,6 +774,42 @@ class DawnWasiWebGpuHost private constructor(
         )
     }
 
+    override fun canvasContextHasConfiguration(context: Int): Int {
+        if (context == 0) return 0
+        return synchronized(gpuLock) {
+            val state = handles.get<DawnCanvasContextState>(
+                GpuHandle(context),
+                ResourceKind.CanvasContext,
+            )
+            if (state.configured) 1 else 0
+        }
+    }
+
+    override fun canvasContextConfigurationDevice(context: Int): Int =
+        configuredCanvas(context).device
+
+    override fun canvasContextConfigurationFormat(context: Int): Int =
+        configuredCanvas(context).format
+
+    override fun canvasContextConfigurationUsage(context: Int): Int =
+        configuredCanvas(context).usage
+
+    private fun configuredCanvas(context: Int): DawnCanvasContextState {
+        if (context == 0) {
+            throw HostException.Validation("canvas context not configured")
+        }
+        return synchronized(gpuLock) {
+            val state = handles.get<DawnCanvasContextState>(
+                GpuHandle(context),
+                ResourceKind.CanvasContext,
+            )
+            if (!state.configured) {
+                throw HostException.Validation("canvas context not configured")
+            }
+            state
+        }
+    }
+
     override fun deviceCreateRenderPipelineTriangle(
         device: GpuHandle,
         shader: GpuHandle,

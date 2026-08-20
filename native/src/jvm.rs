@@ -540,6 +540,58 @@ pub fn exp_canvas_context_get_current_texture_described(
     )
 }
 
+/// L2: `1` if canvas-context has a stored configuration, else `0`.
+pub fn exp_canvas_context_has_configuration_described(
+    cb: &GlobalRef,
+    context: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "canvasContextHasConfigurationDescribed",
+        "(I)I",
+        vec![HostArg::Int(context as i32)],
+    )
+}
+
+/// L2: Stored configure `device` handle (call only when has-configuration is 1).
+pub fn exp_canvas_context_configuration_device_described(
+    cb: &GlobalRef,
+    context: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "canvasContextConfigurationDeviceDescribed",
+        "(I)I",
+        vec![HostArg::Int(context as i32)],
+    )
+}
+
+/// L2: Stored configure Dawn `format` (call only when has-configuration is 1).
+pub fn exp_canvas_context_configuration_format_described(
+    cb: &GlobalRef,
+    context: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "canvasContextConfigurationFormatDescribed",
+        "(I)I",
+        vec![HostArg::Int(context as i32)],
+    )
+}
+
+/// L2: Stored configure WebGPU `usage` bits (call only when has-configuration is 1).
+pub fn exp_canvas_context_configuration_usage_described(
+    cb: &GlobalRef,
+    context: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "canvasContextConfigurationUsageDescribed",
+        "(I)I",
+        vec![HostArg::Int(context as i32)],
+    )
+}
+
 /// L2: Guest gpu-render-pipeline handle → WIT `gpu-render-pipeline.label`.
 pub fn exp_render_pipeline_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
     call_string(
