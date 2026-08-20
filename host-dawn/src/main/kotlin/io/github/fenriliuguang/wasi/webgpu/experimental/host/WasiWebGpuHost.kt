@@ -591,6 +591,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun bindGroupSetLabel(handle: GpuHandle, label: String)
 
+    fun bindGroupLayoutLabel(handle: GpuHandle): String
+
+    fun bindGroupLayoutSetLabel(handle: GpuHandle, label: String)
+
     // --- Lifetime ---
 
     fun drop(handle: GpuHandle)
