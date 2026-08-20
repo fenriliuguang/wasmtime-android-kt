@@ -632,6 +632,18 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<ShaderModule>(shader, ResourceKind.ShaderModule)
     }
 
+    override fun renderPipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle {
+        handles.get<RenderPipeline>(pipeline, ResourceKind.RenderPipeline)
+        require(index >= 0)
+        return handles.insert(ResourceKind.BindGroupLayout, BindGroupLayout())
+    }
+
+    override fun computePipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle {
+        handles.get<ComputePipeline>(pipeline, ResourceKind.ComputePipeline)
+        require(index >= 0)
+        return handles.insert(ResourceKind.BindGroupLayout, BindGroupLayout())
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

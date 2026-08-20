@@ -186,6 +186,10 @@ interface WasiWebGpuHost : AutoCloseable {
     /** Validate a shader-module handle (get-compilation-info L2). */
     fun shaderModuleValidate(shader: GpuHandle)
 
+    fun renderPipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle
+
+    fun computePipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

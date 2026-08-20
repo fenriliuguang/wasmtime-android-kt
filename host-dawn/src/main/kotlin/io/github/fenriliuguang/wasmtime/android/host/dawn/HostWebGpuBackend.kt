@@ -366,6 +366,12 @@ private class ForwardingHostCallbacks(
         bindings.shaderModuleValidate(shader)
     }
 
+    override fun renderPipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
+        bindings.renderPipelineGetBindGroupLayout(pipeline, index)
+
+    override fun computePipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
+        bindings.computePipelineGetBindGroupLayout(pipeline, index)
+
     override fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,

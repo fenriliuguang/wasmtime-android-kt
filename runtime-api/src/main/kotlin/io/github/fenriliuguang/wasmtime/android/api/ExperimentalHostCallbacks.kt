@@ -196,6 +196,14 @@ interface ExperimentalHostCallbacks {
         unsupported("shaderModuleGetCompilationInfoDescribed")
     }
 
+    /** L2: Guest render-pipeline rep (0 → stub in the attach) + group index → BGL rep. */
+    fun renderPipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
+        unsupported("renderPipelineGetBindGroupLayoutDescribed")
+
+    /** L2: Guest compute-pipeline rep (0 → stub in the attach) + group index → BGL rep. */
+    fun computePipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
+        unsupported("computePipelineGetBindGroupLayoutDescribed")
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 

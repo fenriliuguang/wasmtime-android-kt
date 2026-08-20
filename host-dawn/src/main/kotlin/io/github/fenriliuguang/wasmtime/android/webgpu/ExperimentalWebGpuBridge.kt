@@ -1949,28 +1949,83 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[method]gpu-compute-pass-encoder.label` / `set-label` and
-     * `[method]gpu-compute-pipeline.label` / `set-label` /
-     * `get-bind-group-layout`. Native lifts; L2 unused (no new JNI).
+     * `[method]gpu-compute-pipeline.label` / `set-label` (still lift-only), plus L2
+     * `[method]gpu-compute-pipeline.get-bind-group-layout` (0 → stub compute pipeline).
      */
     fun attachComputePassPipelineLabel(
         store: Store,
-        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+        host: WasiWebGpuHost,
     ) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun computePipelineGetBindGroupLayoutDescribed(
+                    pipeline: Int,
+                    index: Int,
+                ): Int {
+                    val resolved =
+                        if (pipeline != 0) {
+                            pipeline
+                        } else {
+                            val adapter = bindings.requestAdapter()
+                            val device = bindings.adapterRequestDevice(adapter)
+                            val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                            val layout = bindings.deviceCreatePipelineLayout(
+                                device,
+                                PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                            )
+                            bindings.deviceCreateComputePipeline(
+                                device,
+                                ComputePipelineDescriptor(
+                                    layout = layout,
+                                    compute = ProgrammableStage(
+                                        module = shader,
+                                        entryPoint = "main",
+                                    ),
+                                ),
+                            )
+                        }
+                    return bindings.computePipelineGetBindGroupLayout(resolved, index)
+                }
+            },
+        )
     }
 
     /**
      * S6+: `[method]gpu-render-bundle.label` / `set-label`,
      * `[method]gpu-render-bundle-encoder.label` / `set-label`,
      * `[method]gpu-render-pass-encoder.label` / `set-label`, and
-     * `[method]gpu-render-pipeline.label` / `set-label` /
-     * `get-bind-group-layout`. Native lifts; L2 unused (no new JNI).
+     * `[method]gpu-render-pipeline.label` / `set-label` (still lift-only), plus L2
+     * `[method]gpu-render-pipeline.get-bind-group-layout` (0 → stub triangle pipeline).
      */
     fun attachRenderBundlePassPipelineLabel(
         store: Store,
-        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+        host: WasiWebGpuHost,
     ) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun renderPipelineGetBindGroupLayoutDescribed(
+                    pipeline: Int,
+                    index: Int,
+                ): Int {
+                    val resolved =
+                        if (pipeline != 0) {
+                            pipeline
+                        } else {
+                            val adapter = bindings.requestAdapter()
+                            val device = bindings.adapterRequestDevice(adapter)
+                            val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                            bindings.deviceCreateRenderPipelineTriangle(
+                                device,
+                                shader,
+                                GpuTextureFormat.RGBA8_UNORM,
+                            )
+                        }
+                    return bindings.renderPipelineGetBindGroupLayout(resolved, index)
+                }
+            },
+        )
     }
 
     /**

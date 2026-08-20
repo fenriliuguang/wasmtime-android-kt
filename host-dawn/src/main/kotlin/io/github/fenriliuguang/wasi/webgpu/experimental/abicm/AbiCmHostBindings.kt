@@ -654,6 +654,12 @@ class AbiCmHostBindings(
         host.shaderModuleValidate(GpuHandle(shader))
     }
 
+    fun renderPipelineGetBindGroupLayout(pipeline: Int, index: Int): Int =
+        host.renderPipelineGetBindGroupLayout(GpuHandle(pipeline), index).raw
+
+    fun computePipelineGetBindGroupLayout(pipeline: Int, index: Int): Int =
+        host.computePipelineGetBindGroupLayout(GpuHandle(pipeline), index).raw
+
     private fun storageEntry(binding: Int, type: BufferBindingType) = BindGroupLayoutEntry(
         binding = binding,
         visibility = GpuShaderStage.COMPUTE,
