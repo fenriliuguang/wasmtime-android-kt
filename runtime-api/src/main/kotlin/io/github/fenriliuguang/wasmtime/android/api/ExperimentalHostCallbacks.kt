@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-texture handle → WIT `gpu-texture.label`. */
+    fun textureLabelDescribed(handle: Int): String = unsupported("textureLabelDescribed")
+
+    /** L2: Guest gpu-texture handle + label string. */
+    fun textureSetLabelDescribed(handle: Int, label: String) {
+        unsupported("textureSetLabelDescribed")
+    }
+
     /** L2: Guest gpu-bind-group-layout handle → WIT `gpu-bind-group-layout.label`. */
     fun bindGroupLayoutLabelDescribed(handle: Int): String = unsupported("bindGroupLayoutLabelDescribed")
 

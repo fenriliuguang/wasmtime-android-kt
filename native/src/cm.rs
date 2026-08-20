@@ -2625,16 +2625,50 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-texture.label",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
-                    Ok((String::new(),))
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    let label = jvm::exp_texture_label_described(&cb, l2)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((label,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-texture.set-label",
-                |mut caller, (texture, _label): (Resource<GpuTexture>, String)| {
-                    let _ = caller.data_mut().table.get(&texture)?;
+                |mut caller, (texture, label): (Resource<GpuTexture>, String)| {
+                    let texture_rep = caller.data_mut().table.get(&texture)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if texture_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        texture_rep
+                    };
+                    jvm::exp_texture_set_label_described(&cb, l2, label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

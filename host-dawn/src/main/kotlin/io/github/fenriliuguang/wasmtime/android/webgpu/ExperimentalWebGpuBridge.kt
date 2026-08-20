@@ -2623,8 +2623,7 @@ object ExperimentalWebGpuBridge {
      * S6+: `[method]gpu-texture.width` / `height` / `depth-or-array-layers` /
      * `mip-level-count` / `sample-count` / `dimension` / `format` / `usage` /
      * `texture-binding-view-dimension` / `destroy`
-     * (L2 described texture handle → extent/meta/destroy) and remaining
-     * `label` / `set-label` (still lift-only).
+     * (L2 described texture handle → extent/meta/destroy/label/set-label).
      */
     fun attachTextureInfo(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -2674,6 +2673,12 @@ object ExperimentalWebGpuBridge {
 
                 override fun textureDestroyDescribed(texture: Int) {
                     bindings.textureDestroy(texture)
+                }
+                override fun textureLabelDescribed(handle: Int): String =
+                    bindings.textureLabel(handle)
+
+                override fun textureSetLabelDescribed(handle: Int, label: String) {
+                    bindings.textureSetLabel(handle, label)
                 }
             },
         )
