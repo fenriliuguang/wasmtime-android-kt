@@ -1630,7 +1630,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         device_rep
                     };
                     jvm::exp_device_lost_described(&cb, l2_device).map_err(wasmtime::Error::msg)?;
-                    let info = caller.data_mut().table.push(GpuDeviceLostInfo)?;
+                    let info = caller
+                        .data_mut()
+                        .table
+                        .push(GpuDeviceLostInfo { device: l2_device })?;
                     let fut = FutureReader::new(&mut caller, async move {
                         Ok::<Resource<GpuDeviceLostInfo>, wasmtime::Error>(info)
                     })?;
@@ -1755,7 +1758,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-device-lost-info", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuDeviceLostInfo)?;
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(GpuDeviceLostInfo { device: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -1763,8 +1769,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device-lost-info.reason",
                 |mut caller, (info,): (Resource<GpuDeviceLostInfo>,)| {
-                    let _ = caller.data_mut().table.get(&info)?;
-                    Ok((GpuDeviceLostReason::Unknown,))
+                    let info_device = caller.data_mut().table.get(&info)?.device;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if info_device == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        info_device
+                    };
+                    let reason = jvm::exp_device_lost_info_reason_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuDeviceLostReason::from_host_u32(reason),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1772,8 +1794,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device-lost-info.message",
                 |mut caller, (info,): (Resource<GpuDeviceLostInfo>,)| {
-                    let _ = caller.data_mut().table.get(&info)?;
-                    Ok((String::new(),))
+                    let info_device = caller.data_mut().table.get(&info)?.device;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if info_device == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        info_device
+                    };
+                    let message = jvm::exp_device_lost_info_message_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((message,))
                 },
             )
             .map_err(|e| e.to_string())?;

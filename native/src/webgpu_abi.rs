@@ -1890,11 +1890,13 @@ pub enum GpuCompilationMessageType {
     Info,
 }
 
-/// WIT `resource gpu-device-lost-info`. Lift-only; L2 unused.
+/// WIT `resource gpu-device-lost-info`. `get-device-lost-info` pushes `{ device: 0 }`.
 #[derive(Debug)]
-pub struct GpuDeviceLostInfo;
+pub struct GpuDeviceLostInfo {
+    pub device: u32,
+}
 
-/// WIT `enum gpu-device-lost-reason`. Lift-only; L2 unused.
+/// WIT `enum gpu-device-lost-reason`.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
@@ -1904,6 +1906,16 @@ pub enum GpuDeviceLostReason {
     Unknown,
     #[component(name = "destroyed")]
     Destroyed,
+}
+
+impl GpuDeviceLostReason {
+    /// Host ordinal: unknown=0, destroyed=1.
+    pub fn from_host_u32(value: u32) -> Self {
+        match value {
+            1 => Self::Destroyed,
+            _ => Self::Unknown,
+        }
+    }
 }
 
 /// WIT `resource gpu-error`. Lift-only; L2 unused.

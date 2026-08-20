@@ -476,6 +476,12 @@ private class ForwardingHostCallbacks(
         bindings.deviceValidate(device)
     }
 
+    override fun deviceLostInfoReasonDescribed(device: Int): Int =
+        bindings.deviceLostInfoReason(device)
+
+    override fun deviceLostInfoMessageDescribed(device: Int): String =
+        bindings.deviceLostInfoMessage(device)
+
     override fun devicePushErrorScopeDescribed(device: Int, filter: Int) {
         bindings.devicePushErrorScope(device, filter)
     }

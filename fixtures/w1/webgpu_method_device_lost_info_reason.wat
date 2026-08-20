@@ -1,5 +1,5 @@
 ;; S6+: get-device-lost-info + [method]gpu-device-lost-info.reason
-;; WIT: reason: func() -> gpu-device-lost-reason. Host unknown; harness 1.
+;; L2 described device handle → reason (Cpu stub unknown); harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $reason (enum "unknown" "destroyed"))

@@ -203,6 +203,14 @@ interface ExperimentalHostCallbacks {
         unsupported("deviceLostDescribed")
     }
 
+    /** L2: Guest device handle → WIT `gpu-device-lost-info.reason` ordinal. */
+    fun deviceLostInfoReasonDescribed(device: Int): Int =
+        unsupported("deviceLostInfoReasonDescribed")
+
+    /** L2: Guest device handle → WIT `gpu-device-lost-info.message`. */
+    fun deviceLostInfoMessageDescribed(device: Int): String =
+        unsupported("deviceLostInfoMessageDescribed")
+
     /** L2: Guest device handle + `gpu-error-filter` ordinal. */
     fun devicePushErrorScopeDescribed(device: Int, filter: Int) {
         unsupported("devicePushErrorScopeDescribed")
