@@ -1984,6 +1984,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun bindGroupLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUBindGroup>(handle, ResourceKind.BindGroup)
+            return ""
+        }
+    }
+
+    override fun bindGroupSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUBindGroup>(handle, ResourceKind.BindGroup).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

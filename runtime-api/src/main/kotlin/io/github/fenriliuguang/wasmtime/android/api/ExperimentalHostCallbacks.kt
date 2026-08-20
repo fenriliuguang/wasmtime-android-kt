@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-bind-group handle → WIT `gpu-bind-group.label`. */
+    fun bindGroupLabelDescribed(bind_group: Int): String = unsupported("bindGroupLabelDescribed")
+
+    /** L2: Guest gpu-bind-group handle + label string. */
+    fun bindGroupSetLabelDescribed(bind_group: Int, label: String) {
+        unsupported("bindGroupSetLabelDescribed")
+    }
+
     /** L2: Guest buffer handle + offset/size → mapped-range bytes. */
     fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         unsupported("bufferGetMappedRangeDescribed")
