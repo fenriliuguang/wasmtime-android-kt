@@ -917,6 +917,63 @@ pub fn exp_render_bundle_encoder_set_index_buffer_described(
     )
 }
 
+/// L2: Guest bundle-encoder + bind-group index/rep (0 → stub in the attach).
+pub fn exp_render_bundle_encoder_set_bind_group_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    index: u32,
+    bind_group: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderSetBindGroupDescribed",
+        "(III)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(index as i32),
+            HostArg::Int(bind_group as i32),
+        ],
+    )
+}
+
+/// L2: Guest bundle-encoder + indirect buffer rep/offset (0 → stub in the attach).
+pub fn exp_render_bundle_encoder_draw_indirect_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    buffer: u32,
+    offset: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderDrawIndirectDescribed",
+        "(IIJ)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Long(offset as i64),
+        ],
+    )
+}
+
+/// L2: Guest bundle-encoder + indexed-indirect buffer rep/offset (0 → stub in the attach).
+pub fn exp_render_bundle_encoder_draw_indexed_indirect_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    buffer: u32,
+    offset: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderDrawIndexedIndirectDescribed",
+        "(IIJ)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Long(offset as i64),
+        ],
+    )
+}
+
 /// L2: Guest compute-pipeline rep (0 → stub in the attach) + group index → BGL rep.
 pub fn exp_compute_pipeline_get_bind_group_layout_described(
     cb: &GlobalRef,

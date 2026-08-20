@@ -338,6 +338,30 @@ private class ForwardingHostCallbacks(
         bindings.renderBundleEncoderSetIndexBuffer(encoder, buffer, format, offset, size)
     }
 
+    override fun renderBundleEncoderSetBindGroupDescribed(
+        encoder: Int,
+        index: Int,
+        bindGroup: Int,
+    ) {
+        bindings.renderBundleEncoderSetBindGroup(encoder, index, bindGroup)
+    }
+
+    override fun renderBundleEncoderDrawIndirectDescribed(
+        encoder: Int,
+        buffer: Int,
+        offset: Long,
+    ) {
+        bindings.renderBundleEncoderDrawIndirect(encoder, buffer, offset)
+    }
+
+    override fun renderBundleEncoderDrawIndexedIndirectDescribed(
+        encoder: Int,
+        buffer: Int,
+        offset: Long,
+    ) {
+        bindings.renderBundleEncoderDrawIndexedIndirect(encoder, buffer, offset)
+    }
+
     override fun querySetDestroyDescribed(querySet: Int) {
         bindings.querySetDestroy(querySet)
     }

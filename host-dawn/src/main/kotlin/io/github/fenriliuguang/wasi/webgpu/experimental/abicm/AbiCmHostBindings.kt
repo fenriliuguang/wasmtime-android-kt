@@ -693,6 +693,18 @@ class AbiCmHostBindings(
         )
     }
 
+    fun renderBundleEncoderSetBindGroup(encoder: Int, index: Int, bindGroup: Int) {
+        host.renderBundleEncoderSetBindGroup(GpuHandle(encoder), index, GpuHandle(bindGroup))
+    }
+
+    fun renderBundleEncoderDrawIndirect(encoder: Int, buffer: Int, offset: Long) {
+        host.renderBundleEncoderDrawIndirect(GpuHandle(encoder), GpuHandle(buffer), offset)
+    }
+
+    fun renderBundleEncoderDrawIndexedIndirect(encoder: Int, buffer: Int, offset: Long) {
+        host.renderBundleEncoderDrawIndexedIndirect(GpuHandle(encoder), GpuHandle(buffer), offset)
+    }
+
     fun bufferMapAsync(buffer: Int, mode: Int, offset: Long, size: Long) {
         host.bufferMapAsync(GpuHandle(buffer), mode, offset, size)
     }

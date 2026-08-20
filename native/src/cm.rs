@@ -5508,7 +5508,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-bundle-encoder.set-bind-group",
                 |mut caller,
-                 (encoder, _index, bind_group, _offsets, _start, _length): (
+                 (encoder, index, bind_group, _offsets, _start, _length): (
                     Resource<GpuRenderBundleEncoder>,
                     u32,
                     Option<Resource<GpuBindGroup>>,
@@ -5516,10 +5516,39 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<u64>,
                     Option<u32>,
                 )| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    if let Some(bind_group) = bind_group.as_ref() {
-                        let _ = caller.data_mut().table.get(bind_group)?;
-                    }
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let bind_group_rep = match bind_group.as_ref() {
+                        Some(bind_group) => caller.data_mut().table.get(bind_group)?.rep,
+                        None => 0,
+                    };
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_render_bundle_encoder_described(
+                            &cb,
+                            device_rep,
+                            GpuTextureFormat::Rgba8unorm.to_dawn_u32(),
+                            1,
+                        )
+                        .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_render_bundle_encoder_set_bind_group_described(
+                        &cb,
+                        l2_encoder,
+                        index,
+                        bind_group_rep,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((Ok::<(), SetBindGroupError>(()),))
                 },
             )
@@ -5729,13 +5758,38 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-bundle-encoder.draw-indirect",
                 |mut caller,
-                 (encoder, buffer, _offset): (
+                 (encoder, buffer, offset): (
                     Resource<GpuRenderBundleEncoder>,
                     Resource<GpuBuffer>,
                     u64,
                 )| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    let _ = caller.data_mut().table.get(&buffer)?;
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_render_bundle_encoder_described(
+                            &cb,
+                            device_rep,
+                            GpuTextureFormat::Rgba8unorm.to_dawn_u32(),
+                            1,
+                        )
+                        .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_render_bundle_encoder_draw_indirect_described(
+                        &cb, l2_encoder, buffer_rep, offset,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -5744,13 +5798,38 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-bundle-encoder.draw-indexed-indirect",
                 |mut caller,
-                 (encoder, buffer, _offset): (
+                 (encoder, buffer, offset): (
                     Resource<GpuRenderBundleEncoder>,
                     Resource<GpuBuffer>,
                     u64,
                 )| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    let _ = caller.data_mut().table.get(&buffer)?;
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_render_bundle_encoder_described(
+                            &cb,
+                            device_rep,
+                            GpuTextureFormat::Rgba8unorm.to_dawn_u32(),
+                            1,
+                        )
+                        .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_render_bundle_encoder_draw_indexed_indirect_described(
+                        &cb, l2_encoder, buffer_rep, offset,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
