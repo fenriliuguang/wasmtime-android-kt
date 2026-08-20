@@ -2036,6 +2036,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun samplerLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUSampler>(handle, ResourceKind.Sampler)
+            return ""
+        }
+    }
+
+    override fun samplerSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUSampler>(handle, ResourceKind.Sampler).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

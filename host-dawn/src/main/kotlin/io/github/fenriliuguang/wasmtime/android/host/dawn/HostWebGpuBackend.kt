@@ -289,6 +289,12 @@ private class ForwardingHostCallbacks(
         bindings.textureViewSetLabel(handle, label)
     }
 
+    override fun samplerLabelDescribed(handle: Int): String = bindings.samplerLabel(handle)
+
+    override fun samplerSetLabelDescribed(handle: Int, label: String) {
+        bindings.samplerSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 

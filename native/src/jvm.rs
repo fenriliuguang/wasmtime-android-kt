@@ -492,6 +492,30 @@ pub fn exp_buffer_set_label_described(
     )
 }
 
+/// L2: Guest gpu-sampler handle → WIT `gpu-sampler.label`.
+pub fn exp_sampler_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "samplerLabelDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest gpu-sampler handle + label string.
+pub fn exp_sampler_set_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "samplerSetLabelDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(handle as i32), HostArg::Str(label)],
+    )
+}
+
 /// L2: Guest gpu-texture-view handle → WIT `gpu-texture-view.label`.
 pub fn exp_texture_view_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
     call_string(

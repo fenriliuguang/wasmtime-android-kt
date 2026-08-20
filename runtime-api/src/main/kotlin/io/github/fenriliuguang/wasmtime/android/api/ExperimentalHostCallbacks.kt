@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-sampler handle → WIT `gpu-sampler.label`. */
+    fun samplerLabelDescribed(handle: Int): String = unsupported("samplerLabelDescribed")
+
+    /** L2: Guest gpu-sampler handle + label string. */
+    fun samplerSetLabelDescribed(handle: Int, label: String) {
+        unsupported("samplerSetLabelDescribed")
+    }
+
     /** L2: Guest gpu-texture-view handle → WIT `gpu-texture-view.label`. */
     fun textureViewLabelDescribed(handle: Int): String = unsupported("textureViewLabelDescribed")
 

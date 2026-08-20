@@ -3106,16 +3106,52 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-sampler.label",
                 |mut caller, (sampler,): (Resource<GpuSampler>,)| {
-                    let _ = caller.data_mut().table.get(&sampler)?;
-                    Ok((String::new(),))
+                    let sampler_rep = caller.data_mut().table.get(&sampler)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if sampler_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_sampler_described(&cb, device_rep, 0, 0, 0)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        sampler_rep
+                    };
+                    let label = jvm::exp_sampler_label_described(&cb, l2)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((label,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-sampler.set-label",
-                |mut caller, (sampler, _label): (Resource<GpuSampler>, String)| {
-                    let _ = caller.data_mut().table.get(&sampler)?;
+                |mut caller, (sampler, label): (Resource<GpuSampler>, String)| {
+                    let sampler_rep = caller.data_mut().table.get(&sampler)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if sampler_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_sampler_described(&cb, device_rep, 0, 0, 0)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        sampler_rep
+                    };
+                    jvm::exp_sampler_set_label_described(&cb, l2, label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

@@ -290,6 +290,12 @@ object ExperimentalWebGpuBridge {
                             addressModeU = addressModeU,
                         ),
                     )
+                override fun samplerLabelDescribed(handle: Int): String =
+                    bindings.samplerLabel(handle)
+
+                override fun samplerSetLabelDescribed(handle: Int, label: String) {
+                    bindings.samplerSetLabel(handle, label)
+                }
             },
         )
     }
