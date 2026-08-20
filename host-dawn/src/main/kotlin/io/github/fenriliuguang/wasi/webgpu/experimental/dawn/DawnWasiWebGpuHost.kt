@@ -1043,6 +1043,12 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun uncapturedErrorEventError(device: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUDevice>(device, ResourceKind.Device)
+        }
+    }
+
     override fun devicePushErrorScope(device: GpuHandle, filter: Int) {
         synchronized(gpuLock) {
             // Dawn ErrorFilter is 1-based (Undefined=0); WIT validation=0 / oom=1 / internal=2.

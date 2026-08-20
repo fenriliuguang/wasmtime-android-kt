@@ -231,6 +231,11 @@ interface ExperimentalHostCallbacks {
         unsupported("deviceOnUncapturedErrorDescribed")
     }
 
+    /** L2: Guest device handle → host validate before lifting event error. */
+    fun uncapturedErrorEventErrorDescribed(device: Int) {
+        unsupported("uncapturedErrorEventErrorDescribed")
+    }
+
     /** L2: Guest queue handle → host validate (completion future stays local ready). */
     fun queueOnSubmittedWorkDoneDescribed(queue: Int) {
         unsupported("queueOnSubmittedWorkDoneDescribed")

@@ -498,6 +498,10 @@ private class ForwardingHostCallbacks(
         bindings.deviceValidate(device)
     }
 
+    override fun uncapturedErrorEventErrorDescribed(device: Int) {
+        bindings.uncapturedErrorEventError(device)
+    }
+
     override fun queueOnSubmittedWorkDoneDescribed(queue: Int) {
         bindings.queueValidate(queue)
     }

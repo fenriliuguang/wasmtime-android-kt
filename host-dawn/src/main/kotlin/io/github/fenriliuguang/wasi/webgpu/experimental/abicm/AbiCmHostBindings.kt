@@ -828,6 +828,10 @@ class AbiCmHostBindings(
 
     fun gpuErrorMessage(device: Int): String = host.gpuErrorMessage(GpuHandle(device))
 
+    fun uncapturedErrorEventError(device: Int) {
+        host.uncapturedErrorEventError(GpuHandle(device))
+    }
+
     fun devicePushErrorScope(device: Int, filter: Int) {
         host.devicePushErrorScope(GpuHandle(device), filter)
     }

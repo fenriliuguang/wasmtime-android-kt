@@ -255,6 +255,9 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun gpuErrorMessage(device: GpuHandle): String
 
+    /** Validate device before lifting uncaptured-error-event.error. */
+    fun uncapturedErrorEventError(device: GpuHandle)
+
     /** Push an error scope (WIT filter ordinal: validation=0, out-of-memory=1, internal=2). */
     fun devicePushErrorScope(device: GpuHandle, filter: Int)
 
