@@ -48,6 +48,13 @@ object ExperimentalWebGpuBridge {
 
                 override fun wgslLanguageFeaturesHasDescribed(value: String): Int =
                     if (bindings.wgslLanguageFeaturesHas(value)) 1 else 0
+
+                override fun gpuGetPreferredCanvasFormatDescribed(): Int =
+                    bindings.gpuGetPreferredCanvasFormat()
+
+                override fun gpuWgslLanguageFeaturesDescribed() {
+                    bindings.gpuWgslLanguageFeatures()
+                }
             },
         )
     }

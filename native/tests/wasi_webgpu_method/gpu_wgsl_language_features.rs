@@ -1,4 +1,4 @@
-//! S6+: `get-gpu` + `[method]gpu.wgsl-language-features`
+//! L2: `get-gpu` + `[method]gpu.wgsl-language-features`
 //! WIT: `(borrow) -> own<wgsl-language-features>`. Drop own; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -11,7 +11,9 @@ use wasmtime::{Config, Engine, Store};
 struct Gpu;
 
 #[derive(Debug)]
-struct WgslLanguageFeatures;
+struct WgslLanguageFeatures {
+    gpu: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -42,7 +44,10 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |mut caller, (gpu,): (Resource<Gpu>,)| {
             caller.data_mut().table.get(&gpu).map(|_| ())?;
             called.store(true, Ordering::SeqCst);
-            let resource = caller.data_mut().table.push(WgslLanguageFeatures)?;
+            let resource = caller
+                .data_mut()
+                .table
+                .push(WgslLanguageFeatures { gpu: 0 })?;
             Ok((resource,))
         },
     )?;

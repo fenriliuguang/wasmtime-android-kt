@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu.wgsl-language-features` via [ExperimentalWebGpuBridge.attachRequestAdapter]. */
+/** L2 `[method]gpu.wgsl-language-features` via [ExperimentalWebGpuBridge.attachRequestAdapter]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodGpuWgslLanguageFeaturesInstrumentedTest {
     @Test

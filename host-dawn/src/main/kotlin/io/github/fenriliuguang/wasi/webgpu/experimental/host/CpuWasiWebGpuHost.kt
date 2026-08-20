@@ -750,6 +750,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     override fun wgslLanguageFeaturesHas(value: String): Boolean = false
 
+    override fun gpuGetPreferredCanvasFormat(): Int = GpuTextureFormat.RGBA8_UNORM
+
+    override fun gpuWgslLanguageFeatures() = Unit
+
     override fun deviceAdapter(device: GpuHandle): GpuHandle =
         handles.get<Device>(device, ResourceKind.Device).adapter
 

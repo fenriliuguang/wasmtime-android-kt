@@ -1,4 +1,4 @@
-//! S6+: `get-gpu` + `[method]gpu.get-preferred-canvas-format`
+//! L2: `get-gpu` + `[method]gpu.get-preferred-canvas-format`
 //! WIT: `(borrow) -> gpu-texture-format`. Host returns rgba8unorm; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
