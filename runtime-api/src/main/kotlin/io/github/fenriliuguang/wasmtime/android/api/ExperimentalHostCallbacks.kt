@@ -277,6 +277,23 @@ interface ExperimentalHostCallbacks {
     fun supportedLimitsMaxVertexAttributesDescribed(adapter: Int, device: Int): Int =
         unsupported("supportedLimitsMaxVertexAttributesDescribed")
 
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-vertex-buffer-array-stride`. */
+    fun supportedLimitsMaxVertexBufferArrayStrideDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxVertexBufferArrayStrideDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-vertex-buffers`. */
+    fun supportedLimitsMaxVertexBuffersDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxVertexBuffersDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.min-storage-buffer-offset-alignment`. */
+    fun supportedLimitsMinStorageBufferOffsetAlignmentDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMinStorageBufferOffsetAlignmentDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.min-uniform-buffer-offset-alignment`. */
+    fun supportedLimitsMinUniformBufferOffsetAlignmentDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMinUniformBufferOffsetAlignmentDescribed")
+
     /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
     fun adapterInfoDescribed(adapter: Int) {
         unsupported("adapterInfoDescribed")
