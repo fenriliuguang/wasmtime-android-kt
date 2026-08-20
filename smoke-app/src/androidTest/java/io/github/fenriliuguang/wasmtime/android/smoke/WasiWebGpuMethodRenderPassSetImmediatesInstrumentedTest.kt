@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-render-pass-encoder.set-immediates` via [ExperimentalWebGpuBridge.attachRenderPassState]. */
+/** L2 `[method]gpu-render-pass-encoder.set-immediates` via [ExperimentalWebGpuBridge.attachRenderPassState]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodRenderPassSetImmediatesInstrumentedTest {
     @Test
