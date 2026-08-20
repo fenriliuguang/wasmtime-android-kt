@@ -243,6 +243,23 @@ interface ExperimentalHostCallbacks {
     fun supportedLimitsMaxStorageTexturesInVertexStageDescribed(adapter: Int, device: Int): Int =
         unsupported("supportedLimitsMaxStorageTexturesInVertexStageDescribed")
 
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-textures-per-shader-stage`. */
+    fun supportedLimitsMaxStorageTexturesPerShaderStageDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxStorageTexturesPerShaderStageDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-texture-array-layers`. */
+    fun supportedLimitsMaxTextureArrayLayersDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxTextureArrayLayersDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-texture-dimension1-d`. */
+    fun supportedLimitsMaxTextureDimension1DDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxTextureDimension1DDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-texture-dimension2-d`. */
+    fun supportedLimitsMaxTextureDimension2DDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxTextureDimension2DDescribed")
+
     /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
     fun adapterInfoDescribed(adapter: Int) {
         unsupported("adapterInfoDescribed")

@@ -869,6 +869,26 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return 1
     }
 
+    override fun supportedLimitsMaxStorageTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxTextureArrayLayers(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxTextureDimension1D(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxTextureDimension2D(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
     override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int =
         handles.get<Adapter>(adapter, ResourceKind.Adapter).subgroupMinSize
 

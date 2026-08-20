@@ -1183,8 +1183,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-storage-textures-per-shader-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_storage_textures_per_shader_stage_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1192,8 +1195,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-texture-array-layers",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_texture_array_layers_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1201,8 +1207,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-texture-dimension1-d",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_texture_dimension1_d_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1210,8 +1219,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-texture-dimension2-d",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_texture_dimension2_d_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;

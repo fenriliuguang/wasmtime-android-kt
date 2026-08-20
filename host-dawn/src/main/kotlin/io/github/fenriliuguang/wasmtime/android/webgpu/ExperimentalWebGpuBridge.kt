@@ -2376,6 +2376,42 @@ object ExperimentalWebGpuBridge {
                     return bindings.supportedLimitsMaxStorageTexturesInVertexStage(l2Adapter, device)
                 }
 
+                override fun supportedLimitsMaxStorageTexturesPerShaderStageDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxStorageTexturesPerShaderStage(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxTextureArrayLayersDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxTextureArrayLayers(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxTextureDimension1DDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxTextureDimension1D(l2Adapter, device)
+                }
+
+                override fun supportedLimitsMaxTextureDimension2DDescribed(adapter: Int, device: Int): Int {
+                    val l2Adapter = if (adapter == 0 && device == 0) {
+                        bindings.requestAdapter()
+                    } else {
+                        adapter
+                    }
+                    return bindings.supportedLimitsMaxTextureDimension2D(l2Adapter, device)
+                }
+
                 override fun adapterInfoDescribed(adapter: Int) {
                     bindings.adapterValidate(adapter)
                 }
