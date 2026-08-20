@@ -1,4 +1,4 @@
-//! S6+: `get-sampler` + `[method]gpu-sampler.label`
+//! L2: `get-sampler` + `[method]gpu-sampler.label`
 //! WIT: `(borrow) -> string`. Host empty string; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

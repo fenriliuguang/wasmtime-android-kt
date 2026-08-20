@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-sampler.label` via [ExperimentalWebGpuBridge.attachCreateSampler]. */
+/** L2 `[method]gpu-sampler.label` via [ExperimentalWebGpuBridge.attachCreateSampler]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodSamplerLabelInstrumentedTest {
     @Test
