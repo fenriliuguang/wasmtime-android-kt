@@ -848,6 +848,18 @@ class AbiCmHostBindings(
     fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: Int, device: Int): Int =
         host.supportedLimitsMaxStorageBuffersInFragmentStage(GpuHandle(adapter), GpuHandle(device))
 
+    fun supportedLimitsMaxStorageBuffersInVertexStage(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxStorageBuffersInVertexStage(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxStorageBuffersPerShaderStage(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxStorageBuffersPerShaderStage(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxStorageTexturesInFragmentStage(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxStorageTexturesInFragmentStage(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxStorageTexturesInVertexStage(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxStorageTexturesInVertexStage(GpuHandle(adapter), GpuHandle(device))
+
     fun adapterInfoSubgroupMinSize(adapter: Int): Int =
         host.adapterInfoSubgroupMinSize(GpuHandle(adapter))
 
