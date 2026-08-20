@@ -892,6 +892,19 @@ pub fn exp_compilation_message_message_described(
     )
 }
 
+/// L2: Guest shader-module handle → message count for `gpu-compilation-info.messages`.
+pub fn exp_compilation_info_messages_count_described(
+    cb: &GlobalRef,
+    shader: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "compilationInfoMessagesCountDescribed",
+        "(I)I",
+        vec![HostArg::Int(shader as i32)],
+    )
+}
+
 /// L2: Guest device handle + `gpu-error-filter` ordinal.
 pub fn exp_device_push_error_scope_described(
     cb: &GlobalRef,

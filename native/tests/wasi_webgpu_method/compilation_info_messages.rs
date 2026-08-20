@@ -1,5 +1,5 @@
-//! S6+: `get-compilation-info` + `[method]gpu-compilation-info.messages`
-//! WIT: `(borrow) -> list<own<gpu-compilation-message>>`. Host empty list; harness 1.
+//! L2: `get-compilation-info` + `[method]gpu-compilation-info.messages`
+//! WIT: `(borrow) -> list<own<gpu-compilation-message>>`. Host returns one message; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -8,10 +8,14 @@ use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceTy
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuCompilationInfo;
+struct GpuCompilationInfo {
+    shader_module: u32,
+}
 
 #[derive(Debug)]
-struct GpuCompilationMessage;
+struct GpuCompilationMessage {
+    shader_module: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -38,7 +42,12 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-compilation-info", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuCompilationInfo)?;
+        let resource = store
+            .data_mut()
+            .table
+            .push(GpuCompilationInfo {
+                shader_module: 0,
+            })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
@@ -46,7 +55,10 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |mut caller, (info,): (Resource<GpuCompilationInfo>,)| {
             caller.data_mut().table.get(&info).map(|_| ())?;
             called.store(true, Ordering::SeqCst);
-            Ok((Vec::<Resource<GpuCompilationMessage>>::new(),))
+            let msg = caller.data_mut().table.push(GpuCompilationMessage {
+                shader_module: 0,
+            })?;
+            Ok((vec![msg],))
         },
     )?;
     Ok(())

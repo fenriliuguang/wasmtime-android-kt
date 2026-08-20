@@ -528,6 +528,9 @@ private class ForwardingHostCallbacks(
     override fun compilationMessageMessageDescribed(shader: Int): String =
         bindings.compilationMessageMessage(shader)
 
+    override fun compilationInfoMessagesCountDescribed(shader: Int): Int =
+        bindings.compilationInfoMessagesCount(shader)
+
     override fun renderPipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
         bindings.renderPipelineGetBindGroupLayout(pipeline, index)
 
