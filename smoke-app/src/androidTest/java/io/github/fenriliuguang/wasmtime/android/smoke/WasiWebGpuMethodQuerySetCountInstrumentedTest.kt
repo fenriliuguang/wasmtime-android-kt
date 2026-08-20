@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-query-set.count` via [ExperimentalWebGpuBridge.attachDeviceQueryAndDestroy]. */
+/** L2 `[method]gpu-query-set.count` via [ExperimentalWebGpuBridge.attachDeviceQueryAndDestroy]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodQuerySetCountInstrumentedTest {
     @Test

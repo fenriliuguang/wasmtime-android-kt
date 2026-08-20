@@ -1,6 +1,6 @@
 ;; S6+: get-query-set + [method]gpu-query-set.destroy
 ;; WIT: destroy: func(). Guest constructs query-set then destroys; harness 1.
-;; L2 unused (lift-only). get-query-set is a test constructor (not product WIT).
+;; L2 described query-set handle → destroy (stub occlusion count 1 when get-query-set rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-query-set" (type $gpu-query-set (sub resource)))

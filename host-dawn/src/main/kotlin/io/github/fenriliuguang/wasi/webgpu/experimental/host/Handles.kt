@@ -35,6 +35,7 @@ enum class ResourceKind {
     Sampler,
     RenderPipeline,
     RenderPassEncoder,
+    QuerySet,
 }
 
 /**

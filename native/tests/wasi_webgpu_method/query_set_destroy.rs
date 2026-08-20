@@ -1,5 +1,5 @@
-//! S6+: `get-query-set` + `[method]gpu-query-set.destroy`
-//! WIT: `(borrow)`. Harness 1.
+//! L2: `get-query-set` + `[method]gpu-query-set.destroy`
+//! WIT: `(borrow)`. Host destroy; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

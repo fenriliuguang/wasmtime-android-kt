@@ -85,8 +85,22 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferDestroyDescribed")
     }
 
+    /** L2: Guest query-set handle → destroy. */
+    fun querySetDestroyDescribed(querySet: Int) {
+        unsupported("querySetDestroyDescribed")
+    }
+
+    /** L2: Guest query-set handle → WIT `gpu-query-type` ordinal. */
+    fun querySetTypeDescribed(querySet: Int): Int = unsupported("querySetTypeDescribed")
+
+    /** L2: Guest query-set handle → count. */
+    fun querySetCountDescribed(querySet: Int): Int = unsupported("querySetCountDescribed")
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
+
+    /** Host-fixed occlusion query-set (count 1) for lift-only getter stubs. */
+    fun deviceCreateQuerySet(device: Int): Int = unsupported("deviceCreateQuerySet")
 
     /** W3+: host-fixed sampler descriptor (not from Guest). */
     fun deviceCreateSampler(device: Int): Int = unsupported("deviceCreateSampler")

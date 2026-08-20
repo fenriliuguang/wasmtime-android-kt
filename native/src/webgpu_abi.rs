@@ -19,8 +19,8 @@
 //! S6+ command-buffer / encoder label + compilation-info / compilation-message.
 
 use crate::host::{
-    GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuSampler, GpuShaderModule, GpuTexture,
-    GpuTextureView,
+    GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuQuerySet, GpuSampler, GpuShaderModule,
+    GpuTexture, GpuTextureView,
 };
 use wasmtime::component::{flags, ComponentType, Lift, Lower, Resource};
 
@@ -378,11 +378,7 @@ pub struct GpuSamplerDescriptor {
     pub label: Option<String>,
 }
 
-/// WIT `resource gpu-query-set` (S8 compute-pass descriptor graph).
-/// `get-query-set` / `create-query-set` push this; L2 still unused (lift-only).
-#[derive(Debug)]
-pub struct GpuQuerySet;
-
+/// WIT `enum gpu-query-type`.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
@@ -392,6 +388,16 @@ pub enum GpuQueryType {
     Occlusion,
     #[component(name = "timestamp")]
     Timestamp,
+}
+
+impl GpuQueryType {
+    /// Host ordinal: occlusion=0, timestamp=1.
+    pub fn from_host_u32(value: u32) -> Self {
+        match value {
+            1 => Self::Timestamp,
+            _ => Self::Occlusion,
+        }
+    }
 }
 
 #[derive(Debug, ComponentType, Lift, Lower)]

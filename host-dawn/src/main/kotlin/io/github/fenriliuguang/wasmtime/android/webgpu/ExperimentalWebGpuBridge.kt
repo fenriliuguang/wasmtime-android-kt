@@ -1623,17 +1623,37 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[method]gpu-device.create-render-bundle-encoder` /
-     * `create-query-set` / `destroy` /
-     * `[method]gpu-query-set.destroy` / `type` / `count`.
+     * `create-query-set` / `destroy` (device) still lift-only.
+     * L2: `[method]gpu-query-set.destroy` / `type` / `count`.
      * `[method]gpu-texture.destroy` is L2 via [attachTextureInfo].
      * `[method]gpu-buffer.destroy` is L2 via [attachBindGroupBufferLabel].
-     * Native lifts guest args; remaining still lift-only (no new JNI here).
      */
     fun attachDeviceQueryAndDestroy(
         store: Store,
-        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+        host: WasiWebGpuHost,
     ) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateQuerySet(device: Int): Int =
+                    bindings.deviceCreateQuerySet(device)
+
+                override fun querySetTypeDescribed(querySet: Int): Int =
+                    bindings.querySetType(querySet)
+
+                override fun querySetCountDescribed(querySet: Int): Int =
+                    bindings.querySetCount(querySet)
+
+                override fun querySetDestroyDescribed(querySet: Int) {
+                    bindings.querySetDestroy(querySet)
+                }
+            },
+        )
     }
 
     /**

@@ -146,6 +146,14 @@ pub struct GpuRenderPipeline {
     pub rep: u32,
 }
 
+/// Host representation of WIT `resource gpu-query-set`.
+/// `get-query-set` still pushes `{ rep: 0 }`; L2 stores the real handle.
+#[derive(Debug)]
+pub struct GpuQuerySet {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
 /// Host representation of WIT `resource gpu-texture-view`.
 /// `rep` is the Dawn / Cpu L2 handle; Guest sees `own`/`borrow`.
 #[derive(Debug)]

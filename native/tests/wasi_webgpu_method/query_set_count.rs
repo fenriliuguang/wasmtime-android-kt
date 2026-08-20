@@ -1,4 +1,4 @@
-//! S6+: `get-query-set` + `[method]gpu-query-set.count`
+//! L2: `get-query-set` + `[method]gpu-query-set.count`
 //! WIT: `(borrow) -> u32`. Host returns 1; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

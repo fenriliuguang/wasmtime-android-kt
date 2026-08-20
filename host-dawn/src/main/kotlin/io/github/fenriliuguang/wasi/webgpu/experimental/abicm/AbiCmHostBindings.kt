@@ -11,6 +11,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.CommandEncoderDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuQueryType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuShaderStage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.HostException
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
@@ -157,6 +158,12 @@ class AbiCmHostBindings(
 
     fun deviceCreateTexture(device: Int, descriptor: TextureDescriptor): Int =
         host.deviceCreateTexture(GpuHandle(device), descriptor).raw
+
+    fun deviceCreateQuerySet(
+        device: Int,
+        type: Int = GpuQueryType.OCCLUSION,
+        count: Int = 1,
+    ): Int = host.deviceCreateQuerySet(GpuHandle(device), type, count).raw
 
     fun deviceCreateSampler(device: Int, descriptor: SamplerDescriptor = SamplerDescriptor()): Int =
         host.deviceCreateSampler(GpuHandle(device), descriptor).raw
@@ -571,6 +578,14 @@ class AbiCmHostBindings(
 
     fun bufferDestroy(buffer: Int) {
         host.bufferDestroy(GpuHandle(buffer))
+    }
+
+    fun querySetType(querySet: Int): Int = host.querySetType(GpuHandle(querySet))
+
+    fun querySetCount(querySet: Int): Int = host.querySetCount(GpuHandle(querySet))
+
+    fun querySetDestroy(querySet: Int) {
+        host.querySetDestroy(GpuHandle(querySet))
     }
 
     private fun storageEntry(binding: Int, type: BufferBindingType) = BindGroupLayoutEntry(

@@ -429,10 +429,50 @@ pub fn exp_buffer_destroy_described(cb: &GlobalRef, buffer: u32) -> Result<(), S
     )
 }
 
+/// L2: Guest query-set handle → destroy.
+pub fn exp_query_set_destroy_described(cb: &GlobalRef, query_set: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "querySetDestroyDescribed",
+        "(I)V",
+        vec![HostArg::Int(query_set as i32)],
+    )
+}
+
+/// L2: Guest query-set handle → WIT `gpu-query-type` ordinal.
+pub fn exp_query_set_type_described(cb: &GlobalRef, query_set: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "querySetTypeDescribed",
+        "(I)I",
+        vec![HostArg::Int(query_set as i32)],
+    )
+}
+
+/// L2: Guest query-set handle → count.
+pub fn exp_query_set_count_described(cb: &GlobalRef, query_set: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "querySetCountDescribed",
+        "(I)I",
+        vec![HostArg::Int(query_set as i32)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateTexture",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// Host-fixed occlusion query-set (count 1) for lift-only getter stubs.
+pub fn exp_create_query_set(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateQuerySet",
         "(I)I",
         vec![HostArg::Int(device as i32)],
     )

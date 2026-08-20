@@ -7,7 +7,7 @@ use crate::host::{
     Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
     GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout,
     GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder, GpuRenderPipeline,
-    GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
+    GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, GpuQuerySet, HostState, Widget,
 };
 use crate::jvm;
 use crate::webgpu_abi::{
@@ -19,7 +19,7 @@ use crate::webgpu_abi::{
     GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
     GpuDeviceDescriptor, GpuExtent3D, GpuIndexFormat, GpuLayoutMode, GpuMapMode,
     GpuPipelineErrorReason,
-    GpuPipelineLayoutDescriptor, GpuQuerySet, GpuQuerySetDescriptor, GpuQueryType,
+    GpuPipelineLayoutDescriptor, GpuQuerySetDescriptor, GpuQueryType,
     GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor, GpuLoadOp, GpuRenderPassDescriptor,
     GpuStoreOp,
     GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
@@ -3247,7 +3247,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-query-set", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuQuerySet)?;
+                let resource = store.data_mut().table.push(GpuQuerySet { rep: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -3257,7 +3257,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 |mut caller,
                  (device, _descriptor): (Resource<GpuDevice>, GpuQuerySetDescriptor)| {
                     let _ = caller.data_mut().table.get(&device)?;
-                    let resource = caller.data_mut().table.push(GpuQuerySet)?;
+                    let resource = caller.data_mut().table.push(GpuQuerySet { rep: 0 })?;
                     Ok((Ok::<_, CreateQuerySetError>(resource),))
                 },
             )
@@ -3266,7 +3266,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-query-set.destroy",
                 |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
-                    let _ = caller.data_mut().table.get(&query_set)?;
+                    let query_rep = caller.data_mut().table.get(&query_set)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_query = if query_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_query_set(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        query_rep
+                    };
+                    jvm::exp_query_set_destroy_described(&cb, l2_query)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3275,8 +3292,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-query-set.type",
                 |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
-                    let _ = caller.data_mut().table.get(&query_set)?;
-                    Ok((GpuQueryType::Occlusion,))
+                    let query_rep = caller.data_mut().table.get(&query_set)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_query = if query_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_query_set(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        query_rep
+                    };
+                    let ty = jvm::exp_query_set_type_described(&cb, l2_query)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((GpuQueryType::from_host_u32(ty),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -3284,8 +3318,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-query-set.count",
                 |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
-                    let _ = caller.data_mut().table.get(&query_set)?;
-                    Ok((1u32,))
+                    let query_rep = caller.data_mut().table.get(&query_set)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_query = if query_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_query_set(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                    } else {
+                        query_rep
+                    };
+                    let count = jvm::exp_query_set_count_described(&cb, l2_query)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((count,))
                 },
             )
             .map_err(|e| e.to_string())?;

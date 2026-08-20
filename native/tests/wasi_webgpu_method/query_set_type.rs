@@ -1,4 +1,4 @@
-//! S6+: `get-query-set` + `[method]gpu-query-set.type`
+//! L2: `get-query-set` + `[method]gpu-query-set.type`
 //! WIT: `(borrow) -> gpu-query-type`. Host returns occlusion; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
