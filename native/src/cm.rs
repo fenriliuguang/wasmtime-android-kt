@@ -3089,12 +3089,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-render-pipeline.get-bind-group-layout",
-                |mut caller, (pipeline, _index): (Resource<GpuRenderPipeline>, u32)| {
-                    let _ = caller.data_mut().table.get(&pipeline)?;
+                |mut caller, (pipeline, index): (Resource<GpuRenderPipeline>, u32)| {
+                    let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let layout_rep = jvm::exp_render_pipeline_get_bind_group_layout_described(
+                        &cb,
+                        pipeline_rep,
+                        index,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     let resource = caller
                         .data_mut()
                         .table
-                        .push(GpuBindGroupLayout { rep: 0 })?;
+                        .push(GpuBindGroupLayout { rep: layout_rep })?;
                     Ok((resource,))
                 },
             )
@@ -3137,12 +3149,24 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-compute-pipeline.get-bind-group-layout",
-                |mut caller, (pipeline, _index): (Resource<GpuComputePipeline>, u32)| {
-                    let _ = caller.data_mut().table.get(&pipeline)?;
+                |mut caller, (pipeline, index): (Resource<GpuComputePipeline>, u32)| {
+                    let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let layout_rep = jvm::exp_compute_pipeline_get_bind_group_layout_described(
+                        &cb,
+                        pipeline_rep,
+                        index,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     let resource = caller
                         .data_mut()
                         .table
-                        .push(GpuBindGroupLayout { rep: 0 })?;
+                        .push(GpuBindGroupLayout { rep: layout_rep })?;
                     Ok((resource,))
                 },
             )

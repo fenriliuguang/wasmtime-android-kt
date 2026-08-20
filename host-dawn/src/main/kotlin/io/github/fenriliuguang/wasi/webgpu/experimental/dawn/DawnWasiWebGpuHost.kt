@@ -832,6 +832,27 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun renderPipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle {
+        synchronized(gpuLock) {
+            val gpuPipeline = handles.get<GPURenderPipeline>(pipeline, ResourceKind.RenderPipeline)
+            return handles.insert(
+                ResourceKind.BindGroupLayout,
+                gpuPipeline.getBindGroupLayout(index),
+            )
+        }
+    }
+
+    override fun computePipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle {
+        synchronized(gpuLock) {
+            val gpuPipeline =
+                handles.get<GPUComputePipeline>(pipeline, ResourceKind.ComputePipeline)
+            return handles.insert(
+                ResourceKind.BindGroupLayout,
+                gpuPipeline.getBindGroupLayout(index),
+            )
+        }
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

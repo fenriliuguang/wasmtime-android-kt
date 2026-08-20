@@ -717,6 +717,34 @@ pub fn exp_shader_module_get_compilation_info_described(
     )
 }
 
+/// L2: Guest render-pipeline rep (0 → stub in the attach) + group index → BGL rep.
+pub fn exp_render_pipeline_get_bind_group_layout_described(
+    cb: &GlobalRef,
+    pipeline: u32,
+    index: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "renderPipelineGetBindGroupLayoutDescribed",
+        "(II)I",
+        vec![HostArg::Int(pipeline as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest compute-pipeline rep (0 → stub in the attach) + group index → BGL rep.
+pub fn exp_compute_pipeline_get_bind_group_layout_described(
+    cb: &GlobalRef,
+    pipeline: u32,
+    index: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "computePipelineGetBindGroupLayoutDescribed",
+        "(II)I",
+        vec![HostArg::Int(pipeline as i32), HostArg::Int(index as i32)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
