@@ -90,6 +90,8 @@ fn check_exception(env: &mut JNIEnv) -> Result<(), String> {
 enum HostArg {
     Int(i32),
     Long(i64),
+    Float(f32),
+    Double(f64),
     Str(String),
     Ints(Vec<i32>),
     Bytes(Vec<u8>),
@@ -130,7 +132,7 @@ fn call_with_host_args<'a>(
                     .map_err(|e| format!("host {name} set_byte_array_region: {e}"))?;
                 java_byte_arrays.push(arr);
             }
-            HostArg::Int(_) | HostArg::Long(_) => {}
+            HostArg::Int(_) | HostArg::Long(_) | HostArg::Float(_) | HostArg::Double(_) => {}
         }
     }
     let mut str_i = 0usize;
@@ -141,6 +143,8 @@ fn call_with_host_args<'a>(
         .map(|arg| match arg {
             HostArg::Int(v) => JValue::Int(*v),
             HostArg::Long(v) => JValue::Long(*v),
+            HostArg::Float(v) => JValue::Float(*v),
+            HostArg::Double(v) => JValue::Double(*v),
             HostArg::Str(_) => {
                 let v = JValue::Object(&java_strings[str_i]);
                 str_i += 1;
@@ -801,6 +805,94 @@ pub fn exp_compute_pipeline_get_bind_group_layout_described(
         "computePipelineGetBindGroupLayoutDescribed",
         "(II)I",
         vec![HostArg::Int(pipeline as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest render-pass handle + viewport floats.
+#[allow(clippy::too_many_arguments)]
+pub fn exp_render_pass_set_viewport_described(
+    cb: &GlobalRef,
+    pass: u32,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    min_depth: f32,
+    max_depth: f32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassSetViewportDescribed",
+        "(IFFFFFF)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Float(x),
+            HostArg::Float(y),
+            HostArg::Float(width),
+            HostArg::Float(height),
+            HostArg::Float(min_depth),
+            HostArg::Float(max_depth),
+        ],
+    )
+}
+
+/// L2: Guest render-pass handle + scissor rect.
+pub fn exp_render_pass_set_scissor_rect_described(
+    cb: &GlobalRef,
+    pass: u32,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassSetScissorRectDescribed",
+        "(IIIII)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(x as i32),
+            HostArg::Int(y as i32),
+            HostArg::Int(width as i32),
+            HostArg::Int(height as i32),
+        ],
+    )
+}
+
+/// L2: Guest render-pass handle + blend constant color.
+pub fn exp_render_pass_set_blend_constant_described(
+    cb: &GlobalRef,
+    pass: u32,
+    r: f64,
+    g: f64,
+    b: f64,
+    a: f64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassSetBlendConstantDescribed",
+        "(IDDDD)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Double(r),
+            HostArg::Double(g),
+            HostArg::Double(b),
+            HostArg::Double(a),
+        ],
+    )
+}
+
+/// L2: Guest render-pass handle + stencil reference.
+pub fn exp_render_pass_set_stencil_reference_described(
+    cb: &GlobalRef,
+    pass: u32,
+    reference: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderPassSetStencilReferenceDescribed",
+        "(II)V",
+        vec![HostArg::Int(pass as i32), HostArg::Int(reference as i32)],
     )
 }
 

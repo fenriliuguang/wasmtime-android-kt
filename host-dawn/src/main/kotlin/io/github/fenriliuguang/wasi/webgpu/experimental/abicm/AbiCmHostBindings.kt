@@ -464,6 +464,30 @@ class AbiCmHostBindings(
         host.renderPassEnd(GpuHandle(pass))
     }
 
+    fun renderPassSetViewport(
+        pass: Int,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        minDepth: Float,
+        maxDepth: Float,
+    ) {
+        host.renderPassSetViewport(GpuHandle(pass), x, y, width, height, minDepth, maxDepth)
+    }
+
+    fun renderPassSetScissorRect(pass: Int, x: Int, y: Int, width: Int, height: Int) {
+        host.renderPassSetScissorRect(GpuHandle(pass), x, y, width, height)
+    }
+
+    fun renderPassSetBlendConstant(pass: Int, r: Double, g: Double, b: Double, a: Double) {
+        host.renderPassSetBlendConstant(GpuHandle(pass), r, g, b, a)
+    }
+
+    fun renderPassSetStencilReference(pass: Int, reference: Int) {
+        host.renderPassSetStencilReference(GpuHandle(pass), reference)
+    }
+
     fun commandEncoderCopyBufferToBuffer(
         encoder: Int,
         source: Int,

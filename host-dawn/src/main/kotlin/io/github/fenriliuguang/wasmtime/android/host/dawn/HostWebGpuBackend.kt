@@ -653,6 +653,42 @@ private class ForwardingHostCallbacks(
         bindings.queueWriteTexture(queue, texture, data, width, height, bytesPerRow)
     }
 
+    override fun renderPassSetStencilReferenceDescribed(pass: Int, reference: Int) {
+        bindings.renderPassSetStencilReference(pass, reference)
+    }
+
+    override fun renderPassSetBlendConstantDescribed(
+        pass: Int,
+        r: Double,
+        g: Double,
+        b: Double,
+        a: Double,
+    ) {
+        bindings.renderPassSetBlendConstant(pass, r, g, b, a)
+    }
+
+    override fun renderPassSetScissorRectDescribed(
+        pass: Int,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
+        bindings.renderPassSetScissorRect(pass, x, y, width, height)
+    }
+
+    override fun renderPassSetViewportDescribed(
+        pass: Int,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        minDepth: Float,
+        maxDepth: Float,
+    ) {
+        bindings.renderPassSetViewport(pass, x, y, width, height, minDepth, maxDepth)
+    }
+
     override fun surfacePresent(surface: Int) {
         bindings.surfacePresent(surface)
     }

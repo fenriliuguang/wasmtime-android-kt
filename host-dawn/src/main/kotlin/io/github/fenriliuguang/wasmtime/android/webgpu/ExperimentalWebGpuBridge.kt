@@ -1729,14 +1729,87 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `[method]gpu-render-pass-encoder.set-viewport` / `set-scissor-rect` /
-     * `set-blend-constant` / `set-stencil-reference` / `push-debug-group` /
-     * `pop-debug-group` / `insert-debug-marker` / `begin-occlusion-query` /
-     * `end-occlusion-query` / `execute-bundles` / `set-immediates`.
-     * Native lifts guest args; L2 unused (no new JNI).
+     * L2: `[method]gpu-render-pass-encoder.set-viewport` / `set-scissor-rect` /
+     * `set-blend-constant` / `set-stencil-reference`
+     * (guest pass rep + scalars through described JNI; 0 → stub clear pass).
+     * Remaining `push-debug-group` / `pop-debug-group` / `insert-debug-marker` /
+     * `begin-occlusion-query` / `end-occlusion-query` / `execute-bundles` /
+     * `set-immediates` still lift-only on this attach.
      */
-    fun attachRenderPassState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    fun attachRenderPassState(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var colorView = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    val device = bindings.adapterRequestDevice(adapter)
+                    val texture =
+                        bindings.deviceCreateTexture(
+                            device,
+                            TextureDescriptor(
+                                size = Extent3D(width = 1, height = 1),
+                                format = GpuTextureFormat.RGBA8_UNORM,
+                                usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                            ),
+                        )
+                    colorView = bindings.textureCreateView(texture)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginRenderPassClear(encoder: Int, view: Int): Int {
+                    val resolved = if (colorView != 0) colorView else view
+                    return bindings.commandEncoderBeginRenderPassClear(
+                        encoder,
+                        resolved,
+                        CLEAR_R,
+                        CLEAR_G,
+                        CLEAR_B,
+                        CLEAR_A,
+                    )
+                }
+
+                override fun renderPassSetViewportDescribed(
+                    pass: Int,
+                    x: Float,
+                    y: Float,
+                    width: Float,
+                    height: Float,
+                    minDepth: Float,
+                    maxDepth: Float,
+                ) {
+                    bindings.renderPassSetViewport(pass, x, y, width, height, minDepth, maxDepth)
+                }
+
+                override fun renderPassSetScissorRectDescribed(
+                    pass: Int,
+                    x: Int,
+                    y: Int,
+                    width: Int,
+                    height: Int,
+                ) {
+                    bindings.renderPassSetScissorRect(pass, x, y, width, height)
+                }
+
+                override fun renderPassSetBlendConstantDescribed(
+                    pass: Int,
+                    r: Double,
+                    g: Double,
+                    b: Double,
+                    a: Double,
+                ) {
+                    bindings.renderPassSetBlendConstant(pass, r, g, b, a)
+                }
+
+                override fun renderPassSetStencilReferenceDescribed(pass: Int, reference: Int) {
+                    bindings.renderPassSetStencilReference(pass, reference)
+                }
+            },
+        )
     }
 
     /**

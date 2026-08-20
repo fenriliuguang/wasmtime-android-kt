@@ -262,6 +262,22 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun renderPassEnd(pass: GpuHandle)
 
+    fun renderPassSetViewport(
+        pass: GpuHandle,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        minDepth: Float,
+        maxDepth: Float,
+    )
+
+    fun renderPassSetScissorRect(pass: GpuHandle, x: Int, y: Int, width: Int, height: Int)
+
+    fun renderPassSetBlendConstant(pass: GpuHandle, r: Double, g: Double, b: Double, a: Double)
+
+    fun renderPassSetStencilReference(pass: GpuHandle, reference: Int)
+
     // --- Command encoding (compute) ---
 
     fun commandEncoderBeginComputePass(
