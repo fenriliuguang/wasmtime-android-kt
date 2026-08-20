@@ -2075,6 +2075,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun querySetLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUQuerySet>(handle, ResourceKind.QuerySet)
+            return ""
+        }
+    }
+
+    override fun querySetSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUQuerySet>(handle, ResourceKind.QuerySet).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

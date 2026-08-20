@@ -307,6 +307,12 @@ private class ForwardingHostCallbacks(
         bindings.pipelineLayoutSetLabel(handle, label)
     }
 
+    override fun querySetLabelDescribed(handle: Int): String = bindings.querySetLabel(handle)
+
+    override fun querySetSetLabelDescribed(handle: Int, label: String) {
+        bindings.querySetSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 
