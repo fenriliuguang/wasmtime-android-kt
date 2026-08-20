@@ -713,6 +713,15 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<RenderBundleEncoder>(handle, ResourceKind.RenderBundleEncoder)
     }
 
+    override fun renderBundleLabel(handle: GpuHandle): String {
+        handles.get<RenderBundle>(handle, ResourceKind.RenderBundle)
+        return ""
+    }
+
+    override fun renderBundleSetLabel(handle: GpuHandle, label: String) {
+        handles.get<RenderBundle>(handle, ResourceKind.RenderBundle)
+    }
+
     override fun instanceCreateSurfaceFromAndroidNativeWindow(nativeWindowHandle: Long): GpuHandle {
         require(nativeWindowHandle != 0L) { "window-handle is null" }
         return handles.insert(ResourceKind.Surface, Surface())

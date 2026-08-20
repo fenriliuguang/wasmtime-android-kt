@@ -2921,8 +2921,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * L2 `[method]gpu-render-bundle-encoder.label` / `set-label`,
-     * S6+: `[method]gpu-render-bundle.label` / `set-label`,
+     * L2 `[method]gpu-render-bundle-encoder.label` / `set-label` /
+     * `[method]gpu-render-bundle.label` / `set-label`,
      * `[method]gpu-render-pass-encoder.label` / `set-label`, and
      * `[method]gpu-render-pipeline.label` / `set-label` (still lift-only), plus L2
      * `[method]gpu-render-pipeline.get-bind-group-layout` (0 → stub triangle pipeline).
@@ -2970,6 +2970,15 @@ object ExperimentalWebGpuBridge {
 
                 override fun renderBundleEncoderSetLabelDescribed(handle: Int, label: String) {
                     bindings.renderBundleEncoderSetLabel(handle, label)
+                }
+                override fun renderBundleEncoderFinishDescribed(encoder: Int, label: String): Int =
+                    bindings.renderBundleEncoderFinish(encoder, label.ifEmpty { null })
+
+                override fun renderBundleLabelDescribed(handle: Int): String =
+                    bindings.renderBundleLabel(handle)
+
+                override fun renderBundleSetLabelDescribed(handle: Int, label: String) {
+                    bindings.renderBundleSetLabel(handle, label)
                 }
             },
         )

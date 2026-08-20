@@ -6353,16 +6353,64 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-render-bundle.label",
                 |mut caller, (bundle,): (Resource<GpuRenderBundle>,)| {
-                    let _ = caller.data_mut().table.get(&bundle)?;
-                    Ok((String::new(),))
+                    let bundle_rep = caller.data_mut().table.get(&bundle)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if bundle_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_render_bundle_encoder_described(
+                            &cb, device_rep, 0x16, 1,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_render_bundle_encoder_finish_described(
+                            &cb, encoder_rep, String::new(),
+                        )
+                        .map_err(wasmtime::Error::msg)?
+                    } else {
+                        bundle_rep
+                    };
+                    let label = jvm::exp_render_bundle_label_described(&cb, l2)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((label,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]gpu-render-bundle.set-label",
-                |mut caller, (bundle, _label): (Resource<GpuRenderBundle>, String)| {
-                    let _ = caller.data_mut().table.get(&bundle)?;
+                |mut caller, (bundle, label): (Resource<GpuRenderBundle>, String)| {
+                    let bundle_rep = caller.data_mut().table.get(&bundle)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2 = if bundle_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        let encoder_rep = jvm::exp_create_render_bundle_encoder_described(
+                            &cb, device_rep, 0x16, 1,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_render_bundle_encoder_finish_described(
+                            &cb, encoder_rep, String::new(),
+                        )
+                        .map_err(wasmtime::Error::msg)?
+                    } else {
+                        bundle_rep
+                    };
+                    jvm::exp_render_bundle_set_label_described(&cb, l2, label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

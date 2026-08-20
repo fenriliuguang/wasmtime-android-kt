@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-render-bundle.label` via [ExperimentalWebGpuBridge.attachRenderBundlePassPipelineLabel]. */
+/** L2 `[method]gpu-render-bundle.label` via [ExperimentalWebGpuBridge.attachRenderBundlePassPipelineLabel]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodRenderBundleLabelInstrumentedTest {
     @Test

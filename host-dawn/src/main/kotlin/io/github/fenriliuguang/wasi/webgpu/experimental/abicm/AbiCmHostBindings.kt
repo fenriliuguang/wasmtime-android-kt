@@ -842,6 +842,12 @@ class AbiCmHostBindings(
         host.renderBundleEncoderSetLabel(GpuHandle(handle), label)
     }
 
+    fun renderBundleLabel(handle: Int): String = host.renderBundleLabel(GpuHandle(handle))
+
+    fun renderBundleSetLabel(handle: Int, label: String) {
+        host.renderBundleSetLabel(GpuHandle(handle), label)
+    }
+
     fun querySetType(querySet: Int): Int = host.querySetType(GpuHandle(querySet))
 
     fun querySetCount(querySet: Int): Int = host.querySetCount(GpuHandle(querySet))
