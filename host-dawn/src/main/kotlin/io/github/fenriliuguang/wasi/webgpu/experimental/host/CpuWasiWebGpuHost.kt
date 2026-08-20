@@ -686,6 +686,15 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<CommandBuffer>(handle, ResourceKind.CommandBuffer)
     }
 
+    override fun computePassEncoderLabel(handle: GpuHandle): String {
+        handles.get<ComputePass>(handle, ResourceKind.ComputePassEncoder)
+        return ""
+    }
+
+    override fun computePassEncoderSetLabel(handle: GpuHandle, label: String) {
+        handles.get<ComputePass>(handle, ResourceKind.ComputePassEncoder)
+    }
+
     override fun instanceCreateSurfaceFromAndroidNativeWindow(nativeWindowHandle: Long): GpuHandle {
         require(nativeWindowHandle != 0L) { "window-handle is null" }
         return handles.insert(ResourceKind.Surface, Surface())

@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-compute-pass-encoder.set-label` via [ExperimentalWebGpuBridge.attachComputePassPipelineLabel]. */
+/** L2 `[method]gpu-compute-pass-encoder.set-label` via [ExperimentalWebGpuBridge.attachComputePassPipelineLabel]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodComputePassSetLabelInstrumentedTest {
     @Test

@@ -2836,8 +2836,8 @@ object ExperimentalWebGpuBridge {
         }
 
     /**
-     * S6+: `[method]gpu-compute-pass-encoder.label` / `set-label` and
-     * `[method]gpu-compute-pipeline.label` / `set-label` (still lift-only), plus L2
+     * L2 `[method]gpu-compute-pass-encoder.label` / `set-label`, plus
+     * S6+: `[method]gpu-compute-pipeline.label` / `set-label` (still lift-only) and L2
      * `[method]gpu-compute-pipeline.get-bind-group-layout` (0 → stub compute pipeline).
      */
     fun attachComputePassPipelineLabel(
@@ -2874,6 +2874,23 @@ object ExperimentalWebGpuBridge {
                             )
                         }
                     return bindings.computePipelineGetBindGroupLayout(resolved, index)
+                }
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginComputePass(encoder: Int): Int =
+                    bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun computePassEncoderLabelDescribed(handle: Int): String =
+                    bindings.computePassEncoderLabel(handle)
+
+                override fun computePassEncoderSetLabelDescribed(handle: Int, label: String) {
+                    bindings.computePassEncoderSetLabel(handle, label)
                 }
             },
         )
