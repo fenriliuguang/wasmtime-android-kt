@@ -343,6 +343,12 @@ private class ForwardingHostCallbacks(
         bindings.computePassEncoderSetLabel(handle, label)
     }
 
+    override fun computePipelineLabelDescribed(handle: Int): String = bindings.computePipelineLabel(handle)
+
+    override fun computePipelineSetLabelDescribed(handle: Int, label: String) {
+        bindings.computePipelineSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 
