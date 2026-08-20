@@ -2323,13 +2323,11 @@ object ExperimentalWebGpuBridge {
      * S6+: `[method]gpu-command-buffer.label` / `set-label`,
      * `[method]gpu-command-encoder.label` / `set-label`,
      * `[method]gpu-compilation-info.messages`,
-     * `[method]gpu-compilation-message.message` / `type` / `line-num` /
-     * `line-pos` / `offset` / `length`, and `[method]gpu-shader-module.label` /
-     * `set-label` (still lift-only), plus L2
-     * `[method]gpu-shader-module.get-compilation-info` (described handle validate).
-     */
-     * S6+ / L2: `[method]gpu-compilation-message.*` scalar getters (type / line-num / line-pos / offset)
-     * via guest shader-module handle; also `shaderModuleGetCompilationInfoDescribed`.
+     * `[method]gpu-compilation-message.message` / `length` (still lift-only),
+     * `[method]gpu-shader-module.label` / `set-label` (still lift-only), plus L2
+     * `[method]gpu-shader-module.get-compilation-info` (described handle validate) and
+     * `[method]gpu-compilation-message.type` / `line-num` / `line-pos` / `offset`
+     * (described guest shader-module handle).
      */
     fun attachCommandCompilationLabel(
         store: Store,
