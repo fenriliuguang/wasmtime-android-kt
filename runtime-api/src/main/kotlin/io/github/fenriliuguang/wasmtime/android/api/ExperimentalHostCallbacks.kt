@@ -260,6 +260,23 @@ interface ExperimentalHostCallbacks {
     fun supportedLimitsMaxTextureDimension2DDescribed(adapter: Int, device: Int): Int =
         unsupported("supportedLimitsMaxTextureDimension2DDescribed")
 
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-texture-dimension3-d`. */
+    fun supportedLimitsMaxTextureDimension3DDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxTextureDimension3DDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-uniform-buffer-binding-size`. */
+    fun supportedLimitsMaxUniformBufferBindingSizeDescribed(adapter: Int, device: Int): Long =
+        unsupported("supportedLimitsMaxUniformBufferBindingSizeDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-uniform-buffers-per-shader-stage`. */
+    fun supportedLimitsMaxUniformBuffersPerShaderStageDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxUniformBuffersPerShaderStageDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-vertex-attributes`. */
+    fun supportedLimitsMaxVertexAttributesDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxVertexAttributesDescribed")
+
     /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
     fun adapterInfoDescribed(adapter: Int) {
         unsupported("adapterInfoDescribed")

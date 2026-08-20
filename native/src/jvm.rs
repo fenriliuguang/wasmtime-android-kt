@@ -1017,6 +1017,63 @@ pub fn exp_supported_limits_max_texture_dimension2_d_described(
     )
 }
 
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-texture-dimension3-d`.
+pub fn exp_supported_limits_max_texture_dimension3_d_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxTextureDimension3DDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-uniform-buffer-binding-size`.
+pub fn exp_supported_limits_max_uniform_buffer_binding_size_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "supportedLimitsMaxUniformBufferBindingSizeDescribed",
+        "(II)J",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-uniform-buffers-per-shader-stage`.
+pub fn exp_supported_limits_max_uniform_buffers_per_shader_stage_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxUniformBuffersPerShaderStageDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-vertex-attributes`.
+pub fn exp_supported_limits_max_vertex_attributes_described(
+    cb: &GlobalRef,
+    adapter: u32,
+    device: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "supportedLimitsMaxVertexAttributesDescribed",
+        "(II)I",
+        vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest adapter handle → host validates before the local adapter-info lift.
 pub fn exp_adapter_info_described(cb: &GlobalRef, adapter: u32) -> Result<(), String> {
     call_void(
