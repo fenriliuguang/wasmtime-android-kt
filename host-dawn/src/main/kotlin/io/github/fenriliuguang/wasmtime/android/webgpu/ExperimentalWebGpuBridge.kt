@@ -2323,7 +2323,7 @@ object ExperimentalWebGpuBridge {
      * S6+: `[method]gpu-command-buffer.label` / `set-label`,
      * `[method]gpu-command-encoder.label` / `set-label`,
      * `[method]gpu-compilation-info.messages`,
-     * `[method]gpu-compilation-message.message` (still lift-only),
+     * `[method]gpu-compilation-message.message` (L2 described guest shader-module handle),
      * `[method]gpu-shader-module.label` / `set-label` (still lift-only), plus L2
      * `[method]gpu-shader-module.get-compilation-info` (described handle validate) and
      * `[method]gpu-compilation-message.type` / `line-num` / `line-pos` / `offset` / `length`
@@ -2374,6 +2374,11 @@ object ExperimentalWebGpuBridge {
                 override fun compilationMessageLengthDescribed(shader: Int): Long {
                     val l2Shader = resolveShaderModule(bindings, shader)
                     return bindings.compilationMessageLength(l2Shader)
+                }
+
+                override fun compilationMessageMessageDescribed(shader: Int): String {
+                    val l2Shader = resolveShaderModule(bindings, shader)
+                    return bindings.compilationMessageMessage(l2Shader)
                 }
             },
         )
