@@ -301,6 +301,12 @@ private class ForwardingHostCallbacks(
         bindings.shaderModuleSetLabel(handle, label)
     }
 
+    override fun pipelineLayoutLabelDescribed(handle: Int): String = bindings.pipelineLayoutLabel(handle)
+
+    override fun pipelineLayoutSetLabelDescribed(handle: Int, label: String) {
+        bindings.pipelineLayoutSetLabel(handle, label)
+    }
+
     override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         bindings.bufferGetMappedRange(buffer, offset, size)
 

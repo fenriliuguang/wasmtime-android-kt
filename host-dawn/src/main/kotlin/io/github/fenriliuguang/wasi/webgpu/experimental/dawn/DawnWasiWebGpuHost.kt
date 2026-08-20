@@ -2062,6 +2062,19 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun pipelineLayoutLabel(handle: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUPipelineLayout>(handle, ResourceKind.PipelineLayout)
+            return ""
+        }
+    }
+
+    override fun pipelineLayoutSetLabel(handle: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUPipelineLayout>(handle, ResourceKind.PipelineLayout).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

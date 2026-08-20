@@ -1,4 +1,4 @@
-//! S6+: `get-pipeline-layout` + `[method]gpu-pipeline-layout.set-label`
+//! L2: `get-pipeline-layout` + `[method]gpu-pipeline-layout.set-label`
 //! WIT: `(borrow, label: string)`. Guest passes empty label; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

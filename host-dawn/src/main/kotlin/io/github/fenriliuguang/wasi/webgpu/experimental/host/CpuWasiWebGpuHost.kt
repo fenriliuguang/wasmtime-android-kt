@@ -632,6 +632,15 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<ShaderModule>(handle, ResourceKind.ShaderModule)
     }
 
+    override fun pipelineLayoutLabel(handle: GpuHandle): String {
+        handles.get<PipelineLayout>(handle, ResourceKind.PipelineLayout)
+        return ""
+    }
+
+    override fun pipelineLayoutSetLabel(handle: GpuHandle, label: String) {
+        handles.get<PipelineLayout>(handle, ResourceKind.PipelineLayout)
+    }
+
     override fun instanceCreateSurfaceFromAndroidNativeWindow(nativeWindowHandle: Long): GpuHandle {
         require(nativeWindowHandle != 0L) { "window-handle is null" }
         return handles.insert(ResourceKind.Surface, Surface())

@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-pipeline-layout.set-label` via [ExperimentalWebGpuBridge.attachCreatePipelineLayout]. */
+/** L2 `[method]gpu-pipeline-layout.set-label` via [ExperimentalWebGpuBridge.attachCreatePipelineLayout]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodPipelineLayoutSetLabelInstrumentedTest {
     @Test
