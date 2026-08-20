@@ -306,6 +306,18 @@ private class ForwardingHostCallbacks(
         bindings.commandEncoderInsertDebugMarker(encoder, label)
     }
 
+    override fun adapterFeaturesDescribed(adapter: Int) {
+        bindings.adapterValidate(adapter)
+    }
+
+    override fun adapterLimitsDescribed(adapter: Int) {
+        bindings.adapterValidate(adapter)
+    }
+
+    override fun adapterInfoDescribed(adapter: Int) {
+        bindings.adapterValidate(adapter)
+    }
+
     override fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,

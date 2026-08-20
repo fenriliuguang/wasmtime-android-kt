@@ -1747,14 +1747,32 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `[method]gpu-adapter.features` / `limits` / `info` and
+     * S6+: `[method]gpu-adapter.features` / `limits` / `info` (L2 described
+     * adapter handle → host validate; returned resource still local lift) and
      * `[method]gpu-adapter-info.vendor` / `architecture` / `device` /
      * `description` / `subgroup-min-size` / `subgroup-max-size` /
      * `is-fallback-adapter`, and `[method]gpu-supported-limits.max-*`
-     * getters. Native lifts; L2 unused (no new JNI).
+     * getters (still lift-only).
      */
-    fun attachAdapterInfo(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    fun attachAdapterInfo(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterFeaturesDescribed(adapter: Int) {
+                    bindings.adapterValidate(adapter)
+                }
+
+                override fun adapterLimitsDescribed(adapter: Int) {
+                    bindings.adapterValidate(adapter)
+                }
+
+                override fun adapterInfoDescribed(adapter: Int) {
+                    bindings.adapterValidate(adapter)
+                }
+            },
+        )
     }
 
     /**

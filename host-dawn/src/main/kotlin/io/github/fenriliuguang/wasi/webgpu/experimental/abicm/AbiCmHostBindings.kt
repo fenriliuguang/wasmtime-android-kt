@@ -622,6 +622,10 @@ class AbiCmHostBindings(
         host.commandEncoderInsertDebugMarker(GpuHandle(encoder), label)
     }
 
+    fun adapterValidate(adapter: Int) {
+        host.adapterValidate(GpuHandle(adapter))
+    }
+
     private fun storageEntry(binding: Int, type: BufferBindingType) = BindGroupLayoutEntry(
         binding = binding,
         visibility = GpuShaderStage.COMPUTE,

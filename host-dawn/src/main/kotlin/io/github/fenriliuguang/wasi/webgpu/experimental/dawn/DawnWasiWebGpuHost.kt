@@ -771,6 +771,12 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun adapterValidate(adapter: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
+        }
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

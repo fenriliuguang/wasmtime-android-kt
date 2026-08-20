@@ -586,6 +586,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
     }
 
+    override fun adapterValidate(adapter: GpuHandle) {
+        handles.get<Adapter>(adapter, ResourceKind.Adapter)
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,
