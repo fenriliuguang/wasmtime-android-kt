@@ -794,6 +794,12 @@ class AbiCmHostBindings(
         host.pipelineLayoutSetLabel(GpuHandle(handle), label)
     }
 
+    fun querySetLabel(handle: Int): String = host.querySetLabel(GpuHandle(handle))
+
+    fun querySetSetLabel(handle: Int, label: String) {
+        host.querySetSetLabel(GpuHandle(handle), label)
+    }
+
     fun querySetType(querySet: Int): Int = host.querySetType(GpuHandle(querySet))
 
     fun querySetCount(querySet: Int): Int = host.querySetCount(GpuHandle(querySet))

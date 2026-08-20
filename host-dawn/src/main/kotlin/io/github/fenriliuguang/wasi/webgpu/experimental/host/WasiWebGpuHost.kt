@@ -615,6 +615,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun pipelineLayoutSetLabel(handle: GpuHandle, label: String)
 
+    fun querySetLabel(handle: GpuHandle): String
+
+    fun querySetSetLabel(handle: GpuHandle, label: String)
+
     // --- Lifetime ---
 
     fun drop(handle: GpuHandle)

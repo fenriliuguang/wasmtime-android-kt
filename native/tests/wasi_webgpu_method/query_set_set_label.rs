@@ -1,4 +1,4 @@
-//! S6+: `get-query-set` + `[method]gpu-query-set.set-label`
+//! L2: `get-query-set` + `[method]gpu-query-set.set-label`
 //! WIT: `(borrow, label: string)`. Guest passes empty label; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

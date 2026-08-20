@@ -2145,6 +2145,12 @@ object ExperimentalWebGpuBridge {
                 override fun querySetDestroyDescribed(querySet: Int) {
                     bindings.querySetDestroy(querySet)
                 }
+                override fun querySetLabelDescribed(handle: Int): String =
+                    bindings.querySetLabel(handle)
+
+                override fun querySetSetLabelDescribed(handle: Int, label: String) {
+                    bindings.querySetSetLabel(handle, label)
+                }
             },
         )
     }

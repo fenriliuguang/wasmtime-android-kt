@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-query-set handle → WIT `gpu-query-set.label`. */
+    fun querySetLabelDescribed(handle: Int): String = unsupported("querySetLabelDescribed")
+
+    /** L2: Guest gpu-query-set handle + label string. */
+    fun querySetSetLabelDescribed(handle: Int, label: String) {
+        unsupported("querySetSetLabelDescribed")
+    }
+
     /** L2: Guest gpu-pipeline-layout handle → WIT `gpu-pipeline-layout.label`. */
     fun pipelineLayoutLabelDescribed(handle: Int): String = unsupported("pipelineLayoutLabelDescribed")
 
