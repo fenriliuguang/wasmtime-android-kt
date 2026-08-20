@@ -482,6 +482,11 @@ private class ForwardingHostCallbacks(
     override fun deviceLostInfoMessageDescribed(device: Int): String =
         bindings.deviceLostInfoMessage(device)
 
+    override fun gpuErrorKindDescribed(device: Int): Int = bindings.gpuErrorKind(device)
+
+    override fun gpuErrorMessageDescribed(device: Int): String =
+        bindings.gpuErrorMessage(device)
+
     override fun devicePushErrorScopeDescribed(device: Int, filter: Int) {
         bindings.devicePushErrorScope(device, filter)
     }

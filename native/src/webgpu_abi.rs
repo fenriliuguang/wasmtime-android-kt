@@ -1918,9 +1918,11 @@ impl GpuDeviceLostReason {
     }
 }
 
-/// WIT `resource gpu-error`. Lift-only; L2 unused.
+/// WIT `resource gpu-error`. `get-gpu-error` pushes `{ device: 0 }`.
 #[derive(Debug)]
-pub struct GpuError;
+pub struct GpuError {
+    pub device: u32,
+}
 
 /// WIT `enum gpu-error-filter`. Lift-only; L2 unused.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
@@ -1969,7 +1971,7 @@ pub struct PopErrorScopeError {
 #[derive(Debug)]
 pub struct WgslLanguageFeatures;
 
-/// WIT `variant gpu-error-kind`. Lift-only; L2 unused.
+/// WIT `variant gpu-error-kind`.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(variant)]
 #[allow(dead_code)]
@@ -1980,6 +1982,17 @@ pub enum GpuErrorKind {
     OutOfMemoryError,
     #[component(name = "internal-error")]
     InternalError,
+}
+
+impl GpuErrorKind {
+    /// Host ordinal: validation=0, out-of-memory=1, internal=2.
+    pub fn from_host_u32(value: u32) -> Self {
+        match value {
+            1 => Self::OutOfMemoryError,
+            2 => Self::InternalError,
+            _ => Self::ValidationError,
+        }
+    }
 }
 
 /// WIT `resource gpu-uncaptured-error-event`. Lift-only; L2 unused.

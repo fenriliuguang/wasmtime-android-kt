@@ -797,6 +797,26 @@ pub fn exp_device_lost_info_message_described(
     )
 }
 
+/// L2: Guest device handle → WIT `gpu-error.kind` ordinal.
+pub fn exp_gpu_error_kind_described(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "gpuErrorKindDescribed",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest device handle → WIT `gpu-error.message`.
+pub fn exp_gpu_error_message_described(cb: &GlobalRef, device: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "gpuErrorMessageDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 /// L2: Guest device handle + `gpu-error-filter` ordinal.
 pub fn exp_device_push_error_scope_described(
     cb: &GlobalRef,

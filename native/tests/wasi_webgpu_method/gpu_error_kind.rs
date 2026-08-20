@@ -1,14 +1,18 @@
-//! S6+: `get-gpu-error` + `[method]gpu-error.kind`
-//! WIT: `(borrow) -> gpu-error-kind`. Host validation-error; harness 1.
+//! L2: `get-gpu-error` + `[method]gpu-error.kind`
+//! WIT: `(borrow) -> gpu-error-kind`. Host returns Cpu stub validation-error; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use wasmtime::component::{Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuError;
+struct GpuError {
+    device: u32,
+}
 
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(variant)]
@@ -37,7 +41,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-gpu-error", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuError)?;
+        let resource = store.data_mut().table.push(GpuError { device: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(

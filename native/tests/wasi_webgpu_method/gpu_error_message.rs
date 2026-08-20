@@ -1,5 +1,5 @@
-//! S6+: `get-gpu-error` + `[method]gpu-error.message`
-//! WIT: `(borrow) -> string`. Host empty string; harness 1.
+//! L2: `get-gpu-error` + `[method]gpu-error.message`
+//! WIT: `(borrow) -> string`. Host returns Cpu stub `cpu-gpu-error`; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -8,7 +8,9 @@ use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceTy
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuError;
+struct GpuError {
+    device: u32,
+}
 
 struct TestHost {
     table: ResourceTable,
@@ -26,7 +28,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         },
     )?;
     webgpu.func_wrap("get-gpu-error", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuError)?;
+        let resource = store.data_mut().table.push(GpuError { device: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
@@ -34,7 +36,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |mut caller, (error,): (Resource<GpuError>,)| {
             caller.data_mut().table.get(&error).map(|_| ())?;
             called.store(true, Ordering::SeqCst);
-            Ok((String::new(),))
+            Ok(("cpu-gpu-error".to_string(),))
         },
     )?;
     Ok(())
