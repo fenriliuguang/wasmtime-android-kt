@@ -2923,8 +2923,8 @@ object ExperimentalWebGpuBridge {
     /**
      * L2 `[method]gpu-render-bundle-encoder.label` / `set-label` /
      * `[method]gpu-render-bundle.label` / `set-label` /
-     * `[method]gpu-render-pass-encoder.label` / `set-label`,
-     * S6+: `[method]gpu-render-pipeline.label` / `set-label` (still lift-only), plus L2
+     * `[method]gpu-render-pass-encoder.label` / `set-label` /
+     * `[method]gpu-render-pipeline.label` / `set-label` plus
      * `[method]gpu-render-pipeline.get-bind-group-layout` (0 → stub triangle pipeline).
      */
     fun attachRenderBundlePassPipelineLabel(
@@ -3021,6 +3021,21 @@ object ExperimentalWebGpuBridge {
 
                 override fun renderPassEncoderSetLabelDescribed(handle: Int, label: String) {
                     bindings.renderPassEncoderSetLabel(handle, label)
+                }
+                override fun deviceCreateRenderPipeline(device: Int): Int {
+                    val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
+                    return bindings.deviceCreateRenderPipelineTriangle(
+                        device,
+                        shader,
+                        GpuTextureFormat.RGBA8_UNORM,
+                    )
+                }
+
+                override fun renderPipelineLabelDescribed(handle: Int): String =
+                    bindings.renderPipelineLabel(handle)
+
+                override fun renderPipelineSetLabelDescribed(handle: Int, label: String) {
+                    bindings.renderPipelineSetLabel(handle, label)
                 }
             },
         )
