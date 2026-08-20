@@ -757,6 +757,21 @@ interface ExperimentalHostCallbacks {
         unsupported("renderBundleEncoderSetIndexBufferDescribed")
     }
 
+    /** L2: Guest bundle-encoder + bind-group index/rep (0 → stub in the attach). */
+    fun renderBundleEncoderSetBindGroupDescribed(encoder: Int, index: Int, bindGroup: Int) {
+        unsupported("renderBundleEncoderSetBindGroupDescribed")
+    }
+
+    /** L2: Guest bundle-encoder + indirect buffer rep/offset (0 → stub in the attach). */
+    fun renderBundleEncoderDrawIndirectDescribed(encoder: Int, buffer: Int, offset: Long) {
+        unsupported("renderBundleEncoderDrawIndirectDescribed")
+    }
+
+    /** L2: Guest bundle-encoder + indexed-indirect buffer rep/offset (0 → stub in the attach). */
+    fun renderBundleEncoderDrawIndexedIndirectDescribed(encoder: Int, buffer: Int, offset: Long) {
+        unsupported("renderBundleEncoderDrawIndexedIndirectDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

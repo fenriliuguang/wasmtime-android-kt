@@ -472,6 +472,45 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun renderBundleEncoderSetBindGroup(
+        encoder: GpuHandle,
+        index: Int,
+        bindGroup: GpuHandle,
+    ) {
+        synchronized(gpuLock) {
+            val bundleEncoder =
+                handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+            val gpuBindGroup = handles.get<GPUBindGroup>(bindGroup, ResourceKind.BindGroup)
+            bundleEncoder.setBindGroup(index, gpuBindGroup)
+        }
+    }
+
+    override fun renderBundleEncoderDrawIndirect(
+        encoder: GpuHandle,
+        buffer: GpuHandle,
+        offset: Long,
+    ) {
+        synchronized(gpuLock) {
+            val bundleEncoder =
+                handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+            val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+            bundleEncoder.drawIndirect(gpuBuffer, offset)
+        }
+    }
+
+    override fun renderBundleEncoderDrawIndexedIndirect(
+        encoder: GpuHandle,
+        buffer: GpuHandle,
+        offset: Long,
+    ) {
+        synchronized(gpuLock) {
+            val bundleEncoder =
+                handles.get<GPURenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+            val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+            bundleEncoder.drawIndexedIndirect(gpuBuffer, offset)
+        }
+    }
+
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {
         val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
         val sampler = gpuDevice.createSampler(

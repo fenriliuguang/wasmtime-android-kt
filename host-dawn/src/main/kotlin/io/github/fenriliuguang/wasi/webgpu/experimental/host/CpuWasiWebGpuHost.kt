@@ -245,6 +245,36 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         require(format != 0) { "index format must be non-zero" }
     }
 
+    override fun renderBundleEncoderSetBindGroup(
+        encoder: GpuHandle,
+        index: Int,
+        bindGroup: GpuHandle,
+    ) {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+        handles.get<BindGroup>(bindGroup, ResourceKind.BindGroup)
+        require(index >= 0)
+    }
+
+    override fun renderBundleEncoderDrawIndirect(
+        encoder: GpuHandle,
+        buffer: GpuHandle,
+        offset: Long,
+    ) {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+        require(offset >= 0)
+    }
+
+    override fun renderBundleEncoderDrawIndexedIndirect(
+        encoder: GpuHandle,
+        buffer: GpuHandle,
+        offset: Long,
+    ) {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+        require(offset >= 0)
+    }
+
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {
         handles.get<Device>(device, ResourceKind.Device)
         return handles.insert(ResourceKind.Sampler, Sampler())

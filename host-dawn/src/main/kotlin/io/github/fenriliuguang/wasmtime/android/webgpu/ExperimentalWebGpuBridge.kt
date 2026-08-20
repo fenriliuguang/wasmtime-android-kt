@@ -1847,11 +1847,11 @@ object ExperimentalWebGpuBridge {
 
     /**
      * L2: `[method]gpu-render-bundle-encoder.finish` / `draw` / `draw-indexed` /
-     * `set-pipeline` / `set-vertex-buffer` / `set-index-buffer`
-     * (guest encoder rep + counts/label/buffer reps through described JNI;
-     * 0 → stub encoder / pipeline / buffer).
-     * Remaining `set-bind-group` / `draw-indirect` / `draw-indexed-indirect` /
-     * `push-debug-group` / `pop-debug-group` / `insert-debug-marker` /
+     * `set-pipeline` / `set-vertex-buffer` / `set-index-buffer` /
+     * `set-bind-group` / `draw-indirect` / `draw-indexed-indirect`
+     * (guest encoder rep + counts/label/reps through described JNI;
+     * 0 → stub encoder / pipeline / buffer / bind-group).
+     * Remaining `push-debug-group` / `pop-debug-group` / `insert-debug-marker` /
      * `set-immediates` still lift-only on this attach.
      */
     fun attachRenderBundleState(store: Store, host: WasiWebGpuHost) {
@@ -1908,6 +1908,66 @@ object ExperimentalWebGpuBridge {
                         baseVertex,
                         firstInstance,
                     )
+                }
+
+                override fun renderBundleEncoderSetBindGroupDescribed(
+                    encoder: Int,
+                    index: Int,
+                    bindGroup: Int,
+                ) {
+                    val resolved =
+                        if (bindGroup != 0) {
+                            bindGroup
+                        } else {
+                            val bgl = bindings.deviceCreateBindGroupLayout(
+                                device,
+                                BindGroupLayoutDescriptor(entries = emptyList()),
+                            )
+                            bindings.deviceCreateBindGroup(
+                                device,
+                                BindGroupDescriptor(
+                                    layout = GpuHandle(bgl),
+                                    entries = emptyList(),
+                                ),
+                            )
+                        }
+                    bindings.renderBundleEncoderSetBindGroup(encoder, index, resolved)
+                }
+
+                override fun renderBundleEncoderDrawIndirectDescribed(
+                    encoder: Int,
+                    buffer: Int,
+                    offset: Long,
+                ) {
+                    val resolved =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_INDIRECT_BYTES,
+                                usage = GpuBufferUsage.INDIRECT,
+                            )
+                        }
+                    bindings.renderBundleEncoderDrawIndirect(encoder, resolved, offset)
+                }
+
+                override fun renderBundleEncoderDrawIndexedIndirectDescribed(
+                    encoder: Int,
+                    buffer: Int,
+                    offset: Long,
+                ) {
+                    val resolved =
+                        if (buffer != 0) {
+                            buffer
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = STUB_INDIRECT_BYTES,
+                                usage = GpuBufferUsage.INDIRECT,
+                            )
+                        }
+                    bindings.renderBundleEncoderDrawIndexedIndirect(encoder, resolved, offset)
                 }
 
                 override fun renderBundleEncoderSetPipelineDescribed(
