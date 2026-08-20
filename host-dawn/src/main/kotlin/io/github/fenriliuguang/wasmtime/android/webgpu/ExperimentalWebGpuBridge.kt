@@ -2727,9 +2727,8 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `get-canvas-context` (test ctor) + L2 `[method]gpu-canvas-context.configure`
-     * (described device/format/usage). `unconfigure` / `get-configuration` /
-     * `get-current-texture` remain lift-only until later midterm cuts.
+     * S6+: `get-canvas-context` (test ctor) + L2 `[method]gpu-canvas-context.configure` /
+     * `unconfigure` / `get-current-texture`. `get-configuration` remains lift-only until A4.
      */
     fun attachCanvasContext(
         store: Store,
@@ -2749,6 +2748,13 @@ object ExperimentalWebGpuBridge {
                     format: Int,
                     usage: Int,
                 ): Int = bindings.canvasContextConfigure(context, device, format, usage)
+
+                override fun canvasContextUnconfigureDescribed(context: Int) {
+                    bindings.canvasContextUnconfigure(context)
+                }
+
+                override fun canvasContextGetCurrentTextureDescribed(context: Int): Int =
+                    bindings.canvasContextGetCurrentTexture(context)
             },
         )
     }

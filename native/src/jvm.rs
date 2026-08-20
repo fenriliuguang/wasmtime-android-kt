@@ -514,6 +514,32 @@ pub fn exp_canvas_context_configure_described(
     )
 }
 
+/// L2: Guest `gpu-canvas-context.unconfigure` (context handle; 0 is a no-op).
+pub fn exp_canvas_context_unconfigure_described(
+    cb: &GlobalRef,
+    context: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "canvasContextUnconfigureDescribed",
+        "(I)V",
+        vec![HostArg::Int(context as i32)],
+    )
+}
+
+/// L2: Guest `gpu-canvas-context.get-current-texture` → texture handle.
+pub fn exp_canvas_context_get_current_texture_described(
+    cb: &GlobalRef,
+    context: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "canvasContextGetCurrentTextureDescribed",
+        "(I)I",
+        vec![HostArg::Int(context as i32)],
+    )
+}
+
 /// L2: Guest gpu-render-pipeline handle → WIT `gpu-render-pipeline.label`.
 pub fn exp_render_pipeline_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
     call_string(

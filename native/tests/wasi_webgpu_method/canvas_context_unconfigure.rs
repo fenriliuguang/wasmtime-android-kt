@@ -1,5 +1,5 @@
-//! S6+: `get-canvas-context` + `[method]gpu-canvas-context.unconfigure`
-//! WIT: `(borrow)`. Harness 1. L2 unused.
+//! L2: `get-canvas-context` + `[method]gpu-canvas-context.unconfigure`
+//! WIT: `(borrow)`. Harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

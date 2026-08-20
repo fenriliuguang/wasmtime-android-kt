@@ -35,6 +35,18 @@ interface ExperimentalHostCallbacks {
     fun canvasContextConfigureDescribed(context: Int, device: Int, format: Int, usage: Int): Int =
         unsupported("canvasContextConfigureDescribed")
 
+    /** L2: Guest `[method]gpu-canvas-context.unconfigure`. `context == 0` is a no-op. */
+    fun canvasContextUnconfigureDescribed(context: Int) {
+        unsupported("canvasContextUnconfigureDescribed")
+    }
+
+    /**
+     * L2: Guest `[method]gpu-canvas-context.get-current-texture`.
+     * `context == 0` allocates a 1×1 texture (fixture path). Not a product `surface-*`.
+     */
+    fun canvasContextGetCurrentTextureDescribed(context: Int): Int =
+        unsupported("canvasContextGetCurrentTextureDescribed")
+
     fun deviceCreateCommandEncoder(device: Int): Int = unsupported("deviceCreateCommandEncoder")
 
     /** L2: Guest optional `gpu-command-encoder-descriptor` label (none → empty). */

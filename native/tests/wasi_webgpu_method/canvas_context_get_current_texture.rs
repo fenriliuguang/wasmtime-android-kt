@@ -1,5 +1,5 @@
-//! S6+: `get-canvas-context` + `[method]gpu-canvas-context.get-current-texture`
-//! WIT: `(borrow) -> own<gpu-texture>`. Guest drops own; harness 1. L2 unused.
+//! L2: `get-canvas-context` + `[method]gpu-canvas-context.get-current-texture`
+//! WIT: `(borrow) -> own<gpu-texture>`. Guest drops own; harness 1.
 
 use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
 use wasmtime::{Config, Engine, Store};
