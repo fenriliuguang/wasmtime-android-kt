@@ -735,6 +735,42 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun commandEncoderResolveQuerySet(
+        encoder: GpuHandle,
+        querySet: GpuHandle,
+        firstQuery: Int,
+        queryCount: Int,
+        destination: GpuHandle,
+        destinationOffset: Long,
+    ) {
+        synchronized(gpuLock) {
+            val commandEncoder = handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder)
+            val qs = handles.get<GPUQuerySet>(querySet, ResourceKind.QuerySet)
+            val dst = handles.get<GPUBuffer>(destination, ResourceKind.Buffer)
+            commandEncoder.resolveQuerySet(qs, firstQuery, queryCount, dst, destinationOffset)
+        }
+    }
+
+    override fun commandEncoderPushDebugGroup(encoder: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder)
+                .pushDebugGroup(label)
+        }
+    }
+
+    override fun commandEncoderPopDebugGroup(encoder: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder).popDebugGroup()
+        }
+    }
+
+    override fun commandEncoderInsertDebugMarker(encoder: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUCommandEncoder>(encoder, ResourceKind.CommandEncoder)
+                .insertDebugMarker(label)
+        }
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

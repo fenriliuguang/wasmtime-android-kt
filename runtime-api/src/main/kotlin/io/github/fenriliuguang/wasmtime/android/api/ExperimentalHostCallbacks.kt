@@ -105,6 +105,33 @@ interface ExperimentalHostCallbacks {
     /** L2: Guest query-set handle → count. */
     fun querySetCountDescribed(querySet: Int): Int = unsupported("querySetCountDescribed")
 
+    /** L2: Guest encoder + query-set + destination reps (0 → stub in the attach). */
+    fun commandEncoderResolveQuerySetDescribed(
+        encoder: Int,
+        querySet: Int,
+        firstQuery: Int,
+        queryCount: Int,
+        destination: Int,
+        destinationOffset: Long,
+    ) {
+        unsupported("commandEncoderResolveQuerySetDescribed")
+    }
+
+    /** L2: Guest encoder handle + group label. */
+    fun commandEncoderPushDebugGroupDescribed(encoder: Int, label: String) {
+        unsupported("commandEncoderPushDebugGroupDescribed")
+    }
+
+    /** L2: Guest encoder handle → pop debug group. */
+    fun commandEncoderPopDebugGroupDescribed(encoder: Int) {
+        unsupported("commandEncoderPopDebugGroupDescribed")
+    }
+
+    /** L2: Guest encoder handle + marker label. */
+    fun commandEncoderInsertDebugMarkerDescribed(encoder: Int, label: String) {
+        unsupported("commandEncoderInsertDebugMarkerDescribed")
+    }
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 

@@ -144,6 +144,21 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun querySetDestroy(querySet: GpuHandle)
 
+    fun commandEncoderResolveQuerySet(
+        encoder: GpuHandle,
+        querySet: GpuHandle,
+        firstQuery: Int,
+        queryCount: Int,
+        destination: GpuHandle,
+        destinationOffset: Long,
+    )
+
+    fun commandEncoderPushDebugGroup(encoder: GpuHandle, label: String)
+
+    fun commandEncoderPopDebugGroup(encoder: GpuHandle)
+
+    fun commandEncoderInsertDebugMarker(encoder: GpuHandle, label: String)
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

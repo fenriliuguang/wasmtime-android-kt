@@ -276,6 +276,36 @@ private class ForwardingHostCallbacks(
 
     override fun querySetCountDescribed(querySet: Int): Int = bindings.querySetCount(querySet)
 
+    override fun commandEncoderResolveQuerySetDescribed(
+        encoder: Int,
+        querySet: Int,
+        firstQuery: Int,
+        queryCount: Int,
+        destination: Int,
+        destinationOffset: Long,
+    ) {
+        bindings.commandEncoderResolveQuerySet(
+            encoder,
+            querySet,
+            firstQuery,
+            queryCount,
+            destination,
+            destinationOffset,
+        )
+    }
+
+    override fun commandEncoderPushDebugGroupDescribed(encoder: Int, label: String) {
+        bindings.commandEncoderPushDebugGroup(encoder, label)
+    }
+
+    override fun commandEncoderPopDebugGroupDescribed(encoder: Int) {
+        bindings.commandEncoderPopDebugGroup(encoder)
+    }
+
+    override fun commandEncoderInsertDebugMarkerDescribed(encoder: Int, label: String) {
+        bindings.commandEncoderInsertDebugMarker(encoder, label)
+    }
+
     override fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,
