@@ -522,6 +522,9 @@ private class ForwardingHostCallbacks(
     override fun compilationMessageOffsetDescribed(shader: Int): Long =
         bindings.compilationMessageOffset(shader)
 
+    override fun compilationMessageLengthDescribed(shader: Int): Long =
+        bindings.compilationMessageLength(shader)
+
     override fun renderPipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
         bindings.renderPipelineGetBindGroupLayout(pipeline, index)
 

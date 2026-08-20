@@ -262,6 +262,10 @@ interface ExperimentalHostCallbacks {
     fun compilationMessageOffsetDescribed(shader: Int): Long =
         unsupported("compilationMessageOffsetDescribed")
 
+    /** L2: Guest shader-module handle → WIT `gpu-compilation-message.length`. */
+    fun compilationMessageLengthDescribed(shader: Int): Long =
+        unsupported("compilationMessageLengthDescribed")
+
     /** L2: Guest render-pipeline rep (0 → stub in the attach) + group index → BGL rep. */
     fun renderPipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
         unsupported("renderPipelineGetBindGroupLayoutDescribed")
