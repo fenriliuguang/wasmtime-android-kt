@@ -559,6 +559,33 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<QuerySet>(querySet, ResourceKind.QuerySet)
     }
 
+    override fun commandEncoderResolveQuerySet(
+        encoder: GpuHandle,
+        querySet: GpuHandle,
+        firstQuery: Int,
+        queryCount: Int,
+        destination: GpuHandle,
+        destinationOffset: Long,
+    ) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+        val qs = handles.get<QuerySet>(querySet, ResourceKind.QuerySet)
+        handles.get<BufferResource>(destination, ResourceKind.Buffer)
+        require(firstQuery >= 0 && queryCount >= 0 && firstQuery + queryCount <= qs.count)
+        require(destinationOffset >= 0)
+    }
+
+    override fun commandEncoderPushDebugGroup(encoder: GpuHandle, label: String) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+    }
+
+    override fun commandEncoderPopDebugGroup(encoder: GpuHandle) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+    }
+
+    override fun commandEncoderInsertDebugMarker(encoder: GpuHandle, label: String) {
+        handles.get<CommandEncoder>(encoder, ResourceKind.CommandEncoder)
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

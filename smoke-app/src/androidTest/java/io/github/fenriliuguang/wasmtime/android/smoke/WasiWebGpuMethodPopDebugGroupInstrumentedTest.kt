@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-command-encoder.pop-debug-group` via [ExperimentalWebGpuBridge.attachCommandEncoderState]. */
+/** L2 `[method]gpu-command-encoder.pop-debug-group` via [ExperimentalWebGpuBridge.attachCommandEncoderState]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodPopDebugGroupInstrumentedTest {
     @Test

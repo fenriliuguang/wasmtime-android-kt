@@ -888,12 +888,69 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `[method]gpu-command-encoder.resolve-query-set` /
-     * `push-debug-group` / `pop-debug-group` / `insert-debug-marker`.
-     * Native lifts guest args; L2 unused (no new JNI).
+     * L2: `[method]gpu-command-encoder.resolve-query-set` /
+     * `push-debug-group` / `pop-debug-group` / `insert-debug-marker`
+     * (guest encoder rep + labels/indices through described JNI;
+     * query-set / destination 0 → stub).
      */
-    fun attachCommandEncoderState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    fun attachCommandEncoderState(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var device = 0
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int {
+                    device = bindings.adapterRequestDevice(adapter)
+                    return device
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun commandEncoderResolveQuerySetDescribed(
+                    encoder: Int,
+                    querySet: Int,
+                    firstQuery: Int,
+                    queryCount: Int,
+                    destination: Int,
+                    destinationOffset: Long,
+                ) {
+                    val qs =
+                        if (querySet != 0) querySet else bindings.deviceCreateQuerySet(device)
+                    val dst =
+                        if (destination != 0) {
+                            destination
+                        } else {
+                            bindings.deviceCreateBuffer(
+                                device,
+                                size = QUERY_RESOLVE_STUB_BYTES,
+                                usage = GpuBufferUsage.QUERY_RESOLVE or GpuBufferUsage.COPY_SRC,
+                            )
+                        }
+                    bindings.commandEncoderResolveQuerySet(
+                        encoder,
+                        qs,
+                        firstQuery,
+                        queryCount,
+                        dst,
+                        destinationOffset,
+                    )
+                }
+
+                override fun commandEncoderPushDebugGroupDescribed(encoder: Int, label: String) {
+                    bindings.commandEncoderPushDebugGroup(encoder, label)
+                }
+
+                override fun commandEncoderPopDebugGroupDescribed(encoder: Int) {
+                    bindings.commandEncoderPopDebugGroup(encoder)
+                }
+
+                override fun commandEncoderInsertDebugMarkerDescribed(encoder: Int, label: String) {
+                    bindings.commandEncoderInsertDebugMarker(encoder, label)
+                }
+            },
+        )
     }
 
     /**
@@ -2194,6 +2251,9 @@ object ExperimentalWebGpuBridge {
     private const val STUB_INDIRECT_BYTES = 20L
     /** 256-byte row alignment for described texel copies (1×1 RGBA8). */
     private const val STUB_TEXEL_COPY_BYTES = 256L
+
+    /** resolve-query-set stub destination (one 8-byte slot). */
+    private const val QUERY_RESOLVE_STUB_BYTES = 8L
     private val STUB_BUFFER_BYTES = byteArrayOf(1, 2, 3, 4)
     private val STUB_TEXTURE_BYTES = byteArrayOf(1, 2, 3, 4)
     private const val STUB_WGSL = "@compute @workgroup_size(1) fn main() {}"

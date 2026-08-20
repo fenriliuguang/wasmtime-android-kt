@@ -3752,10 +3752,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                  (
                     encoder,
                     query_set,
-                    _first_query,
-                    _query_count,
+                    first_query,
+                    query_count,
                     destination,
-                    _destination_offset,
+                    destination_offset,
                 ): (
                     Resource<GpuCommandEncoder>,
                     Resource<GpuQuerySet>,
@@ -3764,9 +3764,35 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Resource<GpuBuffer>,
                     u64,
                 )| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
-                    let _ = caller.data_mut().table.get(&query_set)?;
-                    let _ = caller.data_mut().table.get(&destination)?;
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let query_rep = caller.data_mut().table.get(&query_set)?.rep;
+                    let dest_rep = caller.data_mut().table.get(&destination)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_resolve_query_set_described(
+                        &cb,
+                        l2_encoder,
+                        query_rep,
+                        first_query,
+                        query_count,
+                        dest_rep,
+                        destination_offset,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3774,8 +3800,26 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-command-encoder.push-debug-group",
-                |mut caller, (encoder, _group_label): (Resource<GpuCommandEncoder>, String)| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
+                |mut caller, (encoder, group_label): (Resource<GpuCommandEncoder>, String)| {
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_push_debug_group_described(&cb, l2_encoder, group_label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3784,7 +3828,25 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-command-encoder.pop-debug-group",
                 |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_pop_debug_group_described(&cb, l2_encoder)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3792,8 +3854,26 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]gpu-command-encoder.insert-debug-marker",
-                |mut caller, (encoder, _marker_label): (Resource<GpuCommandEncoder>, String)| {
-                    let _ = caller.data_mut().table.get(&encoder)?;
+                |mut caller, (encoder, marker_label): (Resource<GpuCommandEncoder>, String)| {
+                    let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_encoder = if encoder_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        encoder_rep
+                    };
+                    jvm::exp_insert_debug_marker_described(&cb, l2_encoder, marker_label)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

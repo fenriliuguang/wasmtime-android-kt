@@ -514,6 +514,69 @@ pub fn exp_query_set_count_described(cb: &GlobalRef, query_set: u32) -> Result<u
     )
 }
 
+/// L2: Guest encoder + query-set + destination reps (0 → stub in the attach).
+pub fn exp_resolve_query_set_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    query_set: u32,
+    first_query: u32,
+    query_count: u32,
+    destination: u32,
+    destination_offset: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderResolveQuerySetDescribed",
+        "(IIIIIJ)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(query_set as i32),
+            HostArg::Int(first_query as i32),
+            HostArg::Int(query_count as i32),
+            HostArg::Int(destination as i32),
+            HostArg::Long(destination_offset as i64),
+        ],
+    )
+}
+
+/// L2: Guest encoder handle + group label.
+pub fn exp_push_debug_group_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderPushDebugGroupDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(encoder as i32), HostArg::Str(label)],
+    )
+}
+
+/// L2: Guest encoder handle → pop debug group.
+pub fn exp_pop_debug_group_described(cb: &GlobalRef, encoder: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderPopDebugGroupDescribed",
+        "(I)V",
+        vec![HostArg::Int(encoder as i32)],
+    )
+}
+
+/// L2: Guest encoder handle + marker label.
+pub fn exp_insert_debug_marker_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "commandEncoderInsertDebugMarkerDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(encoder as i32), HostArg::Str(label)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,

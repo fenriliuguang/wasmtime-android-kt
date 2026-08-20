@@ -592,6 +592,36 @@ class AbiCmHostBindings(
         host.querySetDestroy(GpuHandle(querySet))
     }
 
+    fun commandEncoderResolveQuerySet(
+        encoder: Int,
+        querySet: Int,
+        firstQuery: Int,
+        queryCount: Int,
+        destination: Int,
+        destinationOffset: Long,
+    ) {
+        host.commandEncoderResolveQuerySet(
+            GpuHandle(encoder),
+            GpuHandle(querySet),
+            firstQuery,
+            queryCount,
+            GpuHandle(destination),
+            destinationOffset,
+        )
+    }
+
+    fun commandEncoderPushDebugGroup(encoder: Int, label: String) {
+        host.commandEncoderPushDebugGroup(GpuHandle(encoder), label)
+    }
+
+    fun commandEncoderPopDebugGroup(encoder: Int) {
+        host.commandEncoderPopDebugGroup(GpuHandle(encoder))
+    }
+
+    fun commandEncoderInsertDebugMarker(encoder: Int, label: String) {
+        host.commandEncoderInsertDebugMarker(GpuHandle(encoder), label)
+    }
+
     private fun storageEntry(binding: Int, type: BufferBindingType) = BindGroupLayoutEntry(
         binding = binding,
         visibility = GpuShaderStage.COMPUTE,
