@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-adapter-info.subgroup-min-size` via [ExperimentalWebGpuBridge.attachAdapterInfo]. */
+/** L2 `[method]gpu-adapter-info.subgroup-min-size` via [ExperimentalWebGpuBridge.attachAdapterInfo]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodAdapterInfoSubgroupMinSizeInstrumentedTest {
     @Test

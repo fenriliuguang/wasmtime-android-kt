@@ -788,6 +788,17 @@ class AbiCmHostBindings(
         host.adapterValidate(GpuHandle(adapter))
     }
 
+    fun adapterInfoSubgroupMinSize(adapter: Int): Int =
+        host.adapterInfoSubgroupMinSize(GpuHandle(adapter))
+
+    fun adapterInfoSubgroupMaxSize(adapter: Int): Int =
+        host.adapterInfoSubgroupMaxSize(GpuHandle(adapter))
+
+    fun adapterInfoIsFallbackAdapter(adapter: Int): Boolean =
+        host.adapterInfoIsFallbackAdapter(GpuHandle(adapter))
+
+    fun deviceAdapter(device: Int): Int = host.deviceAdapter(GpuHandle(device)).raw
+
     fun deviceValidate(device: Int) {
         host.deviceValidate(GpuHandle(device))
     }

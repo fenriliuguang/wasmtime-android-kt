@@ -1,6 +1,5 @@
 ;; S6+: get-adapter-info + [method]gpu-adapter-info.is-fallback-adapter
-;; WIT: is-fallback-adapter: func() -> bool. Host returns false; harness 1.
-;; L2 unused (lift-only).
+;; L2 described adapter handle → is-fallback-adapter (Cpu stub false); harness 1.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-adapter-info" (type $gpu-adapter-info (sub resource)))

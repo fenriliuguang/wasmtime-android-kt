@@ -147,6 +147,21 @@ interface ExperimentalHostCallbacks {
         unsupported("adapterInfoDescribed")
     }
 
+    /** L2: Guest adapter handle → WIT `gpu-adapter-info.subgroup-min-size`. */
+    fun adapterInfoSubgroupMinSizeDescribed(adapter: Int): Int =
+        unsupported("adapterInfoSubgroupMinSizeDescribed")
+
+    /** L2: Guest adapter handle → WIT `gpu-adapter-info.subgroup-max-size`. */
+    fun adapterInfoSubgroupMaxSizeDescribed(adapter: Int): Int =
+        unsupported("adapterInfoSubgroupMaxSizeDescribed")
+
+    /** L2: Guest adapter handle → WIT `gpu-adapter-info.is-fallback-adapter` (0/1). */
+    fun adapterInfoIsFallbackAdapterDescribed(adapter: Int): Int =
+        unsupported("adapterInfoIsFallbackAdapterDescribed")
+
+    /** L2: Guest device handle → owning adapter handle for adapter-info getters. */
+    fun deviceAdapterDescribed(device: Int): Int = unsupported("deviceAdapterDescribed")
+
     /** L2: Guest device handle → host validates before the local features lift. */
     fun deviceFeaturesDescribed(device: Int) {
         unsupported("deviceFeaturesDescribed")
