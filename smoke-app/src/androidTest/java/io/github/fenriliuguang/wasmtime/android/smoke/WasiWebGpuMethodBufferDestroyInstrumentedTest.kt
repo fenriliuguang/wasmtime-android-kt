@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-buffer.destroy` via [ExperimentalWebGpuBridge.attachDeviceQueryAndDestroy]. */
+/** L2 `[method]gpu-buffer.destroy` via [ExperimentalWebGpuBridge.attachBindGroupBufferLabel]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodBufferDestroyInstrumentedTest {
     @Test
@@ -28,7 +28,7 @@ class WasiWebGpuMethodBufferDestroyInstrumentedTest {
                 Component.compile(engine, bytes).use { component ->
                     Linker.create(engine).use { linker ->
                         Store.create(engine).use { store ->
-                            ExperimentalWebGpuBridge.attachDeviceQueryAndDestroy(store, host)
+                            ExperimentalWebGpuBridge.attachBindGroupBufferLabel(store, host)
                             linker.instantiate(store, component).use { instance ->
                                 assertEquals(1, instance.callRunConcurrent(store))
                             }

@@ -569,6 +569,10 @@ class AbiCmHostBindings(
 
     fun bufferMapState(buffer: Int): Int = host.bufferMapState(GpuHandle(buffer))
 
+    fun bufferDestroy(buffer: Int) {
+        host.bufferDestroy(GpuHandle(buffer))
+    }
+
     private fun storageEntry(binding: Int, type: BufferBindingType) = BindGroupLayoutEntry(
         binding = binding,
         visibility = GpuShaderStage.COMPUTE,

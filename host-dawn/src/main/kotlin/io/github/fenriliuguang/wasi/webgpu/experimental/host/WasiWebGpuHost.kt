@@ -304,6 +304,8 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun bufferMapState(buffer: GpuHandle): Int
 
+    fun bufferDestroy(buffer: GpuHandle)
+
     // --- Lifetime ---
 
     fun drop(handle: GpuHandle)

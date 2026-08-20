@@ -1623,9 +1623,10 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[method]gpu-device.create-render-bundle-encoder` /
-     * `create-query-set` / `destroy` / `[method]gpu-buffer.destroy` /
+     * `create-query-set` / `destroy` /
      * `[method]gpu-query-set.destroy` / `type` / `count`.
      * `[method]gpu-texture.destroy` is L2 via [attachTextureInfo].
+     * `[method]gpu-buffer.destroy` is L2 via [attachBindGroupBufferLabel].
      * Native lifts guest args; remaining still lift-only (no new JNI here).
      */
     fun attachDeviceQueryAndDestroy(
@@ -1650,7 +1651,7 @@ object ExperimentalWebGpuBridge {
      * S6+: `[method]gpu-bind-group.label` / `set-label`,
      * `[method]gpu-bind-group-layout.label` / `set-label`, and
      * `[method]gpu-buffer.label` / `set-label` (still lift-only), plus L2
-     * `[method]gpu-buffer.size` / `usage` / `map-state`.
+     * `[method]gpu-buffer.size` / `usage` / `map-state` / `destroy`.
      */
     fun attachBindGroupBufferLabel(
         store: Store,
@@ -1677,6 +1678,10 @@ object ExperimentalWebGpuBridge {
 
                 override fun bufferMapStateDescribed(buffer: Int): Int =
                     bindings.bufferMapState(buffer)
+
+                override fun bufferDestroyDescribed(buffer: Int) {
+                    bindings.bufferDestroy(buffer)
+                }
             },
         )
     }

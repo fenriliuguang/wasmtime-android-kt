@@ -254,6 +254,9 @@ private class ForwardingHostCallbacks(
     override fun bufferUsageDescribed(buffer: Int): Int = bindings.bufferUsage(buffer)
 
     override fun bufferMapStateDescribed(buffer: Int): Int = bindings.bufferMapState(buffer)
+
+    override fun bufferDestroyDescribed(buffer: Int) {
+        bindings.bufferDestroy(buffer)
     }
 
     override fun deviceCreateSamplerDescribed(

@@ -1,6 +1,6 @@
 ;; S6+: get-buffer + [method]gpu-buffer.destroy
 ;; WIT: destroy: func(). Guest constructs buffer then destroys; harness 1.
-;; L2 unused (lift-only). get-buffer is a test constructor (not product WIT).
+;; L2 described buffer handle → destroy (stub 4-byte buffer when get-buffer rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-buffer" (type $gpu-buffer (sub resource)))

@@ -419,6 +419,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return if (buf.mapped) GpuBufferMapState.MAPPED else GpuBufferMapState.UNMAPPED
     }
 
+    override fun bufferDestroy(buffer: GpuHandle) {
+        handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+    }
+
     override fun instanceCreateSurfaceFromAndroidNativeWindow(nativeWindowHandle: Long): GpuHandle {
         require(nativeWindowHandle != 0L) { "window-handle is null" }
         return handles.insert(ResourceKind.Surface, Surface())

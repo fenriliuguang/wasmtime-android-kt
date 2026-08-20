@@ -1108,6 +1108,12 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun bufferDestroy(buffer: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUBuffer>(buffer, ResourceKind.Buffer).close()
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }
