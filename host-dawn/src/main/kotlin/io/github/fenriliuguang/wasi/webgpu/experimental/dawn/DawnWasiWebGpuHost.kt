@@ -1119,6 +1119,13 @@ class DawnWasiWebGpuHost private constructor(
         return out
     }
 
+    override fun bufferSetMappedRange(buffer: GpuHandle, offset: Long, data: ByteArray) {
+        val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+        val mapped = gpuBuffer.getMappedRange(offset, data.size.toLong())
+        val duplicate = mapped.duplicate().order(ByteOrder.nativeOrder())
+        duplicate.put(data)
+    }
+
     override fun bufferUnmap(buffer: GpuHandle) {
         val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
         gpuBuffer.unmap()

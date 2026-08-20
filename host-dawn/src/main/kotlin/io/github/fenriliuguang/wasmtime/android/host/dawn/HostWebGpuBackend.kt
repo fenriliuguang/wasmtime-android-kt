@@ -259,6 +259,13 @@ private class ForwardingHostCallbacks(
         bindings.bufferDestroy(buffer)
     }
 
+    override fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
+        bindings.bufferGetMappedRange(buffer, offset, size)
+
+    override fun bufferSetMappedRangeDescribed(buffer: Int, data: ByteArray, offset: Long) {
+        bindings.bufferSetMappedRange(buffer, offset, data)
+    }
+
     override fun deviceCreateQuerySet(device: Int): Int = bindings.deviceCreateQuerySet(device)
 
     override fun querySetDestroyDescribed(querySet: Int) {

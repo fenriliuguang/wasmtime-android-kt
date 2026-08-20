@@ -228,6 +228,23 @@ fn call_void(
     })
 }
 
+fn call_bytes(
+    cb: &GlobalRef,
+    name: &'static str,
+    sig: &'static str,
+    args: Vec<HostArg>,
+) -> Result<Vec<u8>, String> {
+    let cb = cb.clone();
+    with_env(move |env| {
+        let result = call_with_host_args(env, cb.as_obj(), name, sig, &args)?;
+        check_exception(env)?;
+        let obj = result.l().map_err(|e| format!("host {name} result: {e}"))?;
+        let arr = JByteArray::from(obj);
+        env.convert_byte_array(&arr)
+            .map_err(|e| format!("host {name} convert_byte_array: {e}"))
+    })
+}
+
 pub fn exp_request_adapter(cb: &GlobalRef) -> Result<u32, String> {
     call_i(cb, "requestAdapter", "()I", vec![])
 }
@@ -426,6 +443,44 @@ pub fn exp_buffer_destroy_described(cb: &GlobalRef, buffer: u32) -> Result<(), S
         "bufferDestroyDescribed",
         "(I)V",
         vec![HostArg::Int(buffer as i32)],
+    )
+}
+
+/// L2: Guest buffer handle + offset/size → mapped-range bytes.
+pub fn exp_buffer_get_mapped_range_described(
+    cb: &GlobalRef,
+    buffer: u32,
+    offset: u64,
+    size: u64,
+) -> Result<Vec<u8>, String> {
+    call_bytes(
+        cb,
+        "bufferGetMappedRangeDescribed",
+        "(IJJ)[B",
+        vec![
+            HostArg::Int(buffer as i32),
+            HostArg::Long(offset as i64),
+            HostArg::Long(size as i64),
+        ],
+    )
+}
+
+/// L2: Guest buffer handle + data + offset → write mapped range (data length = size).
+pub fn exp_buffer_set_mapped_range_described(
+    cb: &GlobalRef,
+    buffer: u32,
+    data: Vec<u8>,
+    offset: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "bufferSetMappedRangeDescribed",
+        "(I[BJ)V",
+        vec![
+            HostArg::Int(buffer as i32),
+            HostArg::Bytes(data),
+            HostArg::Long(offset as i64),
+        ],
     )
 }
 

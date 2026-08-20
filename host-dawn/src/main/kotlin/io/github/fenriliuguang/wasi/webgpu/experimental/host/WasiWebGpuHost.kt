@@ -304,6 +304,9 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun bufferGetMappedRange(buffer: GpuHandle, offset: Long, size: Long): ByteArray
 
+    /** Write [data] into the mapped range at [offset] (buffer must be mapped). */
+    fun bufferSetMappedRange(buffer: GpuHandle, offset: Long, data: ByteArray)
+
     fun bufferUnmap(buffer: GpuHandle)
 
     fun bufferSize(buffer: GpuHandle): Long

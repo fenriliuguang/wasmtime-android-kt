@@ -1,4 +1,4 @@
-//! S6+: `get-buffer` + `[method]gpu-buffer.get-mapped-range-get-with-copy`
+//! L2: `get-buffer` + `[method]gpu-buffer.get-mapped-range-get-with-copy`
 //! WIT: `(borrow<gpu-buffer>, option<u64>, option<u64>)
 //!      -> result<list<u8>, get-mapped-range-error>`.
 //! Guest passes offset/size=none; ignores returned list; `run` returns harness 1.

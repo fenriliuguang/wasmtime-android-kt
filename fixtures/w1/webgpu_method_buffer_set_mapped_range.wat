@@ -3,7 +3,7 @@
 ;; WIT: get-mapped-range-set-with-copy: func(data: list<u8>, offset: option<gpu-size64>,
 ;;      size: option<gpu-size64>) -> result<_, get-mapped-range-error>
 ;; Guest passes empty data, offset/size=none; result ok; run returns harness 1.
-;; L2 still host-fixed (no JNI). get-buffer is a test constructor only.
+;; L2 described buffer handle → mapped-range write (stub maps first when rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $kind (variant

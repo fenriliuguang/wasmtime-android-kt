@@ -410,6 +410,13 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return buf.data.copyOfRange(offset.toInt(), (offset + size).toInt())
     }
 
+    override fun bufferSetMappedRange(buffer: GpuHandle, offset: Long, data: ByteArray) {
+        val buf = handles.get<BufferResource>(buffer, ResourceKind.Buffer)
+        if (!buf.mapped) throw HostException.Validation("buffer not mapped")
+        require(offset >= 0 && offset + data.size <= buf.size)
+        data.copyInto(buf.data, destinationOffset = offset.toInt())
+    }
+
     override fun bufferUnmap(buffer: GpuHandle) {
         val buf = handles.get<BufferResource>(buffer, ResourceKind.Buffer)
         buf.mapped = false
