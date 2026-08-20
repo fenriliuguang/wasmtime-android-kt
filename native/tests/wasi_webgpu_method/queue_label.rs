@@ -1,4 +1,4 @@
-//! S6+: `get-queue` + `[method]gpu-queue.label`
+//! L2: `get-queue` + `[method]gpu-queue.label`
 //! WIT: `(borrow) -> string`. Host empty string; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};

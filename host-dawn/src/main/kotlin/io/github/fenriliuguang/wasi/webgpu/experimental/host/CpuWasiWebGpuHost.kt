@@ -659,6 +659,15 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Device>(handle, ResourceKind.Device)
     }
 
+    override fun queueLabel(handle: GpuHandle): String {
+        handles.get<Queue>(handle, ResourceKind.Queue)
+        return ""
+    }
+
+    override fun queueSetLabel(handle: GpuHandle, label: String) {
+        handles.get<Queue>(handle, ResourceKind.Queue)
+    }
+
     override fun instanceCreateSurfaceFromAndroidNativeWindow(nativeWindowHandle: Long): GpuHandle {
         require(nativeWindowHandle != 0L) { "window-handle is null" }
         return handles.insert(ResourceKind.Surface, Surface())

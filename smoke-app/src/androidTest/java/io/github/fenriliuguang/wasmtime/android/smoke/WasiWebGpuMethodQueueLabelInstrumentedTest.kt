@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-queue.label` via [ExperimentalWebGpuBridge.attachDeviceGetQueue]. */
+/** L2 `[method]gpu-queue.label` via [ExperimentalWebGpuBridge.attachDeviceGetQueue]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodQueueLabelInstrumentedTest {
     @Test
