@@ -93,6 +93,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferSetLabelDescribed")
     }
 
+    /** L2: Guest gpu-command-buffer handle → WIT `gpu-command-buffer.label`. */
+    fun commandBufferLabelDescribed(handle: Int): String = unsupported("commandBufferLabelDescribed")
+
+    /** L2: Guest gpu-command-buffer handle + label string. */
+    fun commandBufferSetLabelDescribed(handle: Int, label: String) {
+        unsupported("commandBufferSetLabelDescribed")
+    }
+
     /** L2: Guest gpu-command-encoder handle → WIT `gpu-command-encoder.label`. */
     fun commandEncoderLabelDescribed(handle: Int): String = unsupported("commandEncoderLabelDescribed")
 

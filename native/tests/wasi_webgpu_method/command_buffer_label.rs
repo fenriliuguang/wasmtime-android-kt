@@ -1,4 +1,4 @@
-//! S6+: `get-command-buffer` + `[method]gpu-command-buffer.label`
+//! L2: `get-command-buffer` + `[method]gpu-command-buffer.label`
 //! WIT: `(borrow) -> string`. Host empty string; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
