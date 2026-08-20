@@ -1,4 +1,4 @@
-//! S6+: `get-compute-pass` + `[method]gpu-compute-pass-encoder.set-label`
+//! L2: `get-compute-pass` + `[method]gpu-compute-pass-encoder.set-label`
 //! WIT: `(borrow, label: string)`. Guest passes empty label; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
