@@ -2328,6 +2328,9 @@ object ExperimentalWebGpuBridge {
      * `set-label` (still lift-only), plus L2
      * `[method]gpu-shader-module.get-compilation-info` (described handle validate).
      */
+     * S6+ / L2: `[method]gpu-compilation-message.*` scalar getters (type / line-num / line-pos / offset)
+     * via guest shader-module handle; also `shaderModuleGetCompilationInfoDescribed`.
+     */
     fun attachCommandCompilationLabel(
         store: Store,
         host: WasiWebGpuHost,
