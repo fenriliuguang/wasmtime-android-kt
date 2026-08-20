@@ -1970,6 +1970,20 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun bufferLabel(buffer: GpuHandle): String {
+        synchronized(gpuLock) {
+            handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+            // androidx.webgpu alpha05 exposes setLabel only.
+            return ""
+        }
+    }
+
+    override fun bufferSetLabel(buffer: GpuHandle, label: String) {
+        synchronized(gpuLock) {
+            handles.get<GPUBuffer>(buffer, ResourceKind.Buffer).setLabel(label)
+        }
+    }
+
     override fun drop(handle: GpuHandle) {
         drop(handle, closeResource = true)
     }

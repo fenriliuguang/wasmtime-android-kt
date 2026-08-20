@@ -468,6 +468,30 @@ pub fn exp_buffer_destroy_described(cb: &GlobalRef, buffer: u32) -> Result<(), S
     )
 }
 
+/// L2: Guest buffer handle → WIT `gpu-buffer.label`.
+pub fn exp_buffer_label_described(cb: &GlobalRef, buffer: u32) -> Result<String, String> {
+    call_string(
+        cb,
+        "bufferLabelDescribed",
+        "(I)Ljava/lang/String;",
+        vec![HostArg::Int(buffer as i32)],
+    )
+}
+
+/// L2: Guest buffer handle + label string.
+pub fn exp_buffer_set_label_described(
+    cb: &GlobalRef,
+    buffer: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "bufferSetLabelDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(buffer as i32), HostArg::Str(label)],
+    )
+}
+
 /// L2: Guest buffer handle + offset/size → mapped-range bytes.
 pub fn exp_buffer_get_mapped_range_described(
     cb: &GlobalRef,

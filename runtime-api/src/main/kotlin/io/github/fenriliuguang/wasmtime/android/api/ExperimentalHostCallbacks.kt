@@ -85,6 +85,14 @@ interface ExperimentalHostCallbacks {
         unsupported("bufferDestroyDescribed")
     }
 
+    /** L2: Guest buffer handle → WIT `gpu-buffer.label`. */
+    fun bufferLabelDescribed(buffer: Int): String = unsupported("bufferLabelDescribed")
+
+    /** L2: Guest buffer handle + label string. */
+    fun bufferSetLabelDescribed(buffer: Int, label: String) {
+        unsupported("bufferSetLabelDescribed")
+    }
+
     /** L2: Guest buffer handle + offset/size → mapped-range bytes. */
     fun bufferGetMappedRangeDescribed(buffer: Int, offset: Long, size: Long): ByteArray =
         unsupported("bufferGetMappedRangeDescribed")

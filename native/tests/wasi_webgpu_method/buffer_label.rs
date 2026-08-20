@@ -1,5 +1,5 @@
-//! S6+: `get-buffer` + `[method]gpu-buffer.label`
-//! WIT: `(borrow) -> string`. Host empty string; harness 1.
+//! L2: `get-buffer` + `[method]gpu-buffer.label`
+//! WIT: `(borrow) -> string`. Host Cpu stub empty; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
