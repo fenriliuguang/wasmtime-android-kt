@@ -46,6 +46,9 @@ private class ForwardingHostCallbacks(
 
     override fun requestAdapter(): Int = bindings.requestAdapter()
 
+    override fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int): Int =
+        bindings.requestAdapterDescribed(powerPreference, forceFallback)
+
     override fun adapterRequestDevice(adapter: Int): Int = bindings.adapterRequestDevice(adapter)
 
     override fun adapterRequestDeviceDescribed(adapter: Int, hasFeature: Int, feature: Int): Int =

@@ -10,6 +10,14 @@ package io.github.fenriliuguang.wasmtime.android.api
 interface ExperimentalHostCallbacks {
     fun requestAdapter(): Int = unsupported("requestAdapter")
 
+    /**
+     * L2: Guest `[method]gpu.request-adapter`.
+     * `powerPreference`: `0` none/`undefined`, `1` low-power, `2` high-performance.
+     * `forceFallback`: `0` none/false, `1` true. `feature-level` unused this cut.
+     */
+    fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int): Int =
+        unsupported("requestAdapterDescribed")
+
     fun adapterRequestDevice(adapter: Int): Int = unsupported("adapterRequestDevice")
 
     /**

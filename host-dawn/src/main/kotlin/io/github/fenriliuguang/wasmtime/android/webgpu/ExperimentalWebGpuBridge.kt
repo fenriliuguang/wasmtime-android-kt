@@ -38,13 +38,17 @@ import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
 object ExperimentalWebGpuBridge {
     /**
      * W1/W2 flat `request-adapter` and S2 `[method]gpu.request-adapter` share this
-     * L2 callback. `get-gpu` is a test constructor (no Kotlin).
+     * L2 callback. `get-gpu` is a test constructor (no Kotlin). The method uses
+     * `requestAdapterDescribed` (power-preference + force-fallback; feature-level unused).
      */
     fun attachRequestAdapter(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(
             object : ExperimentalHostCallbacks {
                 override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int): Int =
+                    bindings.requestAdapterDescribed(powerPreference, forceFallback)
 
                 override fun wgslLanguageFeaturesHasDescribed(value: String): Int =
                     if (bindings.wgslLanguageFeaturesHas(value)) 1 else 0

@@ -271,6 +271,21 @@ pub fn exp_request_adapter(cb: &GlobalRef) -> Result<u32, String> {
     call_i(cb, "requestAdapter", "()I", vec![])
 }
 
+/// L2: Guest `gpu.request-adapter`. `power_preference`: 0 none/undefined, 1 low-power,
+/// 2 high-performance. `force_fallback`: 0 none/false, 1 true. Feature-level unused.
+pub fn exp_request_adapter_described(
+    cb: &GlobalRef,
+    power_preference: i32,
+    force_fallback: i32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "requestAdapterDescribed",
+        "(II)I",
+        vec![HostArg::Int(power_preference), HostArg::Int(force_fallback)],
+    )
+}
+
 pub fn exp_adapter_request_device(cb: &GlobalRef, adapter: u32) -> Result<u32, String> {
     call_i(
         cb,
@@ -647,7 +662,10 @@ pub fn exp_render_pipeline_set_label_described(
 }
 
 /// L2: Guest gpu-render-pass-encoder handle → WIT `gpu-render-pass-encoder.label`.
-pub fn exp_render_pass_encoder_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+pub fn exp_render_pass_encoder_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<String, String> {
     call_string(
         cb,
         "renderPassEncoderLabelDescribed",
@@ -695,7 +713,10 @@ pub fn exp_render_bundle_set_label_described(
 }
 
 /// L2: Guest gpu-render-bundle-encoder handle → WIT `gpu-render-bundle-encoder.label`.
-pub fn exp_render_bundle_encoder_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+pub fn exp_render_bundle_encoder_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<String, String> {
     call_string(
         cb,
         "renderBundleEncoderLabelDescribed",
@@ -743,7 +764,10 @@ pub fn exp_compute_pipeline_set_label_described(
 }
 
 /// L2: Guest gpu-compute-pass-encoder handle → WIT `gpu-compute-pass-encoder.label`.
-pub fn exp_compute_pass_encoder_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+pub fn exp_compute_pass_encoder_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<String, String> {
     call_string(
         cb,
         "computePassEncoderLabelDescribed",
@@ -1007,7 +1031,10 @@ pub fn exp_texture_set_label_described(
 }
 
 /// L2: Guest gpu-bind-group-layout handle → WIT `gpu-bind-group-layout.label`.
-pub fn exp_bind_group_layout_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
+pub fn exp_bind_group_layout_label_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<String, String> {
     call_string(
         cb,
         "bindGroupLayoutLabelDescribed",
@@ -1261,7 +1288,6 @@ pub fn exp_supported_limits_max_buffer_size_described(
     )
 }
 
-
 /// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-color-attachment-bytes-per-sample`.
 pub fn exp_supported_limits_max_color_attachment_bytes_per_sample_described(
     cb: &GlobalRef,
@@ -1317,7 +1343,6 @@ pub fn exp_supported_limits_max_compute_workgroup_size_x_described(
         vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
     )
 }
-
 
 /// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-compute-workgroup-size-y`.
 pub fn exp_supported_limits_max_compute_workgroup_size_y_described(
@@ -1375,7 +1400,6 @@ pub fn exp_supported_limits_max_compute_workgroup_storage_size_described(
     )
 }
 
-
 /// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-dynamic-storage-buffers-per-pipeline-layout`.
 pub fn exp_supported_limits_max_dynamic_storage_buffers_per_pipeline_layout_described(
     cb: &GlobalRef,
@@ -1431,7 +1455,6 @@ pub fn exp_supported_limits_max_inter_stage_shader_variables_described(
         vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
     )
 }
-
 
 /// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-sampled-textures-per-shader-stage`.
 pub fn exp_supported_limits_max_sampled_textures_per_shader_stage_described(
@@ -1489,7 +1512,6 @@ pub fn exp_supported_limits_max_storage_buffers_in_fragment_stage_described(
     )
 }
 
-
 /// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-buffers-in-vertex-stage`.
 pub fn exp_supported_limits_max_storage_buffers_in_vertex_stage_described(
     cb: &GlobalRef,
@@ -1545,7 +1567,6 @@ pub fn exp_supported_limits_max_storage_textures_in_vertex_stage_described(
         vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
     )
 }
-
 
 /// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-storage-textures-per-shader-stage`.
 pub fn exp_supported_limits_max_storage_textures_per_shader_stage_described(
@@ -1603,7 +1624,6 @@ pub fn exp_supported_limits_max_texture_dimension2_d_described(
     )
 }
 
-
 /// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-texture-dimension3-d`.
 pub fn exp_supported_limits_max_texture_dimension3_d_described(
     cb: &GlobalRef,
@@ -1659,7 +1679,6 @@ pub fn exp_supported_limits_max_vertex_attributes_described(
         vec![HostArg::Int(adapter as i32), HostArg::Int(device as i32)],
     )
 }
-
 
 /// L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-vertex-buffer-array-stride`.
 pub fn exp_supported_limits_max_vertex_buffer_array_stride_described(
