@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-supported-limits.max-inter-stage-shader-variables` via [ExperimentalWebGpuBridge.attachAdapterInfo]. */
+/** L2 `[method]gpu-supported-limits.max-inter-stage-shader-variables` via [ExperimentalWebGpuBridge.attachAdapterInfo]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodSupportedLimitsMaxInterStageShaderVariablesInstrumentedTest {
     @Test

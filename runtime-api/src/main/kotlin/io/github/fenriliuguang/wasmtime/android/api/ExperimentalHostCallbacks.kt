@@ -192,6 +192,23 @@ interface ExperimentalHostCallbacks {
     fun supportedLimitsMaxComputeWorkgroupStorageSizeDescribed(adapter: Int, device: Int): Int =
         unsupported("supportedLimitsMaxComputeWorkgroupStorageSizeDescribed")
 
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-dynamic-storage-buffers-per-pipeline-layout`. */
+    fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayoutDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxDynamicStorageBuffersPerPipelineLayoutDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-dynamic-uniform-buffers-per-pipeline-layout`. */
+    fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayoutDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxDynamicUniformBuffersPerPipelineLayoutDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-immediate-size`. */
+    fun supportedLimitsMaxImmediateSizeDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxImmediateSizeDescribed")
+
+    /** L2: Guest adapter/device handles → WIT `gpu-supported-limits.max-inter-stage-shader-variables`. */
+    fun supportedLimitsMaxInterStageShaderVariablesDescribed(adapter: Int, device: Int): Int =
+        unsupported("supportedLimitsMaxInterStageShaderVariablesDescribed")
+
     /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
     fun adapterInfoDescribed(adapter: Int) {
         unsupported("adapterInfoDescribed")

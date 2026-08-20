@@ -1056,6 +1056,30 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxDynamicStorageBuffersPerPipelineLayout
+        }
+    }
+
+    override fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxDynamicUniformBuffersPerPipelineLayout
+        }
+    }
+
+    override fun supportedLimitsMaxImmediateSize(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxImmediateSize
+        }
+    }
+
+    override fun supportedLimitsMaxInterStageShaderVariables(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxInterStageShaderVariables
+        }
+    }
+
     override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)

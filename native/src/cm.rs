@@ -1039,8 +1039,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-dynamic-storage-buffers-per-pipeline-layout",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_dynamic_storage_buffers_per_pipeline_layout_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1048,8 +1051,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-dynamic-uniform-buffers-per-pipeline-layout",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_dynamic_uniform_buffers_per_pipeline_layout_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1057,8 +1063,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-immediate-size",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_immediate_size_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1066,8 +1075,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-inter-stage-shader-variables",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_inter_stage_shader_variables_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;

@@ -824,6 +824,18 @@ class AbiCmHostBindings(
     fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: Int, device: Int): Int =
         host.supportedLimitsMaxComputeWorkgroupStorageSize(GpuHandle(adapter), GpuHandle(device))
 
+    fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxImmediateSize(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxImmediateSize(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxInterStageShaderVariables(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxInterStageShaderVariables(GpuHandle(adapter), GpuHandle(device))
+
     fun adapterInfoSubgroupMinSize(adapter: Int): Int =
         host.adapterInfoSubgroupMinSize(GpuHandle(adapter))
 
