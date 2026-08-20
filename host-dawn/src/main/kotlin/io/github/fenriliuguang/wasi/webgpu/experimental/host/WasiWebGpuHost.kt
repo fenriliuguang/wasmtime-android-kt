@@ -190,6 +190,15 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun computePipelineGetBindGroupLayout(pipeline: GpuHandle, index: Int): GpuHandle
 
+    fun computePassPushDebugGroup(pass: GpuHandle, label: String)
+
+    fun computePassPopDebugGroup(pass: GpuHandle)
+
+    fun computePassInsertDebugMarker(pass: GpuHandle, label: String)
+
+    /** Set immediates bytes on a compute pass (host validates; Dawn pass-through when supported). */
+    fun computePassSetImmediates(pass: GpuHandle, rangeOffset: Int, data: ByteArray)
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

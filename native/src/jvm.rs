@@ -731,6 +731,65 @@ pub fn exp_render_pipeline_get_bind_group_layout_described(
     )
 }
 
+/// L2: Guest compute-pass handle + group label.
+pub fn exp_compute_pass_push_debug_group_described(
+    cb: &GlobalRef,
+    pass: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassPushDebugGroupDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(pass as i32), HostArg::Str(label)],
+    )
+}
+
+/// L2: Guest compute-pass handle → pop debug group.
+pub fn exp_compute_pass_pop_debug_group_described(cb: &GlobalRef, pass: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassPopDebugGroupDescribed",
+        "(I)V",
+        vec![HostArg::Int(pass as i32)],
+    )
+}
+
+/// L2: Guest compute-pass handle + marker label.
+pub fn exp_compute_pass_insert_debug_marker_described(
+    cb: &GlobalRef,
+    pass: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassInsertDebugMarkerDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(pass as i32), HostArg::Str(label)],
+    )
+}
+
+/// L2: Guest compute-pass handle + immediates (range offset, bytes, data offset).
+pub fn exp_compute_pass_set_immediates_described(
+    cb: &GlobalRef,
+    pass: u32,
+    range_offset: u32,
+    data: Vec<u8>,
+    data_offset: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "computePassSetImmediatesDescribed",
+        "(II[BJ)V",
+        vec![
+            HostArg::Int(pass as i32),
+            HostArg::Int(range_offset as i32),
+            HostArg::Bytes(data),
+            HostArg::Long(data_offset as i64),
+        ],
+    )
+}
+
 /// L2: Guest compute-pipeline rep (0 → stub in the attach) + group index → BGL rep.
 pub fn exp_compute_pipeline_get_bind_group_layout_described(
     cb: &GlobalRef,

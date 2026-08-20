@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-compute-pass-encoder.push-debug-group` via [ExperimentalWebGpuBridge.attachComputePassState]. */
+/** L2 `[method]gpu-compute-pass-encoder.push-debug-group` via [ExperimentalWebGpuBridge.attachComputePassState]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodComputePassPushDebugGroupInstrumentedTest {
     @Test

@@ -372,6 +372,27 @@ private class ForwardingHostCallbacks(
     override fun computePipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
         bindings.computePipelineGetBindGroupLayout(pipeline, index)
 
+    override fun computePassPushDebugGroupDescribed(pass: Int, label: String) {
+        bindings.computePassPushDebugGroup(pass, label)
+    }
+
+    override fun computePassPopDebugGroupDescribed(pass: Int) {
+        bindings.computePassPopDebugGroup(pass)
+    }
+
+    override fun computePassInsertDebugMarkerDescribed(pass: Int, label: String) {
+        bindings.computePassInsertDebugMarker(pass, label)
+    }
+
+    override fun computePassSetImmediatesDescribed(
+        pass: Int,
+        rangeOffset: Int,
+        data: ByteArray,
+        dataOffset: Long,
+    ) {
+        bindings.computePassSetImmediates(pass, rangeOffset, data)
+    }
+
     override fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,

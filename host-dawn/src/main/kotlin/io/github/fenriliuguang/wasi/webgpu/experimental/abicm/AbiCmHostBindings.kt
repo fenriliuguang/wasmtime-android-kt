@@ -660,6 +660,22 @@ class AbiCmHostBindings(
     fun computePipelineGetBindGroupLayout(pipeline: Int, index: Int): Int =
         host.computePipelineGetBindGroupLayout(GpuHandle(pipeline), index).raw
 
+    fun computePassPushDebugGroup(pass: Int, label: String) {
+        host.computePassPushDebugGroup(GpuHandle(pass), label)
+    }
+
+    fun computePassPopDebugGroup(pass: Int) {
+        host.computePassPopDebugGroup(GpuHandle(pass))
+    }
+
+    fun computePassInsertDebugMarker(pass: Int, label: String) {
+        host.computePassInsertDebugMarker(GpuHandle(pass), label)
+    }
+
+    fun computePassSetImmediates(pass: Int, rangeOffset: Int, data: ByteArray) {
+        host.computePassSetImmediates(GpuHandle(pass), rangeOffset, data)
+    }
+
     private fun storageEntry(binding: Int, type: BufferBindingType) = BindGroupLayoutEntry(
         binding = binding,
         visibility = GpuShaderStage.COMPUTE,

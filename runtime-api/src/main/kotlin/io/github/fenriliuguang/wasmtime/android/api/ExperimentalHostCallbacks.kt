@@ -204,6 +204,31 @@ interface ExperimentalHostCallbacks {
     fun computePipelineGetBindGroupLayoutDescribed(pipeline: Int, index: Int): Int =
         unsupported("computePipelineGetBindGroupLayoutDescribed")
 
+    /** L2: Guest compute-pass handle + group label. */
+    fun computePassPushDebugGroupDescribed(pass: Int, label: String) {
+        unsupported("computePassPushDebugGroupDescribed")
+    }
+
+    /** L2: Guest compute-pass handle → pop debug group. */
+    fun computePassPopDebugGroupDescribed(pass: Int) {
+        unsupported("computePassPopDebugGroupDescribed")
+    }
+
+    /** L2: Guest compute-pass handle + marker label. */
+    fun computePassInsertDebugMarkerDescribed(pass: Int, label: String) {
+        unsupported("computePassInsertDebugMarkerDescribed")
+    }
+
+    /** L2: Guest compute-pass handle + immediates (range offset, bytes, data offset). */
+    fun computePassSetImmediatesDescribed(
+        pass: Int,
+        rangeOffset: Int,
+        data: ByteArray,
+        dataOffset: Long,
+    ) {
+        unsupported("computePassSetImmediatesDescribed")
+    }
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 

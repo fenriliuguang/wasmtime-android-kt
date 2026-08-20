@@ -1203,12 +1203,47 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `[method]gpu-compute-pass-encoder.set-immediates` /
-     * `push-debug-group` / `pop-debug-group` / `insert-debug-marker`.
-     * Native lifts guest args; L2 unused (no new JNI).
+     * L2: `[method]gpu-compute-pass-encoder.set-immediates` /
+     * `push-debug-group` / `pop-debug-group` / `insert-debug-marker`
+     * (guest pass rep + labels/bytes through described JNI; 0 → stub pass).
      */
-    fun attachComputePassState(store: Store, @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+    fun attachComputePassState(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceCreateCommandEncoder(device: Int): Int =
+                    bindings.deviceCreateCommandEncoder(device)
+
+                override fun beginComputePass(encoder: Int): Int =
+                    bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun computePassPushDebugGroupDescribed(pass: Int, label: String) {
+                    bindings.computePassPushDebugGroup(pass, label)
+                }
+
+                override fun computePassPopDebugGroupDescribed(pass: Int) {
+                    bindings.computePassPopDebugGroup(pass)
+                }
+
+                override fun computePassInsertDebugMarkerDescribed(pass: Int, label: String) {
+                    bindings.computePassInsertDebugMarker(pass, label)
+                }
+
+                override fun computePassSetImmediatesDescribed(
+                    pass: Int,
+                    rangeOffset: Int,
+                    data: ByteArray,
+                    dataOffset: Long,
+                ) {
+                    bindings.computePassSetImmediates(pass, rangeOffset, data)
+                }
+            },
+        )
     }
 
     /**
