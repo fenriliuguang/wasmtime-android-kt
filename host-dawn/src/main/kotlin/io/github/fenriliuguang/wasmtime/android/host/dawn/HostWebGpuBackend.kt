@@ -362,6 +362,27 @@ private class ForwardingHostCallbacks(
         bindings.renderBundleEncoderDrawIndexedIndirect(encoder, buffer, offset)
     }
 
+    override fun renderBundleEncoderPushDebugGroupDescribed(encoder: Int, label: String) {
+        bindings.renderBundleEncoderPushDebugGroup(encoder, label)
+    }
+
+    override fun renderBundleEncoderPopDebugGroupDescribed(encoder: Int) {
+        bindings.renderBundleEncoderPopDebugGroup(encoder)
+    }
+
+    override fun renderBundleEncoderInsertDebugMarkerDescribed(encoder: Int, label: String) {
+        bindings.renderBundleEncoderInsertDebugMarker(encoder, label)
+    }
+
+    override fun renderBundleEncoderSetImmediatesDescribed(
+        encoder: Int,
+        rangeOffset: Int,
+        data: ByteArray,
+        dataOffset: Long,
+    ) {
+        bindings.renderBundleEncoderSetImmediates(encoder, rangeOffset, data)
+    }
+
     override fun querySetDestroyDescribed(querySet: Int) {
         bindings.querySetDestroy(querySet)
     }

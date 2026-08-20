@@ -94,6 +94,15 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun renderBundleEncoderDrawIndexedIndirect(encoder: GpuHandle, buffer: GpuHandle, offset: Long)
 
+    fun renderBundleEncoderPushDebugGroup(encoder: GpuHandle, label: String)
+
+    fun renderBundleEncoderPopDebugGroup(encoder: GpuHandle)
+
+    fun renderBundleEncoderInsertDebugMarker(encoder: GpuHandle, label: String)
+
+    /** Set immediates bytes on a bundle encoder (host validates; Dawn pass-through when supported). */
+    fun renderBundleEncoderSetImmediates(encoder: GpuHandle, rangeOffset: Int, data: ByteArray)
+
     fun deviceCreateSampler(
         device: GpuHandle,
         descriptor: SamplerDescriptor = SamplerDescriptor(),

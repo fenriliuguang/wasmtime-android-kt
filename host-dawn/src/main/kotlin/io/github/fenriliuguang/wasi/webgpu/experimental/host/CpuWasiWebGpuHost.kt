@@ -275,6 +275,27 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         require(offset >= 0)
     }
 
+    override fun renderBundleEncoderPushDebugGroup(encoder: GpuHandle, label: String) {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+    }
+
+    override fun renderBundleEncoderPopDebugGroup(encoder: GpuHandle) {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+    }
+
+    override fun renderBundleEncoderInsertDebugMarker(encoder: GpuHandle, label: String) {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+    }
+
+    override fun renderBundleEncoderSetImmediates(
+        encoder: GpuHandle,
+        rangeOffset: Int,
+        data: ByteArray,
+    ) {
+        handles.get<RenderBundleEncoder>(encoder, ResourceKind.RenderBundleEncoder)
+        require(rangeOffset >= 0)
+    }
+
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {
         handles.get<Device>(device, ResourceKind.Device)
         return handles.insert(ResourceKind.Sampler, Sampler())

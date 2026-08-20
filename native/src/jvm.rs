@@ -974,6 +974,68 @@ pub fn exp_render_bundle_encoder_draw_indexed_indirect_described(
     )
 }
 
+/// L2: Guest bundle-encoder + group label.
+pub fn exp_render_bundle_encoder_push_debug_group_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderPushDebugGroupDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(encoder as i32), HostArg::Str(label)],
+    )
+}
+
+/// L2: Guest bundle-encoder → pop debug group.
+pub fn exp_render_bundle_encoder_pop_debug_group_described(
+    cb: &GlobalRef,
+    encoder: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderPopDebugGroupDescribed",
+        "(I)V",
+        vec![HostArg::Int(encoder as i32)],
+    )
+}
+
+/// L2: Guest bundle-encoder + marker label.
+pub fn exp_render_bundle_encoder_insert_debug_marker_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    label: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderInsertDebugMarkerDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(encoder as i32), HostArg::Str(label)],
+    )
+}
+
+/// L2: Guest bundle-encoder + immediates (range offset, bytes, data offset).
+pub fn exp_render_bundle_encoder_set_immediates_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    range_offset: u32,
+    data: Vec<u8>,
+    data_offset: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderSetImmediatesDescribed",
+        "(II[BJ)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(range_offset as i32),
+            HostArg::Bytes(data),
+            HostArg::Long(data_offset as i64),
+        ],
+    )
+}
+
 /// L2: Guest compute-pipeline rep (0 → stub in the attach) + group index → BGL rep.
 pub fn exp_compute_pipeline_get_bind_group_layout_described(
     cb: &GlobalRef,
