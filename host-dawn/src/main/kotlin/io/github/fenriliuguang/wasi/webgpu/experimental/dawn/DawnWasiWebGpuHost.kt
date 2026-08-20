@@ -1032,6 +1032,30 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxComputeWorkgroupSizeY
+        }
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxComputeWorkgroupSizeZ
+        }
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxComputeWorkgroupsPerDimension
+        }
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: GpuHandle, device: GpuHandle): Int {
+        synchronized(gpuLock) {
+            return dawnSupportedLimits(adapter, device).maxComputeWorkgroupStorageSize
+        }
+    }
+
     override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)

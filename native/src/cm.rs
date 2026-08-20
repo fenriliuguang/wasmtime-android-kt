@@ -991,8 +991,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroup-size-y",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_compute_workgroup_size_y_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1000,8 +1003,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroup-size-z",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_compute_workgroup_size_z_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1009,8 +1015,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroups-per-dimension",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_compute_workgroups_per_dimension_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1018,8 +1027,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroup-storage-size",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
-                    let _ = caller.data_mut().table.get(&limits)?;
-                    Ok((1u32,))
+                    let (cb, l2_adapter, limits_device) =
+                        l2_supported_limits_handles(&mut caller, &limits)?;
+                    let value = jvm::exp_supported_limits_max_compute_workgroup_storage_size_described(&cb, l2_adapter, limits_device)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((value,))
                 },
             )
             .map_err(|e| e.to_string())?;

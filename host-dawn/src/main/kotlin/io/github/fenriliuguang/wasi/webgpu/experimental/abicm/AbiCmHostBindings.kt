@@ -812,6 +812,18 @@ class AbiCmHostBindings(
     fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: Int, device: Int): Int =
         host.supportedLimitsMaxComputeWorkgroupSizeX(GpuHandle(adapter), GpuHandle(device))
 
+    fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxComputeWorkgroupSizeY(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxComputeWorkgroupSizeZ(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxComputeWorkgroupsPerDimension(GpuHandle(adapter), GpuHandle(device))
+
+    fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: Int, device: Int): Int =
+        host.supportedLimitsMaxComputeWorkgroupStorageSize(GpuHandle(adapter), GpuHandle(device))
+
     fun adapterInfoSubgroupMinSize(adapter: Int): Int =
         host.adapterInfoSubgroupMinSize(GpuHandle(adapter))
 

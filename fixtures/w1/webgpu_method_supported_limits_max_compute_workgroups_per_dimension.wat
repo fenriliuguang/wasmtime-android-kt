@@ -1,6 +1,5 @@
-;; S6+: get-supported-limits + [method]gpu-supported-limits.max-compute-workgroups-per-dimension
+;; L2: get-supported-limits + [method]gpu-supported-limits.max-compute-workgroups-per-dimension
 ;; WIT: max-compute-workgroups-per-dimension: func() -> u32. Host returns 1; harness 1.
-;; L2 unused (lift-only).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (export "gpu-supported-limits" (type $gpu-supported-limits (sub resource)))

@@ -789,6 +789,26 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return 1
     }
 
+    override fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
+    override fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: GpuHandle, device: GpuHandle): Int {
+        validateLimitsOwner(adapter, device)
+        return 1
+    }
+
     override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int =
         handles.get<Adapter>(adapter, ResourceKind.Adapter).subgroupMinSize
 
