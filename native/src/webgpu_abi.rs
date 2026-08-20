@@ -398,6 +398,14 @@ impl GpuQueryType {
             _ => Self::Occlusion,
         }
     }
+
+    /// Inverse of [Self::from_host_u32].
+    pub fn to_host_u32(self) -> u32 {
+        match self {
+            Self::Occlusion => 0,
+            Self::Timestamp => 1,
+        }
+    }
 }
 
 #[derive(Debug, ComponentType, Lift, Lower)]

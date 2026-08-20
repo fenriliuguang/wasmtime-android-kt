@@ -37,6 +37,7 @@ import androidx.webgpu.GPUPrimitiveState
 import androidx.webgpu.GPUQuerySet
 import androidx.webgpu.GPUQuerySetDescriptor
 import androidx.webgpu.GPUQueue
+import androidx.webgpu.GPURenderBundleEncoderDescriptor
 import androidx.webgpu.GPURenderPassColorAttachment
 import androidx.webgpu.GPURenderPassDepthStencilAttachment
 import androidx.webgpu.GPURenderPassDescriptor
@@ -376,6 +377,21 @@ class DawnWasiWebGpuHost private constructor(
             ),
         )
         return handles.insert(ResourceKind.QuerySet, querySet)
+    }
+
+    override fun deviceCreateRenderBundleEncoder(
+        device: GpuHandle,
+        colorFormat: Int,
+        sampleCount: Int,
+    ): GpuHandle {
+        val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
+        val encoder = gpuDevice.createRenderBundleEncoder(
+            GPURenderBundleEncoderDescriptor(
+                colorFormats = intArrayOf(colorFormat),
+                sampleCount = sampleCount,
+            ),
+        )
+        return handles.insert(ResourceKind.RenderBundleEncoder, encoder)
     }
 
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {

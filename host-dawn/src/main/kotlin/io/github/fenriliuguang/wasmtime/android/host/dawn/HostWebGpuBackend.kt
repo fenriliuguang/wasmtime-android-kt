@@ -268,6 +268,15 @@ private class ForwardingHostCallbacks(
 
     override fun deviceCreateQuerySet(device: Int): Int = bindings.deviceCreateQuerySet(device)
 
+    override fun deviceCreateQuerySetDescribed(device: Int, type: Int, count: Int): Int =
+        bindings.deviceCreateQuerySet(device, type, count)
+
+    override fun deviceCreateRenderBundleEncoderDescribed(
+        device: Int,
+        colorFormat: Int,
+        sampleCount: Int,
+    ): Int = bindings.deviceCreateRenderBundleEncoder(device, colorFormat, sampleCount)
+
     override fun querySetDestroyDescribed(querySet: Int) {
         bindings.querySetDestroy(querySet)
     }

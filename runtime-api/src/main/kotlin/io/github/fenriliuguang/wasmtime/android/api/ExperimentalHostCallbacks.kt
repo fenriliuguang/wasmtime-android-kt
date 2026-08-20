@@ -173,6 +173,17 @@ interface ExperimentalHostCallbacks {
     /** Host-fixed occlusion query-set (count 1) for lift-only getter stubs. */
     fun deviceCreateQuerySet(device: Int): Int = unsupported("deviceCreateQuerySet")
 
+    /** L2: Guest-decoded `gpu-query-set-descriptor` type ordinal + count. */
+    fun deviceCreateQuerySetDescribed(device: Int, type: Int, count: Int): Int =
+        unsupported("deviceCreateQuerySetDescribed")
+
+    /** L2: Guest-decoded bundle-encoder descriptor (first color format Dawn int + sample count). */
+    fun deviceCreateRenderBundleEncoderDescribed(
+        device: Int,
+        colorFormat: Int,
+        sampleCount: Int,
+    ): Int = unsupported("deviceCreateRenderBundleEncoderDescribed")
+
     /** W3+: host-fixed sampler descriptor (not from Guest). */
     fun deviceCreateSampler(device: Int): Int = unsupported("deviceCreateSampler")
 

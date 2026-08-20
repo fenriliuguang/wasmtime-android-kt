@@ -666,6 +666,44 @@ pub fn exp_create_query_set(cb: &GlobalRef, device: u32) -> Result<u32, String> 
     )
 }
 
+/// L2: Guest-decoded `gpu-query-set-descriptor` type ordinal + count.
+pub fn exp_create_query_set_described(
+    cb: &GlobalRef,
+    device: u32,
+    query_type: u32,
+    count: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateQuerySetDescribed",
+        "(III)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Int(query_type as i32),
+            HostArg::Int(count as i32),
+        ],
+    )
+}
+
+/// L2: Guest-decoded bundle-encoder descriptor (first color format Dawn int + sample count).
+pub fn exp_create_render_bundle_encoder_described(
+    cb: &GlobalRef,
+    device: u32,
+    color_format: u32,
+    sample_count: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceCreateRenderBundleEncoderDescribed",
+        "(III)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Int(color_format as i32),
+            HostArg::Int(sample_count as i32),
+        ],
+    )
+}
+
 /// S6+: Guest-decoded `gpu-texture-descriptor` size/format/usage (Dawn format int).
 pub fn exp_create_texture_described(
     cb: &GlobalRef,

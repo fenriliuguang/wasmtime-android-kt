@@ -3401,9 +3401,33 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device.create-query-set",
                 |mut caller,
-                 (device, _descriptor): (Resource<GpuDevice>, GpuQuerySetDescriptor)| {
-                    let _ = caller.data_mut().table.get(&device)?;
-                    let resource = caller.data_mut().table.push(GpuQuerySet { rep: 0 })?;
+                 (device, descriptor): (Resource<GpuDevice>, GpuQuerySetDescriptor)| {
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let query_rep = jvm::exp_create_query_set_described(
+                        &cb,
+                        l2_device,
+                        descriptor.type_.to_host_u32(),
+                        descriptor.count,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuQuerySet { rep: query_rep })?;
                     Ok((Ok::<_, CreateQuerySetError>(resource),))
                 },
             )
@@ -4980,12 +5004,40 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Resource<GpuDevice>,
                     GpuRenderBundleEncoderDescriptor,
                 )| {
-                    let _ = caller.data_mut().table.get(&device)?;
-                    let _ = descriptor.color_formats.len();
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let color_format = descriptor
+                        .color_formats
+                        .iter()
+                        .flatten()
+                        .next()
+                        .map(|f| f.to_dawn_u32())
+                        .unwrap_or_else(|| GpuTextureFormat::Rgba8unorm.to_dawn_u32());
+                    let sample_count = descriptor.sample_count.unwrap_or(1);
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let encoder_rep = jvm::exp_create_render_bundle_encoder_described(
+                        &cb,
+                        l2_device,
+                        color_format,
+                        sample_count,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     let resource = caller
                         .data_mut()
                         .table
-                        .push(GpuRenderBundleEncoder { rep: 0 })?;
+                        .push(GpuRenderBundleEncoder { rep: encoder_rep })?;
                     Ok((resource,))
                 },
             )

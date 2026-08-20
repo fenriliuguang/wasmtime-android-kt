@@ -1712,11 +1712,12 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `[method]gpu-device.create-render-bundle-encoder` /
-     * `create-query-set` / `destroy` (device) still lift-only.
+     * S6+: `[method]gpu-device.create-render-bundle-encoder` / `create-query-set`
+     * (L2 described descriptor fields → host create).
      * L2: `[method]gpu-query-set.destroy` / `type` / `count`.
      * `[method]gpu-texture.destroy` is L2 via [attachTextureInfo].
      * `[method]gpu-buffer.destroy` is L2 via [attachBindGroupBufferLabel].
+     * `[method]gpu-device.destroy` is L2 via [attachDeviceInfoError].
      */
     fun attachDeviceQueryAndDestroy(
         store: Store,
@@ -1732,6 +1733,19 @@ object ExperimentalWebGpuBridge {
 
                 override fun deviceCreateQuerySet(device: Int): Int =
                     bindings.deviceCreateQuerySet(device)
+
+                override fun deviceCreateQuerySetDescribed(
+                    device: Int,
+                    type: Int,
+                    count: Int,
+                ): Int = bindings.deviceCreateQuerySet(device, type, count)
+
+                override fun deviceCreateRenderBundleEncoderDescribed(
+                    device: Int,
+                    colorFormat: Int,
+                    sampleCount: Int,
+                ): Int =
+                    bindings.deviceCreateRenderBundleEncoder(device, colorFormat, sampleCount)
 
                 override fun querySetTypeDescribed(querySet: Int): Int =
                     bindings.querySetType(querySet)

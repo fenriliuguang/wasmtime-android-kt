@@ -40,6 +40,13 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun deviceCreateQuerySet(device: GpuHandle, type: Int, count: Int): GpuHandle
 
+    /** Minimal bundle-encoder create (one color format + sample count). */
+    fun deviceCreateRenderBundleEncoder(
+        device: GpuHandle,
+        colorFormat: Int,
+        sampleCount: Int,
+    ): GpuHandle
+
     fun deviceCreateSampler(
         device: GpuHandle,
         descriptor: SamplerDescriptor = SamplerDescriptor(),
