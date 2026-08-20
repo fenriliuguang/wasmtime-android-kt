@@ -577,6 +577,36 @@ pub fn exp_insert_debug_marker_described(
     )
 }
 
+/// L2: Guest adapter handle → host validates before the local features lift.
+pub fn exp_adapter_features_described(cb: &GlobalRef, adapter: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "adapterFeaturesDescribed",
+        "(I)V",
+        vec![HostArg::Int(adapter as i32)],
+    )
+}
+
+/// L2: Guest adapter handle → host validates before the local limits lift.
+pub fn exp_adapter_limits_described(cb: &GlobalRef, adapter: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "adapterLimitsDescribed",
+        "(I)V",
+        vec![HostArg::Int(adapter as i32)],
+    )
+}
+
+/// L2: Guest adapter handle → host validates before the local adapter-info lift.
+pub fn exp_adapter_info_described(cb: &GlobalRef, adapter: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "adapterInfoDescribed",
+        "(I)V",
+        vec![HostArg::Int(adapter as i32)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,

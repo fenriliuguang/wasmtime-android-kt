@@ -696,7 +696,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-adapter.features",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
-                    let _ = caller.data_mut().table.get(&adapter)?;
+                    let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if adapter_rep == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        adapter_rep
+                    };
+                    jvm::exp_adapter_features_described(&cb, l2_adapter)
+                        .map_err(wasmtime::Error::msg)?;
                     let resource = caller.data_mut().table.push(GpuSupportedFeatures)?;
                     Ok((resource,))
                 },
@@ -715,7 +728,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-adapter.limits",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
-                    let _ = caller.data_mut().table.get(&adapter)?;
+                    let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if adapter_rep == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        adapter_rep
+                    };
+                    jvm::exp_adapter_limits_described(&cb, l2_adapter)
+                        .map_err(wasmtime::Error::msg)?;
                     let resource = caller.data_mut().table.push(GpuSupportedLimits)?;
                     Ok((resource,))
                 },
@@ -1055,7 +1081,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-adapter.info",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
-                    let _ = caller.data_mut().table.get(&adapter)?;
+                    let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_adapter = if adapter_rep == 0 {
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                    } else {
+                        adapter_rep
+                    };
+                    jvm::exp_adapter_info_described(&cb, l2_adapter)
+                        .map_err(wasmtime::Error::msg)?;
                     let resource = caller.data_mut().table.push(GpuAdapterInfo)?;
                     Ok((resource,))
                 },

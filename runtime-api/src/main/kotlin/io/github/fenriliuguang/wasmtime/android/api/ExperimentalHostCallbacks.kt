@@ -132,6 +132,21 @@ interface ExperimentalHostCallbacks {
         unsupported("commandEncoderInsertDebugMarkerDescribed")
     }
 
+    /** L2: Guest adapter handle → host validates before the local features lift. */
+    fun adapterFeaturesDescribed(adapter: Int) {
+        unsupported("adapterFeaturesDescribed")
+    }
+
+    /** L2: Guest adapter handle → host validates before the local limits lift. */
+    fun adapterLimitsDescribed(adapter: Int) {
+        unsupported("adapterLimitsDescribed")
+    }
+
+    /** L2: Guest adapter handle → host validates before the local adapter-info lift. */
+    fun adapterInfoDescribed(adapter: Int) {
+        unsupported("adapterInfoDescribed")
+    }
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 

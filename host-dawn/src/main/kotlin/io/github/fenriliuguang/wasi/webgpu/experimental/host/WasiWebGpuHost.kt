@@ -159,6 +159,9 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun commandEncoderInsertDebugMarker(encoder: GpuHandle, label: String)
 
+    /** Validate an adapter handle (features / limits / info getter L2). */
+    fun adapterValidate(adapter: GpuHandle)
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
