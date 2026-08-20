@@ -640,6 +640,12 @@ class AbiCmHostBindings(
         host.deviceDestroy(GpuHandle(device))
     }
 
+    fun devicePushErrorScope(device: Int, filter: Int) {
+        host.devicePushErrorScope(GpuHandle(device), filter)
+    }
+
+    fun devicePopErrorScope(device: Int): Int = host.devicePopErrorScope(GpuHandle(device))
+
     private fun storageEntry(binding: Int, type: BufferBindingType) = BindGroupLayoutEntry(
         binding = binding,
         visibility = GpuShaderStage.COMPUTE,

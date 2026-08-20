@@ -167,6 +167,25 @@ interface ExperimentalHostCallbacks {
         unsupported("deviceDestroyDescribed")
     }
 
+    /** L2: Guest device handle → host validate (lost future stays local pending). */
+    fun deviceLostDescribed(device: Int) {
+        unsupported("deviceLostDescribed")
+    }
+
+    /** L2: Guest device handle + `gpu-error-filter` ordinal. */
+    fun devicePushErrorScopeDescribed(device: Int, filter: Int) {
+        unsupported("devicePushErrorScopeDescribed")
+    }
+
+    /** L2: Guest device handle → popped error ordinal (0 = none). */
+    fun devicePopErrorScopeDescribed(device: Int): Int =
+        unsupported("devicePopErrorScopeDescribed")
+
+    /** L2: Guest device handle → host validate (uncaptured-error stream stays local empty). */
+    fun deviceOnUncapturedErrorDescribed(device: Int) {
+        unsupported("deviceOnUncapturedErrorDescribed")
+    }
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 

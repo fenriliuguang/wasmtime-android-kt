@@ -1988,6 +1988,21 @@ object ExperimentalWebGpuBridge {
                 override fun deviceDestroyDescribed(device: Int) {
                     bindings.deviceDestroy(device)
                 }
+
+                override fun deviceLostDescribed(device: Int) {
+                    bindings.deviceValidate(device)
+                }
+
+                override fun devicePushErrorScopeDescribed(device: Int, filter: Int) {
+                    bindings.devicePushErrorScope(device, filter)
+                }
+
+                override fun devicePopErrorScopeDescribed(device: Int): Int =
+                    bindings.devicePopErrorScope(device)
+
+                override fun deviceOnUncapturedErrorDescribed(device: Int) {
+                    bindings.deviceValidate(device)
+                }
             },
         )
     }

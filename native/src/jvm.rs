@@ -647,6 +647,50 @@ pub fn exp_device_destroy_described(cb: &GlobalRef, device: u32) -> Result<(), S
     )
 }
 
+/// L2: Guest device handle → host validate (lost future stays local pending).
+pub fn exp_device_lost_described(cb: &GlobalRef, device: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "deviceLostDescribed",
+        "(I)V",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest device handle + `gpu-error-filter` ordinal.
+pub fn exp_device_push_error_scope_described(
+    cb: &GlobalRef,
+    device: u32,
+    filter: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "devicePushErrorScopeDescribed",
+        "(II)V",
+        vec![HostArg::Int(device as i32), HostArg::Int(filter as i32)],
+    )
+}
+
+/// L2: Guest device handle → popped error ordinal (0 = none).
+pub fn exp_device_pop_error_scope_described(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "devicePopErrorScopeDescribed",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest device handle → host validate (uncaptured-error stream stays local empty).
+pub fn exp_device_on_uncaptured_error_described(cb: &GlobalRef, device: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "deviceOnUncapturedErrorDescribed",
+        "(I)V",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,
