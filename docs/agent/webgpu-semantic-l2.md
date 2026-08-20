@@ -19,9 +19,11 @@ Do **not** open one PR per `[method]`, and do **not** dump every method on a res
 
 Same WIT verb on a **different** resource is a **different** PR (`gpu-compute-pass-encoder.draw` ≠ `gpu-render-pass-encoder.draw`). Copy the family later; do not deepen three encoders at once.
 
-Lift-only getters (`texture.width`, `buffer.size`, …) are a later lane (Dawn **reads**). Do not mix them into a host-fixed write family unless the user named them.
+Lift-only getters (`texture.width`, `buffer.size`, …) are already described when remaining lists them as such — do **not** re-cut. Canvas / S1–S3 descriptors / `record-*` / cite: [`webgpu-midterm.md`](webgpu-midterm.md), not this playbook.
 
 ### Example: `gpu-render-pass-encoder` (do not ship all nine together)
+
+Use this table **only** if `webgpu-semantic-l2-remaining.ps1` still lists these names. Otherwise do not implement it.
 
 Today several WIT names share one host-fixed JNI (`renderPassDraw` also covers indexed/indirect; `renderPassSetVertexBuffer` also covers index-buffer). Real L2 must use the guest **`pass.rep`** (and counts / slots / buffers). Do **not** keep rebuilding adapter → encoder → `begin-render-pass-clear` when `rep != 0`.
 
@@ -36,9 +38,9 @@ Do **not** fold `set-viewport` / `set-scissor-rect` / occlusion / debug / `set-i
 
 ### Default first batch (no names from the user)
 
-**`[method]gpu-device.create-sampler`** (singleton family: optional sampler record, scalar/enum fields, no new `HostArg` string).
+Run `.\scripts\webgpu-semantic-l2-remaining.ps1`. If **Remaining host-fixed (prefer next)** is **0**, stop this playbook — use [`webgpu-midterm.md`](webgpu-midterm.md).
 
-Then prefer other **host-fixed** creates on `gpu-device` / `gpu-texture.create-view` before pass-encoder families. Skip S1–S3 (`queue` / `request-adapter` / `request-device`). Skip `create-shader-module` and pipeline **creates** until `HostArg` can pass strings / nested records.
+Do **not** re-cut `create-sampler` / labels / limits. Skip S1–S3, `gpu-canvas-context`, and `record-*` here.
 
 ## Hard bans
 
@@ -48,7 +50,7 @@ Then prefer other **host-fixed** creates on `gpu-device` / `gpu-texture.create-v
 - Do **not** edit hub files: root `README.md` / `README.zh.md`, `CHANGELOG.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.
 - Do **not** crate-`cargo fmt`. rustfmt **only** `.rs` files this slice changed.
 - Do **not** run full `cargo test --tests` or device instruments. Narrow commands below.
-- Do **not** deepen `gpu-canvas-context` (WG-6). Do **not** add `HostArg` string/bytes variants unless the user named a string-bearing method (or family C requires it — then that PR is only bind-group + `HostArg`, nothing else).
+- Do **not** deepen `gpu-canvas-context` here (midterm Lane A). Do **not** add `HostArg` variants; `Str` / `Ints` already exist. A string-bearing family is that PR only.
 - Do **not** rewrite the long **Transitional:** paragraph in `fixtures/w1/README.md`. Update **existing table rows** for fixtures in the batch.
 - PowerShell: no bash `&&`, no bash HEREDOC. `git commit` / `gh pr create` use `@"..."@`.
 
@@ -62,7 +64,7 @@ If the user listed `[method]` names, keep **one JNI family** from that list (spl
 
 Prefer the **host-fixed** list. Group by resource, then take **one** family (table above for render-pass; same idea for compute-pass / bundle-encoder as later PRs).
 
-Pass `-IncludeAll` for labels / limits / records. Those are not the default lane.
+Pass `-IncludeAll` only if the user named labels / limits / records. Labels/limits are done; records are midterm Lane C. S1–S3 host-fixed names on `-IncludeAll` are midterm Lane B — do not deepen them with this playbook.
 
 ## What “described L2” means
 
@@ -75,7 +77,7 @@ Pass `-IncludeAll` for labels / limits / records. Those are not the default lane
 | `ForwardingHostCallbacks` | Wire to `AbiCmHostBindings` / `WasiWebGpuHost` |
 | `ExperimentalWebGpuBridge` attach | Override **Described** callbacks; do not leave empty `ExperimentalHostCallbacks {}` |
 
-Done today (do not re-cut): `create-buffer`, `create-texture`, `buffer.map-async` (`*_described` JNI).
+Do not re-cut names the remaining script already lists as Described L2.
 
 ## Copy sources (one stack)
 
