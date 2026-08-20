@@ -1868,9 +1868,11 @@ impl GpuBufferMapState {
     }
 }
 
-/// WIT `resource gpu-compilation-info`. Lift-only; L2 unused.
+/// WIT `resource gpu-compilation-info`. `get-compilation-info` pushes `{ shader_module: 0 }`.
 #[derive(Debug)]
-pub struct GpuCompilationInfo;
+pub struct GpuCompilationInfo {
+    pub shader_module: u32,
+}
 
 /// WIT `resource gpu-compilation-message`. `get-compilation-message` pushes `{ shader_module: 0 }`.
 #[derive(Debug)]

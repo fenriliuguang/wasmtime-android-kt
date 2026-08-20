@@ -2848,7 +2848,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         jvm::exp_shader_module_get_compilation_info_described(&cb, l2_shader)
                             .map_err(wasmtime::Error::msg)?;
                         let resource = accessor
-                            .with(|mut access| access.data_mut().table.push(GpuCompilationInfo))?;
+                            .with(|mut access| {
+                                access.data_mut().table.push(GpuCompilationInfo {
+                                    shader_module: l2_shader,
+                                })
+                            })?;
                         Ok((resource,))
                     })
                 },
@@ -4403,7 +4407,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-compilation-info", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuCompilationInfo)?;
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(GpuCompilationInfo {
+                        shader_module: 0,
+                    })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -4422,8 +4431,42 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-compilation-info.messages",
                 |mut caller, (info,): (Resource<GpuCompilationInfo>,)| {
-                    let _ = caller.data_mut().table.get(&info)?;
-                    Ok((Vec::<Resource<GpuCompilationMessage>>::new(),))
+                    let info_shader = caller.data_mut().table.get(&info)?.shader_module;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_shader = if info_shader == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                        jvm::exp_create_shader_module_described(
+                            &cb,
+                            device_rep,
+                            "@compute @workgroup_size(1) fn main() {}".to_string(),
+                        )
+                        .map_err(wasmtime::Error::msg)?
+                    } else {
+                        info_shader
+                    };
+                    let count =
+                        jvm::exp_compilation_info_messages_count_described(&cb, l2_shader)
+                            .map_err(wasmtime::Error::msg)?;
+                    let mut messages = Vec::with_capacity(count as usize);
+                    for _ in 0..count {
+                        messages.push(
+                            caller
+                                .data_mut()
+                                .table
+                                .push(GpuCompilationMessage {
+                                    shader_module: l2_shader,
+                                })?,
+                        );
+                    }
+                    Ok((messages,))
                 },
             )
             .map_err(|e| e.to_string())?;
