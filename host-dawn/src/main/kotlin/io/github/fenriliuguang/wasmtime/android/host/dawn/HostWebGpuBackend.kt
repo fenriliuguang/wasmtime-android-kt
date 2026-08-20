@@ -50,6 +50,8 @@ private class ForwardingHostCallbacks(
 
     override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
 
+    override fun deviceGetQueueDescribed(device: Int): Int = bindings.deviceGetQueue(device)
+
     override fun createSurfaceFromNativeWindow(windowHandle: Long): Int =
         bindings.createSurfaceFromNativeWindow(windowHandle)
 

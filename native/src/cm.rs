@@ -1674,19 +1674,26 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device.queue",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
                         .experimental_host_cb
                         .as_ref()
                         .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
                         .cloned()?;
-                    let adapter_rep =
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                    let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let queue_rep = jvm::exp_device_get_queue_described(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let queue_rep =
-                        jvm::exp_device_get_queue(&cb, device_rep).map_err(wasmtime::Error::msg)?;
+                    if queue_rep == 0 {
+                        return Err(wasmtime::Error::msg("device-queue returned 0"));
+                    }
                     let resource = caller.data_mut().table.push(GpuQueue { rep: queue_rep })?;
                     Ok((resource,))
                 },

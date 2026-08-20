@@ -14,6 +14,9 @@ interface ExperimentalHostCallbacks {
 
     fun deviceGetQueue(device: Int): Int = unsupported("deviceGetQueue")
 
+    /** L2: Guest `[method]gpu-device.queue` (device handle; 0 → stub-create in the wrap). */
+    fun deviceGetQueueDescribed(device: Int): Int = unsupported("deviceGetQueueDescribed")
+
     fun createSurfaceFromNativeWindow(windowHandle: Long): Int =
         unsupported("createSurfaceFromNativeWindow")
 

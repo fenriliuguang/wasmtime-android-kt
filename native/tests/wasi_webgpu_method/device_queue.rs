@@ -1,12 +1,15 @@
-//! S1: wasi:webgpu/webgpu@0.3.0-rc.2 `get-device` + `[method]gpu-device.queue`
-//! WIT: `(borrow<gpu-device>) -> own<gpu-queue>`. Stub pushes a host `GpuQueue`;
-//! guest drops the own handle and `run` returns 1 (harness, not the method shape).
+//! L2: `get-device` + `[method]gpu-device.queue`
+//! WIT: `(borrow<gpu-device>) -> own<gpu-queue>`. Guest device is lifted;
+//! `rep == 0` stub-creates in the product wrap. Guest drops own; harness 1.
 
 use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
 use wasmtime::{Config, Engine, Store};
 
 #[derive(Debug)]
-struct GpuDevice;
+struct GpuDevice {
+    #[allow(dead_code)]
+    rep: u32,
+}
 
 #[derive(Debug)]
 struct GpuQueue {
@@ -39,13 +42,14 @@ fn register_method_device_queue(linker: &mut Linker<TestHost>) -> wasmtime::Resu
         },
     )?;
     webgpu.func_wrap("get-device", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuDevice)?;
+        let resource = store.data_mut().table.push(GpuDevice { rep: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
         "[method]gpu-device.queue",
         |mut caller, (device,): (Resource<GpuDevice>,)| {
-            caller.data_mut().table.get(&device).map(|_| ())?;
+            let device_rep = caller.data_mut().table.get(&device)?.rep;
+            assert_eq!(device_rep, 0, "get-device pushes rep 0");
             let resource = caller.data_mut().table.push(GpuQueue { rep: 13 })?;
             Ok((resource,))
         },

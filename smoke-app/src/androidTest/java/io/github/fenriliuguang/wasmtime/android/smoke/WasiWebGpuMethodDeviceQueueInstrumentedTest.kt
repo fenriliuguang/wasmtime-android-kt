@@ -13,9 +13,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S1 `[method]` slice: guest imports `get-device` then
- * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-device.queue`
- * (`(borrow gpu-device) -> own gpu-queue`; drops the own; `run` returns 1)
+ * L2 `[method]gpu-device.queue` (`(borrow gpu-device) -> own gpu-queue`;
+ * guest device handle, `rep == 0` stub-creates; drops the own; `run` returns 1)
  * via [ExperimentalWebGpuBridge.attachDeviceGetQueue] + [callRunConcurrent].
  * Flat `device-get-queue` remains registered. Not full wasi:webgpu compliance.
  */
