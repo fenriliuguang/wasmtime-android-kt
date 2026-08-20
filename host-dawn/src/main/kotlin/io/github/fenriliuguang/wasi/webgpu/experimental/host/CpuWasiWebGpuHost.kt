@@ -34,6 +34,7 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     )
     private class TextureView
     private class QuerySet(val type: Int, val count: Int)
+    private class RenderBundleEncoder
     private class ComputePipeline(val shader: ShaderModule)
     /** Fake Android surface for AbiCm/AbiMvp View↔Texture lifetime tests (not a real window). */
     private class Surface(var configured: Boolean = false)
@@ -172,6 +173,16 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Device>(device, ResourceKind.Device)
         require(count > 0) { "query-set count must be positive" }
         return handles.insert(ResourceKind.QuerySet, QuerySet(type = type, count = count))
+    }
+
+    override fun deviceCreateRenderBundleEncoder(
+        device: GpuHandle,
+        colorFormat: Int,
+        sampleCount: Int,
+    ): GpuHandle {
+        handles.get<Device>(device, ResourceKind.Device)
+        require(sampleCount > 0) { "bundle-encoder sample count must be positive" }
+        return handles.insert(ResourceKind.RenderBundleEncoder, RenderBundleEncoder())
     }
 
     override fun deviceCreateSampler(device: GpuHandle, descriptor: SamplerDescriptor): GpuHandle {

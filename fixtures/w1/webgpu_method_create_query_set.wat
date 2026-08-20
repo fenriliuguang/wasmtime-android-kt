@@ -1,7 +1,7 @@
 ;; S6+: get-device + [method]gpu-device.create-query-set
 ;; WIT: create-query-set: func(descriptor) -> result<gpu-query-set, create-query-set-error>
 ;; Guest passes type=occlusion, count=1, label=none; drops own on ok; harness 1.
-;; L2 unused (lift-only). get-device is a test constructor (not product WIT).
+;; L2 described type/count (stub adapter→device when get-device rep=0).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
     (type $qt (enum "occlusion" "timestamp"))

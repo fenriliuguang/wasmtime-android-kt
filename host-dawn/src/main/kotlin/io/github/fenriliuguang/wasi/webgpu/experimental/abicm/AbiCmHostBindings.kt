@@ -165,6 +165,12 @@ class AbiCmHostBindings(
         count: Int = 1,
     ): Int = host.deviceCreateQuerySet(GpuHandle(device), type, count).raw
 
+    fun deviceCreateRenderBundleEncoder(
+        device: Int,
+        colorFormat: Int,
+        sampleCount: Int,
+    ): Int = host.deviceCreateRenderBundleEncoder(GpuHandle(device), colorFormat, sampleCount).raw
+
     fun deviceCreateSampler(device: Int, descriptor: SamplerDescriptor = SamplerDescriptor()): Int =
         host.deviceCreateSampler(GpuHandle(device), descriptor).raw
 

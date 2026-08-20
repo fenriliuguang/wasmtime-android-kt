@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** S6+ `[method]gpu-device.create-query-set` via [ExperimentalWebGpuBridge.attachDeviceQueryAndDestroy]. */
+/** L2 `[method]gpu-device.create-query-set` via [ExperimentalWebGpuBridge.attachDeviceQueryAndDestroy]. */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodCreateQuerySetInstrumentedTest {
     @Test
