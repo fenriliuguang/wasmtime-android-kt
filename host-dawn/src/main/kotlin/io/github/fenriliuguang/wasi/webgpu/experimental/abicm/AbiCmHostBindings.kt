@@ -657,6 +657,42 @@ class AbiCmHostBindings(
         host.queueSubmit(GpuHandle(queue), listOf(GpuHandle(commandBuffer)))
     }
 
+    fun renderBundleEncoderSetPipeline(encoder: Int, pipeline: Int) {
+        host.renderBundleEncoderSetPipeline(GpuHandle(encoder), GpuHandle(pipeline))
+    }
+
+    fun renderBundleEncoderSetVertexBuffer(
+        encoder: Int,
+        slot: Int,
+        buffer: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        host.renderBundleEncoderSetVertexBuffer(
+            GpuHandle(encoder),
+            slot,
+            GpuHandle(buffer),
+            offset,
+            size,
+        )
+    }
+
+    fun renderBundleEncoderSetIndexBuffer(
+        encoder: Int,
+        buffer: Int,
+        format: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        host.renderBundleEncoderSetIndexBuffer(
+            GpuHandle(encoder),
+            GpuHandle(buffer),
+            format,
+            offset,
+            size,
+        )
+    }
+
     fun bufferMapAsync(buffer: Int, mode: Int, offset: Long, size: Long) {
         host.bufferMapAsync(GpuHandle(buffer), mode, offset, size)
     }

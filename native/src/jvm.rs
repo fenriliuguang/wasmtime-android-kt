@@ -857,6 +857,66 @@ pub fn exp_render_bundle_encoder_draw_indexed_described(
     )
 }
 
+/// L2: Guest bundle-encoder + pipeline rep (0 → stub in the attach).
+pub fn exp_render_bundle_encoder_set_pipeline_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    pipeline: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderSetPipelineDescribed",
+        "(II)V",
+        vec![HostArg::Int(encoder as i32), HostArg::Int(pipeline as i32)],
+    )
+}
+
+/// L2: Guest bundle-encoder + vertex-buffer slot/rep/offset/size (0 → stub in the attach).
+pub fn exp_render_bundle_encoder_set_vertex_buffer_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    slot: u32,
+    buffer: u32,
+    offset: u64,
+    size: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderSetVertexBufferDescribed",
+        "(IIIJJ)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(slot as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Long(offset as i64),
+            HostArg::Long(size as i64),
+        ],
+    )
+}
+
+/// L2: Guest bundle-encoder + index-buffer rep/format/offset/size (0 → stub in the attach).
+pub fn exp_render_bundle_encoder_set_index_buffer_described(
+    cb: &GlobalRef,
+    encoder: u32,
+    buffer: u32,
+    format: u32,
+    offset: u64,
+    size: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "renderBundleEncoderSetIndexBufferDescribed",
+        "(IIIJJ)V",
+        vec![
+            HostArg::Int(encoder as i32),
+            HostArg::Int(buffer as i32),
+            HostArg::Int(format as i32),
+            HostArg::Long(offset as i64),
+            HostArg::Long(size as i64),
+        ],
+    )
+}
+
 /// L2: Guest compute-pipeline rep (0 → stub in the attach) + group index → BGL rep.
 pub fn exp_compute_pipeline_get_bind_group_layout_described(
     cb: &GlobalRef,

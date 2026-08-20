@@ -314,6 +314,30 @@ private class ForwardingHostCallbacks(
         )
     }
 
+    override fun renderBundleEncoderSetPipelineDescribed(encoder: Int, pipeline: Int) {
+        bindings.renderBundleEncoderSetPipeline(encoder, pipeline)
+    }
+
+    override fun renderBundleEncoderSetVertexBufferDescribed(
+        encoder: Int,
+        slot: Int,
+        buffer: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        bindings.renderBundleEncoderSetVertexBuffer(encoder, slot, buffer, offset, size)
+    }
+
+    override fun renderBundleEncoderSetIndexBufferDescribed(
+        encoder: Int,
+        buffer: Int,
+        format: Int,
+        offset: Long,
+        size: Long,
+    ) {
+        bindings.renderBundleEncoderSetIndexBuffer(encoder, buffer, format, offset, size)
+    }
+
     override fun querySetDestroyDescribed(querySet: Int) {
         bindings.querySetDestroy(querySet)
     }
