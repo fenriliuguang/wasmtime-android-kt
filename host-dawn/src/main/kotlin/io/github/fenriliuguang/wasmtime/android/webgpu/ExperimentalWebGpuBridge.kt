@@ -1941,17 +1941,41 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `[method]gpu-device.adapter-info` / `features` / `limits` / `label` /
-     * `set-label` / `lost` / `push-error-scope` / `pop-error-scope` /
+     * S6+: `[method]gpu-device.adapter-info` / `features` / `limits` (L2 described
+     * device handle → host validate; returned resource still local lift), plus
+     * `label` / `set-label` / `lost` / `push-error-scope` / `pop-error-scope` /
      * `on-uncaptured-error` and `[method]gpu-device-lost-info.reason` / `message`,
-     * `[method]gpu-uncaptured-error-event.error`.
-     * Native lifts; L2 unused (no new JNI).
+     * `[method]gpu-uncaptured-error-event.error` (still lift-only).
      */
     fun attachDeviceInfoError(
         store: Store,
-        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+        host: WasiWebGpuHost,
     ) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun deviceFeaturesDescribed(device: Int) {
+                    bindings.deviceValidate(device)
+                }
+
+                override fun deviceLimitsDescribed(device: Int) {
+                    bindings.deviceValidate(device)
+                }
+
+                override fun deviceAdapterInfoDescribed(device: Int) {
+                    bindings.deviceValidate(device)
+                }
+
+                override fun deviceDestroyDescribed(device: Int) {
+                    bindings.deviceDestroy(device)
+                }
+            },
+        )
     }
 
     /**

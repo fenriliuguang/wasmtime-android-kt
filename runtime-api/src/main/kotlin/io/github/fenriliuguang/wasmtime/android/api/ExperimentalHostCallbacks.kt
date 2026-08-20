@@ -147,6 +147,26 @@ interface ExperimentalHostCallbacks {
         unsupported("adapterInfoDescribed")
     }
 
+    /** L2: Guest device handle → host validates before the local features lift. */
+    fun deviceFeaturesDescribed(device: Int) {
+        unsupported("deviceFeaturesDescribed")
+    }
+
+    /** L2: Guest device handle → host validates before the local limits lift. */
+    fun deviceLimitsDescribed(device: Int) {
+        unsupported("deviceLimitsDescribed")
+    }
+
+    /** L2: Guest device handle → host validates before the local adapter-info lift. */
+    fun deviceAdapterInfoDescribed(device: Int) {
+        unsupported("deviceAdapterInfoDescribed")
+    }
+
+    /** L2: Guest device handle → destroy. */
+    fun deviceDestroyDescribed(device: Int) {
+        unsupported("deviceDestroyDescribed")
+    }
+
     /** W3+: host-fixed 1×1 texture descriptor (not from Guest). */
     fun deviceCreateTexture(device: Int): Int = unsupported("deviceCreateTexture")
 

@@ -318,6 +318,22 @@ private class ForwardingHostCallbacks(
         bindings.adapterValidate(adapter)
     }
 
+    override fun deviceFeaturesDescribed(device: Int) {
+        bindings.deviceValidate(device)
+    }
+
+    override fun deviceLimitsDescribed(device: Int) {
+        bindings.deviceValidate(device)
+    }
+
+    override fun deviceAdapterInfoDescribed(device: Int) {
+        bindings.deviceValidate(device)
+    }
+
+    override fun deviceDestroyDescribed(device: Int) {
+        bindings.deviceDestroy(device)
+    }
+
     override fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,

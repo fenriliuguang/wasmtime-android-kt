@@ -162,6 +162,11 @@ interface WasiWebGpuHost : AutoCloseable {
     /** Validate an adapter handle (features / limits / info getter L2). */
     fun adapterValidate(adapter: GpuHandle)
 
+    /** Validate a device handle (features / limits / adapter-info getter L2). */
+    fun deviceValidate(device: GpuHandle)
+
+    fun deviceDestroy(device: GpuHandle)
+
     /** @deprecated Prefer [commandEncoderBeginRenderPass] (slice E). */
     fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,

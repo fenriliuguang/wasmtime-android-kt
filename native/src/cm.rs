@@ -1356,7 +1356,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device.destroy",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    jvm::exp_device_destroy_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -1411,7 +1427,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device.features",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    jvm::exp_device_features_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
                     let resource = caller.data_mut().table.push(GpuSupportedFeatures)?;
                     Ok((resource,))
                 },
@@ -1421,7 +1453,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device.limits",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    jvm::exp_device_limits_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
                     let resource = caller.data_mut().table.push(GpuSupportedLimits)?;
                     Ok((resource,))
                 },
@@ -1431,7 +1479,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-device.adapter-info",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
-                    let _ = caller.data_mut().table.get(&device)?;
+                    let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    jvm::exp_device_adapter_info_described(&cb, l2_device)
+                        .map_err(wasmtime::Error::msg)?;
                     let resource = caller.data_mut().table.push(GpuAdapterInfo)?;
                     Ok((resource,))
                 },

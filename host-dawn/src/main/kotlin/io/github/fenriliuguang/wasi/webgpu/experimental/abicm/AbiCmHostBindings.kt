@@ -626,6 +626,14 @@ class AbiCmHostBindings(
         host.adapterValidate(GpuHandle(adapter))
     }
 
+    fun deviceValidate(device: Int) {
+        host.deviceValidate(GpuHandle(device))
+    }
+
+    fun deviceDestroy(device: Int) {
+        host.deviceDestroy(GpuHandle(device))
+    }
+
     private fun storageEntry(binding: Int, type: BufferBindingType) = BindGroupLayoutEntry(
         binding = binding,
         visibility = GpuShaderStage.COMPUTE,
