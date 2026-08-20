@@ -777,6 +777,18 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun deviceValidate(device: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUDevice>(device, ResourceKind.Device)
+        }
+    }
+
+    override fun deviceDestroy(device: GpuHandle) {
+        synchronized(gpuLock) {
+            handles.get<GPUDevice>(device, ResourceKind.Device).destroy()
+        }
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,

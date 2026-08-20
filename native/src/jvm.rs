@@ -607,6 +607,46 @@ pub fn exp_adapter_info_described(cb: &GlobalRef, adapter: u32) -> Result<(), St
     )
 }
 
+/// L2: Guest device handle → host validates before the local features lift.
+pub fn exp_device_features_described(cb: &GlobalRef, device: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "deviceFeaturesDescribed",
+        "(I)V",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest device handle → host validates before the local limits lift.
+pub fn exp_device_limits_described(cb: &GlobalRef, device: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "deviceLimitsDescribed",
+        "(I)V",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest device handle → host validates before the local adapter-info lift.
+pub fn exp_device_adapter_info_described(cb: &GlobalRef, device: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "deviceAdapterInfoDescribed",
+        "(I)V",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
+/// L2: Guest device handle → destroy.
+pub fn exp_device_destroy_described(cb: &GlobalRef, device: u32) -> Result<(), String> {
+    call_void(
+        cb,
+        "deviceDestroyDescribed",
+        "(I)V",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 pub fn exp_create_texture(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     call_i(
         cb,

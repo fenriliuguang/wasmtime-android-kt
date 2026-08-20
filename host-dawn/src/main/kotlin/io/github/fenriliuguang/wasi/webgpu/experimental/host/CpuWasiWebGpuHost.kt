@@ -590,6 +590,14 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Adapter>(adapter, ResourceKind.Adapter)
     }
 
+    override fun deviceValidate(device: GpuHandle) {
+        handles.get<Device>(device, ResourceKind.Device)
+    }
+
+    override fun deviceDestroy(device: GpuHandle) {
+        handles.get<Device>(device, ResourceKind.Device)
+    }
+
     override fun commandEncoderBeginRenderPassClear(
         encoder: GpuHandle,
         view: GpuHandle,
