@@ -1,10 +1,8 @@
 # Agent notes
 
-WebGPU product `[method]` **shape hangs**: follow [`docs/agent/webgpu-shape-slice.md`](docs/agent/webgpu-shape-slice.md) (Cursor skill `webgpu-shape-slice`). Remaining names: `.\scripts\webgpu-shape-remaining.ps1`. Canvas is **not** this queue.
+WebGPU **guest compute / 3D pipeline** (bind-group entries, BGL lists, vertex layouts, depth pass, texture mip/sample/dimension): follow [`docs/agent/webgpu-guest-pipeline.md`](docs/agent/webgpu-guest-pipeline.md) (Cursor skill `webgpu-guest-pipeline`). Next PR: `.\scripts\webgpu-guest-pipeline-remaining.ps1` or `python ./scripts/webgpu-guest-pipeline-remaining.py`.
 
-WebGPU **semantic L2** (guest fields → JNI → `WasiWebGpuHost`): follow [`docs/agent/webgpu-semantic-l2.md`](docs/agent/webgpu-semantic-l2.md) (Cursor skill `webgpu-semantic-l2`). Remaining: `.\scripts\webgpu-semantic-l2-remaining.ps1`. Batch by caller resource, then one JNI family per PR. Skip S1–S3 / canvas / `record-*` here.
-
-WebGPU **midterm** (after those two remaining lists are empty aside from omitted canvas/records): follow [`docs/agent/webgpu-midterm.md`](docs/agent/webgpu-midterm.md) (Cursor skill `webgpu-midterm`). Next PR: `.\scripts\webgpu-midterm-remaining.ps1` or `python3 ./scripts/webgpu-midterm-remaining.py`. Lanes: WG-6 `gpu-canvas-context`, S1–S3 guest reps/descriptors, named `record-*`, or a citable Dawn/WG-5 slice.
+Shape hang, default described L2, and midterm first-cuts are **closed**. Do not re-cut labels / limits / `create-sampler` first-cut / canvas first-cut.
 
 - WIT pin is vendored: `third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`. Do not download it.
 - Hub freeze, narrow tests, copy sources, and file whitelist are in the playbook — do not rediscover them from RFCs or by reading `cm.rs` whole.
