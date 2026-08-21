@@ -2731,7 +2731,7 @@ object ExperimentalWebGpuBridge {
     /**
      * S6+: `[constructor]record-gpu-pipeline-constant-value` and
      * L2 described `[method]record-gpu-pipeline-constant-value.add` / `get` /
-     * `has` / `remove` (iterate keys/values/entries still lift-only).
+     * `has` / `remove` / `keys` / `values` / `entries`.
      */
     fun attachRecordPipelineConstantValue(
         store: Store,
@@ -2764,6 +2764,35 @@ object ExperimentalWebGpuBridge {
                 ) {
                     bindings.recordPipelineConstantValueRemove(handle, key)
                 }
+
+                override fun recordPipelineConstantValueKeysCountDescribed(handle: Int): Int =
+                    bindings.recordPipelineConstantValueKeysCount(handle)
+
+                override fun recordPipelineConstantValueKeysGetDescribed(
+                    handle: Int,
+                    index: Int,
+                ): String = bindings.recordPipelineConstantValueKeysGet(handle, index)
+
+                override fun recordPipelineConstantValueValuesCountDescribed(handle: Int): Int =
+                    bindings.recordPipelineConstantValueValuesCount(handle)
+
+                override fun recordPipelineConstantValueValuesGetDescribed(
+                    handle: Int,
+                    index: Int,
+                ): Double = bindings.recordPipelineConstantValueValuesGet(handle, index)
+
+                override fun recordPipelineConstantValueEntriesCountDescribed(handle: Int): Int =
+                    bindings.recordPipelineConstantValueEntriesCount(handle)
+
+                override fun recordPipelineConstantValueEntriesGetKeyDescribed(
+                    handle: Int,
+                    index: Int,
+                ): String = bindings.recordPipelineConstantValueEntriesGetKey(handle, index)
+
+                override fun recordPipelineConstantValueEntriesGetValueDescribed(
+                    handle: Int,
+                    index: Int,
+                ): Double = bindings.recordPipelineConstantValueEntriesGetValue(handle, index)
             },
         )
     }

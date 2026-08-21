@@ -523,7 +523,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>; L2 described label)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
     // and S6+ `[method]gpu-texture.*` info getters / label / set-label (L2 described extent: width/height/depth/mip; remaining still lift-only).
-    // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (L2 described mutate: add/get/has/remove; iterate still lift-only).
+    // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (L2 described mutate + iterate).
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described first entry)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 described BGL handles + label)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 described layout + label)
@@ -3670,7 +3670,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]record-gpu-pipeline-constant-value.keys",
                 |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((Vec::<String>::new(),))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let count = jvm::exp_record_pipeline_constant_value_keys_count_described(
+                        &cb, handle,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    let mut keys = Vec::with_capacity(count as usize);
+                    for i in 0..count {
+                        keys.push(
+                            jvm::exp_record_pipeline_constant_value_keys_get_described(
+                                &cb, handle, i,
+                            )
+                            .map_err(wasmtime::Error::msg)?,
+                        );
+                    }
+                    Ok((keys,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -3679,7 +3699,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]record-gpu-pipeline-constant-value.values",
                 |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((Vec::<f64>::new(),))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let count = jvm::exp_record_pipeline_constant_value_values_count_described(
+                        &cb, handle,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    let mut values = Vec::with_capacity(count as usize);
+                    for i in 0..count {
+                        values.push(
+                            jvm::exp_record_pipeline_constant_value_values_get_described(
+                                &cb, handle, i,
+                            )
+                            .map_err(wasmtime::Error::msg)?,
+                        );
+                    }
+                    Ok((values,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -3688,7 +3728,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]record-gpu-pipeline-constant-value.entries",
                 |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((Vec::<(String, f64)>::new(),))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let count = jvm::exp_record_pipeline_constant_value_entries_count_described(
+                        &cb, handle,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    let mut entries = Vec::with_capacity(count as usize);
+                    for i in 0..count {
+                        let key = jvm::exp_record_pipeline_constant_value_entries_get_key_described(
+                            &cb, handle, i,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
+                        let value =
+                            jvm::exp_record_pipeline_constant_value_entries_get_value_described(
+                                &cb, handle, i,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                        entries.push((key, value));
+                    }
+                    Ok((entries,))
                 },
             )
             .map_err(|e| e.to_string())?;

@@ -100,6 +100,27 @@ class AbiCmHostBindings(
         pipelineConstantMaps[handle]?.remove(key)
     }
 
+    fun recordPipelineConstantValueKeysCount(handle: Int): Int =
+        pipelineConstantMaps[handle]?.size ?: 0
+
+    fun recordPipelineConstantValueKeysGet(handle: Int, index: Int): String =
+        pipelineConstantMaps[handle]?.keys?.elementAtOrNull(index) ?: ""
+
+    fun recordPipelineConstantValueValuesCount(handle: Int): Int =
+        pipelineConstantMaps[handle]?.size ?: 0
+
+    fun recordPipelineConstantValueValuesGet(handle: Int, index: Int): Double =
+        pipelineConstantMaps[handle]?.values?.elementAtOrNull(index) ?: 0.0
+
+    fun recordPipelineConstantValueEntriesCount(handle: Int): Int =
+        pipelineConstantMaps[handle]?.size ?: 0
+
+    fun recordPipelineConstantValueEntriesGetKey(handle: Int, index: Int): String =
+        recordPipelineConstantValueKeysGet(handle, index)
+
+    fun recordPipelineConstantValueEntriesGetValue(handle: Int, index: Int): Double =
+        recordPipelineConstantValueValuesGet(handle, index)
+
     fun createSurfaceFromNativeWindow(windowHandle: Long): Int =
         host.instanceCreateSurfaceFromAndroidNativeWindow(windowHandle).raw
 
