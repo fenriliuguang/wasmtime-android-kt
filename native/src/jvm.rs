@@ -3325,7 +3325,8 @@ pub fn exp_create_render_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, St
 }
 
 /// L2: Guest vertex/fragment shaders + entry-points + color format (0 = host RGBA8)
-/// + layout (0 = auto) + label + vertex.buffers (stride/step/attributes).
+/// + layout (0 = auto) + label + vertex.buffers (stride/step/attributes)
+/// + vertex/fragment `record-gpu-pipeline-constant-value` reps (0 = none).
 pub fn exp_create_render_pipeline_described(
     cb: &GlobalRef,
     device: u32,
@@ -3342,11 +3343,13 @@ pub fn exp_create_render_pipeline_described(
     attr_formats: Vec<i32>,
     attr_offsets: Vec<i32>,
     attr_locations: Vec<i32>,
+    vertex_constants: i32,
+    fragment_constants: i32,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateRenderPipelineDescribed",
-        "(IILjava/lang/String;ILjava/lang/String;IILjava/lang/String;[I[I[I[I[I[I)I",
+        "(IILjava/lang/String;ILjava/lang/String;IILjava/lang/String;[I[I[I[I[I[III)I",
         vec![
             HostArg::Int(device as i32),
             HostArg::Int(vertex_shader as i32),
@@ -3362,6 +3365,8 @@ pub fn exp_create_render_pipeline_described(
             HostArg::Ints(attr_formats),
             HostArg::Ints(attr_offsets),
             HostArg::Ints(attr_locations),
+            HostArg::Int(vertex_constants),
+            HostArg::Int(fragment_constants),
         ],
     )
 }
@@ -3377,7 +3382,8 @@ pub fn exp_create_compute_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, S
     )
 }
 
-/// L2: Guest shader handle + entry-point + layout handle (0 = auto) + optional label.
+/// L2: Guest shader handle + entry-point + layout handle (0 = auto) + optional label
+/// + compute `record-gpu-pipeline-constant-value` rep (0 = none).
 pub fn exp_create_compute_pipeline_described(
     cb: &GlobalRef,
     device: u32,
@@ -3385,17 +3391,19 @@ pub fn exp_create_compute_pipeline_described(
     entry_point: String,
     layout: i32,
     label: String,
+    constants: i32,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateComputePipelineDescribed",
-        "(IILjava/lang/String;ILjava/lang/String;)I",
+        "(IILjava/lang/String;ILjava/lang/String;I)I",
         vec![
             HostArg::Int(device as i32),
             HostArg::Int(shader as i32),
             HostArg::Str(entry_point),
             HostArg::Int(layout),
             HostArg::Str(label),
+            HostArg::Int(constants),
         ],
     )
 }

@@ -590,6 +590,14 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
+                override fun recordPipelineConstantValueAddDescribed(
+                    handle: Int,
+                    key: String,
+                    value: Double,
+                ) {
+                    bindings.recordPipelineConstantValueAdd(handle, key, value)
+                }
+
                 override fun deviceCreateRenderPipeline(device: Int): Int {
                     val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
                     return bindings.deviceCreateRenderPipelineTriangle(
@@ -614,6 +622,8 @@ object ExperimentalWebGpuBridge {
                     attrFormats: IntArray,
                     attrOffsets: IntArray,
                     attrLocations: IntArray,
+                    vertexConstants: Int,
+                    fragmentConstants: Int,
                 ): Int {
                     val vertexModule =
                         if (vertexShader != 0) {
@@ -675,11 +685,17 @@ object ExperimentalWebGpuBridge {
                                 module = vertexModule,
                                 entryPoint = vertexEntry.ifEmpty { "vs_main" },
                                 buffers = buffers,
+                                constants = bindings.recordPipelineConstantValueSnapshot(
+                                    vertexConstants,
+                                ),
                             ),
                             fragment = FragmentState(
                                 module = fragmentModule,
                                 entryPoint = fragmentEntry.ifEmpty { "fs_main" },
                                 targets = listOf(ColorTargetState(format = targetFormat)),
+                                constants = bindings.recordPipelineConstantValueSnapshot(
+                                    fragmentConstants,
+                                ),
                             ),
                             layout = pipelineLayout,
                             label = label.ifEmpty { null },
@@ -713,6 +729,14 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
+                override fun recordPipelineConstantValueAddDescribed(
+                    handle: Int,
+                    key: String,
+                    value: Double,
+                ) {
+                    bindings.recordPipelineConstantValueAdd(handle, key, value)
+                }
+
                 override fun deviceCreateComputePipeline(device: Int): Int {
                     val shader = bindings.deviceCreateShaderModule(device, STUB_WGSL)
                     val layout = bindings.deviceCreatePipelineLayout(
@@ -737,6 +761,7 @@ object ExperimentalWebGpuBridge {
                     entryPoint: String,
                     layout: Int,
                     label: String,
+                    constants: Int,
                 ): Int {
                     val module =
                         if (shader != 0) {
@@ -761,6 +786,7 @@ object ExperimentalWebGpuBridge {
                             compute = ProgrammableStage(
                                 module = module,
                                 entryPoint = entryPoint.ifEmpty { "main" },
+                                constants = bindings.recordPipelineConstantValueSnapshot(constants),
                             ),
                             layout = pipelineLayout,
                             label = label.ifEmpty { null },

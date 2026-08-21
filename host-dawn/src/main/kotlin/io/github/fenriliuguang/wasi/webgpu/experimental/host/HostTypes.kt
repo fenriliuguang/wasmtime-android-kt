@@ -358,6 +358,7 @@ data class BindGroupDescriptor(
 data class ProgrammableStage(
     val module: GpuHandle,
     val entryPoint: String? = null,
+    val constants: Map<String, Double> = emptyMap(),
 )
 
 /**
@@ -432,12 +433,14 @@ data class VertexState(
     val module: GpuHandle,
     val entryPoint: String? = null,
     val buffers: List<VertexBufferLayout> = emptyList(),
+    val constants: Map<String, Double> = emptyMap(),
 )
 
 data class FragmentState(
     val module: GpuHandle,
     val entryPoint: String? = null,
     val targets: List<ColorTargetState>,
+    val constants: Map<String, Double> = emptyMap(),
 )
 
 data class PrimitiveState(

@@ -781,6 +781,8 @@ interface ExperimentalHostCallbacks {
      * L2: Guest vertex/fragment shaders + entry-points + color format (0 = RGBA8)
      * + layout (0 = auto) + label + vertex.buffers (stride/step/attributes).
      */
+    /** L2: Guest vertex/fragment shaders + entry-points + format + layout + label + vertex.buffers
+     *  + vertex/fragment `record-gpu-pipeline-constant-value` reps (0 = none). */
     fun deviceCreateRenderPipelineDescribed(
         device: Int,
         vertexShader: Int,
@@ -796,19 +798,23 @@ interface ExperimentalHostCallbacks {
         attrFormats: IntArray,
         attrOffsets: IntArray,
         attrLocations: IntArray,
+        vertexConstants: Int,
+        fragmentConstants: Int,
     ): Int = unsupported("deviceCreateRenderPipelineDescribed")
 
     /** S6+: guest `gpu-compute-pipeline-descriptor`; L2 leftover host-fixed stub shader + empty layout.
      *  Also used by `[method]gpu-device.create-compute-pipeline-async`. */
     fun deviceCreateComputePipeline(device: Int): Int = unsupported("deviceCreateComputePipeline")
 
-    /** L2: Guest shader handle (0 = stub WGSL) + entry-point + layout handle (0 = auto/empty) + optional label. */
+    /** L2: Guest shader handle (0 = stub WGSL) + entry-point + layout handle (0 = auto/empty)
+     *  + optional label + compute `record-gpu-pipeline-constant-value` rep (0 = none). */
     fun deviceCreateComputePipelineDescribed(
         device: Int,
         shader: Int,
         entryPoint: String,
         layout: Int,
         label: String,
+        constants: Int,
     ): Int = unsupported("deviceCreateComputePipelineDescribed")
 
     /** W3+: host-default compute-pass descriptor leftover; L2 uses [beginComputePassDescribed]. */
