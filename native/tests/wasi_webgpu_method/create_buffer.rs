@@ -1,6 +1,7 @@
 //! S4: wasi:webgpu/webgpu@0.3.0-rc.2 `get-device` + `[method]gpu-device.create-buffer`
 //! WIT: `(borrow<gpu-device>, gpu-buffer-descriptor) -> own<gpu-buffer>`.
-//! Guest passes size=4, usage=COPY_DST|VERTEX; drops own; `run` returns harness 1.
+//! Guest passes size=4, usage=COPY_DST|VERTEX, mapped-at-creation=true,
+//! label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -95,8 +96,16 @@ fn register_method_create_buffer(linker: &mut Linker<TestHost>) -> wasmtime::Res
                 descriptor.usage.contains(GpuBufferUsage::VERTEX),
                 "guest must pass VERTEX"
             );
-            assert!(descriptor.mapped_at_creation.is_none());
-            assert!(descriptor.label.is_none());
+            assert_eq!(
+                descriptor.mapped_at_creation,
+                Some(true),
+                "guest must pass mapped-at-creation=some(true)"
+            );
+            assert_eq!(
+                descriptor.label.as_deref(),
+                Some("l2"),
+                "guest must pass label=some(\"l2\")"
+            );
             let resource = caller.data_mut().table.push(GpuBuffer { rep: 31 })?;
             Ok((resource,))
         },

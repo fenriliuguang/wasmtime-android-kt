@@ -513,8 +513,20 @@ private class ForwardingHostCallbacks(
         )
     }
 
-    override fun deviceCreateBufferDescribed(device: Int, size: Long, usage: Int): Int =
-        bindings.deviceCreateBuffer(device, size = size, usage = usage)
+    override fun deviceCreateBufferDescribed(
+        device: Int,
+        size: Long,
+        usage: Int,
+        mappedAtCreation: Int,
+        label: String,
+    ): Int =
+        bindings.deviceCreateBuffer(
+            device,
+            size = size,
+            usage = usage,
+            mappedAtCreation = mappedAtCreation > 0,
+            label = label.ifEmpty { null },
+        )
 
     override fun deviceCreateTextureDescribed(
         device: Int,

@@ -99,9 +99,15 @@ interface ExperimentalHostCallbacks {
     /** W3 frozen: host-fixed buffer descriptor (size/usage not from Guest). */
     fun deviceCreateBuffer(device: Int): Int = unsupported("deviceCreateBuffer")
 
-    /** S4: Guest-decoded `gpu-buffer-descriptor` size + WebGPU usage bits. */
-    fun deviceCreateBufferDescribed(device: Int, size: Long, usage: Int): Int =
-        unsupported("deviceCreateBufferDescribed")
+    /** S4: Guest-decoded `gpu-buffer-descriptor` size + WebGPU usage bits plus
+     *  mapped-at-creation (`-1` = none, `0` = false, `1` = true) and label (empty → none). */
+    fun deviceCreateBufferDescribed(
+        device: Int,
+        size: Long,
+        usage: Int,
+        mappedAtCreation: Int,
+        label: String,
+    ): Int = unsupported("deviceCreateBufferDescribed")
 
     /** S6+: Guest-decoded `gpu-texture-descriptor` size/format/usage plus
      *  mip/sample/dimension, view-formats (empty → none), and label (empty → none). */

@@ -1,7 +1,7 @@
 ;; S4: wasi:webgpu/webgpu@0.3.0-rc.2 get-device + [method]gpu-device.create-buffer
 ;; WIT: create-buffer: func(descriptor: gpu-buffer-descriptor) -> gpu-buffer
-;; Guest passes size=4, usage=COPY_DST|VERTEX, mapped/label=none;
-;; drops own buffer; run returns harness 1 (not the method shape).
+;; Guest passes size=4, usage=COPY_DST|VERTEX, mapped-at-creation=some(true),
+;; label=some("l2"); drops own buffer; run returns harness 1 (not the method shape).
 ;; get-device is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -49,12 +49,14 @@
   (core func $db_lower (canon resource.drop $gpu-buffer))
 
   (core module $m
+    (import "" "mem" (memory 1))
     (import "" "get-device" (func $get-device (result i32)))
     (import "" "create-buffer"
       (func $create-buffer
         (param i32 i64 i32 i32 i32 i32 i32 i32)
         (result i32)))
     (import "" "drop-buffer" (func $drop-buffer (param i32)))
+    (data (i32.const 32) "l2")
     (func (export "run") (result i32)
       (local $device i32)
       (local $buffer i32)
@@ -64,17 +66,18 @@
           (local.get $device)
           (i64.const 4)
           (i32.const 40)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)))
+          (i32.const 1)
+          (i32.const 1)
+          (i32.const 1)
+          (i32.const 32)
+          (i32.const 2)))
       (call $drop-buffer (local.get $buffer))
       (i32.const 1)
     )
   )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $builtins "mem"))
       (export "get-device" (func $gd_lower))
       (export "create-buffer" (func $cb_lower))
       (export "drop-buffer" (func $db_lower))
