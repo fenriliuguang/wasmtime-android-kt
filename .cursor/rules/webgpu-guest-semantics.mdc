@@ -1,16 +1,10 @@
 ---
-description: wasi:webgpu leftover descriptor semantics — F1–F9 JNI/Dawn; no full-file reads
-alwaysApply: true
+description: CLOSED wasi:webgpu leftover descriptor F1–F9 — redirect to Dawn consume
+alwaysApply: false
 ---
 
-# WebGPU leftover descriptor semantics
+# WebGPU leftover descriptor semantics (closed)
 
-For 下一刀 / 语义加深 / leftover descriptor / F1–F9 / blend / MRT / view-formats / mapped-at-creation / xr-compatible / default-queue / Dawn constants / required-limits consume, read `docs/agent/webgpu-guest-semantics.md` and follow it.
+F1–F9, handle-0, and full required-features are **closed**. Do not start another leftover-descriptor JNI or F8/F9 Dawn-constants/limits PR.
 
-Guest-pipeline P1–P5 and midterm first-cuts are **closed**. Do not start another labels/limits/sampler/canvas-first-cut or P1–P5 PR.
-
-- Next PR: `.\scripts\webgpu-guest-semantics-remaining.ps1` or `python3 ./scripts/webgpu-guest-semantics-remaining.py` (one printed Next: only).
-- Do not WebFetch wasi-webgpu. Use `third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`.
-- Do not Read `native/src/cm.rs` or `native/src/jvm.rs` without offset. Grep, then ~80 lines.
-- One lane per PR. No product `surface-*`. No wasi-gfx. Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
-- Never file GitHub issues (or Discussions-as-issues) on wasi-webgpu, Wasmtime, or any other upstream. No `gh issue create`.
+Current queue: read `docs/agent/webgpu-guest-dawn.md`. Next: `.\scripts\webgpu-guest-dawn-remaining.ps1` or `python3 ./scripts/webgpu-guest-dawn-remaining.py`.
