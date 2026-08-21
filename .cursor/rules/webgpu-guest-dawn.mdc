@@ -1,0 +1,16 @@
+---
+description: wasi:webgpu Dawn consume + WG-6 leftovers — G1–G9; no full-file reads
+alwaysApply: true
+---
+
+# WebGPU Dawn consume + WG-6 leftovers
+
+For 下一刀 / Dawn consume / WG-6 / blend on GPU / view-formats / xr-compatible / default-queue / write-mask / stencil / canvas configuration / auto layout / 真 compute / 真 3D / 上屏, read `docs/agent/webgpu-guest-dawn.md` and follow it.
+
+Guest-pipeline P1–P5, leftover-descriptor F1–F9, handle-0, required-features full list, and midterm first-cuts are **closed**. Do not start another labels/limits/sampler/canvas-first-cut, P1–P5, or F1–F9 PR.
+
+- Next PR: `.\scripts\webgpu-guest-dawn-remaining.ps1` or `python3 ./scripts/webgpu-guest-dawn-remaining.py` (one printed Next: only).
+- Do not WebFetch wasi-webgpu. Use `third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`.
+- Do not Read `native/src/cm.rs` or `native/src/jvm.rs` without offset. Grep, then ~80 lines.
+- One lane per PR. No product `surface-*`. No wasi-gfx. Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
+- Never file GitHub issues (or Discussions-as-issues) on wasi-webgpu, Wasmtime, or any other upstream. No `gh issue create`.
