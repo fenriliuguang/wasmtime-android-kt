@@ -36,6 +36,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDepthSten
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.renderPassColorAttachmentsFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.shaderCompilationHintsFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerBindingLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureBindingLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
@@ -404,8 +405,19 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
-                override fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
-                    bindings.deviceCreateShaderModule(device, code)
+                override fun deviceCreateShaderModuleDescribed(
+                    device: Int,
+                    code: String,
+                    label: String,
+                    hintLayouts: IntArray,
+                    hintEntries: String,
+                ): Int =
+                    bindings.deviceCreateShaderModule(
+                        device,
+                        code,
+                        label = label.ifEmpty { null },
+                        compilationHints = shaderCompilationHintsFromDescribed(hintLayouts, hintEntries),
+                    )
                 override fun shaderModuleLabelDescribed(handle: Int): String =
                     bindings.shaderModuleLabel(handle)
 
@@ -3177,8 +3189,19 @@ object ExperimentalWebGpuBridge {
                 override fun deviceCreateShaderModule(device: Int): Int =
                     bindings.deviceCreateShaderModule(device, STUB_WGSL)
 
-                override fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
-                    bindings.deviceCreateShaderModule(device, code)
+                override fun deviceCreateShaderModuleDescribed(
+                    device: Int,
+                    code: String,
+                    label: String,
+                    hintLayouts: IntArray,
+                    hintEntries: String,
+                ): Int =
+                    bindings.deviceCreateShaderModule(
+                        device,
+                        code,
+                        label = label.ifEmpty { null },
+                        compilationHints = shaderCompilationHintsFromDescribed(hintLayouts, hintEntries),
+                    )
 
                 override fun shaderModuleGetCompilationInfoDescribed(shader: Int) {
                     bindings.shaderModuleValidate(shader)

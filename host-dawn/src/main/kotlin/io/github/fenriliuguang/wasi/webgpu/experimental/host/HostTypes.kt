@@ -307,10 +307,32 @@ data class VertexBufferLayout(
     val attributes: List<VertexAttribute>,
 )
 
+data class ShaderModuleCompilationHint(
+    val entryPoint: String,
+    /** -1 = none, 0 = auto, >0 = specific pipeline-layout handle. */
+    val layout: Int = -1,
+)
+
 data class ShaderModuleDescriptor(
     val code: String,
+    val compilationHints: List<ShaderModuleCompilationHint> = emptyList(),
     val label: String? = null,
 )
+
+fun shaderCompilationHintsFromDescribed(
+    layouts: IntArray,
+    entries: String,
+): List<ShaderModuleCompilationHint> {
+    if (entries.isEmpty() && layouts.isEmpty()) return emptyList()
+    val names = if (entries.isEmpty()) emptyList() else entries.split('\n')
+    val n = maxOf(names.size, layouts.size)
+    return List(n) { i ->
+        ShaderModuleCompilationHint(
+            entryPoint = names.getOrElse(i) { "" },
+            layout = layouts.getOrElse(i) { -1 },
+        )
+    }
+}
 
 enum class BufferBindingType {
     Uniform,

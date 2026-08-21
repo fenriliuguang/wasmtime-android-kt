@@ -2,7 +2,8 @@
 ;; [method]gpu-device.create-shader-module
 ;; WIT: create-shader-module: func(descriptor: gpu-shader-module-descriptor)
 ;;      -> gpu-shader-module
-;; Guest passes code="@compute @workgroup_size(1) fn l2() {}", hints/label none;
+;; Guest passes code="@compute @workgroup_size(1) fn l2() {}",
+;; compilation-hints=some([{entry-point="l2", layout=none}]), label=some("l2");
 ;; drops own; run returns harness 1.
 ;; get-device is a test constructor only (not product WIT).
 (component
@@ -68,22 +69,26 @@
         (param i32 i32 i32 i32 i32 i32 i32 i32 i32)
         (result i32)))
     (import "" "drop-shader" (func $drop-shader (param i32)))
+    (data (i32.const 32) "l2")
     (data (i32.const 64) "@compute @workgroup_size(1) fn l2() {}")
     (func (export "run") (result i32)
       (local $device i32)
       (local $shader i32)
       (local.set $device (call $get-device))
+      ;; hint[0] at 128: entry-point ptr=32 len=2, layout none
+      (i32.store (i32.const 128) (i32.const 32))
+      (i32.store (i32.const 132) (i32.const 2))
       (local.set $shader
         (call $create-shader
           (local.get $device)
           (i32.const 64)
           (i32.const 38)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)
-          (i32.const 0)))
+          (i32.const 1)
+          (i32.const 128)
+          (i32.const 1)
+          (i32.const 1)
+          (i32.const 32)
+          (i32.const 2)))
       (call $drop-shader (local.get $shader))
       (i32.const 1)
     )

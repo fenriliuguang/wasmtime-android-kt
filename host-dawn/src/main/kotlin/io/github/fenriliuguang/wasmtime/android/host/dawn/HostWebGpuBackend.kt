@@ -34,6 +34,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDepthSten
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.renderPassColorAttachmentsFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.shaderCompilationHintsFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
@@ -230,8 +231,19 @@ private class ForwardingHostCallbacks(
     override fun deviceCreateCommandEncoderDescribed(device: Int, label: String): Int =
         bindings.deviceCreateCommandEncoder(device, label)
 
-    override fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
-        bindings.deviceCreateShaderModule(device, code)
+    override fun deviceCreateShaderModuleDescribed(
+        device: Int,
+        code: String,
+        label: String,
+        hintLayouts: IntArray,
+        hintEntries: String,
+    ): Int =
+        bindings.deviceCreateShaderModule(
+            device,
+            code,
+            label = label.ifEmpty { null },
+            compilationHints = shaderCompilationHintsFromDescribed(hintLayouts, hintEntries),
+        )
 
     override fun deviceCreateBindGroupLayoutDescribed(
         device: Int,

@@ -742,9 +742,15 @@ interface ExperimentalHostCallbacks {
     /** S6+: guest `gpu-shader-module-descriptor`; L2 uses [deviceCreateShaderModuleDescribed]. */
     fun deviceCreateShaderModule(device: Int): Int = unsupported("deviceCreateShaderModule")
 
-    /** L2: Guest WGSL `code` (hints/label still unused). */
-    fun deviceCreateShaderModuleDescribed(device: Int, code: String): Int =
-        unsupported("deviceCreateShaderModuleDescribed")
+    /** L2: Guest WGSL `code` plus label (empty → none) and compilation-hints
+     *  (empty entry-points → none; layouts -1 none / 0 auto / >0 handle). */
+    fun deviceCreateShaderModuleDescribed(
+        device: Int,
+        code: String,
+        label: String,
+        hintLayouts: IntArray,
+        hintEntries: String,
+    ): Int = unsupported("deviceCreateShaderModuleDescribed")
 
     /** S6+: guest `gpu-bind-group-layout-descriptor`; L2 still host-fixed empty entries. */
     fun deviceCreateBindGroupLayout(device: Int): Int = unsupported("deviceCreateBindGroupLayout")
