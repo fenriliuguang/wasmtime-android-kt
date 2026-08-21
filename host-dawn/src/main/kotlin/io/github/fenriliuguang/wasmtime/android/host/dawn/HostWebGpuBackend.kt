@@ -173,12 +173,14 @@ private class ForwardingHostCallbacks(
         feature: Int,
         requiredLimits: Int,
         label: String,
+        defaultQueueLabel: String,
     ): Int =
         bindings.adapterRequestDevice(
             adapter,
             DeviceDescriptor(
                 requiredLimits = bindings.recordOptionGpuSize64Snapshot(requiredLimits),
                 label = label.ifEmpty { null },
+                defaultQueueLabel = defaultQueueLabel.ifEmpty { null },
             ),
         )
 

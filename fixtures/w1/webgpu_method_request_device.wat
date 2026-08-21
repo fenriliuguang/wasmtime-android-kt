@@ -1,7 +1,8 @@
 ;; S3: wasi:webgpu/webgpu@0.3.0-rc.2 get-adapter + [method]gpu-adapter.request-device
 ;; WIT: request-device: async func(descriptor: option<gpu-device-descriptor>)
 ;;      -> result<gpu-device, request-device-error>
-;; Guest passes descriptor=none; drops own device on ok; run returns harness 1.
+;; Guest passes descriptor=some(default-queue.label="l2"); other fields none;
+;; drops own device on ok; run returns harness 1.
 ;; Instance type shape matches `wasm-tools component wit --importize-world`.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -68,6 +69,7 @@
       (func $request-device
         (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)))
     (import "" "drop-device" (func $drop-device (param i32)))
+    (data (i32.const 48) "l2")
     (func (export "run") (result i32)
       (local $adapter i32)
       (local $retptr i32)
@@ -77,10 +79,10 @@
       (local.set $adapter (call $get-adapter))
       (call $request-device
         (local.get $adapter)
-        (i32.const 0)
+        (i32.const 1)
         (i32.const 0) (i32.const 0) (i32.const 0)
         (i32.const 0) (i32.const 0)
-        (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)
+        (i32.const 1) (i32.const 1) (i32.const 48) (i32.const 2)
         (i32.const 0) (i32.const 0) (i32.const 0)
         (local.get $retptr))
       (local.set $tag (i32.load (local.get $retptr)))
