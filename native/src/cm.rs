@@ -603,7 +603,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap_concurrent(
                 "[method]gpu.request-adapter",
-                |accessor, (gpu, _options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
+                |accessor, (gpu, options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
                     Box::pin(async move {
                         let cb = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let _ = access.data_mut().table.get(&gpu)?;
@@ -618,8 +618,26 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         let Some(cb) = cb else {
                             return Ok((None,));
                         };
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        // L2: `power-preference` 0=none/undefined, 1=low-power, 2=high-performance.
+                        // `force-fallback-adapter` 0=none/false, 1=true. Skip feature-level / xr.
+                        let (power_preference, force_fallback) = match options.as_ref() {
+                            None => (0i32, 0i32),
+                            Some(opts) => {
+                                let power = match opts.power_preference {
+                                    None => 0,
+                                    Some(p) => p as u8 as i32 + 1,
+                                };
+                                let fallback =
+                                    i32::from(opts.force_fallback_adapter.unwrap_or(false));
+                                (power, fallback)
+                            }
+                        };
+                        let adapter_rep = jvm::exp_request_adapter_described(
+                            &cb,
+                            power_preference,
+                            force_fallback,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
                         if adapter_rep == 0 {
                             return Ok((None,));
                         }

@@ -1,4 +1,4 @@
-//! S2: `get-gpu` + `[method]gpu.request-adapter`
+//! L2: `get-gpu` + `[method]gpu.request-adapter`
 //! WIT: async (borrow<gpu>, option<gpu-request-adapter-options>) -> option<own<gpu-adapter>>
 //! Guest passes none; drops own adapter; `run` returns harness 1.
 
@@ -67,9 +67,10 @@ fn register_method_request_adapter(linker: &mut Linker<TestHost>) -> wasmtime::R
     })?;
     webgpu.func_wrap_concurrent(
         "[method]gpu.request-adapter",
-        |accessor, (gpu, _options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
+        |accessor, (gpu, options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
             Box::pin(async move {
                 accessor.with(|mut access| access.data_mut().table.get(&gpu).map(|_| ()))?;
+                assert!(options.is_none(), "guest must pass options=none this cut");
                 let (tx, rx) = oneshot::channel::<()>();
                 std::thread::spawn(move || {
                     let _ = tx.send(());
@@ -106,9 +107,10 @@ fn register_method_request_adapter_none(linker: &mut Linker<TestHost>) -> wasmti
     })?;
     webgpu.func_wrap_concurrent(
         "[method]gpu.request-adapter",
-        |accessor, (gpu, _options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
+        |accessor, (gpu, options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
             Box::pin(async move {
                 accessor.with(|mut access| access.data_mut().table.get(&gpu).map(|_| ()))?;
+                assert!(options.is_none(), "guest must pass options=none this cut");
                 let (tx, rx) = oneshot::channel::<()>();
                 std::thread::spawn(move || {
                     let _ = tx.send(());

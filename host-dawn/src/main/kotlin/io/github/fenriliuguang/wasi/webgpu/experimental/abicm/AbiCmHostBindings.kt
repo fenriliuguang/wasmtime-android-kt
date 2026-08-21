@@ -15,8 +15,10 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuQueryType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuShaderStage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.HostException
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.PowerPreference
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.RequestAdapterOptions
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ShaderModuleDescriptor
@@ -68,6 +70,18 @@ class AbiCmHostBindings(
     }
 
     fun requestAdapter(): Int = host.requestAdapter().raw
+
+    fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int): Int {
+        val options = RequestAdapterOptions(
+            powerPreference = when (powerPreference) {
+                1 -> PowerPreference.LowPower
+                2 -> PowerPreference.HighPerformance
+                else -> PowerPreference.Undefined
+            },
+            forceFallbackAdapter = forceFallback != 0,
+        )
+        return host.requestAdapter(options).raw
+    }
 
     fun createSurfaceFromNativeWindow(windowHandle: Long): Int =
         host.instanceCreateSurfaceFromAndroidNativeWindow(windowHandle).raw
