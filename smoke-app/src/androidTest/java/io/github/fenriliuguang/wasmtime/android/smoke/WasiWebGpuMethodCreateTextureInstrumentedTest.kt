@@ -16,7 +16,8 @@ import org.junit.runner.RunWith
  * S6+ `[method]` slice: guest imports `get-device` then
  * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-device.create-texture`
  * (`(borrow gpu-device, gpu-texture-descriptor) -> own gpu-texture`;
- * Guest passes 1×1×1 rgba8unorm render-attachment; drops the own; `run` returns 1)
+ * Guest passes 1×1×1 mip=2 sample=1 d2 rgba8unorm render-attachment;
+ * drops the own; `run` returns 1)
  * via [ExperimentalWebGpuBridge.attachCreateTexture] + [callRunConcurrent].
  * Not full wasi:webgpu compliance.
  */

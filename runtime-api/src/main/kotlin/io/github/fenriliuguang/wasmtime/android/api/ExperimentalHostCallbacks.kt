@@ -94,7 +94,7 @@ interface ExperimentalHostCallbacks {
     fun deviceCreateBufferDescribed(device: Int, size: Long, usage: Int): Int =
         unsupported("deviceCreateBufferDescribed")
 
-    /** S6+: Guest-decoded `gpu-texture-descriptor` size/format/usage (Dawn format int). */
+    /** S6+: Guest-decoded `gpu-texture-descriptor` size/format/usage plus mip/sample/dimension. */
     fun deviceCreateTextureDescribed(
         device: Int,
         width: Int,
@@ -102,6 +102,9 @@ interface ExperimentalHostCallbacks {
         depth: Int,
         format: Int,
         usage: Int,
+        mipLevelCount: Int,
+        sampleCount: Int,
+        dimension: Int,
     ): Int = unsupported("deviceCreateTextureDescribed")
 
     /** W3+: JNI ignores Guest stub buffer; host creates MAP_READ buffer then map-async. */

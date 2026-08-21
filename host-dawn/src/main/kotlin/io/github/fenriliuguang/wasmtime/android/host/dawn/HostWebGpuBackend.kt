@@ -503,6 +503,9 @@ private class ForwardingHostCallbacks(
         depth: Int,
         format: Int,
         usage: Int,
+        mipLevelCount: Int,
+        sampleCount: Int,
+        dimension: Int,
     ): Int =
         bindings.deviceCreateTexture(
             device,
@@ -514,6 +517,9 @@ private class ForwardingHostCallbacks(
                 ),
                 format = format,
                 usage = usage,
+                mipLevelCount = mipLevelCount,
+                sampleCount = sampleCount,
+                dimension = dimension,
             ),
         )
 

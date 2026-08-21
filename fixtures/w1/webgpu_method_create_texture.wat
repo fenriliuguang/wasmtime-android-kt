@@ -1,8 +1,10 @@
 ;; S6+: wasi:webgpu/webgpu@0.3.0-rc.2 get-device +
 ;; [method]gpu-device.create-texture
 ;; WIT: create-texture: func(descriptor: gpu-texture-descriptor) -> gpu-texture
-;; Guest passes size width=1 height=some(1) depth=some(1), format=rgba8unorm,
-;; usage=render-attachment, other fields none; drops own; run returns harness 1.
+;; Guest passes size width=1 height=some(1) depth=some(1),
+;; mip-level-count=some(2), sample-count=some(1), dimension=some(d2),
+;; format=rgba8unorm, usage=render-attachment; view-formats/label none;
+;; drops own; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills args through memory.
 ;; get-device is a test constructor only (not product WIT).
 (component
@@ -85,6 +87,12 @@
       (i32.store (i32.const 12) (i32.const 1))
       (i32.store (i32.const 16) (i32.const 1))
       (i32.store (i32.const 20) (i32.const 1))
+      (i32.store8 (i32.const 24) (i32.const 1))
+      (i32.store (i32.const 28) (i32.const 2))
+      (i32.store8 (i32.const 32) (i32.const 1))
+      (i32.store (i32.const 36) (i32.const 1))
+      (i32.store8 (i32.const 40) (i32.const 1))
+      (i32.store8 (i32.const 41) (i32.const 1))
       (i32.store8 (i32.const 42) (i32.const 21))
       (i32.store8 (i32.const 43) (i32.const 16))
       (local.set $texture (call $create-texture (i32.const 0)))

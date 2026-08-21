@@ -1,6 +1,7 @@
 //! S6+: `get-device` + `[method]gpu-device.create-texture`
 //! WIT: `(borrow<gpu-device>, gpu-texture-descriptor) -> own<gpu-texture>`.
-//! Guest passes size 1x1x1, rgba8unorm, render-attachment; drops own; `run` returns harness 1.
+//! Guest passes size 1x1x1, mip=2, sample=1, dimension=d2, rgba8unorm,
+//! render-attachment; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -354,9 +355,20 @@ fn register_method_create_texture(linker: &mut Linker<TestHost>) -> wasmtime::Re
                     .contains(GpuTextureUsage::RENDER_ATTACHMENT),
                 "guest must pass RENDER_ATTACHMENT"
             );
-            assert!(descriptor.mip_level_count.is_none());
-            assert!(descriptor.sample_count.is_none());
-            assert!(descriptor.dimension.is_none());
+            assert_eq!(
+                descriptor.mip_level_count,
+                Some(2),
+                "guest must pass mip-level-count=some(2)"
+            );
+            assert_eq!(
+                descriptor.sample_count,
+                Some(1),
+                "guest must pass sample-count=some(1)"
+            );
+            assert!(
+                matches!(descriptor.dimension, Some(GpuTextureDimension::D2)),
+                "guest must pass dimension=some(d2)"
+            );
             assert!(descriptor.view_formats.is_none());
             assert!(descriptor.texture_binding_view_dimension.is_none());
             assert!(descriptor.label.is_none());
