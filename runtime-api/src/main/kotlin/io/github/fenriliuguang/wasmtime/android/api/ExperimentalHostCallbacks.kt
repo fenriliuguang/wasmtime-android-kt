@@ -704,12 +704,21 @@ interface ExperimentalHostCallbacks {
     /** W3+: host-fixed sampler descriptor (not from Guest). */
     fun deviceCreateSampler(device: Int): Int = unsupported("deviceCreateSampler")
 
-    /** L2: Guest-decoded `gpu-sampler-descriptor` mag/min filter + address-mode-u (Dawn ints). */
+    /** L2: Guest-decoded `gpu-sampler-descriptor` mag/min + address-mode u/v/w +
+     * mipmap + compare (Dawn ints) + optional lod clamps (`hasLod*` 0 = absent). */
     fun deviceCreateSamplerDescribed(
         device: Int,
         magFilter: Int,
         minFilter: Int,
         addressModeU: Int,
+        addressModeV: Int,
+        addressModeW: Int,
+        mipmapFilter: Int,
+        compare: Int,
+        hasLodMin: Int,
+        lodMinClamp: Float,
+        hasLodMax: Int,
+        lodMaxClamp: Float,
     ): Int = unsupported("deviceCreateSamplerDescribed")
 
     /** S6+: guest `gpu-shader-module-descriptor`; L2 uses [deviceCreateShaderModuleDescribed]. */
@@ -1081,11 +1090,17 @@ interface ExperimentalHostCallbacks {
     /** W3+: texture view from host-created texture (no Guest descriptor). */
     fun textureCreateView(texture: Int): Int = unsupported("textureCreateView")
 
-    /** L2: Guest-decoded `gpu-texture-view-descriptor` dimension + aspect (Dawn ints). */
+    /** L2: Guest-decoded `gpu-texture-view-descriptor` dimension/aspect/format (Dawn ints)
+     * plus mip / array-layer window (`mipLevelCount`/`arrayLayerCount` `-1` = absent). */
     fun textureCreateViewDescribed(
         texture: Int,
         dimension: Int,
         aspect: Int,
+        format: Int,
+        baseMipLevel: Int,
+        mipLevelCount: Int,
+        baseArrayLayer: Int,
+        arrayLayerCount: Int,
     ): Int = unsupported("textureCreateViewDescribed")
 
     /** L2: Guest texture handle → width. */

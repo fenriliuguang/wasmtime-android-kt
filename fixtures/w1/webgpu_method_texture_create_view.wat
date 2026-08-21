@@ -2,8 +2,9 @@
 ;; [method]gpu-texture.create-view
 ;; WIT: create-view: func(descriptor: option<gpu-texture-view-descriptor>)
 ;;      -> gpu-texture-view
-;; Guest passes some(descriptor) with dimension=d2, aspect=all; other fields none;
-;; drops own view; run returns harness 1.
+;; Guest passes some(descriptor) with format=rgba8unorm, dimension=d2, aspect=all,
+;; base-mip-level=0, mip-level-count=1, base-array-layer=0, array-layer-count=1;
+;; usage/swizzle/label none; drops own view; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills args through memory.
 ;; get-texture is a test constructor only (not product WIT).
 (component
@@ -79,12 +80,27 @@
       (i32.store (i32.const 0) (local.get $texture))
       ;; option<gpu-texture-view-descriptor> = some; record starts at 8
       (i32.store8 (i32.const 4) (i32.const 1))
+      ;; format = some(rgba8unorm)
+      (i32.store8 (i32.const 8) (i32.const 1))
+      (i32.store8 (i32.const 9) (i32.const 21))
       ;; dimension = some(d2)
       (i32.store8 (i32.const 10) (i32.const 1))
       (i32.store8 (i32.const 11) (i32.const 1))
       ;; aspect = some(all)
       (i32.store8 (i32.const 14) (i32.const 1))
       (i32.store8 (i32.const 15) (i32.const 0))
+      ;; base-mip-level = some(0)
+      (i32.store8 (i32.const 16) (i32.const 1))
+      (i32.store (i32.const 20) (i32.const 0))
+      ;; mip-level-count = some(1)
+      (i32.store8 (i32.const 24) (i32.const 1))
+      (i32.store (i32.const 28) (i32.const 1))
+      ;; base-array-layer = some(0)
+      (i32.store8 (i32.const 32) (i32.const 1))
+      (i32.store (i32.const 36) (i32.const 0))
+      ;; array-layer-count = some(1)
+      (i32.store8 (i32.const 40) (i32.const 1))
+      (i32.store (i32.const 44) (i32.const 1))
       (local.set $view (call $create-view (i32.const 0)))
       (call $drop-view (local.get $view))
       (i32.const 1)
