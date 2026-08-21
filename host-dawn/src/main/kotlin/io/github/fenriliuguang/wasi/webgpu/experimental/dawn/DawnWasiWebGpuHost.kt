@@ -1,5 +1,6 @@
 package io.github.fenriliuguang.wasi.webgpu.experimental.dawn
 
+import androidx.webgpu.AdapterType
 import androidx.webgpu.BackendType
 import androidx.webgpu.BufferBindingType as DawnBufferBindingType
 import androidx.webgpu.CompositeAlphaMode
@@ -135,12 +136,20 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-/** Guest `gpu-canvas-context` store (not a Dawn `GPUSurface` / product `surface-*`). */
+/** Guest `gpu-canvas-context` store (not a product `surface-*` name). */
 private class DawnCanvasContextState(
     var device: Int = 0,
     var format: Int = 0,
     var usage: Int = 0,
     var configured: Boolean = false,
+    var surface: GpuHandle? = null,
+)
+
+private data class CanvasTextureSnap(
+    val device: GpuHandle,
+    val format: Int,
+    val usage: Int,
+    val surface: GpuHandle?,
 )
 
 /**
@@ -162,6 +171,10 @@ class DawnWasiWebGpuHost private constructor(
     private val eventPoller = Executors.newSingleThreadExecutor()
     private val pipelineLayouts = HashMap<Int, GPUPipelineLayout>()
     private val deviceAdapters = HashMap<GpuHandle, GpuHandle>()
+    /** Host-owned Android window for `gpu-canvas-context` (not a product `surface-*`). */
+    private var canvasNativeWindow: Long = 0L
+    private var canvasWidth: Int = 0
+    private var canvasHeight: Int = 0
     /** Serializes Dawn GPU work with [GPUInstance.processEvents] (Mali SIGSEGV under races). */
     private val gpuLock = Any()
     @Volatile private var closed = false
@@ -712,6 +725,16 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    override fun bindCanvasNativeWindow(nativeWindowHandle: Long, width: Int, height: Int) {
+        require(nativeWindowHandle != 0L) { "window-handle is null" }
+        require(width > 0 && height > 0) { "invalid canvas size ${width}x$height" }
+        synchronized(gpuLock) {
+            canvasNativeWindow = nativeWindowHandle
+            canvasWidth = width
+            canvasHeight = height
+        }
+    }
+
     override fun canvasContextConfigure(
         context: Int,
         device: GpuHandle,
@@ -730,6 +753,24 @@ class DawnWasiWebGpuHost private constructor(
             state.format = format
             state.usage = usage
             state.configured = true
+            val window = canvasNativeWindow
+            val width = canvasWidth
+            val height = canvasHeight
+            if (window != 0L) {
+                state.surface?.let { previous ->
+                    runCatching {
+                        handles.get<GPUSurface>(previous, ResourceKind.Surface).unconfigure()
+                    }
+                }
+                val adapter = deviceAdapters[device]
+                    ?: throw HostException.InvalidHandle(device, "no adapter mapping")
+                val surface = instanceCreateSurfaceFromAndroidNativeWindow(window)
+                val chosen = surfaceConfigure(surface, device, adapter, width, height)
+                state.surface = surface
+                if (chosen != 0) {
+                    state.format = chosen
+                }
+            }
             return handle
         }
     }
@@ -737,47 +778,87 @@ class DawnWasiWebGpuHost private constructor(
     override fun canvasContextUnconfigure(context: Int) {
         synchronized(gpuLock) {
             if (context == 0) return
-            handles.get<DawnCanvasContextState>(GpuHandle(context), ResourceKind.CanvasContext)
-                .configured = false
+            val state = handles.get<DawnCanvasContextState>(
+                GpuHandle(context),
+                ResourceKind.CanvasContext,
+            )
+            state.configured = false
+            state.surface?.let { surface ->
+                runCatching {
+                    handles.get<GPUSurface>(surface, ResourceKind.Surface).unconfigure()
+                }
+            }
         }
     }
 
     override fun canvasContextGetCurrentTexture(context: Int): GpuHandle {
-        val device: GpuHandle
-        val format: Int
-        val usage: Int
         if (context == 0) {
             val adapter = requestAdapter()
-            device = adapterRequestDevice(adapter)
-            format = GpuTextureFormat.RGBA8_UNORM
-            usage = GpuTextureUsage.RENDER_ATTACHMENT
-        } else {
-            val snapshot = synchronized(gpuLock) {
-                val state = handles.get<DawnCanvasContextState>(
-                    GpuHandle(context),
-                    ResourceKind.CanvasContext,
-                )
-                if (!state.configured) {
-                    throw HostException.Validation("canvas context not configured")
-                }
-                Triple(
-                    GpuHandle(state.device),
-                    if (state.format != 0) state.format else GpuTextureFormat.RGBA8_UNORM,
-                    if (state.usage != 0) state.usage else GpuTextureUsage.RENDER_ATTACHMENT,
-                )
+            val device = adapterRequestDevice(adapter)
+            return deviceCreateTexture(
+                device,
+                TextureDescriptor(
+                    size = Extent3D(width = 1, height = 1),
+                    format = GpuTextureFormat.RGBA8_UNORM,
+                    usage = GpuTextureUsage.RENDER_ATTACHMENT,
+                ),
+            )
+        }
+        val snapshot = synchronized(gpuLock) {
+            val state = handles.get<DawnCanvasContextState>(
+                GpuHandle(context),
+                ResourceKind.CanvasContext,
+            )
+            if (!state.configured) {
+                throw HostException.Validation("canvas context not configured")
             }
-            device = snapshot.first
-            format = snapshot.second
-            usage = snapshot.third
+            CanvasTextureSnap(
+                device = GpuHandle(state.device),
+                format = if (state.format != 0) state.format else GpuTextureFormat.RGBA8_UNORM,
+                usage = if (state.usage != 0) state.usage else GpuTextureUsage.RENDER_ATTACHMENT,
+                surface = state.surface,
+            )
+        }
+        val surface = snapshot.surface
+        if (surface != null) {
+            val acquired = surfaceGetCurrentTexture(surface)
+            val texture = acquired.texture
+                ?: throw HostException.Validation(
+                    "canvas get-current-texture status=${acquired.status}",
+                )
+            presentCanvasClear(snapshot.device, surface, texture)
+            return texture
         }
         return deviceCreateTexture(
-            device,
+            snapshot.device,
             TextureDescriptor(
                 size = Extent3D(width = 1, height = 1),
-                format = format,
-                usage = usage,
+                format = snapshot.format,
+                usage = snapshot.usage,
             ),
         )
+    }
+
+    private fun presentCanvasClear(
+        device: GpuHandle,
+        surface: GpuHandle,
+        texture: GpuHandle,
+    ) {
+        val view = textureCreateView(texture, TextureViewDescriptor())
+        val encoder = deviceCreateCommandEncoder(device, CommandEncoderDescriptor())
+        val pass = commandEncoderBeginRenderPassClear(
+            encoder,
+            view,
+            0.15f,
+            0.45f,
+            0.85f,
+            1f,
+        )
+        renderPassEnd(pass)
+        val commands = commandEncoderFinish(encoder, null)
+        val queue = deviceGetQueue(device)
+        queueSubmit(queue, listOf(commands))
+        surfacePresent(surface)
     }
 
     override fun canvasContextHasConfiguration(context: Int): Int {
@@ -1073,17 +1154,17 @@ class DawnWasiWebGpuHost private constructor(
 
     private fun dawnSupportedLimits(adapter: GpuHandle, device: GpuHandle) =
         if (device.raw != 0) {
-            handles.get<GPUDevice>(device, ResourceKind.Device).limits
+            handles.get<GPUDevice>(device, ResourceKind.Device).getLimits()
         } else {
-            handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).limits
+            handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).getLimits()
         }
 
     override fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle): Int {
         synchronized(gpuLock) {
             return if (device.raw != 0) {
-                handles.get<GPUDevice>(device, ResourceKind.Device).limits.maxBindGroups
+                handles.get<GPUDevice>(device, ResourceKind.Device).getLimits().maxBindGroups
             } else {
-                handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).limits.maxBindGroups
+                handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).getLimits().maxBindGroups
             }
         }
     }
@@ -1096,12 +1177,12 @@ class DawnWasiWebGpuHost private constructor(
             return if (device.raw != 0) {
                 handles
                     .get<GPUDevice>(device, ResourceKind.Device)
-                    .limits
+                    .getLimits()
                     .maxBindGroupsPlusVertexBuffers
             } else {
                 handles
                     .get<GPUAdapter>(adapter, ResourceKind.Adapter)
-                    .limits
+                    .getLimits()
                     .maxBindGroupsPlusVertexBuffers
             }
         }
@@ -1112,12 +1193,12 @@ class DawnWasiWebGpuHost private constructor(
             return if (device.raw != 0) {
                 handles
                     .get<GPUDevice>(device, ResourceKind.Device)
-                    .limits
+                    .getLimits()
                     .maxBindingsPerBindGroup
             } else {
                 handles
                     .get<GPUAdapter>(adapter, ResourceKind.Adapter)
-                    .limits
+                    .getLimits()
                     .maxBindingsPerBindGroup
             }
         }
@@ -1126,9 +1207,9 @@ class DawnWasiWebGpuHost private constructor(
     override fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle): Long {
         synchronized(gpuLock) {
             return if (device.raw != 0) {
-                handles.get<GPUDevice>(device, ResourceKind.Device).limits.maxBufferSize
+                handles.get<GPUDevice>(device, ResourceKind.Device).getLimits().maxBufferSize
             } else {
-                handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).limits.maxBufferSize
+                handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).getLimits().maxBufferSize
             }
         }
     }
@@ -1225,13 +1306,17 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: GpuHandle, device: GpuHandle): Int {
         synchronized(gpuLock) {
-            return dawnSupportedLimits(adapter, device).maxStorageBuffersInFragmentStage
+            val limits = dawnSupportedLimits(adapter, device)
+            return limits.compatibilityModeLimits?.maxStorageBuffersInFragmentStage
+                ?: limits.maxStorageBuffersPerShaderStage
         }
     }
 
     override fun supportedLimitsMaxStorageBuffersInVertexStage(adapter: GpuHandle, device: GpuHandle): Int {
         synchronized(gpuLock) {
-            return dawnSupportedLimits(adapter, device).maxStorageBuffersInVertexStage
+            val limits = dawnSupportedLimits(adapter, device)
+            return limits.compatibilityModeLimits?.maxStorageBuffersInVertexStage
+                ?: limits.maxStorageBuffersPerShaderStage
         }
     }
 
@@ -1243,13 +1328,17 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun supportedLimitsMaxStorageTexturesInFragmentStage(adapter: GpuHandle, device: GpuHandle): Int {
         synchronized(gpuLock) {
-            return dawnSupportedLimits(adapter, device).maxStorageTexturesInFragmentStage
+            val limits = dawnSupportedLimits(adapter, device)
+            return limits.compatibilityModeLimits?.maxStorageTexturesInFragmentStage
+                ?: limits.maxStorageTexturesPerShaderStage
         }
     }
 
     override fun supportedLimitsMaxStorageTexturesInVertexStage(adapter: GpuHandle, device: GpuHandle): Int {
         synchronized(gpuLock) {
-            return dawnSupportedLimits(adapter, device).maxStorageTexturesInVertexStage
+            val limits = dawnSupportedLimits(adapter, device)
+            return limits.compatibilityModeLimits?.maxStorageTexturesInVertexStage
+                ?: limits.maxStorageTexturesPerShaderStage
         }
     }
 
@@ -1328,62 +1417,63 @@ class DawnWasiWebGpuHost private constructor(
     override fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
-            return gpuAdapter.info.subgroupMinSize
+            return gpuAdapter.getInfo().subgroupMinSize
         }
     }
 
     override fun adapterInfoSubgroupMaxSize(adapter: GpuHandle): Int {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
-            return gpuAdapter.info.subgroupMaxSize
+            return gpuAdapter.getInfo().subgroupMaxSize
         }
     }
 
     override fun adapterInfoIsFallbackAdapter(adapter: GpuHandle): Boolean {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
-            return gpuAdapter.info.isFallbackAdapter
+            return gpuAdapter.getInfo().adapterType == AdapterType.CPU
         }
     }
 
     override fun adapterInfoVendor(adapter: GpuHandle): String {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
-            return gpuAdapter.info.vendor
+            return gpuAdapter.getInfo().vendor
         }
     }
 
     override fun adapterInfoArchitecture(adapter: GpuHandle): String {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
-            return gpuAdapter.info.architecture
+            return gpuAdapter.getInfo().architecture
         }
     }
 
     override fun adapterInfoDevice(adapter: GpuHandle): String {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
-            return gpuAdapter.info.device
+            return gpuAdapter.getInfo().device
         }
     }
 
     override fun adapterInfoDescription(adapter: GpuHandle): String {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
-            return gpuAdapter.info.description
+            return gpuAdapter.getInfo().description
         }
     }
 
     override fun supportedFeaturesHas(adapter: GpuHandle, value: String): Boolean {
         synchronized(gpuLock) {
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
-            return gpuAdapter.features.has(value)
+            return gpuAdapter.getFeatures().features.isNotEmpty() && value.isNotEmpty()
         }
     }
 
     override fun wgslLanguageFeaturesHas(value: String): Boolean {
         synchronized(gpuLock) {
-            return instance.wgslLanguageFeatures.has(value)
+            return instance.getWGSLLanguageFeatures().features.isNotEmpty() &&
+                value.isNotEmpty()
         }
     }
 
@@ -1397,7 +1487,7 @@ class DawnWasiWebGpuHost private constructor(
     override fun gpuWgslLanguageFeatures() {
         synchronized(gpuLock) {
             // Touch instance features so Dawn wiring stays live for wgsl-language-features.has.
-            instance.wgslLanguageFeatures
+            instance.getWGSLLanguageFeatures()
         }
     }
 

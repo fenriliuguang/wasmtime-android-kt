@@ -27,6 +27,7 @@
 | `webgpu_method_canvas_context_unconfigure.wasm` | `get-canvas-context` + **`[method]gpu-canvas-context.unconfigure` sync** void | `run: async func() -> u32` | construct context → unconfigure (L2 described handle; 0 is a no-op); harness returns 1 |
 | `webgpu_method_canvas_context_get_configuration.wasm` | `get-canvas-context` + **`[method]gpu-canvas-context.get-configuration` sync** `option<gpu-canvas-configuration-owned>` | `run: async func() -> u32` | construct context → get-configuration (L2 described; unconfigured → none); harness returns 1 |
 | `webgpu_method_canvas_context_get_current_texture.wasm` | `get-canvas-context` + **`[method]gpu-canvas-context.get-current-texture` sync** `own<gpu-texture>` | `run: async func() -> u32` | construct context → get-current-texture (L2 described handle; 0 → 1×1 texture) → drop own; harness returns 1 |
+| `webgpu_method_canvas_context_present.wasm` | `get-canvas-context` + `get-device` + **`[method]gpu-canvas-context.configure`** + **`[method]gpu-canvas-context.get-current-texture`** | `run: async func() -> u32` | construct context+device → configure (rgba8unorm) → get-current-texture → drop own; host may bind a window and present; harness returns 1 |
 | `webgpu_method_sampler_label.wasm` | `get-sampler` + **`[method]gpu-sampler.label` sync** `string` | `run: async func() -> u32` | construct sampler → label (L2 described handle; Cpu stub empty); harness returns 1 |
 | `webgpu_method_sampler_set_label.wasm` | `get-sampler` + **`[method]gpu-sampler.set-label` sync** void | `run: async func() -> u32` | construct sampler → set-label (L2 described handle + guest empty string); harness returns 1 |
 | `webgpu_method_create_shader_module.wasm` | `get-device` + **`[method]gpu-device.create-shader-module` sync** `own<gpu-shader-module>` | `run: async func() -> u32` | construct device → create-shader-module (WGSL `fn l2`) → drop own; harness returns 1 |
@@ -716,4 +717,6 @@ wasm-tools parse fixtures/w1/webgpu_method_canvas_context_get_configuration.wat 
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_canvas_context_get_configuration.wasm
 wasm-tools parse fixtures/w1/webgpu_method_canvas_context_get_current_texture.wat -o fixtures/w1/webgpu_method_canvas_context_get_current_texture.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_canvas_context_get_current_texture.wasm
+wasm-tools parse fixtures/w1/webgpu_method_canvas_context_present.wat -o fixtures/w1/webgpu_method_canvas_context_present.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_canvas_context_present.wasm
 ```

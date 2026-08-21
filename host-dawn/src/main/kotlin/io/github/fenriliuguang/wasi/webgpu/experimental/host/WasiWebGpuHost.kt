@@ -149,9 +149,17 @@ interface WasiWebGpuHost : AutoCloseable {
     fun surfacePresent(surface: GpuHandle)
 
     /**
+     * Bind a host-owned Android native window used by the next
+     * [canvasContextConfigure]. Guest WIT stays `gpu-canvas-context.*`
+     * (no product `surface-*`). Cpu / no window: no-op.
+     */
+    fun bindCanvasNativeWindow(nativeWindowHandle: Long, width: Int, height: Int) {}
+
+    /**
      * Guest `[method]gpu-canvas-context.configure`: store device/format/usage.
      * [context] `0` allocates a new [ResourceKind.CanvasContext] handle.
-     * Not a product `surface-*` (no Android window / Dawn GPUSurface).
+     * When [bindCanvasNativeWindow] ran, Dawn creates a GPUSurface internally
+     * (still not a product `surface-*` name).
      */
     fun canvasContextConfigure(context: Int, device: GpuHandle, format: Int, usage: Int): GpuHandle
 
@@ -161,7 +169,8 @@ interface WasiWebGpuHost : AutoCloseable {
     /**
      * Guest `[method]gpu-canvas-context.get-current-texture`.
      * [context] `0` (unconfigured fixture) allocates a 1×1 texture.
-     * Not a product `surface-*`.
+     * With a bound native window, returns the swapchain texture and the host
+     * clears + presents (WIT has no `present`).
      */
     fun canvasContextGetCurrentTexture(context: Int): GpuHandle
 

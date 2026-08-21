@@ -31,6 +31,7 @@ mod buffer_usage;
 mod canvas_context_configure;
 mod canvas_context_get_configuration;
 mod canvas_context_get_current_texture;
+mod canvas_context_present;
 mod canvas_context_unconfigure;
 mod clear_buffer;
 mod command_buffer_label;
