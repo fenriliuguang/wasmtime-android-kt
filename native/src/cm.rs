@@ -12,7 +12,8 @@ use crate::host::{
 use crate::jvm;
 use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
-    GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferBindingType,
+    GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBindingResource,
+    GpuBufferBindingType,
     GpuBufferDescriptor, GpuBufferMapState, GpuBufferUsage, GpuCanvasConfiguration,
     GpuCanvasConfigurationOwned, GpuCanvasContext, GpuColor, GpuCommandBufferDescriptor,
     GpuCommandEncoderDescriptor, GpuCompilationInfo, GpuCompilationMessage,
@@ -526,7 +527,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (L2 described mutate + iterate).
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described first entry)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 described BGL handles + label)
-    // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 described layout + label)
+    // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 described layout + entries + label)
     // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 described vertex shader/entry + layout + label)
     // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 described shader/entry/layout/label)
     // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 described bytes + size)
@@ -4179,8 +4180,41 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         layout_rep
                     };
+                    let mut bindings = Vec::with_capacity(descriptor.entries.len());
+                    let mut kinds = Vec::with_capacity(descriptor.entries.len());
+                    let mut handles = Vec::with_capacity(descriptor.entries.len());
+                    for entry in &descriptor.entries {
+                        bindings.push(entry.binding as i32);
+                        let (kind, raw) = match &entry.resource {
+                            GpuBindingResource::GpuBuffer(buffer) => {
+                                (0, caller.data_mut().table.get(buffer)?.rep)
+                            }
+                            GpuBindingResource::GpuBufferBinding(binding) => {
+                                (0, caller.data_mut().table.get(&binding.buffer)?.rep)
+                            }
+                            GpuBindingResource::GpuSampler(sampler) => {
+                                (1, caller.data_mut().table.get(sampler)?.rep)
+                            }
+                            GpuBindingResource::GpuTexture(texture) => {
+                                (2, caller.data_mut().table.get(texture)?.rep)
+                            }
+                            GpuBindingResource::GpuTextureView(view) => {
+                                (2, caller.data_mut().table.get(view)?.rep)
+                            }
+                        };
+                        let handle = if raw != 0 {
+                            raw
+                        } else if kind == 0 {
+                            jvm::exp_create_buffer(&cb, l2_device)
+                                .map_err(wasmtime::Error::msg)?
+                        } else {
+                            raw
+                        };
+                        kinds.push(kind);
+                        handles.push(handle as i32);
+                    }
                     let bg_rep = jvm::exp_create_bind_group_described(
-                        &cb, l2_device, l2_layout, label,
+                        &cb, l2_device, l2_layout, label, bindings, kinds, handles,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if bg_rep == 0 {

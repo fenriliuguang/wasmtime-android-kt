@@ -740,9 +740,18 @@ interface ExperimentalHostCallbacks {
     /** S6+: guest `gpu-bind-group-descriptor`; L2 still host-fixed empty BGL + empty entries. */
     fun deviceCreateBindGroup(device: Int): Int = unsupported("deviceCreateBindGroup")
 
-    /** L2: Guest layout handle + optional label (none → empty). */
-    fun deviceCreateBindGroupDescribed(device: Int, layout: Int, label: String): Int =
-        unsupported("deviceCreateBindGroupDescribed")
+    /**
+     * L2: Guest layout handle + entries (parallel binding/kind/handle arrays) + optional label.
+     * kind: 0 = buffer, 1 = sampler, 2 = texture-view. Empty arrays stay valid.
+     */
+    fun deviceCreateBindGroupDescribed(
+        device: Int,
+        layout: Int,
+        label: String,
+        bindings: IntArray,
+        kinds: IntArray,
+        handles: IntArray,
+    ): Int = unsupported("deviceCreateBindGroupDescribed")
 
     /** S6+: guest `gpu-render-pipeline-descriptor`; L2 leftover host-fixed stub shader + triangle.
      *  Also used by `[method]gpu-device.create-render-pipeline-async`. */

@@ -1,6 +1,8 @@
-//! L2: `get-device` + `get-bind-group-layout` + `[method]gpu-device.create-bind-group`
+//! L2: `get-device` + `get-bind-group-layout` + `get-buffer` +
+//! `[method]gpu-device.create-bind-group`
 //! WIT: `(borrow<gpu-device>, gpu-bind-group-descriptor) -> own<gpu-bind-group>`.
-//! Guest passes layout borrow + empty entries + label="l2"; drops own; `run` returns harness 1.
+//! Guest passes layout borrow + one gpu-buffer entry (binding=0) + label="l2";
+//! drops owns; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -167,6 +169,10 @@ fn register_method_create_bind_group(linker: &mut Linker<TestHost>) -> wasmtime:
         let resource = store.data_mut().table.push(GpuBindGroupLayout { rep: 0 })?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap("get-buffer", |mut store, ()| {
+        let resource = store.data_mut().table.push(GpuBuffer { rep: 31 })?;
+        Ok((resource,))
+    })?;
     webgpu.func_wrap(
         "[method]gpu-device.create-bind-group",
         |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuBindGroupDescriptor)| {
@@ -176,10 +182,19 @@ fn register_method_create_bind_group(linker: &mut Linker<TestHost>) -> wasmtime:
                 .table
                 .get(&descriptor.layout)
                 .map(|_| ())?;
-            assert!(
-                descriptor.entries.is_empty(),
-                "guest must pass empty bind-group entries this slice"
+            assert_eq!(
+                descriptor.entries.len(),
+                1,
+                "guest must pass one bind-group entry"
             );
+            assert_eq!(descriptor.entries[0].binding, 0);
+            match &descriptor.entries[0].resource {
+                GpuBindingResource::GpuBuffer(buffer) => {
+                    let got = caller.data_mut().table.get(buffer)?;
+                    assert_eq!(got.rep, 31, "guest must pass the get-buffer handle");
+                }
+                other => panic!("guest must pass gpu-buffer resource, got {other:?}"),
+            }
             assert_eq!(descriptor.label.as_deref(), Some("l2"));
             let resource = caller.data_mut().table.push(GpuBindGroup { rep: 67 })?;
             Ok((resource,))
