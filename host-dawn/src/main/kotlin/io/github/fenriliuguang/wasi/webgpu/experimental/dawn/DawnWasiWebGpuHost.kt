@@ -33,6 +33,7 @@ import androidx.webgpu.GPUDeviceDescriptor
 import androidx.webgpu.GPUExtent3D
 import androidx.webgpu.GPUFragmentState
 import androidx.webgpu.GPUInstance
+import androidx.webgpu.GPULimits
 import androidx.webgpu.GPUPipelineLayout
 import androidx.webgpu.GPUPipelineLayoutDescriptor
 import androidx.webgpu.GPUPrimitiveState
@@ -229,6 +230,7 @@ class DawnWasiWebGpuHost private constructor(
         val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
         val gpuDescriptor = GPUDeviceDescriptor(
             label = descriptor.label,
+            requiredLimits = dawnRequiredLimits(descriptor.requiredLimits),
             deviceLostCallbackExecutor = callbackExecutor,
             uncapturedErrorCallbackExecutor = callbackExecutor,
             deviceLostCallback = DeviceLostCallback { _, reason, message ->
@@ -992,6 +994,74 @@ class DawnWasiWebGpuHost private constructor(
         constants: Map<String, Double>,
     ): Array<GPUConstantEntry> =
         constants.entries.map { GPUConstantEntry(key = it.key, value = it.value) }.toTypedArray()
+
+    /** Empty map → none. Unknown / androidx-missing keys are skipped. */
+    private fun dawnRequiredLimits(required: Map<String, Long?>): GPULimits? {
+        if (required.isEmpty()) return null
+        val limits = GPULimits()
+        for ((key, value) in required) {
+            if (value == null) continue
+            when (key) {
+                "max-texture-dimension1-d" -> limits.maxTextureDimension1D = value.toGpuLimitU32()
+                "max-texture-dimension2-d" -> limits.maxTextureDimension2D = value.toGpuLimitU32()
+                "max-texture-dimension3-d" -> limits.maxTextureDimension3D = value.toGpuLimitU32()
+                "max-texture-array-layers" -> limits.maxTextureArrayLayers = value.toGpuLimitU32()
+                "max-bind-groups" -> limits.maxBindGroups = value.toGpuLimitU32()
+                "max-bind-groups-plus-vertex-buffers" ->
+                    limits.maxBindGroupsPlusVertexBuffers = value.toGpuLimitU32()
+                "max-immediate-size" -> limits.maxImmediateSize = value.toGpuLimitU32()
+                "max-bindings-per-bind-group" ->
+                    limits.maxBindingsPerBindGroup = value.toGpuLimitU32()
+                "max-dynamic-uniform-buffers-per-pipeline-layout" ->
+                    limits.maxDynamicUniformBuffersPerPipelineLayout = value.toGpuLimitU32()
+                "max-dynamic-storage-buffers-per-pipeline-layout" ->
+                    limits.maxDynamicStorageBuffersPerPipelineLayout = value.toGpuLimitU32()
+                "max-sampled-textures-per-shader-stage" ->
+                    limits.maxSampledTexturesPerShaderStage = value.toGpuLimitU32()
+                "max-samplers-per-shader-stage" ->
+                    limits.maxSamplersPerShaderStage = value.toGpuLimitU32()
+                "max-storage-buffers-per-shader-stage" ->
+                    limits.maxStorageBuffersPerShaderStage = value.toGpuLimitU32()
+                "max-storage-textures-per-shader-stage" ->
+                    limits.maxStorageTexturesPerShaderStage = value.toGpuLimitU32()
+                "max-uniform-buffers-per-shader-stage" ->
+                    limits.maxUniformBuffersPerShaderStage = value.toGpuLimitU32()
+                "max-uniform-buffer-binding-size" -> limits.maxUniformBufferBindingSize = value
+                "max-storage-buffer-binding-size" -> limits.maxStorageBufferBindingSize = value
+                "min-uniform-buffer-offset-alignment" ->
+                    limits.minUniformBufferOffsetAlignment = value.toGpuLimitU32()
+                "min-storage-buffer-offset-alignment" ->
+                    limits.minStorageBufferOffsetAlignment = value.toGpuLimitU32()
+                "max-vertex-buffers" -> limits.maxVertexBuffers = value.toGpuLimitU32()
+                "max-buffer-size" -> limits.maxBufferSize = value
+                "max-vertex-attributes" -> limits.maxVertexAttributes = value.toGpuLimitU32()
+                "max-vertex-buffer-array-stride" ->
+                    limits.maxVertexBufferArrayStride = value.toGpuLimitU32()
+                "max-inter-stage-shader-variables" ->
+                    limits.maxInterStageShaderVariables = value.toGpuLimitU32()
+                "max-color-attachments" -> limits.maxColorAttachments = value.toGpuLimitU32()
+                "max-color-attachment-bytes-per-sample" ->
+                    limits.maxColorAttachmentBytesPerSample = value.toGpuLimitU32()
+                "max-compute-workgroup-storage-size" ->
+                    limits.maxComputeWorkgroupStorageSize = value.toGpuLimitU32()
+                "max-compute-invocations-per-workgroup" ->
+                    limits.maxComputeInvocationsPerWorkgroup = value.toGpuLimitU32()
+                "max-compute-workgroup-size-x" ->
+                    limits.maxComputeWorkgroupSizeX = value.toGpuLimitU32()
+                "max-compute-workgroup-size-y" ->
+                    limits.maxComputeWorkgroupSizeY = value.toGpuLimitU32()
+                "max-compute-workgroup-size-z" ->
+                    limits.maxComputeWorkgroupSizeZ = value.toGpuLimitU32()
+                "max-compute-workgroups-per-dimension" ->
+                    limits.maxComputeWorkgroupsPerDimension = value.toGpuLimitU32()
+                else -> Unit
+            }
+        }
+        return limits
+    }
+
+    private fun Long.toGpuLimitU32(): Int =
+        coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
 
     private fun createRenderPipelineTriangle(
         device: GpuHandle,
