@@ -979,16 +979,16 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Adapter>(adapter, ResourceKind.Adapter)
     }
 
-    private fun validateLimitsOwner(adapter: GpuHandle, device: GpuHandle) {
-        if (device.raw != 0) {
+    private fun validateLimitsOwner(adapter: GpuHandle, device: GpuHandle?) {
+        if (device != null) {
             handles.get<Device>(device, ResourceKind.Device)
         } else {
             handles.get<Adapter>(adapter, ResourceKind.Adapter)
         }
     }
 
-    override fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle): Int {
-        if (device.raw != 0) {
+    override fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle?): Int {
+        if (device != null) {
             handles.get<Device>(device, ResourceKind.Device)
         } else {
             handles.get<Adapter>(adapter, ResourceKind.Adapter)
@@ -998,9 +998,9 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     override fun supportedLimitsMaxBindGroupsPlusVertexBuffers(
         adapter: GpuHandle,
-        device: GpuHandle,
+        device: GpuHandle?,
     ): Int {
-        if (device.raw != 0) {
+        if (device != null) {
             handles.get<Device>(device, ResourceKind.Device)
         } else {
             handles.get<Adapter>(adapter, ResourceKind.Adapter)
@@ -1008,8 +1008,8 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return 1
     }
 
-    override fun supportedLimitsMaxBindingsPerBindGroup(adapter: GpuHandle, device: GpuHandle): Int {
-        if (device.raw != 0) {
+    override fun supportedLimitsMaxBindingsPerBindGroup(adapter: GpuHandle, device: GpuHandle?): Int {
+        if (device != null) {
             handles.get<Device>(device, ResourceKind.Device)
         } else {
             handles.get<Adapter>(adapter, ResourceKind.Adapter)
@@ -1017,8 +1017,8 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return 1
     }
 
-    override fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle): Long {
-        if (device.raw != 0) {
+    override fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle?): Long {
+        if (device != null) {
             handles.get<Device>(device, ResourceKind.Device)
         } else {
             handles.get<Adapter>(adapter, ResourceKind.Adapter)
@@ -1026,162 +1026,162 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         return 1L
     }
 
-    override fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxColorAttachments(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxColorAttachments(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxImmediateSize(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxImmediateSize(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxInterStageShaderVariables(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxInterStageShaderVariables(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxSampledTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxSampledTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxSamplersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxSamplersPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxStorageBufferBindingSize(adapter: GpuHandle, device: GpuHandle): Long {
+    override fun supportedLimitsMaxStorageBufferBindingSize(adapter: GpuHandle, device: GpuHandle?): Long {
         validateLimitsOwner(adapter, device)
         return 1L
     }
 
-    override fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxStorageBuffersInVertexStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageBuffersInVertexStage(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxStorageBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxStorageTexturesInFragmentStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageTexturesInFragmentStage(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxStorageTexturesInVertexStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageTexturesInVertexStage(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxStorageTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxTextureArrayLayers(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxTextureArrayLayers(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxTextureDimension1D(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxTextureDimension1D(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxTextureDimension2D(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxTextureDimension2D(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxTextureDimension3D(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxTextureDimension3D(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxUniformBufferBindingSize(adapter: GpuHandle, device: GpuHandle): Long {
+    override fun supportedLimitsMaxUniformBufferBindingSize(adapter: GpuHandle, device: GpuHandle?): Long {
         validateLimitsOwner(adapter, device)
         return 1L
     }
 
-    override fun supportedLimitsMaxUniformBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxUniformBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxVertexAttributes(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxVertexAttributes(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxVertexBufferArrayStride(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxVertexBufferArrayStride(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMaxVertexBuffers(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxVertexBuffers(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMinStorageBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMinStorageBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }
 
-    override fun supportedLimitsMinUniformBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMinUniformBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle?): Int {
         validateLimitsOwner(adapter, device)
         return 1
     }

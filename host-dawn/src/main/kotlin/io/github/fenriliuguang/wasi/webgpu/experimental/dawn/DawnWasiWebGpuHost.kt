@@ -1238,16 +1238,16 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
-    private fun dawnSupportedLimits(adapter: GpuHandle, device: GpuHandle) =
-        if (device.raw != 0) {
+    private fun dawnSupportedLimits(adapter: GpuHandle, device: GpuHandle?) =
+        if (device != null) {
             handles.get<GPUDevice>(device, ResourceKind.Device).getLimits()
         } else {
             handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).getLimits()
         }
 
-    override fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
-            return if (device.raw != 0) {
+            return if (device != null) {
                 handles.get<GPUDevice>(device, ResourceKind.Device).getLimits().maxBindGroups
             } else {
                 handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).getLimits().maxBindGroups
@@ -1257,10 +1257,10 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun supportedLimitsMaxBindGroupsPlusVertexBuffers(
         adapter: GpuHandle,
-        device: GpuHandle,
+        device: GpuHandle?,
     ): Int {
         synchronized(gpuLock) {
-            return if (device.raw != 0) {
+            return if (device != null) {
                 handles
                     .get<GPUDevice>(device, ResourceKind.Device)
                     .getLimits()
@@ -1274,9 +1274,9 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
-    override fun supportedLimitsMaxBindingsPerBindGroup(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxBindingsPerBindGroup(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
-            return if (device.raw != 0) {
+            return if (device != null) {
                 handles
                     .get<GPUDevice>(device, ResourceKind.Device)
                     .getLimits()
@@ -1290,9 +1290,9 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
-    override fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle): Long {
+    override fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle?): Long {
         synchronized(gpuLock) {
-            return if (device.raw != 0) {
+            return if (device != null) {
                 handles.get<GPUDevice>(device, ResourceKind.Device).getLimits().maxBufferSize
             } else {
                 handles.get<GPUAdapter>(adapter, ResourceKind.Adapter).getLimits().maxBufferSize
@@ -1300,97 +1300,97 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
-    override fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxColorAttachmentBytesPerSample
         }
     }
 
-    override fun supportedLimitsMaxColorAttachments(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxColorAttachments(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxColorAttachments
         }
     }
 
-    override fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxComputeInvocationsPerWorkgroup
         }
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxComputeWorkgroupSizeX
         }
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxComputeWorkgroupSizeY
         }
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxComputeWorkgroupSizeZ
         }
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxComputeWorkgroupsPerDimension
         }
     }
 
-    override fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxComputeWorkgroupStorageSize
         }
     }
 
-    override fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxDynamicStorageBuffersPerPipelineLayout
         }
     }
 
-    override fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxDynamicUniformBuffersPerPipelineLayout
         }
     }
 
-    override fun supportedLimitsMaxImmediateSize(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxImmediateSize(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxImmediateSize
         }
     }
 
-    override fun supportedLimitsMaxInterStageShaderVariables(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxInterStageShaderVariables(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxInterStageShaderVariables
         }
     }
 
-    override fun supportedLimitsMaxSampledTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxSampledTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxSampledTexturesPerShaderStage
         }
     }
 
-    override fun supportedLimitsMaxSamplersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxSamplersPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxSamplersPerShaderStage
         }
     }
 
-    override fun supportedLimitsMaxStorageBufferBindingSize(adapter: GpuHandle, device: GpuHandle): Long {
+    override fun supportedLimitsMaxStorageBufferBindingSize(adapter: GpuHandle, device: GpuHandle?): Long {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxStorageBufferBindingSize
         }
     }
 
-    override fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             val limits = dawnSupportedLimits(adapter, device)
             return limits.compatibilityModeLimits?.maxStorageBuffersInFragmentStage
@@ -1398,7 +1398,7 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
-    override fun supportedLimitsMaxStorageBuffersInVertexStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageBuffersInVertexStage(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             val limits = dawnSupportedLimits(adapter, device)
             return limits.compatibilityModeLimits?.maxStorageBuffersInVertexStage
@@ -1406,13 +1406,13 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
-    override fun supportedLimitsMaxStorageBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxStorageBuffersPerShaderStage
         }
     }
 
-    override fun supportedLimitsMaxStorageTexturesInFragmentStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageTexturesInFragmentStage(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             val limits = dawnSupportedLimits(adapter, device)
             return limits.compatibilityModeLimits?.maxStorageTexturesInFragmentStage
@@ -1420,7 +1420,7 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
-    override fun supportedLimitsMaxStorageTexturesInVertexStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageTexturesInVertexStage(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             val limits = dawnSupportedLimits(adapter, device)
             return limits.compatibilityModeLimits?.maxStorageTexturesInVertexStage
@@ -1428,73 +1428,73 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
-    override fun supportedLimitsMaxStorageTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxStorageTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxStorageTexturesPerShaderStage
         }
     }
 
-    override fun supportedLimitsMaxTextureArrayLayers(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxTextureArrayLayers(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxTextureArrayLayers
         }
     }
 
-    override fun supportedLimitsMaxTextureDimension1D(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxTextureDimension1D(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxTextureDimension1D
         }
     }
 
-    override fun supportedLimitsMaxTextureDimension2D(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxTextureDimension2D(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxTextureDimension2D
         }
     }
 
-    override fun supportedLimitsMaxTextureDimension3D(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxTextureDimension3D(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxTextureDimension3D
         }
     }
 
-    override fun supportedLimitsMaxUniformBufferBindingSize(adapter: GpuHandle, device: GpuHandle): Long {
+    override fun supportedLimitsMaxUniformBufferBindingSize(adapter: GpuHandle, device: GpuHandle?): Long {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxUniformBufferBindingSize
         }
     }
 
-    override fun supportedLimitsMaxUniformBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxUniformBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxUniformBuffersPerShaderStage
         }
     }
 
-    override fun supportedLimitsMaxVertexAttributes(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxVertexAttributes(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxVertexAttributes
         }
     }
 
-    override fun supportedLimitsMaxVertexBufferArrayStride(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxVertexBufferArrayStride(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxVertexBufferArrayStride
         }
     }
 
-    override fun supportedLimitsMaxVertexBuffers(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMaxVertexBuffers(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).maxVertexBuffers
         }
     }
 
-    override fun supportedLimitsMinStorageBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMinStorageBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).minStorageBufferOffsetAlignment
         }
     }
 
-    override fun supportedLimitsMinUniformBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle): Int {
+    override fun supportedLimitsMinUniformBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle?): Int {
         synchronized(gpuLock) {
             return dawnSupportedLimits(adapter, device).minUniformBufferOffsetAlignment
         }

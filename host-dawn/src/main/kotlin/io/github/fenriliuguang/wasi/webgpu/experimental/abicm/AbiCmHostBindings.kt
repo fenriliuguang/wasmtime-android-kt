@@ -1058,113 +1058,117 @@ class AbiCmHostBindings(
         host.adapterValidate(GpuHandle(adapter))
     }
 
+    /** JNI `0` means device absent — never [GpuHandle] 0 (`handle 0 is reserved as null`). */
+    private fun limitsDeviceOrNull(device: Int): GpuHandle? =
+        if (device == 0) null else GpuHandle(device)
+
     fun supportedLimitsMaxBindGroups(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxBindGroups(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxBindGroups(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxBindGroupsPlusVertexBuffers(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxBindGroupsPlusVertexBuffers(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxBindGroupsPlusVertexBuffers(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxBindingsPerBindGroup(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxBindingsPerBindGroup(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxBindingsPerBindGroup(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxBufferSize(adapter: Int, device: Int): Long =
-        host.supportedLimitsMaxBufferSize(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxBufferSize(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxColorAttachmentBytesPerSample(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxColorAttachmentBytesPerSample(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxColorAttachments(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxColorAttachments(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxColorAttachments(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxComputeInvocationsPerWorkgroup(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxComputeInvocationsPerWorkgroup(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxComputeWorkgroupSizeX(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxComputeWorkgroupSizeX(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxComputeWorkgroupSizeY(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxComputeWorkgroupSizeY(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxComputeWorkgroupSizeZ(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxComputeWorkgroupSizeZ(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxComputeWorkgroupsPerDimension(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxComputeWorkgroupsPerDimension(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxComputeWorkgroupStorageSize(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxComputeWorkgroupStorageSize(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxImmediateSize(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxImmediateSize(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxImmediateSize(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxInterStageShaderVariables(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxInterStageShaderVariables(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxInterStageShaderVariables(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxSampledTexturesPerShaderStage(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxSampledTexturesPerShaderStage(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxSampledTexturesPerShaderStage(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxSamplersPerShaderStage(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxSamplersPerShaderStage(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxSamplersPerShaderStage(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxStorageBufferBindingSize(adapter: Int, device: Int): Long =
-        host.supportedLimitsMaxStorageBufferBindingSize(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxStorageBufferBindingSize(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxStorageBuffersInFragmentStage(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxStorageBuffersInFragmentStage(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxStorageBuffersInVertexStage(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxStorageBuffersInVertexStage(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxStorageBuffersInVertexStage(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxStorageBuffersPerShaderStage(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxStorageBuffersPerShaderStage(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxStorageBuffersPerShaderStage(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxStorageTexturesInFragmentStage(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxStorageTexturesInFragmentStage(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxStorageTexturesInFragmentStage(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxStorageTexturesInVertexStage(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxStorageTexturesInVertexStage(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxStorageTexturesInVertexStage(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxStorageTexturesPerShaderStage(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxStorageTexturesPerShaderStage(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxStorageTexturesPerShaderStage(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxTextureArrayLayers(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxTextureArrayLayers(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxTextureArrayLayers(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxTextureDimension1D(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxTextureDimension1D(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxTextureDimension1D(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxTextureDimension2D(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxTextureDimension2D(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxTextureDimension2D(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxTextureDimension3D(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxTextureDimension3D(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxTextureDimension3D(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxUniformBufferBindingSize(adapter: Int, device: Int): Long =
-        host.supportedLimitsMaxUniformBufferBindingSize(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxUniformBufferBindingSize(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxUniformBuffersPerShaderStage(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxUniformBuffersPerShaderStage(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxUniformBuffersPerShaderStage(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxVertexAttributes(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxVertexAttributes(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxVertexAttributes(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxVertexBufferArrayStride(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxVertexBufferArrayStride(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxVertexBufferArrayStride(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMaxVertexBuffers(adapter: Int, device: Int): Int =
-        host.supportedLimitsMaxVertexBuffers(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMaxVertexBuffers(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMinStorageBufferOffsetAlignment(adapter: Int, device: Int): Int =
-        host.supportedLimitsMinStorageBufferOffsetAlignment(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMinStorageBufferOffsetAlignment(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun supportedLimitsMinUniformBufferOffsetAlignment(adapter: Int, device: Int): Int =
-        host.supportedLimitsMinUniformBufferOffsetAlignment(GpuHandle(adapter), GpuHandle(device))
+        host.supportedLimitsMinUniformBufferOffsetAlignment(GpuHandle(adapter), limitsDeviceOrNull(device))
 
     fun adapterInfoSubgroupMinSize(adapter: Int): Int =
         host.adapterInfoSubgroupMinSize(GpuHandle(adapter))
