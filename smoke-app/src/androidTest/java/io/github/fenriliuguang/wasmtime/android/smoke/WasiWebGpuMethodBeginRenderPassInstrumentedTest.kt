@@ -15,7 +15,7 @@ import org.junit.runner.RunWith
 /**
  * L2 `[method]` slice: `get-encoder` + `get-texture-view` then
  * `[method]gpu-command-encoder.begin-render-pass`
- * (one color-attachment, load-op=clear, store-op=store; drops owns;
+ * (color clear 0,0,0,1 + depth-stencil; drops owns;
  * `run` returns 1). Instrument still substitutes Cpu offscreen TextureView via
  * [ExperimentalWebGpuBridge.attachBeginRenderPassClear] + [callRunConcurrent].
  * Flat `command-encoder-begin-render-pass-clear` remains. Not compliance.

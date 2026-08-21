@@ -1,8 +1,8 @@
 //! L2: `get-encoder` + `get-texture-view` + `[method]gpu-command-encoder.begin-render-pass`
 //! WIT: `(borrow<gpu-command-encoder>, gpu-render-pass-descriptor)
 //!      -> own<gpu-render-pass-encoder>`.
-//! Guest passes one color-attachment (load-op=clear, store-op=store);
-//! drops own pass + view; `run` returns harness 1.
+//! Guest passes one color-attachment (clear 0,0,0,1 + load/store) and a
+//! depth-stencil attachment; drops own pass + views; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -195,8 +195,22 @@ fn register_method_begin_render_pass(linker: &mut Linker<TestHost>) -> wasmtime:
             assert!(matches!(att.store_op, GpuStoreOp::Store));
             assert!(att.depth_slice.is_none());
             assert!(att.resolve_target.is_none());
-            assert!(att.clear_value.is_none());
-            assert!(descriptor.depth_stencil_attachment.is_none());
+            let clear = att
+                .clear_value
+                .as_ref()
+                .expect("guest must pass color clear-value");
+            assert_eq!(clear.r, 0.0);
+            assert_eq!(clear.g, 0.0);
+            assert_eq!(clear.b, 0.0);
+            assert_eq!(clear.a, 1.0);
+            let depth = descriptor
+                .depth_stencil_attachment
+                .as_ref()
+                .expect("guest must pass depth-stencil attachment");
+            caller.data_mut().table.get(&depth.view).map(|_| ())?;
+            assert_eq!(depth.depth_clear_value, Some(1.0));
+            assert!(matches!(depth.depth_load_op, Some(GpuLoadOp::Clear)));
+            assert!(matches!(depth.depth_store_op, Some(GpuStoreOp::Store)));
             assert!(descriptor.occlusion_query_set.is_none());
             assert!(descriptor.timestamp_writes.is_none());
             assert!(descriptor.max_draw_count.is_none());

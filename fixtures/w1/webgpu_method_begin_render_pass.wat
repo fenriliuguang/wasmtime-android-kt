@@ -1,9 +1,8 @@
-;; L2: wasi:webgpu/webgpu@0.3.0-rc.2 get-encoder + get-texture-view +
+;; P4: wasi:webgpu/webgpu@0.3.0-rc.2 get-encoder + get-texture-view +
 ;; [method]gpu-command-encoder.begin-render-pass
-;; WIT: begin-render-pass: func(descriptor: gpu-render-pass-descriptor)
-;;      -> gpu-render-pass-encoder
-;; Guest passes one color-attachment (borrow view, load-op=clear, store-op=store);
-;; other descriptor fields none; drops own pass + view; run returns harness 1.
+;; Guest passes one color-attachment (load-op=clear, store-op=store, clear 0,0,0,1)
+;; plus depth-stencil (view, depth-clear=1, depth-load=clear, depth-store=store);
+;; drops own pass + views; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills args through memory.
 ;; get-encoder / get-texture-view are test constructors only (not product WIT).
 (component
@@ -95,8 +94,12 @@
 
   (core module $builtins
     (memory (export "mem") 1)
+    (global $heap (mut i32) (i32.const 1024))
     (func (export "realloc") (param i32 i32 i32 i32) (result i32)
-      (i32.const 256)
+      (local $ptr i32)
+      (local.set $ptr (global.get $heap))
+      (global.set $heap (i32.add (global.get $heap) (local.get 3)))
+      (local.get $ptr)
     )
   )
   (core instance $builtins (instantiate $builtins))
@@ -120,22 +123,40 @@
     (func (export "run") (result i32)
       (local $encoder i32)
       (local $view i32)
+      (local $depth i32)
       (local $pass i32)
       (local.set $encoder (call $get-encoder))
       (local.set $view (call $get-view))
+      (local.set $depth (call $get-view))
       (i32.store (i32.const 0) (local.get $encoder))
       ;; descriptor at offset 8: list ptr=128, len=1
       (i32.store (i32.const 8) (i32.const 128))
       (i32.store (i32.const 12) (i32.const 1))
+      ;; depth-stencil option at 16: some; payload at 20
+      (i32.store8 (i32.const 16) (i32.const 1))
+      (i32.store (i32.const 20) (local.get $depth))
+      (i32.store8 (i32.const 24) (i32.const 1))
+      (f32.store (i32.const 28) (f32.const 1))
+      (i32.store8 (i32.const 32) (i32.const 1))
+      (i32.store8 (i32.const 33) (i32.const 1))
+      (i32.store8 (i32.const 34) (i32.const 1))
+      (i32.store8 (i32.const 35) (i32.const 0))
       ;; option<color-attachment> at 128: some; payload at 136
       (i32.store8 (i32.const 128) (i32.const 1))
       (i32.store (i32.const 136) (local.get $view))
+      ;; clear-value some at 160; payload f64 rgba at 168
+      (i32.store8 (i32.const 160) (i32.const 1))
+      (f64.store (i32.const 168) (f64.const 0))
+      (f64.store (i32.const 176) (f64.const 0))
+      (f64.store (i32.const 184) (f64.const 0))
+      (f64.store (i32.const 192) (f64.const 1))
       ;; load-op=clear (1), store-op=store (0)
       (i32.store8 (i32.const 200) (i32.const 1))
       (i32.store8 (i32.const 201) (i32.const 0))
       (local.set $pass (call $begin (i32.const 0)))
       (call $drop-pass (local.get $pass))
       (call $drop-view (local.get $view))
+      (call $drop-view (local.get $depth))
       (i32.const 1)
     )
   )

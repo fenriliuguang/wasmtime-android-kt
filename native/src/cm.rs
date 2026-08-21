@@ -593,7 +593,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 described shader/entry/layout/label)
     // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 described bytes + size)
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>; L2 described timestamp-write indices)
-    // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 described first color-attachment view/load/store)
+    // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 described first color + depth-stencil + clear)
     // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void; L2 described pass rep)
     // and `[method]gpu-compute-pass-encoder.set-pipeline` (S6+: borrow<gpu-compute-pipeline>; L2 described pass+pipeline reps)
     // and `[method]gpu-compute-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 described JNI, offsets none → empty)
@@ -5154,7 +5154,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu-command-encoder.begin-render-pass",
                 |mut caller, (encoder, descriptor): (Resource<GpuCommandEncoder>, GpuRenderPassDescriptor)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let (view_rep, load_op, store_op) = match descriptor
+                    let (view_rep, load_op, store_op, has_clear, cr, cg, cb_r, ca) = match descriptor
                         .color_attachments
                         .iter()
                         .find_map(|att| att.as_ref())
@@ -5163,10 +5163,43 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             let load_op = att.load_op.to_dawn_u32();
                             let store_op = att.store_op.to_dawn_u32();
                             let view_rep = caller.data_mut().table.get(&att.view)?.rep;
-                            (view_rep, load_op, store_op)
+                            let (has_clear, cr, cg, cb_r, ca) = match &att.clear_value {
+                                Some(c) => (1, c.r as f32, c.g as f32, c.b as f32, c.a as f32),
+                                None => (0, 0.0, 0.0, 0.0, 0.0),
+                            };
+                            (view_rep, load_op, store_op, has_clear, cr, cg, cb_r, ca)
                         }
-                        None => (0, GpuLoadOp::Clear.to_dawn_u32(), GpuStoreOp::Store.to_dawn_u32()),
+                        None => (
+                            0,
+                            GpuLoadOp::Clear.to_dawn_u32(),
+                            GpuStoreOp::Store.to_dawn_u32(),
+                            0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                        ),
                     };
+                    let (depth_view, depth_load, depth_store, has_depth_clear, depth_clear) =
+                        match &descriptor.depth_stencil_attachment {
+                            Some(ds) => {
+                                let view = caller.data_mut().table.get(&ds.view)?.rep;
+                                let load = ds
+                                    .depth_load_op
+                                    .map(|op| op.to_dawn_u32() as i32)
+                                    .unwrap_or(-1);
+                                let store = ds
+                                    .depth_store_op
+                                    .map(|op| op.to_dawn_u32() as i32)
+                                    .unwrap_or(-1);
+                                let (has, v) = match ds.depth_clear_value {
+                                    Some(c) => (1, c),
+                                    None => (0, 1.0),
+                                };
+                                (view, load, store, has, v)
+                            }
+                            None => (0, -1, -1, 0, 1.0),
+                        };
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -5189,6 +5222,16 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         view_rep,
                         load_op,
                         store_op,
+                        has_clear,
+                        cr,
+                        cg,
+                        cb_r,
+                        ca,
+                        depth_view,
+                        depth_load,
+                        depth_store,
+                        has_depth_clear,
+                        depth_clear,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if pass_rep == 0 {
