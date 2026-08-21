@@ -689,9 +689,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             return Ok((None,));
                         };
                         // L2: `power-preference` 0=none/undefined, 1=low-power, 2=high-performance.
-                        // `force-fallback-adapter` 0=none/false, 1=true. Skip feature-level / xr.
-                        let (power_preference, force_fallback) = match options.as_ref() {
-                            None => (0i32, 0i32),
+                        // `force-fallback-adapter` 0=none/false, 1=true. Skip xr.
+                        let (power_preference, force_fallback, feature_level) = match options.as_ref()
+                        {
+                            None => (0i32, 0i32, String::new()),
                             Some(opts) => {
                                 let power = match opts.power_preference {
                                     None => 0,
@@ -699,13 +700,16 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 };
                                 let fallback =
                                     i32::from(opts.force_fallback_adapter.unwrap_or(false));
-                                (power, fallback)
+                                let feature =
+                                    opts.feature_level.clone().unwrap_or_default();
+                                (power, fallback, feature)
                             }
                         };
                         let adapter_rep = jvm::exp_request_adapter_described(
                             &cb,
                             power_preference,
                             force_fallback,
+                            feature_level,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if adapter_rep == 0 {
@@ -1830,16 +1834,30 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<GpuDeviceDescriptor>,
                 )| {
                     Box::pin(async move {
-                        let (cb, adapter_rep, has_feature, feature) = accessor.with(|mut access| {
+                        let (cb, adapter_rep, has_feature, feature, required_limits, label) =
+                            accessor.with(|mut access| {
                             let adapter_rep = access.data_mut().table.get(&adapter)?.rep;
-                            let (has_feature, feature) = match descriptor.as_ref() {
-                                None => (0u32, 0u32),
-                                Some(d) => match d.required_features.as_ref().and_then(|v| v.first())
-                                {
-                                    Some(f) => (1u32, *f as u8 as u32),
-                                    None => (0u32, 0u32),
-                                },
-                            };
+                            let (has_feature, feature, required_limits, label) =
+                                match descriptor.as_ref() {
+                                    None => (0u32, 0u32, 0i32, String::new()),
+                                    Some(d) => {
+                                        let (has_feature, feature) = match d
+                                            .required_features
+                                            .as_ref()
+                                            .and_then(|v| v.first())
+                                        {
+                                            Some(f) => (1u32, *f as u8 as u32),
+                                            None => (0u32, 0u32),
+                                        };
+                                        let required_limits = d
+                                            .required_limits
+                                            .as_ref()
+                                            .map(|r| r.rep() as i32)
+                                            .unwrap_or(0);
+                                        let label = d.label.clone().unwrap_or_default();
+                                        (has_feature, feature, required_limits, label)
+                                    }
+                                };
                             let cb = access
                                 .data_mut()
                                 .experimental_host_cb
@@ -1848,7 +1866,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                     wasmtime::Error::msg("experimental host callback not set")
                                 })
                                 .cloned()?;
-                            Ok::<_, wasmtime::Error>((cb, adapter_rep, has_feature, feature))
+                            Ok::<_, wasmtime::Error>((
+                                cb,
+                                adapter_rep,
+                                has_feature,
+                                feature,
+                                required_limits,
+                                label,
+                            ))
                         })?;
                         let (tx, rx) = oneshot::channel::<()>();
                         std::thread::spawn(move || {
@@ -1865,6 +1890,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             l2_adapter,
                             has_feature,
                             feature,
+                            required_limits,
+                            label,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if device_rep == 0 {

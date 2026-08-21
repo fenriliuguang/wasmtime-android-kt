@@ -311,17 +311,23 @@ pub fn exp_request_adapter(cb: &GlobalRef) -> Result<u32, String> {
 }
 
 /// L2: Guest `gpu.request-adapter`. `power_preference`: 0 none/undefined, 1 low-power,
-/// 2 high-performance. `force_fallback`: 0 none/false, 1 true. Feature-level unused.
+/// 2 high-performance. `force_fallback`: 0 none/false, 1 true.
+/// `feature_level` empty = none.
 pub fn exp_request_adapter_described(
     cb: &GlobalRef,
     power_preference: i32,
     force_fallback: i32,
+    feature_level: String,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "requestAdapterDescribed",
-        "(II)I",
-        vec![HostArg::Int(power_preference), HostArg::Int(force_fallback)],
+        "(IILjava/lang/String;)I",
+        vec![
+            HostArg::Int(power_preference),
+            HostArg::Int(force_fallback),
+            HostArg::Str(feature_level),
+        ],
     )
 }
 
@@ -691,21 +697,25 @@ pub fn exp_adapter_request_device(cb: &GlobalRef, adapter: u32) -> Result<u32, S
 }
 
 /// L2: Guest `gpu-adapter.request-device`. `has_feature==0` means no required-features
-/// (descriptor none / empty). Limits and label stay unused this cut.
+/// (descriptor none / empty). `required_limits` 0 = none; `label` empty = none.
 pub fn exp_adapter_request_device_described(
     cb: &GlobalRef,
     adapter: u32,
     has_feature: u32,
     feature: u32,
+    required_limits: i32,
+    label: String,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "adapterRequestDeviceDescribed",
-        "(III)I",
+        "(IIIILjava/lang/String;)I",
         vec![
             HostArg::Int(adapter as i32),
             HostArg::Int(has_feature as i32),
             HostArg::Int(feature as i32),
+            HostArg::Int(required_limits),
+            HostArg::Str(label),
         ],
     )
 }

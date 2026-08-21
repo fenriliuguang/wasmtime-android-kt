@@ -10,6 +10,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.CommandEncoderDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.DeviceDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuQueryType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuShaderStage
@@ -71,7 +72,7 @@ class AbiCmHostBindings(
 
     fun requestAdapter(): Int = host.requestAdapter().raw
 
-    fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int): Int {
+    fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int, featureLevel: String): Int {
         val options = RequestAdapterOptions(
             powerPreference = when (powerPreference) {
                 1 -> PowerPreference.LowPower
@@ -79,6 +80,7 @@ class AbiCmHostBindings(
                 else -> PowerPreference.Undefined
             },
             forceFallbackAdapter = forceFallback != 0,
+            featureLevel = featureLevel.ifEmpty { null },
         )
         return host.requestAdapter(options).raw
     }
@@ -175,11 +177,17 @@ class AbiCmHostBindings(
     fun recordOptionGpuSize64EntriesGetValue(handle: Int, index: Int): Long =
         recordOptionGpuSize64ValuesGetValue(handle, index)
 
+    /** Snapshot keyed option<u64> limits for request-device (handle 0 → empty). */
+    fun recordOptionGpuSize64Snapshot(handle: Int): Map<String, Long?> {
+        if (handle == 0) return emptyMap()
+        return size64Maps[handle]?.toMap() ?: emptyMap()
+    }
+
     fun createSurfaceFromNativeWindow(windowHandle: Long): Int =
         host.instanceCreateSurfaceFromAndroidNativeWindow(windowHandle).raw
 
-    fun adapterRequestDevice(adapter: Int): Int =
-        host.adapterRequestDevice(GpuHandle(adapter)).raw
+    fun adapterRequestDevice(adapter: Int, descriptor: DeviceDescriptor = DeviceDescriptor()): Int =
+        host.adapterRequestDevice(GpuHandle(adapter), descriptor).raw
 
     fun deviceGetQueue(device: Int): Int = host.deviceGetQueue(GpuHandle(device)).raw
 

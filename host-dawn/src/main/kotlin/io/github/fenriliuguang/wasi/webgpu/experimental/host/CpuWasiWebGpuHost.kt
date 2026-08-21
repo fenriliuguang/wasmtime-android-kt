@@ -102,7 +102,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     override fun requestAdapter(options: RequestAdapterOptions): GpuHandle =
         handles.insert(ResourceKind.Adapter, Adapter())
 
-    override fun adapterRequestDevice(adapter: GpuHandle): GpuHandle {
+    override fun adapterRequestDevice(
+        adapter: GpuHandle,
+        descriptor: DeviceDescriptor,
+    ): GpuHandle {
         handles.get<Adapter>(adapter, ResourceKind.Adapter)
         return handles.insert(ResourceKind.Device, Device(adapter))
     }
