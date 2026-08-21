@@ -37,7 +37,7 @@ When an S-cluster lands with new Android-host information, open an issue on wasi
 
 | Date | Upstream | Note |
 |------|----------|------|
-| — | — | None yet under the 2026-08-17 protocol |
+| 2026-08-21 | [wasi-webgpu#81](https://github.com/WebAssembly/wasi-webgpu/issues/81) | Android compute-only Dawn `queue.submit` needs one GpuThread (JNI), not a Surface; cite [`threading-android.md`](../mapping/threading-android.md). No CTS claim. |
 
 ## 5. Out of scope on this roadmap
 
