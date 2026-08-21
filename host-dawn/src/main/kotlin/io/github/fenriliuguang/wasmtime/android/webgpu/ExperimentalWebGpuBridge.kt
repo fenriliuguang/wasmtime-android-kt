@@ -2959,6 +2959,8 @@ object ExperimentalWebGpuBridge {
     /**
      * S6+: `get-canvas-context` (test ctor) + L2 `[method]gpu-canvas-context.configure` /
      * `unconfigure` / `get-current-texture` / `get-configuration`.
+     * On-screen: call [WasiWebGpuHost.bindCanvasNativeWindow] on the same host
+     * before instantiate (host-owned window; no product `surface-*` guest names).
      */
     fun attachCanvasContext(
         store: Store,
@@ -3208,9 +3210,9 @@ object ExperimentalWebGpuBridge {
                             bindings.deviceCreateComputePipeline(
                                 device,
                                 ComputePipelineDescriptor(
-                                    layout = layout,
+                                    layout = GpuHandle(layout),
                                     compute = ProgrammableStage(
-                                        module = shader,
+                                        module = GpuHandle(shader),
                                         entryPoint = "main",
                                     ),
                                 ),
@@ -3806,12 +3808,22 @@ object ExperimentalWebGpuBridge {
                     texture: Int,
                     dimension: Int,
                     aspect: Int,
+                    format: Int,
+                    baseMipLevel: Int,
+                    mipLevelCount: Int,
+                    baseArrayLayer: Int,
+                    arrayLayerCount: Int,
                 ): Int =
                     bindings.textureCreateView(
                         texture,
                         TextureViewDescriptor(
                             dimension = dimension,
                             aspect = aspect,
+                            format = format,
+                            baseMipLevel = baseMipLevel,
+                            mipLevelCount = mipLevelCount,
+                            baseArrayLayer = baseArrayLayer,
+                            arrayLayerCount = arrayLayerCount,
                         ),
                     )
 
