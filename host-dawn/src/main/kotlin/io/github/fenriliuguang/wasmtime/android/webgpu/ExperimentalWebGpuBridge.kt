@@ -838,17 +838,7 @@ object ExperimentalWebGpuBridge {
                         } else {
                             GpuHandle(bindings.deviceCreateShaderModule(device, STUB_WGSL))
                         }
-                    val pipelineLayout =
-                        if (layout != 0) {
-                            GpuHandle(layout)
-                        } else {
-                            GpuHandle(
-                                bindings.deviceCreatePipelineLayout(
-                                    device,
-                                    PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
-                                ),
-                            )
-                        }
+                    val pipelineLayout = if (layout != 0) GpuHandle(layout) else null
                     return bindings.deviceCreateComputePipeline(
                         device,
                         ComputePipelineDescriptor(

@@ -411,7 +411,7 @@ data class ProgrammableStage(
 
 /**
  * [layout] is a [ResourceKind.PipelineLayout] handle (slice D).
- * Pass null only if the backend supports auto layout (this repo does not).
+ * Null is WIT `layout: auto`; Dawn omits `GPUPipelineLayout` (androidx auto).
  */
 data class ComputePipelineDescriptor(
     val compute: ProgrammableStage,
