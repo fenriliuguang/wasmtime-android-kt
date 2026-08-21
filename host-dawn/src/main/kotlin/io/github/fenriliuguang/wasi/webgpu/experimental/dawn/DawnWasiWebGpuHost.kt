@@ -409,6 +409,7 @@ class DawnWasiWebGpuHost private constructor(
                 format = descriptor.format,
                 mipLevelCount = descriptor.mipLevelCount,
                 sampleCount = descriptor.sampleCount,
+                viewFormats = descriptor.viewFormats.toIntArray(),
             ),
         )
         return handles.insert(ResourceKind.Texture, texture)
