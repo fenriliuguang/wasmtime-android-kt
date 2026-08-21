@@ -1,8 +1,8 @@
 //! L2: `get-encoder` + `get-texture-view` + `[method]gpu-command-encoder.begin-render-pass`
 //! WIT: `(borrow<gpu-command-encoder>, gpu-render-pass-descriptor)
 //!      -> own<gpu-render-pass-encoder>`.
-//! Guest passes one color-attachment (clear 0,0,0,1 + load/store) and a
-//! depth-stencil attachment; drops own pass + views; `run` returns harness 1.
+//! Guest passes two color-attachments (clear 0,0,0,1 and 1,0,0,1 + load/store)
+//! and a depth-stencil attachment; drops own pass + views; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -184,12 +184,12 @@ fn register_method_begin_render_pass(linker: &mut Linker<TestHost>) -> wasmtime:
             caller.data_mut().table.get(&encoder).map(|_| ())?;
             assert_eq!(
                 descriptor.color_attachments.len(),
-                1,
-                "guest must pass one color-attachment this slice"
+                2,
+                "guest must pass two color-attachments this slice"
             );
             let att = descriptor.color_attachments[0]
                 .as_ref()
-                .expect("guest color-attachment must be some");
+                .expect("guest color-attachment 0 must be some");
             caller.data_mut().table.get(&att.view).map(|_| ())?;
             assert!(matches!(att.load_op, GpuLoadOp::Clear));
             assert!(matches!(att.store_op, GpuStoreOp::Store));
@@ -203,6 +203,20 @@ fn register_method_begin_render_pass(linker: &mut Linker<TestHost>) -> wasmtime:
             assert_eq!(clear.g, 0.0);
             assert_eq!(clear.b, 0.0);
             assert_eq!(clear.a, 1.0);
+            let att1 = descriptor.color_attachments[1]
+                .as_ref()
+                .expect("guest color-attachment 1 must be some");
+            caller.data_mut().table.get(&att1.view).map(|_| ())?;
+            assert!(matches!(att1.load_op, GpuLoadOp::Clear));
+            assert!(matches!(att1.store_op, GpuStoreOp::Store));
+            let clear1 = att1
+                .clear_value
+                .as_ref()
+                .expect("guest must pass second color clear-value");
+            assert_eq!(clear1.r, 1.0);
+            assert_eq!(clear1.g, 0.0);
+            assert_eq!(clear1.b, 0.0);
+            assert_eq!(clear1.a, 1.0);
             let depth = descriptor
                 .depth_stencil_attachment
                 .as_ref()

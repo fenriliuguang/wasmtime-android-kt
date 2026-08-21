@@ -4,8 +4,8 @@ use jni::objects::{GlobalRef, JByteArray, JIntArray, JObject, JString, JValue};
 use jni::sys::JavaVM as SysJavaVM;
 use jni::{JNIEnv, JavaVM};
 use std::cell::RefCell;
-use std::sync::OnceLock;
 use std::sync::mpsc::{self, Sender};
+use std::sync::OnceLock;
 
 static JVM: OnceLock<JavaVM> = OnceLock::new();
 
@@ -3462,18 +3462,16 @@ pub fn exp_begin_render_pass_clear(cb: &GlobalRef, encoder: u32, view: u32) -> R
     )
 }
 
-/// L2: Guest encoder + first color view/load/store + optional clear + depth-stencil.
+/// L2: Guest encoder + all color attachments (view/load/store + optional clear
+/// bits) + depth-stencil. `view==0` is a WIT `none` slot.
 pub fn exp_begin_render_pass_described(
     cb: &GlobalRef,
     encoder: u32,
-    view: u32,
-    load_op: u32,
-    store_op: u32,
-    has_clear: i32,
-    clear_r: f32,
-    clear_g: f32,
-    clear_b: f32,
-    clear_a: f32,
+    views: Vec<i32>,
+    load_ops: Vec<i32>,
+    store_ops: Vec<i32>,
+    has_clears: Vec<i32>,
+    clear_bits: Vec<i32>,
     depth_view: u32,
     depth_load: i32,
     depth_store: i32,
@@ -3483,17 +3481,14 @@ pub fn exp_begin_render_pass_described(
     call_i(
         cb,
         "beginRenderPassDescribed",
-        "(IIIIIFFFFIIIIF)I",
+        "(I[I[I[I[I[IIIIIIF)I",
         vec![
             HostArg::Int(encoder as i32),
-            HostArg::Int(view as i32),
-            HostArg::Int(load_op as i32),
-            HostArg::Int(store_op as i32),
-            HostArg::Int(has_clear),
-            HostArg::Float(clear_r),
-            HostArg::Float(clear_g),
-            HostArg::Float(clear_b),
-            HostArg::Float(clear_a),
+            HostArg::Ints(views),
+            HostArg::Ints(load_ops),
+            HostArg::Ints(store_ops),
+            HostArg::Ints(has_clears),
+            HostArg::Ints(clear_bits),
             HostArg::Int(depth_view as i32),
             HostArg::Int(depth_load),
             HostArg::Int(depth_store),
