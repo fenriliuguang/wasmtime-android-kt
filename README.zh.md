@@ -20,7 +20,7 @@
 | **P1** | Guest 所需的已批准 WASI 0.3 |
 | **P2** | 追踪官方 Wasmtime |
 
-成功标准：[`rfc-ecosystem-contribution.zh.md`](docs/scheme/rfc-ecosystem-contribution.zh.md)。GPU 接线：[`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。**P0 不变。**
+成功标准：[`rfc-ecosystem-contribution.zh.md`](docs/scheme/rfc-ecosystem-contribution.zh.md) — 可复现、可引用；**禁止**向上游开 GitHub issue。GPU 接线：[`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。**P0 不变。**
 
 ## 快速开始
 

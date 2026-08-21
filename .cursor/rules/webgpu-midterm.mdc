@@ -12,3 +12,4 @@ If default shape remaining is 0 (canvas omitted) and default L2 host-fixed remai
 - Do not WebFetch wasi-webgpu. Use `third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`.
 - Do not Read `native/src/cm.rs` or `native/src/jvm.rs` without offset. Grep, then ~80 lines.
 - One lane per PR. No product `surface-*`. No wasi-gfx. Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
+- Never file GitHub issues (or Discussions-as-issues) on wasi-webgpu, Wasmtime, or any other upstream. No `gh issue create`.

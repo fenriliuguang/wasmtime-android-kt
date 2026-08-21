@@ -134,7 +134,7 @@ def main() -> None:
     print("Playbook: docs/agent/webgpu-midterm.md")
     if next_id is None:
         print("Next: (A–C empty)")
-        print("Lane D is manual (真机 / WG-5 / upstream) — do not auto-cut.")
+        print("Lane D is manual (真机 / WG-5 / cite) — do not auto-cut; never file upstream issues.")
     else:
         print(f"Next: {next_id} {next_title}")
         for n in next_names:
@@ -165,7 +165,7 @@ def main() -> None:
     else:
         print("=== C record-* omitted (pass -IncludeRecords) ===")
     print("=== D ===")
-    print("  manual")
+    print("  manual cite only; never file upstream issues")
 
 
 if __name__ == "__main__":

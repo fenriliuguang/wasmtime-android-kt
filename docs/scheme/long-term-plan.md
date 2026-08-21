@@ -32,7 +32,7 @@ L0  Base freeze + Wasmtime tracking
 L1  WASI 0.3 primitives (async func, future, stream, concurrent pump)
 L2  WASI 0.3 core imports subset (clocks / random / cli / … as guests block)
 L3  wasi:webgpu canonical WIT (P0) — S-series
-L4  Citable host — reproduce, cite, file upstream notes
+L4  Citable host — reproduce, cite, local notes (never upstream GitHub issues)
 L5  Productization RFC (API freeze / publish-or-not)
 ```
 
@@ -45,7 +45,7 @@ L5  Productization RFC (API freeze / publish-or-not)
 | Stage | Looks like |
 |-------|------------|
 | Near | Docs IA: English front door; archive history; Dawn default bundle; Host Kotlin vendored in `:host-dawn`; Dawn via `androidx.webgpu` |
-| Mid | JNI/Kotlin can carry WASI 0.3 `stream` + a small package subset; guests see pinned WIT types (not transitional `u32`); true async on device; **third party can reproduce and cite**; default test APK includes Dawn; at least one upstream-shaped note |
+| Mid | JNI/Kotlin can carry WASI 0.3 `stream` + a small package subset; guests see pinned WIT types (not transitional `u32`); true async on device; **third party can reproduce and cite**; default test APK includes Dawn; at least one **local** mapping/changelog note (never an upstream GitHub issue) |
 | Far | Outsiders describe this repo as Android + Wasmtime + canonical wasi:webgpu without a second ABI story |
 
 ## 4. Principles

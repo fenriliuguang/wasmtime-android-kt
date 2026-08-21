@@ -25,6 +25,7 @@ Default order: **A1 → A2 → A3 → A4 → B1 → B2 → B3**. Lane C and D ne
 ## Hard bans
 
 - Do **not** WebFetch / clone wasi-webgpu. Grep the vendored WIT.
+- Do **not** create, reopen, or request GitHub Issues (or GitHub Discussions used as an issue tracker) on any upstream repository, including [wasi-webgpu](https://github.com/WebAssembly/wasi-webgpu) and Wasmtime. No `gh issue create`. Record Android facts only in this repo.
 - Do **not** read `native/src/cm.rs`, `native/src/jvm.rs`, `native/src/webgpu_abi.rs`, `ExperimentalHostCallbacks.kt`, `ExperimentalWebGpuBridge.kt`, `HostWebGpuBackend.kt`, `WasiWebGpuHost.kt`, Cpu/Dawn hosts, or RFCs without an offset. Grep the symbol, then Read ~80 lines.
 - Do **not** open a third native/Kotlin file to discover a template. Copy the **one** stack in this page for that lane.
 - Do **not** edit hub files: root `README.md` / `README.zh.md`, `CHANGELOG.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.
@@ -84,7 +85,7 @@ Copy: existing `native/tests/wasi_webgpu_method/record_gpu_pipeline_constant_val
 - **No new WIT names.** Chain already-described methods (buffer/texture + encoder + one render **or** compute pass + `queue.submit`).
 - Guest stays canonical `[method]` imports. Dawn path: `DawnWasiWebGpuHost` / default bundle — not Cpu as the cited backend.
 - One instrument test is enough. Do **not** claim CTS or a compliant product.
-- Upstream (only if the cut taught Android-specific host facts: threads, JNI, Bionic, adapter `none`): add `changelog/unreleased/` bullets, open **one** issue on [wasi-webgpu](https://github.com/WebAssembly/wasi-webgpu) or Wasmtime, add **one row** to [`docs/scheme/roadmap-wasi-webgpu.md`](../scheme/roadmap-wasi-webgpu.md) § Upstream. Cite [`docs/mapping/threading-android.md`](../mapping/threading-android.md). Do not rewrite that mapping doc unless the pump changed.
+- Android-specific host facts (threads, JNI, Bionic, adapter `none`) stay in this repo: `changelog/unreleased/` plus [`docs/mapping/threading-android.md`](../mapping/threading-android.md) if the pump changed. **Do not** open wasi-webgpu / Wasmtime issues. **Do not** add roadmap “Upstream issue” rows.
 
 ## File whitelist
 
@@ -92,7 +93,7 @@ Copy: existing `native/tests/wasi_webgpu_method/record_gpu_pipeline_constant_val
 
 **A2–A4 / B / C:** same as [`webgpu-semantic-l2.md`](webgpu-semantic-l2.md) whitelist (described JNI + callbacks + Cpu/Dawn **only** if Host API cannot take the scalars).
 
-**D:** one fixture **or** one instrument; changelog; roadmap upstream row if an issue was filed. No hub files. No `docs/archive/`.
+**D:** one fixture **or** one instrument; changelog. No hub files. No `docs/archive/`. No upstream GitHub issues.
 
 ## Narrow tests
 
@@ -110,6 +111,6 @@ PR titles, label `enhancement` (D docs-only: `documentation`):
 
 - A1: `feat(webgpu): S6+ gpu-canvas-context take WIT types`
 - A2–A4 / B / C: `feat(webgpu): L2 <resource> <family> guest fields to host`
-- D: `feat(webgpu): cite Dawn <render|compute> slice` or `docs(webgpu): WG-5 <upstream> note`
+- D: `feat(webgpu): cite Dawn <render|compute> slice` or `docs(webgpu): WG-5 <local> note`
 
 User prompt that works: “follow `docs/agent/webgpu-midterm.md`” or name the lane (`A2 configure`, `B1 queue`, `record-* mutate`, `Lane D compute`).

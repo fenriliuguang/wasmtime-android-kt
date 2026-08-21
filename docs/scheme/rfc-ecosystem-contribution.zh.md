@@ -1,6 +1,6 @@
 # RFC：生态贡献成功标准（降级原 L4）
 
-**状态：Accepted** · 2026-08-17  
+**状态：Accepted** · 2026-08-17 · **2026-08-21 修订：** 禁止向上游开 GitHub issue。
 [English](rfc-ecosystem-contribution.md) | **中文**
 
 > 修订 [`long-term-plan.md`](long-term-plan.md)。**不**改变 P0（钉版 `wasi:webgpu` WIT + 真 CM async）。  
@@ -10,7 +10,7 @@
 
 | 问题 | 决定 |
 |------|------|
-| 中期成功是什么？ | **可引用的 Android Host**：外人能复现 Guest → 本运行时 → GPU（或文档中的替代），并能据此向 [`wasi-webgpu`](https://github.com/WebAssembly/wasi-webgpu) / Wasmtime **开上游 issue**。 |
+| 中期成功是什么？ | **可引用的 Android Host**：外人能复现 Guest → 本运行时 → GPU（或文档中的替代）。Android 事实只写本仓。**禁止**向 [`wasi-webgpu`](https://github.com/WebAssembly/wasi-webgpu) / Wasmtime 或任何上游开 GitHub issue。 |
 | P0 改吗？ | **不改。** |
 | 原 L4（给另一 Demo 换默认 runtime）？ | **移出目标堆叠**，不再作为成功标准。 |
 | Maven Central / 生产级？ | 近端仍 **不做**。可引用 ≠ 上 Central。 |
@@ -20,7 +20,7 @@
 
 ```text
 L0 底座 → L1 P3 原语 → L2 P3 子集 → L3 wasi:webgpu 规范形状（P0）
-L4 可引用 Host（本 RFC）：复现 + 引用 + 上游笔记
+L4 可引用 Host（本 RFC）：复现 + 引用 + 本仓笔记
 L5 产品化 RFC（另开）
 ```
 

@@ -45,6 +45,7 @@ Do **not** re-cut `create-sampler` / labels / limits. Skip S1–S3, `gpu-canvas-
 ## Hard bans
 
 - Do **not** WebFetch / clone wasi-webgpu. Grep the vendored WIT.
+- Do **not** create, reopen, or request GitHub Issues (or GitHub Discussions used as an issue tracker) on any upstream repository, including wasi-webgpu and Wasmtime. No `gh issue create`.
 - Do **not** read `native/src/cm.rs`, `native/src/jvm.rs`, `native/src/webgpu_abi.rs`, `ExperimentalHostCallbacks.kt`, `ExperimentalWebGpuBridge.kt`, or `HostWebGpuBackend.kt` without an offset. Grep the method / JNI name, then Read ~80 lines.
 - Do **not** open a third native/Kotlin file to discover the template. Copy the **one** gold stack below.
 - Do **not** edit hub files: root `README.md` / `README.zh.md`, `CHANGELOG.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.
