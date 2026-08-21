@@ -78,7 +78,7 @@ object ExperimentalWebGpuBridge {
         )
     }
 
-    /** Adapter + device + queue. Shared by flat `device-get-queue` and S1 `[method]gpu-device.queue` (`get-device` is test-only). */
+    /** Adapter + device + queue. Shared by flat `device-get-queue` and L2 `[method]gpu-device.queue` (`get-device` is test-only). */
     fun attachDeviceGetQueue(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
         store.setExperimentalHost(
@@ -89,6 +89,9 @@ object ExperimentalWebGpuBridge {
                     bindings.adapterRequestDevice(adapter)
 
                 override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
+
+                override fun deviceGetQueueDescribed(device: Int): Int =
+                    bindings.deviceGetQueue(device)
 
                 override fun queueOnSubmittedWorkDoneDescribed(queue: Int) {
                     bindings.queueValidate(queue)

@@ -289,6 +289,16 @@ pub fn exp_device_get_queue(cb: &GlobalRef, device: u32) -> Result<u32, String> 
     )
 }
 
+/// L2: Guest `gpu-device.queue` uses the device handle (0 → stub-create in the wrap).
+pub fn exp_device_get_queue_described(cb: &GlobalRef, device: u32) -> Result<u32, String> {
+    call_i(
+        cb,
+        "deviceGetQueueDescribed",
+        "(I)I",
+        vec![HostArg::Int(device as i32)],
+    )
+}
+
 pub fn exp_create_surface(cb: &GlobalRef, window: u64) -> Result<u32, String> {
     call_i(
         cb,
