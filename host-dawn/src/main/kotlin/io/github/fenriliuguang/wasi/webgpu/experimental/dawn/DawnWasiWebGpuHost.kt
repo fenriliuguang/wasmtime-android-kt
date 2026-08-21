@@ -284,6 +284,7 @@ class DawnWasiWebGpuHost private constructor(
         val module = gpuDevice.createShaderModule(
             GPUShaderModuleDescriptor(
                 label = descriptor.label,
+                // G3: androidx 1.0.0-alpha05 has no compilationHints slot; guest values stay on Kotlin.
                 shaderSourceWGSL = GPUShaderSourceWGSL(descriptor.code),
             ),
         )
