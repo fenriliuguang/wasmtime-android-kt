@@ -155,6 +155,16 @@ interface WasiWebGpuHost : AutoCloseable {
      */
     fun canvasContextConfigure(context: Int, device: GpuHandle, format: Int, usage: Int): GpuHandle
 
+    /** Guest `[method]gpu-canvas-context.unconfigure`. [context] `0` is a no-op. */
+    fun canvasContextUnconfigure(context: Int)
+
+    /**
+     * Guest `[method]gpu-canvas-context.get-current-texture`.
+     * [context] `0` (unconfigured fixture) allocates a 1×1 texture.
+     * Not a product `surface-*`.
+     */
+    fun canvasContextGetCurrentTexture(context: Int): GpuHandle
+
     /**
      * Empty vertex-buffer TriangleList; shader must export `vs_main` / `fs_main`
      * (typically `@builtin(vertex_index)`).

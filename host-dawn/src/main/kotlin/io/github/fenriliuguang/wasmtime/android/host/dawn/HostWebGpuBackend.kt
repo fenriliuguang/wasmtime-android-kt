@@ -71,6 +71,13 @@ private class ForwardingHostCallbacks(
         usage: Int,
     ): Int = bindings.canvasContextConfigure(context, device, format, usage)
 
+    override fun canvasContextUnconfigureDescribed(context: Int) {
+        bindings.canvasContextUnconfigure(context)
+    }
+
+    override fun canvasContextGetCurrentTextureDescribed(context: Int): Int =
+        bindings.canvasContextGetCurrentTexture(context)
+
     override fun deviceCreateCommandEncoder(device: Int): Int =
         bindings.deviceCreateCommandEncoder(device)
 

@@ -2377,7 +2377,17 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-canvas-context.unconfigure",
                 |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
-                    let _ = caller.data_mut().table.get(&ctx)?;
+                    let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| {
+                            wasmtime::Error::msg("experimental host callback not set")
+                        })
+                        .cloned()?;
+                    jvm::exp_canvas_context_unconfigure_described(&cb, ctx_rep)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -2395,11 +2405,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-canvas-context.get-current-texture",
                 |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
-                    let _ = caller.data_mut().table.get(&ctx)?;
+                    let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| {
+                            wasmtime::Error::msg("experimental host callback not set")
+                        })
+                        .cloned()?;
+                    let texture_rep =
+                        jvm::exp_canvas_context_get_current_texture_described(&cb, ctx_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                    if texture_rep == 0 {
+                        return Err(wasmtime::Error::msg(
+                            "canvas-context-get-current-texture returned 0",
+                        ));
+                    }
                     let resource = caller
                         .data_mut()
                         .table
-                        .push(GpuTexture { rep: 0 })?;
+                        .push(GpuTexture { rep: texture_rep })?;
                     Ok((resource,))
                 },
             )

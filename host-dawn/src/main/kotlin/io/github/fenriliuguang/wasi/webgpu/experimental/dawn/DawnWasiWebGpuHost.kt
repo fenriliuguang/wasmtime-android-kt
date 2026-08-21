@@ -99,6 +99,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureSampleTyp
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureViewDimension
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuVertexFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuVertexStepMode
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.HandleTable
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.HostException
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
@@ -122,6 +123,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuLoadOp
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuPrimitiveTopology
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuStoreOp
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexBufferLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
@@ -724,6 +726,52 @@ class DawnWasiWebGpuHost private constructor(
             state.configured = true
             return handle
         }
+    }
+
+    override fun canvasContextUnconfigure(context: Int) {
+        synchronized(gpuLock) {
+            if (context == 0) return
+            handles.get<DawnCanvasContextState>(GpuHandle(context), ResourceKind.CanvasContext)
+                .configured = false
+        }
+    }
+
+    override fun canvasContextGetCurrentTexture(context: Int): GpuHandle {
+        val device: GpuHandle
+        val format: Int
+        val usage: Int
+        if (context == 0) {
+            val adapter = requestAdapter()
+            device = adapterRequestDevice(adapter)
+            format = GpuTextureFormat.RGBA8_UNORM
+            usage = GpuTextureUsage.RENDER_ATTACHMENT
+        } else {
+            val snapshot = synchronized(gpuLock) {
+                val state = handles.get<DawnCanvasContextState>(
+                    GpuHandle(context),
+                    ResourceKind.CanvasContext,
+                )
+                if (!state.configured) {
+                    throw HostException.Validation("canvas context not configured")
+                }
+                Triple(
+                    GpuHandle(state.device),
+                    if (state.format != 0) state.format else GpuTextureFormat.RGBA8_UNORM,
+                    if (state.usage != 0) state.usage else GpuTextureUsage.RENDER_ATTACHMENT,
+                )
+            }
+            device = snapshot.first
+            format = snapshot.second
+            usage = snapshot.third
+        }
+        return deviceCreateTexture(
+            device,
+            TextureDescriptor(
+                size = Extent3D(width = 1, height = 1),
+                format = format,
+                usage = usage,
+            ),
+        )
     }
 
     override fun deviceCreateRenderPipelineTriangle(

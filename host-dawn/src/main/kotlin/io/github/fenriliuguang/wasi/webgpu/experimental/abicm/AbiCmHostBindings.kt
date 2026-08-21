@@ -381,6 +381,13 @@ class AbiCmHostBindings(
     fun canvasContextConfigure(context: Int, device: Int, format: Int, usage: Int): Int =
         host.canvasContextConfigure(context, GpuHandle(device), format, usage).raw
 
+    fun canvasContextUnconfigure(context: Int) {
+        host.canvasContextUnconfigure(context)
+    }
+
+    fun canvasContextGetCurrentTexture(context: Int): Int =
+        host.canvasContextGetCurrentTexture(context).raw
+
     fun commandEncoderBeginComputePass(encoder: Int): Int =
         host.commandEncoderBeginComputePass(GpuHandle(encoder)).raw
 
