@@ -765,7 +765,10 @@ interface ExperimentalHostCallbacks {
      *  Also used by `[method]gpu-device.create-render-pipeline-async`. */
     fun deviceCreateRenderPipeline(device: Int): Int = unsupported("deviceCreateRenderPipeline")
 
-    /** L2: Guest vertex/fragment shader handles + entry-points + format (0 = RGBA8) + layout (0 = auto) + label. */
+    /**
+     * L2: Guest vertex/fragment shaders + entry-points + color format (0 = RGBA8)
+     * + layout (0 = auto) + label + vertex.buffers (stride/step/attributes).
+     */
     fun deviceCreateRenderPipelineDescribed(
         device: Int,
         vertexShader: Int,
@@ -775,6 +778,12 @@ interface ExperimentalHostCallbacks {
         format: Int,
         layout: Int,
         label: String,
+        vbStrides: IntArray,
+        vbStepModes: IntArray,
+        attrBufferIndex: IntArray,
+        attrFormats: IntArray,
+        attrOffsets: IntArray,
+        attrLocations: IntArray,
     ): Int = unsupported("deviceCreateRenderPipelineDescribed")
 
     /** S6+: guest `gpu-compute-pipeline-descriptor`; L2 leftover host-fixed stub shader + empty layout.

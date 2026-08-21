@@ -16,8 +16,9 @@ import org.junit.runner.RunWith
  * S6+ `[method]` slice: guest imports `get-device` + `get-shader-module` then
  * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-device.create-render-pipeline`
  * (`(borrow gpu-device, gpu-render-pipeline-descriptor) -> own gpu-render-pipeline`;
- * Guest passes shader borrow, vertex entry-point=`vs_main`, layout auto, label=`l2`; drops the own; `run` returns 1).
- * L2 described vertex/fragment shader handles + entry-points + format + layout + label.
+ * Guest passes shader borrow, vertex entry-point=`vs_main`, one float32x3 buffer,
+ * fragment target format=rgba8unorm, layout auto, label=`l2`; drops the own; `run` returns 1).
+ * L2 described vertex.buffers + guest color format.
  * via [ExperimentalWebGpuBridge.attachCreateRenderPipeline] + [callRunConcurrent].
  * Not full wasi:webgpu compliance.
  */

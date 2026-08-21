@@ -3275,7 +3275,8 @@ pub fn exp_create_render_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, St
     )
 }
 
-/// L2: Guest vertex/fragment shader handles + entry-points + format (0 = host RGBA8) + layout (0 = auto) + label.
+/// L2: Guest vertex/fragment shaders + entry-points + color format (0 = host RGBA8)
+/// + layout (0 = auto) + label + vertex.buffers (stride/step/attributes).
 pub fn exp_create_render_pipeline_described(
     cb: &GlobalRef,
     device: u32,
@@ -3286,11 +3287,17 @@ pub fn exp_create_render_pipeline_described(
     format: i32,
     layout: i32,
     label: String,
+    vb_strides: Vec<i32>,
+    vb_step_modes: Vec<i32>,
+    attr_buffer_index: Vec<i32>,
+    attr_formats: Vec<i32>,
+    attr_offsets: Vec<i32>,
+    attr_locations: Vec<i32>,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateRenderPipelineDescribed",
-        "(IILjava/lang/String;ILjava/lang/String;IILjava/lang/String;)I",
+        "(IILjava/lang/String;ILjava/lang/String;IILjava/lang/String;[I[I[I[I[I[I)I",
         vec![
             HostArg::Int(device as i32),
             HostArg::Int(vertex_shader as i32),
@@ -3300,6 +3307,12 @@ pub fn exp_create_render_pipeline_described(
             HostArg::Int(format),
             HostArg::Int(layout),
             HostArg::Str(label),
+            HostArg::Ints(vb_strides),
+            HostArg::Ints(vb_step_modes),
+            HostArg::Ints(attr_buffer_index),
+            HostArg::Ints(attr_formats),
+            HostArg::Ints(attr_offsets),
+            HostArg::Ints(attr_locations),
         ],
     )
 }
