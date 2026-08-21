@@ -442,6 +442,14 @@ data class SurfaceTextureResult(
     val texture: GpuHandle?,
 )
 
+/** Guest `gpu-canvas-configuration` leftovers (absent ints = `-1`). */
+data class CanvasConfigureLeftovers(
+    val viewFormats: List<Int> = emptyList(),
+    val colorSpace: Int = -1,
+    val toneMapping: Int = -1,
+    val alphaMode: Int = -1,
+)
+
 /** Dawn LoadOp pass-through. */
 object GpuLoadOp {
     const val UNDEFINED: Int = 0

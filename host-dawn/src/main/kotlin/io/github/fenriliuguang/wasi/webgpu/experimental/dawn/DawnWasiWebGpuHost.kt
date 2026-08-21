@@ -129,6 +129,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Color
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BlendState
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.CanvasConfigureLeftovers
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuColorWrite
@@ -155,6 +156,10 @@ private class DawnCanvasContextState(
     var usage: Int = 0,
     var configured: Boolean = false,
     var surface: GpuHandle? = null,
+    var viewFormats: List<Int> = emptyList(),
+    var colorSpace: Int = -1,
+    var toneMapping: Int = -1,
+    var alphaMode: Int = -1,
 )
 
 private data class CanvasTextureSnap(
@@ -187,6 +192,7 @@ class DawnWasiWebGpuHost private constructor(
     private var canvasNativeWindow: Long = 0L
     private var canvasWidth: Int = 0
     private var canvasHeight: Int = 0
+    private var pendingCanvasLeftovers: CanvasConfigureLeftovers? = null
     /** Serializes Dawn GPU work with [GPUInstance.processEvents] (Mali SIGSEGV under races). */
     private val gpuLock = Any()
     @Volatile private var closed = false
@@ -689,6 +695,15 @@ class DawnWasiWebGpuHost private constructor(
         adapter: GpuHandle,
         width: Int,
         height: Int,
+    ): Int = surfaceConfigure(surface, device, adapter, width, height, leftover = null)
+
+    private fun surfaceConfigure(
+        surface: GpuHandle,
+        device: GpuHandle,
+        adapter: GpuHandle,
+        width: Int,
+        height: Int,
+        leftover: CanvasConfigureLeftovers?,
     ): Int {
         require(width > 0 && height > 0) { "invalid surface size ${width}x$height" }
         synchronized(gpuLock) {
@@ -699,7 +714,11 @@ class DawnWasiWebGpuHost private constructor(
             val format = caps.formats.firstOrNull()
                 ?: throw HostException.Backend("surface has no texture formats")
             val presentMode = PresentMode.Fifo
-            val alphaMode = caps.alphaModes.firstOrNull() ?: CompositeAlphaMode.Opaque
+            val alphaMode = leftover?.alphaMode?.takeIf { it >= 0 }?.let { wit ->
+                wit + 1
+            } ?: (caps.alphaModes.firstOrNull() ?: CompositeAlphaMode.Opaque)
+            val viewFormats = leftover?.viewFormats?.takeIf { it.isNotEmpty() }?.toIntArray()
+                ?: intArrayOf()
             gpuSurface.configure(
                 GPUSurfaceConfiguration(
                     device = gpuDevice,
@@ -707,7 +726,7 @@ class DawnWasiWebGpuHost private constructor(
                     height = height,
                     format = format,
                     usage = TextureUsage.RenderAttachment,
-                    viewFormats = intArrayOf(),
+                    viewFormats = viewFormats,
                     alphaMode = alphaMode,
                     presentMode = presentMode,
                 ),
@@ -765,6 +784,11 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
+    /** Stage leftover configure fields for the next [canvasContextConfigure] (same thread). */
+    fun stageCanvasConfigureLeftovers(leftovers: CanvasConfigureLeftovers) {
+        pendingCanvasLeftovers = leftovers
+    }
+
     override fun canvasContextConfigure(
         context: Int,
         device: GpuHandle,
@@ -778,11 +802,17 @@ class DawnWasiWebGpuHost private constructor(
             } else {
                 handles.insert(ResourceKind.CanvasContext, DawnCanvasContextState())
             }
+            val leftover = pendingCanvasLeftovers
+            pendingCanvasLeftovers = null
             val state = handles.get<DawnCanvasContextState>(handle, ResourceKind.CanvasContext)
             state.device = device.raw
             state.format = format
             state.usage = usage
             state.configured = true
+            state.viewFormats = leftover?.viewFormats ?: emptyList()
+            state.colorSpace = leftover?.colorSpace ?: -1
+            state.toneMapping = leftover?.toneMapping ?: -1
+            state.alphaMode = leftover?.alphaMode ?: -1
             val window = canvasNativeWindow
             val width = canvasWidth
             val height = canvasHeight
@@ -795,7 +825,14 @@ class DawnWasiWebGpuHost private constructor(
                 val adapter = deviceAdapters[device]
                     ?: throw HostException.InvalidHandle(device, "no adapter mapping")
                 val surface = instanceCreateSurfaceFromAndroidNativeWindow(window)
-                val chosen = surfaceConfigure(surface, device, adapter, width, height)
+                val chosen = surfaceConfigure(
+                    surface,
+                    device,
+                    adapter,
+                    width,
+                    height,
+                    leftover,
+                )
                 state.surface = surface
                 if (chosen != 0) {
                     state.format = chosen

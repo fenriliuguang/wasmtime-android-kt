@@ -1,5 +1,6 @@
 //! L2: `get-canvas-context` + `get-device` + `[method]gpu-canvas-context.configure`
-//! WIT: `(borrow, gpu-canvas-configuration)`. Guest format=rgba8unorm, options none; harness 1.
+//! WIT: `(borrow, gpu-canvas-configuration)`. Guest format=rgba8unorm plus leftover
+//! view-formats / color-space / tone-mapping / alpha-mode; harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -129,10 +130,30 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                 "guest must pass format=rgba8unorm"
             );
             assert!(config.usage.is_none());
-            assert!(config.view_formats.is_none());
-            assert!(config.color_space.is_none());
-            assert!(config.tone_mapping.is_none());
-            assert!(config.alpha_mode.is_none());
+            let view_formats = config
+                .view_formats
+                .as_ref()
+                .expect("guest must pass view-formats");
+            assert_eq!(view_formats.len(), 1);
+            assert!(
+                matches!(view_formats[0], GpuTextureFormat::Rgba8unorm),
+                "guest must pass view-formats=[rgba8unorm]"
+            );
+            assert!(
+                matches!(config.color_space, Some(PredefinedColorSpace::Srgb)),
+                "guest must pass color-space=srgb"
+            );
+            assert!(
+                matches!(
+                    config.tone_mapping.and_then(|tm| tm.mode),
+                    Some(GpuCanvasToneMappingMode::Standard)
+                ),
+                "guest must pass tone-mapping.mode=standard"
+            );
+            assert!(
+                matches!(config.alpha_mode, Some(GpuCanvasAlphaMode::Premultiplied)),
+                "guest must pass alpha-mode=premultiplied"
+            );
             Ok(())
         },
     )?;
