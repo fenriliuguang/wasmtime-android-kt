@@ -1,6 +1,7 @@
 //! L2: `get-gpu` + `[method]gpu.request-adapter`
 //! WIT: async (borrow<gpu>, option<gpu-request-adapter-options>) -> option<own<gpu-adapter>>
-//! Guest passes none; drops own adapter; `run` returns harness 1.
+//! Guest passes options=some(xr-compatible=true); drops own adapter;
+//! `run` returns harness 1.
 
 use futures::channel::oneshot;
 use wasmtime::component::{
@@ -70,7 +71,15 @@ fn register_method_request_adapter(linker: &mut Linker<TestHost>) -> wasmtime::R
         |accessor, (gpu, options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
             Box::pin(async move {
                 accessor.with(|mut access| access.data_mut().table.get(&gpu).map(|_| ()))?;
-                assert!(options.is_none(), "guest must pass options=none this cut");
+                let opts = options.expect("guest must pass options=some this cut");
+                assert!(opts.feature_level.is_none());
+                assert!(opts.power_preference.is_none());
+                assert!(opts.force_fallback_adapter.is_none());
+                assert_eq!(
+                    opts.xr_compatible,
+                    Some(true),
+                    "guest must pass xr-compatible=some(true)"
+                );
                 let (tx, rx) = oneshot::channel::<()>();
                 std::thread::spawn(move || {
                     let _ = tx.send(());
@@ -110,7 +119,15 @@ fn register_method_request_adapter_none(linker: &mut Linker<TestHost>) -> wasmti
         |accessor, (gpu, options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
             Box::pin(async move {
                 accessor.with(|mut access| access.data_mut().table.get(&gpu).map(|_| ()))?;
-                assert!(options.is_none(), "guest must pass options=none this cut");
+                let opts = options.expect("guest must pass options=some this cut");
+                assert!(opts.feature_level.is_none());
+                assert!(opts.power_preference.is_none());
+                assert!(opts.force_fallback_adapter.is_none());
+                assert_eq!(
+                    opts.xr_compatible,
+                    Some(true),
+                    "guest must pass xr-compatible=some(true)"
+                );
                 let (tx, rx) = oneshot::channel::<()>();
                 std::thread::spawn(move || {
                     let _ = tx.send(());

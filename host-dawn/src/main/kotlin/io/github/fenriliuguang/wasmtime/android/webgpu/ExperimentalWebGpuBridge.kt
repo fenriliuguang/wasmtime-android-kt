@@ -70,8 +70,9 @@ object ExperimentalWebGpuBridge {
                     powerPreference: Int,
                     forceFallback: Int,
                     featureLevel: String,
+                    xrCompatible: Int,
                 ): Int =
-                    bindings.requestAdapterDescribed(powerPreference, forceFallback, featureLevel)
+                    bindings.requestAdapterDescribed(powerPreference, forceFallback, featureLevel, xrCompatible)
 
                 override fun wgslLanguageFeaturesHasDescribed(value: String): Int =
                     if (bindings.wgslLanguageFeaturesHas(value)) 1 else 0
@@ -3756,6 +3757,7 @@ object ExperimentalWebGpuBridge {
                     powerPreference: Int,
                     forceFallback: Int,
                     featureLevel: String,
+                    xrCompatible: Int,
                 ): Int = cachedAdapter()
 
                 override fun adapterRequestDevice(adapter: Int): Int = cachedDevice(adapter)
@@ -3870,6 +3872,7 @@ object ExperimentalWebGpuBridge {
                     powerPreference: Int,
                     forceFallback: Int,
                     featureLevel: String,
+                    xrCompatible: Int,
                 ): Int = cachedAdapter()
 
                 override fun adapterRequestDevice(adapter: Int): Int = cachedDevice(adapter)

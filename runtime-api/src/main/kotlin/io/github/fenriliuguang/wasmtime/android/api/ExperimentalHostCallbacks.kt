@@ -14,11 +14,13 @@ interface ExperimentalHostCallbacks {
      * L2: Guest `[method]gpu.request-adapter`.
      * `powerPreference`: `0` none/`undefined`, `1` low-power, `2` high-performance.
      * `forceFallback`: `0` none/false, `1` true. `featureLevel` empty = none.
+     * `xrCompatible`: `-1` none, `0` false, `1` true.
      */
     fun requestAdapterDescribed(
         powerPreference: Int,
         forceFallback: Int,
         featureLevel: String,
+        xrCompatible: Int,
     ): Int = unsupported("requestAdapterDescribed")
 
     fun adapterRequestDevice(adapter: Int): Int = unsupported("adapterRequestDevice")

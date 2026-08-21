@@ -312,21 +312,23 @@ pub fn exp_request_adapter(cb: &GlobalRef) -> Result<u32, String> {
 
 /// L2: Guest `gpu.request-adapter`. `power_preference`: 0 none/undefined, 1 low-power,
 /// 2 high-performance. `force_fallback`: 0 none/false, 1 true.
-/// `feature_level` empty = none.
+/// `feature_level` empty = none. `xr_compatible`: -1 none, 0 false, 1 true.
 pub fn exp_request_adapter_described(
     cb: &GlobalRef,
     power_preference: i32,
     force_fallback: i32,
     feature_level: String,
+    xr_compatible: i32,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "requestAdapterDescribed",
-        "(IILjava/lang/String;)I",
+        "(IILjava/lang/String;I)I",
         vec![
             HostArg::Int(power_preference),
             HostArg::Int(force_fallback),
             HostArg::Str(feature_level),
+            HostArg::Int(xr_compatible),
         ],
     )
 }

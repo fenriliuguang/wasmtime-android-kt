@@ -789,10 +789,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             return Ok((None,));
                         };
                         // L2: `power-preference` 0=none/undefined, 1=low-power, 2=high-performance.
-                        // `force-fallback-adapter` 0=none/false, 1=true. Skip xr.
-                        let (power_preference, force_fallback, feature_level) = match options.as_ref()
+                        // `force-fallback-adapter` 0=none/false, 1=true.
+                        // `xr-compatible` -1=none, 0=false, 1=true.
+                        let (power_preference, force_fallback, feature_level, xr_compatible) =
+                            match options.as_ref()
                         {
-                            None => (0i32, 0i32, String::new()),
+                            None => (0i32, 0i32, String::new(), -1i32),
                             Some(opts) => {
                                 let power = match opts.power_preference {
                                     None => 0,
@@ -802,7 +804,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                     i32::from(opts.force_fallback_adapter.unwrap_or(false));
                                 let feature =
                                     opts.feature_level.clone().unwrap_or_default();
-                                (power, fallback, feature)
+                                let xr = match opts.xr_compatible {
+                                    None => -1,
+                                    Some(false) => 0,
+                                    Some(true) => 1,
+                                };
+                                (power, fallback, feature, xr)
                             }
                         };
                         let adapter_rep = jvm::exp_request_adapter_described(
@@ -810,6 +817,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             power_preference,
                             force_fallback,
                             feature_level,
+                            xr_compatible,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if adapter_rep == 0 {
