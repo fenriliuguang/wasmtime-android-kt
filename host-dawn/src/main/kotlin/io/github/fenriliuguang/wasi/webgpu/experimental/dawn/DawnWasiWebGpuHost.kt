@@ -966,6 +966,8 @@ class DawnWasiWebGpuHost private constructor(
                         buffers = dawnBuffers,
                     ),
                     layout = pipelineLayout,
+                    // androidx GPUPrimitiveState extra ctor params (cull/front/strip)
+                    // not assumed in this AAR; guest values stay on the Kotlin record (F1 DoD).
                     primitive = GPUPrimitiveState(topology = topology),
                     depthStencil = depthStencil,
                     fragment = GPUFragmentState(

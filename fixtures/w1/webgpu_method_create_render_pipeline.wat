@@ -1,11 +1,13 @@
-;; P3: wasi:webgpu/webgpu@0.3.0-rc.2 get-device + get-shader-module +
+;; P3+F1: wasi:webgpu/webgpu@0.3.0-rc.2 get-device + get-shader-module +
 ;; [method]gpu-device.create-render-pipeline
 ;; Guest passes shader borrow, vertex entry-point="vs_main", one float32x3
 ;; vertex buffer (stride=12), fragment target format=rgba8unorm entry="fs_main",
-;; layout=auto, label="l2"; drops own pipeline; run returns harness 1.
+;; layout=auto, label="l2", primitive cull-mode=back; drops own pipeline;
+;; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills through memory.
 ;; Spill tuple: device @0, vertex.buffers @4, vertex.module @16, vertex entry @20,
-;; fragment option @144, layout disc auto @180, label @188; strings at 768/784/800.
+;; primitive option @40 (cull back), fragment option @144, layout disc auto @180,
+;; label @188; strings at 768/784/800.
 ;; get-device / get-shader-module are test constructors only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -223,6 +225,10 @@
       (i32.store (i32.const 20) (i32.const 1))
       (i32.store (i32.const 24) (i32.const 768))
       (i32.store (i32.const 28) (i32.const 7))
+      ;; primitive option @40: some; cull-mode=back (payload bytes: topo/strip/front none, cull some+back).
+      (i32.store8 (i32.const 40) (i32.const 1))
+      (i32.store8 (i32.const 47) (i32.const 1))
+      (i32.store8 (i32.const 48) (i32.const 2))
       ;; option<vbl> at 256: some, payload at 264 (stride u64, step none, attrs list).
       (i32.store (i32.const 256) (i32.const 1))
       (i64.store (i32.const 264) (i64.const 12))

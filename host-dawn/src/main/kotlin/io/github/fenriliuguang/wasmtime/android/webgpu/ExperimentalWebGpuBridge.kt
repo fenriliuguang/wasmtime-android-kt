@@ -11,6 +11,9 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Color
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.blendStateFromDescribed
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.multisampleStateFromDescribed
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.primitiveStateFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.DeviceDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
@@ -647,6 +650,9 @@ object ExperimentalWebGpuBridge {
                     attrLocations: IntArray,
                     vertexConstants: Int,
                     fragmentConstants: Int,
+                    primitive: IntArray,
+                    multisample: IntArray,
+                    blend: IntArray,
                 ): Int {
                     val vertexModule =
                         if (vertexShader != 0) {
@@ -715,12 +721,19 @@ object ExperimentalWebGpuBridge {
                             fragment = FragmentState(
                                 module = fragmentModule,
                                 entryPoint = fragmentEntry.ifEmpty { "fs_main" },
-                                targets = listOf(ColorTargetState(format = targetFormat)),
+                                targets = listOf(
+                                    ColorTargetState(
+                                        format = targetFormat,
+                                        blend = blendStateFromDescribed(blend),
+                                    ),
+                                ),
                                 constants = bindings.recordPipelineConstantValueSnapshot(
                                     fragmentConstants,
                                 ),
                             ),
                             layout = pipelineLayout,
+                            primitive = primitiveStateFromDescribed(primitive),
+                            multisample = multisampleStateFromDescribed(multisample),
                             label = label.ifEmpty { null },
                         ),
                     )
