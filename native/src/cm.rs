@@ -687,7 +687,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `[method]gpu-buffer.unmap` (S6+: result<_, unmap-error>; L2 described buffer rep)
     // and `[method]gpu-device.create-texture` (S6+: sync (borrow, gpu-texture-descriptor) -> own<gpu-texture>; L2 described size/format/usage/mip/sample/dimension + view-formats + label) and
     // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
-    // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 described WGSL code)
+    // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 described WGSL code + label + compilation-hints)
     // and `[method]gpu-queue.write-buffer-with-copy` (S6+: borrow buffer + list data → result; L2 described bytes + offset)
     // and S5 `[method]gpu-queue.submit` (sync void; list<borrow<gpu-command-buffer>>; L2 described handles)
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>; L2 described label)
@@ -3836,6 +3836,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 )| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let code = descriptor.code;
+                    let label = descriptor.label.clone().unwrap_or_default();
+                    let mut hint_layouts = Vec::new();
+                    let mut hint_entries = String::new();
+                    if let Some(hints) = &descriptor.compilation_hints {
+                        for (i, h) in hints.iter().enumerate() {
+                            if i > 0 {
+                                hint_entries.push('\n');
+                            }
+                            hint_entries.push_str(&h.entry_point);
+                            let layout = match &h.layout {
+                                None => -1,
+                                Some(GpuLayoutMode::Auto) => 0,
+                                Some(GpuLayoutMode::Specific(layout)) => layout.rep() as i32,
+                            };
+                            hint_layouts.push(layout);
+                        }
+                    }
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -3850,7 +3867,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         device_rep
                     };
-                    let shader_rep = jvm::exp_create_shader_module_described(&cb, l2_device, code)
+                    let shader_rep = jvm::exp_create_shader_module_described(
+                        &cb,
+                        l2_device,
+                        code,
+                        label,
+                        hint_layouts,
+                        hint_entries,
+                    )
                         .map_err(wasmtime::Error::msg)?;
                     if shader_rep == 0 {
                         return Err(wasmtime::Error::msg(
@@ -3932,6 +3956,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             &cb,
                             device_rep,
                             "@compute @workgroup_size(1) fn main() {}".to_string(),
+                            String::new(),
+                            Vec::new(),
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -3963,6 +3990,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             &cb,
                             device_rep,
                             "@compute @workgroup_size(1) fn main() {}".to_string(),
+                            String::new(),
+                            Vec::new(),
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -6122,6 +6152,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             &cb,
                             device_rep,
                             "@compute @workgroup_size(1) fn main() {}".to_string(),
+                            String::new(),
+                            Vec::new(),
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -6165,6 +6198,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             &cb,
                             device_rep,
                             "@compute @workgroup_size(1) fn main() {}".to_string(),
+                            String::new(),
+                            Vec::new(),
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -6197,6 +6233,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             &cb,
                             device_rep,
                             "@compute @workgroup_size(1) fn main() {}".to_string(),
+                            String::new(),
+                            Vec::new(),
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -6228,6 +6267,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             &cb,
                             device_rep,
                             "@compute @workgroup_size(1) fn main() {}".to_string(),
+                            String::new(),
+                            Vec::new(),
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -6260,6 +6302,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             &cb,
                             device_rep,
                             "@compute @workgroup_size(1) fn main() {}".to_string(),
+                            String::new(),
+                            Vec::new(),
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -6292,6 +6337,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             &cb,
                             device_rep,
                             "@compute @workgroup_size(1) fn main() {}".to_string(),
+                            String::new(),
+                            Vec::new(),
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -6324,6 +6372,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             &cb,
                             device_rep,
                             "@compute @workgroup_size(1) fn main() {}".to_string(),
+                            String::new(),
+                            Vec::new(),
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {

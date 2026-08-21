@@ -3213,17 +3213,27 @@ pub fn exp_create_shader_module(cb: &GlobalRef, device: u32) -> Result<u32, Stri
     )
 }
 
-/// L2: Guest WGSL `code` (hints/label still unused).
+/// L2: Guest WGSL `code` plus label (empty → none) and compilation-hints
+/// (empty entry-points → none; layouts: -1 none, 0 auto, >0 specific handle).
 pub fn exp_create_shader_module_described(
     cb: &GlobalRef,
     device: u32,
     code: String,
+    label: String,
+    hint_layouts: Vec<i32>,
+    hint_entries: String,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateShaderModuleDescribed",
-        "(ILjava/lang/String;)I",
-        vec![HostArg::Int(device as i32), HostArg::Str(code)],
+        "(ILjava/lang/String;Ljava/lang/String;[ILjava/lang/String;)I",
+        vec![
+            HostArg::Int(device as i32),
+            HostArg::Str(code),
+            HostArg::Str(label),
+            HostArg::Ints(hint_layouts),
+            HostArg::Str(hint_entries),
+        ],
     )
 }
 

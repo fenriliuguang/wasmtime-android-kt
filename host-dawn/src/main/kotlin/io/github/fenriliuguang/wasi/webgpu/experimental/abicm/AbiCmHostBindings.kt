@@ -22,6 +22,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDescripto
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RequestAdapterOptions
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.ShaderModuleCompilationHint
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ShaderModuleDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SurfaceTextureStatus
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
@@ -230,10 +231,19 @@ class AbiCmHostBindings(
         )
     }
 
-    fun deviceCreateShaderModule(device: Int, code: String): Int =
+    fun deviceCreateShaderModule(
+        device: Int,
+        code: String,
+        label: String? = null,
+        compilationHints: List<ShaderModuleCompilationHint> = emptyList(),
+    ): Int =
         host.deviceCreateShaderModule(
             GpuHandle(device),
-            ShaderModuleDescriptor(code = code),
+            ShaderModuleDescriptor(
+                code = code,
+                label = label,
+                compilationHints = compilationHints,
+            ),
         ).raw
 
     fun deviceCreateBindGroupLayout(device: Int, descriptor: BindGroupLayoutDescriptor): Int =

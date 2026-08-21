@@ -1,6 +1,7 @@
 //! L2: `get-device` + `[method]gpu-device.create-shader-module`
 //! WIT: `(borrow<gpu-device>, gpu-shader-module-descriptor) -> own<gpu-shader-module>`.
-//! Guest passes WGSL `fn l2`; hints/label none; drops own; `run` returns harness 1.
+//! Guest passes WGSL `fn l2`, compilation-hints=[{entry-point=l2}], label="l2";
+//! drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -98,8 +99,18 @@ fn register_method_create_shader_module(linker: &mut Linker<TestHost>) -> wasmti
                 descriptor.code, "@compute @workgroup_size(1) fn l2() {}",
                 "guest must pass L2 WGSL this slice"
             );
-            assert!(descriptor.compilation_hints.is_none());
-            assert!(descriptor.label.is_none());
+            let hints = descriptor
+                .compilation_hints
+                .as_ref()
+                .expect("guest must pass compilation-hints=some");
+            assert_eq!(hints.len(), 1, "guest must pass one compilation hint");
+            assert_eq!(hints[0].entry_point, "l2");
+            assert!(hints[0].layout.is_none());
+            assert_eq!(
+                descriptor.label.as_deref(),
+                Some("l2"),
+                "guest must pass label=some(\"l2\")"
+            );
             let resource = caller.data_mut().table.push(GpuShaderModule { rep: 43 })?;
             Ok((resource,))
         },
