@@ -517,6 +517,13 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     abi.adapterRequestDevice(adapter)
 
+                override fun deviceCreateBuffer(device: Int): Int =
+                    abi.deviceCreateBuffer(
+                        device,
+                        size = STUB_BUFFER_SIZE,
+                        usage = GpuBufferUsage.MAP_READ or GpuBufferUsage.COPY_DST,
+                    )
+
                 override fun deviceCreateBindGroupLayout(device: Int): Int =
                     abi.deviceCreateBindGroupLayout(
                         device,
@@ -3416,6 +3423,16 @@ object ExperimentalWebGpuBridge {
 
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
+
+                override fun deviceAdapterDescribed(device: Int): Int {
+                    val l2Device = if (device == 0) {
+                        val adapter = bindings.requestAdapter()
+                        bindings.adapterRequestDevice(adapter)
+                    } else {
+                        device
+                    }
+                    return bindings.deviceAdapter(l2Device)
+                }
 
                 override fun deviceFeaturesDescribed(device: Int) {
                     bindings.deviceValidate(device)
