@@ -533,6 +533,129 @@ pub fn exp_record_option_gpu_size64_remove_described(
     )
 }
 
+/// L2: Guest `record-option-gpu-size64.keys` count.
+pub fn exp_record_option_gpu_size64_keys_count_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordOptionGpuSize64KeysCountDescribed",
+        "(I)I",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.keys` entry at index.
+pub fn exp_record_option_gpu_size64_keys_get_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<String, String> {
+    call_string(
+        cb,
+        "recordOptionGpuSize64KeysGetDescribed",
+        "(II)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.values` count.
+pub fn exp_record_option_gpu_size64_values_count_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordOptionGpuSize64ValuesCountDescribed",
+        "(I)I",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.values` option state at index (`0` none, `1` some).
+pub fn exp_record_option_gpu_size64_values_get_state_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordOptionGpuSize64ValuesGetStateDescribed",
+        "(II)I",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.values` u64 when state is 1.
+pub fn exp_record_option_gpu_size64_values_get_value_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "recordOptionGpuSize64ValuesGetValueDescribed",
+        "(II)J",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.entries` count.
+pub fn exp_record_option_gpu_size64_entries_count_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordOptionGpuSize64EntriesCountDescribed",
+        "(I)I",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.entries` key at index.
+pub fn exp_record_option_gpu_size64_entries_get_key_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<String, String> {
+    call_string(
+        cb,
+        "recordOptionGpuSize64EntriesGetKeyDescribed",
+        "(II)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.entries` option state at index (`0` none, `1` some).
+pub fn exp_record_option_gpu_size64_entries_get_state_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordOptionGpuSize64EntriesGetStateDescribed",
+        "(II)I",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.entries` u64 when state is 1.
+pub fn exp_record_option_gpu_size64_entries_get_value_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "recordOptionGpuSize64EntriesGetValueDescribed",
+        "(II)J",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
 pub fn exp_adapter_request_device(cb: &GlobalRef, adapter: u32) -> Result<u32, String> {
     call_i(
         cb,

@@ -1645,7 +1645,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]record-option-gpu-size64.keys",
                 |mut caller, (record,): (Resource<RecordOptionGpuSize64>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((Vec::<String>::new(),))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let count = jvm::exp_record_option_gpu_size64_keys_count_described(&cb, handle)
+                        .map_err(wasmtime::Error::msg)?;
+                    let mut keys = Vec::with_capacity(count as usize);
+                    for i in 0..count {
+                        keys.push(
+                            jvm::exp_record_option_gpu_size64_keys_get_described(&cb, handle, i)
+                                .map_err(wasmtime::Error::msg)?,
+                        );
+                    }
+                    Ok((keys,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1654,7 +1670,33 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]record-option-gpu-size64.values",
                 |mut caller, (record,): (Resource<RecordOptionGpuSize64>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((Vec::<Option<u64>>::new(),))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let count =
+                        jvm::exp_record_option_gpu_size64_values_count_described(&cb, handle)
+                            .map_err(wasmtime::Error::msg)?;
+                    let mut values = Vec::with_capacity(count as usize);
+                    for i in 0..count {
+                        let state = jvm::exp_record_option_gpu_size64_values_get_state_described(
+                            &cb, handle, i,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
+                        if state == 0 {
+                            values.push(None);
+                        } else {
+                            let raw = jvm::exp_record_option_gpu_size64_values_get_value_described(
+                                &cb, handle, i,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            values.push(Some(raw));
+                        }
+                    }
+                    Ok((values,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1663,7 +1705,39 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]record-option-gpu-size64.entries",
                 |mut caller, (record,): (Resource<RecordOptionGpuSize64>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((Vec::<(String, Option<u64>)>::new(),))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let count =
+                        jvm::exp_record_option_gpu_size64_entries_count_described(&cb, handle)
+                            .map_err(wasmtime::Error::msg)?;
+                    let mut entries = Vec::with_capacity(count as usize);
+                    for i in 0..count {
+                        let key = jvm::exp_record_option_gpu_size64_entries_get_key_described(
+                            &cb, handle, i,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
+                        let state = jvm::exp_record_option_gpu_size64_entries_get_state_described(
+                            &cb, handle, i,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
+                        let value = if state == 0 {
+                            None
+                        } else {
+                            Some(
+                                jvm::exp_record_option_gpu_size64_entries_get_value_described(
+                                    &cb, handle, i,
+                                )
+                                .map_err(wasmtime::Error::msg)?,
+                            )
+                        };
+                        entries.push((key, value));
+                    }
+                    Ok((entries,))
                 },
             )
             .map_err(|e| e.to_string())?;

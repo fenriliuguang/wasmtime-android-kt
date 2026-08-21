@@ -145,6 +145,30 @@ class AbiCmHostBindings(
         size64Maps[handle]?.remove(key)
     }
 
+    fun recordOptionGpuSize64KeysCount(handle: Int): Int = size64Maps[handle]?.size ?: 0
+
+    fun recordOptionGpuSize64KeysGet(handle: Int, index: Int): String =
+        size64Maps[handle]?.keys?.elementAtOrNull(index) ?: ""
+
+    fun recordOptionGpuSize64ValuesCount(handle: Int): Int = size64Maps[handle]?.size ?: 0
+
+    fun recordOptionGpuSize64ValuesGetState(handle: Int, index: Int): Int =
+        if (size64Maps[handle]?.values?.elementAtOrNull(index) == null) 0 else 1
+
+    fun recordOptionGpuSize64ValuesGetValue(handle: Int, index: Int): Long =
+        size64Maps[handle]?.values?.elementAtOrNull(index) ?: 0L
+
+    fun recordOptionGpuSize64EntriesCount(handle: Int): Int = size64Maps[handle]?.size ?: 0
+
+    fun recordOptionGpuSize64EntriesGetKey(handle: Int, index: Int): String =
+        recordOptionGpuSize64KeysGet(handle, index)
+
+    fun recordOptionGpuSize64EntriesGetState(handle: Int, index: Int): Int =
+        recordOptionGpuSize64ValuesGetState(handle, index)
+
+    fun recordOptionGpuSize64EntriesGetValue(handle: Int, index: Int): Long =
+        recordOptionGpuSize64ValuesGetValue(handle, index)
+
     fun createSurfaceFromNativeWindow(windowHandle: Long): Int =
         host.instanceCreateSurfaceFromAndroidNativeWindow(windowHandle).raw
 

@@ -1337,6 +1337,42 @@ interface ExperimentalHostCallbacks {
         unsupported("recordOptionGpuSize64RemoveDescribed")
     }
 
+    /** L2: Guest `[method]record-option-gpu-size64.keys` count. */
+    fun recordOptionGpuSize64KeysCountDescribed(handle: Int): Int =
+        unsupported("recordOptionGpuSize64KeysCountDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.keys` entry at index. */
+    fun recordOptionGpuSize64KeysGetDescribed(handle: Int, index: Int): String =
+        unsupported("recordOptionGpuSize64KeysGetDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.values` count. */
+    fun recordOptionGpuSize64ValuesCountDescribed(handle: Int): Int =
+        unsupported("recordOptionGpuSize64ValuesCountDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.values` option state (`0` none, `1` some). */
+    fun recordOptionGpuSize64ValuesGetStateDescribed(handle: Int, index: Int): Int =
+        unsupported("recordOptionGpuSize64ValuesGetStateDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.values` u64 when state is 1. */
+    fun recordOptionGpuSize64ValuesGetValueDescribed(handle: Int, index: Int): Long =
+        unsupported("recordOptionGpuSize64ValuesGetValueDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.entries` count. */
+    fun recordOptionGpuSize64EntriesCountDescribed(handle: Int): Int =
+        unsupported("recordOptionGpuSize64EntriesCountDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.entries` key at index. */
+    fun recordOptionGpuSize64EntriesGetKeyDescribed(handle: Int, index: Int): String =
+        unsupported("recordOptionGpuSize64EntriesGetKeyDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.entries` option state (`0` none, `1` some). */
+    fun recordOptionGpuSize64EntriesGetStateDescribed(handle: Int, index: Int): Int =
+        unsupported("recordOptionGpuSize64EntriesGetStateDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.entries` u64 when state is 1. */
+    fun recordOptionGpuSize64EntriesGetValueDescribed(handle: Int, index: Int): Long =
+        unsupported("recordOptionGpuSize64EntriesGetValueDescribed")
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }
