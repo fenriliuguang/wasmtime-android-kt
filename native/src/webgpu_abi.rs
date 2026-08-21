@@ -19,8 +19,8 @@
 //! S6+ command-buffer / encoder label + compilation-info / compilation-message.
 
 use crate::host::{
-    GpuBindGroupLayout, GpuBuffer, GpuPipelineLayout, GpuQuerySet, GpuSampler, GpuShaderModule,
-    GpuTexture, GpuTextureView,
+    GpuBindGroupLayout, GpuBuffer, GpuDevice, GpuPipelineLayout, GpuQuerySet, GpuSampler,
+    GpuShaderModule, GpuTexture, GpuTextureView,
 };
 use wasmtime::component::{flags, ComponentType, Lift, Lower, Resource};
 
@@ -2021,4 +2021,91 @@ impl GpuErrorKind {
 #[derive(Debug)]
 pub struct GpuUncapturedErrorEvent {
     pub device: u32,
+}
+
+/// WIT `resource gpu-canvas-context`. `get-canvas-context` pushes `{ rep: 0 }`.
+#[derive(Debug)]
+pub struct GpuCanvasContext {
+    #[allow(dead_code)]
+    pub rep: u32,
+}
+
+/// WIT `enum gpu-canvas-alpha-mode`.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuCanvasAlphaMode {
+    #[component(name = "opaque")]
+    Opaque,
+    #[component(name = "premultiplied")]
+    Premultiplied,
+}
+
+/// WIT `enum gpu-canvas-tone-mapping-mode`.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum GpuCanvasToneMappingMode {
+    #[component(name = "standard")]
+    Standard,
+    #[component(name = "extended")]
+    Extended,
+}
+
+/// WIT `record gpu-canvas-tone-mapping`.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuCanvasToneMapping {
+    pub mode: Option<GpuCanvasToneMappingMode>,
+}
+
+/// WIT `enum predefined-color-space`.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum PredefinedColorSpace {
+    #[component(name = "srgb")]
+    Srgb,
+    #[component(name = "display-p3")]
+    DisplayP3,
+}
+
+/// WIT `record gpu-canvas-configuration` (`device` is `borrow<gpu-device>`).
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuCanvasConfiguration {
+    pub device: Resource<GpuDevice>,
+    pub format: GpuTextureFormat,
+    pub usage: Option<GpuTextureUsage>,
+    #[component(name = "view-formats")]
+    pub view_formats: Option<Vec<GpuTextureFormat>>,
+    #[component(name = "color-space")]
+    pub color_space: Option<PredefinedColorSpace>,
+    #[component(name = "tone-mapping")]
+    pub tone_mapping: Option<GpuCanvasToneMapping>,
+    #[component(name = "alpha-mode")]
+    pub alpha_mode: Option<GpuCanvasAlphaMode>,
+}
+
+/// WIT `record gpu-canvas-configuration-owned` (`device` is `own<gpu-device>`).
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+pub struct GpuCanvasConfigurationOwned {
+    pub device: Resource<GpuDevice>,
+    pub format: GpuTextureFormat,
+    pub usage: Option<GpuTextureUsage>,
+    #[component(name = "view-formats")]
+    pub view_formats: Option<Vec<GpuTextureFormat>>,
+    #[component(name = "color-space")]
+    pub color_space: Option<PredefinedColorSpace>,
+    #[component(name = "tone-mapping")]
+    pub tone_mapping: Option<GpuCanvasToneMapping>,
+    #[component(name = "alpha-mode")]
+    pub alpha_mode: Option<GpuCanvasAlphaMode>,
 }

@@ -13,7 +13,8 @@ use crate::jvm;
 use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
     GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBufferBindingType,
-    GpuBufferDescriptor, GpuBufferMapState, GpuBufferUsage, GpuColor, GpuCommandBufferDescriptor,
+    GpuBufferDescriptor, GpuBufferMapState, GpuBufferUsage, GpuCanvasConfiguration,
+    GpuCanvasConfigurationOwned, GpuCanvasContext, GpuColor, GpuCommandBufferDescriptor,
     GpuCommandEncoderDescriptor, GpuCompilationInfo, GpuCompilationMessage,
     GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
     GpuDeviceDescriptor, GpuDeviceLostInfo, GpuDeviceLostReason, GpuError, GpuErrorFilter,
@@ -23,9 +24,10 @@ use crate::webgpu_abi::{
     GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
     GpuShaderModuleDescriptor, GpuShaderStage, GpuStoreOp, GpuSupportedFeatures,
     GpuSupportedLimits, GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
-    GpuTextureDescriptor, GpuTextureDimension, GpuTextureFormat, GpuTextureUsage,
-    GpuTextureViewDescriptor, GpuTextureViewDimension, GpuUncapturedErrorEvent, MapAsyncError,
-    PopErrorScopeError, RecordGpuPipelineConstantValue, RecordOptionGpuSize64, RequestDeviceError,
+    GpuTextureDescriptor,
+    GpuTextureDimension, GpuTextureFormat, GpuTextureUsage, GpuTextureViewDescriptor,
+    GpuTextureViewDimension, GpuUncapturedErrorEvent, MapAsyncError, PopErrorScopeError,
+    RecordGpuPipelineConstantValue, RecordOptionGpuSize64, RequestDeviceError,
     RequestDeviceErrorKind, SetBindGroupError, UnmapError, WgslLanguageFeatures, WriteBufferError,
 };
 use futures::channel::oneshot;
@@ -2312,6 +2314,68 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 let resource = store.data_mut().table.push(GpuTexture { rep: 0 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .resource(
+                "gpu-canvas-context",
+                ResourceType::host::<GpuCanvasContext>(),
+                |mut store, rep| {
+                    let resource = Resource::<GpuCanvasContext>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap("get-canvas-context", |mut store, ()| {
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(GpuCanvasContext { rep: 0 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-canvas-context.configure",
+                |mut caller, (ctx, config): (Resource<GpuCanvasContext>, GpuCanvasConfiguration)| {
+                    let _ = caller.data_mut().table.get(&ctx)?;
+                    let _ = caller.data_mut().table.get(&config.device)?;
+                    let _ = config;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-canvas-context.unconfigure",
+                |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
+                    let _ = caller.data_mut().table.get(&ctx)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-canvas-context.get-configuration",
+                |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
+                    let _ = caller.data_mut().table.get(&ctx)?;
+                    Ok((Option::<GpuCanvasConfigurationOwned>::None,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        webgpu
+            .func_wrap(
+                "[method]gpu-canvas-context.get-current-texture",
+                |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
+                    let _ = caller.data_mut().table.get(&ctx)?;
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuTexture { rep: 0 })?;
+                    Ok((resource,))
+                },
+            )
             .map_err(|e| e.to_string())?;
         webgpu
             .resource(
