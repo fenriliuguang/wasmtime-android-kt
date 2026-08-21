@@ -3,6 +3,7 @@ package io.github.fenriliuguang.wasi.webgpu.experimental.dawn
 import androidx.webgpu.AdapterType
 import androidx.webgpu.BackendType
 import androidx.webgpu.BufferBindingType as DawnBufferBindingType
+import androidx.webgpu.ColorWriteMask
 import androidx.webgpu.CompositeAlphaMode
 import androidx.webgpu.DeviceLostCallback
 import androidx.webgpu.GPU
@@ -129,6 +130,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.Color
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BlendState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuColorWrite
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuLoadOp
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuPrimitiveTopology
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuStoreOp
@@ -1012,6 +1014,7 @@ class DawnWasiWebGpuHost private constructor(
                             GPUColorTargetState(
                                 format = target.format,
                                 blend = dawnBlendState(target.blend),
+                                writeMask = dawnColorWriteMask(target.writeMask),
                             )
                         }.toTypedArray(),
                     ),
@@ -1042,6 +1045,19 @@ class DawnWasiWebGpuHost private constructor(
                 ),
             )
         }
+
+    /** WIT `gpu-color-write`: RGB+A bits 1:1 with Dawn; WIT `all` (bit 4) → Dawn All (`0xF`). */
+    private fun dawnColorWriteMask(writeMask: Int?): Int {
+        if (writeMask == null || writeMask and GpuColorWrite.ALL != 0) {
+            return ColorWriteMask.All
+        }
+        var dawn = ColorWriteMask.None
+        if (writeMask and GpuColorWrite.RED != 0) dawn = dawn or ColorWriteMask.Red
+        if (writeMask and GpuColorWrite.GREEN != 0) dawn = dawn or ColorWriteMask.Green
+        if (writeMask and GpuColorWrite.BLUE != 0) dawn = dawn or ColorWriteMask.Blue
+        if (writeMask and GpuColorWrite.ALPHA != 0) dawn = dawn or ColorWriteMask.Alpha
+        return dawn
+    }
 
     /** Empty map → none. Unknown / androidx-missing keys are skipped. */
     private fun dawnRequiredLimits(required: Map<String, Long?>): GPULimits? {
