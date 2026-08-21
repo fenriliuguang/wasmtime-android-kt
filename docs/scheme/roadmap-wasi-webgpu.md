@@ -18,7 +18,7 @@ Standard / proposal `wasi:webgpu` is full of WIT `async func`. This repo’s L1 
 | WG-2 | Register critical `async func`s with true CM async (no Latch) |
 | WG-3 | Own linker / resource / canonical marshalling; GPU backend is pluggable — **this repo owns the SPI**; default Dawn bundle ([`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)) |
 | WG-4 | Device instruments: `gpu.request-adapter` / `gpu-adapter.request-device` in WIT shape |
-| WG-5 | Citable threading + mapping notes; file upstream when Android-specific |
+| WG-5 | Citable threading + mapping notes in this repo only; **never** file upstream GitHub issues |
 | WG-6 | (Mid) render or compute slice; present via `gpu-canvas-context` after marshalling — not wasi-gfx |
 
 ## 3. Slice order
@@ -33,11 +33,9 @@ After default semantic-L2 remaining is 0: [`../agent/webgpu-midterm.md`](../agen
 
 ## 4. Upstream
 
-When an S-cluster lands with new Android-host information, open an issue on wasi-webgpu and/or Wasmtime and link it here.
+**Do not** create, reopen, or request GitHub Issues (or GitHub Discussions used as an issue tracker) on wasi-webgpu, Wasmtime, or any other upstream. No `gh issue create`. Android-host facts stay in `changelog/unreleased/` and [`../mapping/threading-android.md`](../mapping/threading-android.md).
 
-| Date | Upstream | Note |
-|------|----------|------|
-| 2026-08-21 | [wasi-webgpu#81](https://github.com/WebAssembly/wasi-webgpu/issues/81) | Android compute-only Dawn `queue.submit` needs one GpuThread (JNI), not a Surface; cite [`threading-android.md`](../mapping/threading-android.md). No CTS claim. |
+[wasi-webgpu#81](https://github.com/WebAssembly/wasi-webgpu/issues/81) was filed in error from this host (2026-08-21) and is retracted. Close it on GitHub if still open; do not cite it as protocol.
 
 ## 5. Out of scope on this roadmap
 

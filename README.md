@@ -18,7 +18,7 @@ Status: **experimental**. No compliant wasi:webgpu product claim. No default Mav
 | **P1** | Ratified WASI 0.3 primitives/packages as guests need them |
 | **P2** | Track upstream Wasmtime ([`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)) |
 
-Success criteria (2026-08-17): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable, able to file upstream issues. **P0 is unchanged.**
+Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0 is unchanged.**
 
 ## Quick start
 

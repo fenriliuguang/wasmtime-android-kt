@@ -1,6 +1,6 @@
 # RFC: Ecosystem contribution criteria (demote L4)
 
-**Status: Accepted** · 2026-08-17  
+**Status: Accepted** · 2026-08-17 · **Amended 2026-08-21:** never file GitHub issues on upstream repositories.
 **English** | [中文](rfc-ecosystem-contribution.zh.md)
 
 > Amends [`long-term-plan.md`](long-term-plan.md). Does **not** change P0 (`wasi:webgpu` canonical WIT + true Component Model async).  
@@ -10,7 +10,7 @@
 
 | Question | Decision |
 |----------|----------|
-| What is mid-term success? | A **citable Android host**: outsiders can reproduce Guest → this runtime → GPU (or a documented stand-in), and we can file **upstream issues** against [`wasi-webgpu`](https://github.com/WebAssembly/wasi-webgpu) / Wasmtime from that path. |
+| What is mid-term success? | A **citable Android host**: outsiders can reproduce Guest → this runtime → GPU (or a documented stand-in). Android facts stay in this repo. **Do not** file GitHub issues against [`wasi-webgpu`](https://github.com/WebAssembly/wasi-webgpu), Wasmtime, or any other upstream. |
 | Does P0 change? | **No.** Canonical `wasi:webgpu@0.3.0-rc.2` shape + true CM async remain first. |
 | Old L4 (“swap another demo’s default runtime”)? | **Dropped** from the goal stack. Not a success criterion. |
 | Maven Central / “production runtime”? | Still **not** a near-term goal (NG-5 / NG-6). Citability ≠ Central. |
@@ -22,7 +22,7 @@ Slice count and internal gates do not make this repo a link in the Wasm componen
 
 1. **Reproducible** — `docs/build.md` on a clean machine yields the native library and a passing smoke (JVM and/or device).  
 2. **Citable** — one English README sentence, pinned WIT tag, threading contract, no dual-product story on the front door.  
-3. **Upstream-facing** — each completed shape cluster can produce an implementation note or issue (Android threads, `async` lowering, event-loop vs Dawn).  
+3. **Local notes** — each completed shape cluster may record Android constraints in `changelog/unreleased/` and topic mapping docs (threads, JNI, Bionic). **Never** GitHub Issues or Discussions-as-issues on upstream.
 
 Shipping Maven or a second GPU stack is not required for (1)–(3).
 
@@ -33,7 +33,7 @@ L0  Base freeze + Wasmtime tracking
 L1  WASI 0.3 primitives (async func, future, stream, concurrent pump)
 L2  WASI 0.3 core imports subset (as guests block)
 L3  wasi:webgpu canonical WIT (P0) — S-series shape
-L4  Citable host (this RFC) — reproduce + cite + upstream notes
+L4  Citable host (this RFC) — reproduce + cite + local notes
 L5  Productization RFC (API freeze candidate, publish-or-not) — still separate
 ```
 
@@ -48,14 +48,14 @@ A third party can:
 - Explain this repo as **Android + upstream Wasmtime + canonical `wasi:webgpu`**, without a second project’s ABI.  
 - Follow [`../build.md`](../build.md) and [`../contribute.md`](../contribute.md) to build.  
 - Point at [`guest-shape.md`](guest-shape.md) and [`../mapping/threading-android.md`](../mapping/threading-android.md).  
-- See at least one **upstream-shaped** artifact (issue, CTS note, or mapping) filed from Android host experience.
+- See at least one **local** mapping or changelog note from Android host experience — **not** an upstream GitHub issue.
 
-## 5. Upstream protocol (lightweight)
+## 5. No upstream GitHub issues
 
 When an S-series cluster lands (resource/`option`/`result`/`list`/`async`):
 
-1. Record the WIT names and Android constraint in `changelog/unreleased/`.  
-2. If it is new information for the proposal or Wasmtime (threads, JNI, Bionic, adapter denylist), open an issue on the relevant upstream and link it from [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) § Upstream.  
+1. Record the WIT names and Android constraint in `changelog/unreleased/` (and mapping docs if the pump changed).  
+2. **Do not** create, reopen, or request GitHub Issues (or GitHub Discussions used as an issue tracker) on wasi-webgpu, Wasmtime, or any other upstream. No `gh issue create`.  
 3. Do **not** wait for a full WebGPU CTS pass (NG-5).
 
 ## 6. Non-goals this RFC does not lift

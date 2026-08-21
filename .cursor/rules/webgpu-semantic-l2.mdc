@@ -12,4 +12,5 @@ For 语义加深 / 真实编组 / described L2 / 粗批次, read `docs/agent/web
 - Batch by caller resource, then one JNI family per PR (2–4 methods). Do not dump a whole resource. Copy the `create-buffer` described stack.
 - Do not add `HostArg` variants unless this PR is only that need. No `gpu-canvas-context` in this playbook (midterm Lane A). Skip S1–S3 here (midterm Lane B). Use guest `rep` when non-zero.
 - Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
+- Never file GitHub issues on wasi-webgpu, Wasmtime, or any other upstream. No `gh issue create`.
 - Remaining: `.\scripts\webgpu-semantic-l2-remaining.ps1`. If host-fixed remaining is 0, use `docs/agent/webgpu-midterm.md` instead of another L2 family.

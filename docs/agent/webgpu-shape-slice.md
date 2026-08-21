@@ -9,6 +9,7 @@ Pin: `wasi:webgpu@0.3.0-rc.2` at [`third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgp
 ## Hard bans
 
 - Do **not** WebFetch / clone wasi-webgpu while the pin is unchanged. Grep the vendored WIT.
+- Do **not** create, reopen, or request GitHub Issues (or GitHub Discussions used as an issue tracker) on any upstream repository, including wasi-webgpu and Wasmtime. No `gh issue create`.
 - Do **not** read `native/src/cm.rs`, `native/src/webgpu_abi.rs`, or `ExperimentalWebGpuBridge.kt` without an offset. Grep the method name, then Read ~80 lines around the hit.
 - Do **not** open a third native/Kotlin test to discover the template. Copy one source below.
 - Do **not** edit hub files: root `README.md` / `README.zh.md`, `CHANGELOG.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.

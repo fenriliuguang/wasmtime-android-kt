@@ -105,7 +105,7 @@ if ($a1.Count -gt 0) {
 Write-Host "Playbook: docs/agent/webgpu-midterm.md"
 if ($null -eq $nextId) {
     Write-Host "Next: (A–C empty)"
-    Write-Host "Lane D is manual (真机 / WG-5 / upstream) — do not auto-cut."
+    Write-Host "Lane D is manual (真机 / WG-5 / cite) — do not auto-cut; never file upstream issues."
 } else {
     Write-Host "Next: $nextId $nextTitle"
     foreach ($n in $nextNames) { Write-Host "  [method]$n" }
@@ -131,4 +131,4 @@ if ($IncludeRecords) {
     Write-Host "=== C record-* omitted (pass -IncludeRecords) ==="
 }
 Write-Host "=== D ==="
-Write-Host "  manual"
+Write-Host "  manual cite only; never file upstream issues"
