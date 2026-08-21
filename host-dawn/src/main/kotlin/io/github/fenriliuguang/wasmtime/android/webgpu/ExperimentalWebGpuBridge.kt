@@ -3701,6 +3701,194 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * Lane D: cite Dawn via a canonical `[method]` render slice.
+     * Guest `get-device` pushes `rep == 0`; cache one adapter/device so
+     * create-buffer → create-texture → create-view → encoder → pass →
+     * finish → submit share a Dawn device.
+     */
+    fun attachDawnRenderSlice(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var adapter = 0
+        var device = 0
+        fun cachedAdapter(): Int {
+            if (adapter == 0) {
+                adapter = bindings.requestAdapter()
+            }
+            return adapter
+        }
+        fun cachedDevice(fromAdapter: Int = 0): Int {
+            if (device == 0) {
+                val a = if (fromAdapter != 0) fromAdapter else cachedAdapter()
+                device = bindings.adapterRequestDevice(a)
+            }
+            return device
+        }
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = cachedAdapter()
+
+                override fun requestAdapterDescribed(
+                    powerPreference: Int,
+                    forceFallback: Int,
+                ): Int = cachedAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int = cachedDevice(adapter)
+
+                override fun adapterRequestDeviceDescribed(
+                    adapter: Int,
+                    hasFeature: Int,
+                    feature: Int,
+                ): Int = cachedDevice(adapter)
+
+                override fun deviceCreateBufferDescribed(
+                    device: Int,
+                    size: Long,
+                    usage: Int,
+                ): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateBuffer(resolved, size = size, usage = usage)
+                }
+
+                override fun deviceCreateTextureDescribed(
+                    device: Int,
+                    width: Int,
+                    height: Int,
+                    depth: Int,
+                    format: Int,
+                    usage: Int,
+                    mipLevelCount: Int,
+                    sampleCount: Int,
+                    dimension: Int,
+                ): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateTexture(
+                        resolved,
+                        TextureDescriptor(
+                            size = Extent3D(
+                                width = width,
+                                height = height,
+                                depthOrArrayLayers = depth,
+                            ),
+                            format = format,
+                            usage = usage,
+                            mipLevelCount = mipLevelCount,
+                            sampleCount = sampleCount,
+                            dimension = dimension,
+                        ),
+                    )
+                }
+
+                override fun textureCreateViewDescribed(
+                    texture: Int,
+                    dimension: Int,
+                    aspect: Int,
+                ): Int =
+                    bindings.textureCreateView(
+                        texture,
+                        TextureViewDescriptor(
+                            dimension = dimension,
+                            aspect = aspect,
+                        ),
+                    )
+
+                override fun deviceCreateCommandEncoder(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateCommandEncoder(resolved)
+                }
+
+                override fun deviceCreateCommandEncoderDescribed(device: Int, label: String): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateCommandEncoder(resolved, label)
+                }
+
+                override fun deviceGetQueue(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceGetQueue(resolved)
+                }
+
+                override fun deviceGetQueueDescribed(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceGetQueue(resolved)
+                }
+
+                override fun beginRenderPassDescribed(
+                    encoder: Int,
+                    view: Int,
+                    loadOp: Int,
+                    storeOp: Int,
+                    hasClear: Int,
+                    clearR: Float,
+                    clearG: Float,
+                    clearB: Float,
+                    clearA: Float,
+                    depthView: Int,
+                    depthLoad: Int,
+                    depthStore: Int,
+                    hasDepthClear: Int,
+                    depthClear: Float,
+                ): Int {
+                    val clear = if (hasClear != 0) {
+                        Color(
+                            r = clearR.toDouble(),
+                            g = clearG.toDouble(),
+                            b = clearB.toDouble(),
+                            a = clearA.toDouble(),
+                        )
+                    } else {
+                        null
+                    }
+                    val depth = if (depthView != 0) {
+                        RenderPassDepthStencilAttachment(
+                            view = GpuHandle(depthView),
+                            depthClearValue = if (hasDepthClear != 0) depthClear else 1f,
+                            depthLoadOp = if (depthLoad < 0) GpuLoadOp.CLEAR else depthLoad,
+                            depthStoreOp = if (depthStore < 0) GpuStoreOp.STORE else depthStore,
+                        )
+                    } else {
+                        null
+                    }
+                    return bindings.commandEncoderBeginRenderPass(
+                        encoder,
+                        RenderPassDescriptor(
+                            colorAttachments = listOf(
+                                RenderPassColorAttachment(
+                                    view = GpuHandle(view),
+                                    clearValue = clear,
+                                    loadOp = loadOp,
+                                    storeOp = storeOp,
+                                ),
+                            ),
+                            depthStencilAttachment = depth,
+                        ),
+                    )
+                }
+
+                override fun renderPassEnd(pass: Int) {
+                    bindings.renderPassEnd(pass)
+                }
+
+                override fun renderPassEndDescribed(pass: Int) {
+                    bindings.renderPassEnd(pass)
+                }
+
+                override fun commandEncoderFinish(encoder: Int): Int =
+                    bindings.commandEncoderFinish(encoder)
+
+                override fun commandEncoderFinishDescribed(encoder: Int, label: String): Int =
+                    bindings.commandEncoderFinish(encoder, label)
+
+                override fun queueSubmit1(queue: Int, commandBuffer: Int) {
+                    bindings.queueSubmit1(queue, commandBuffer)
+                }
+
+                override fun queueSubmitDescribed(queue: Int, commandBuffers: IntArray) {
+                    bindings.queueSubmit(queue, commandBuffers.toList())
+                }
+            },
+        )
+    }
+
+    /**
      * L2: adapter + device + host-fixed 1×1 texture + `[method]gpu-texture.create-view`
      * with Guest `gpu-texture-view-descriptor` dimension/aspect forwarded to L2.
      */
