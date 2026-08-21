@@ -1,9 +1,7 @@
-;; S6+: wasi:webgpu/webgpu@0.3.0-rc.2 get-device +
+;; P2: wasi:webgpu/webgpu@0.3.0-rc.2 get-device +
 ;; [method]gpu-device.create-bind-group-layout
-;; WIT: create-bind-group-layout: func(descriptor: gpu-bind-group-layout-descriptor)
-;;      -> gpu-bind-group-layout
-;; Guest passes one uniform buffer entry (binding=0, visibility=compute);
-;; label=none; drops own; run returns harness 1.
+;; Guest passes two buffer entries (binding=0 uniform, binding=1 storage,
+;; visibility=compute); label=none; drops own; run returns harness 1.
 ;; get-device is a test constructor only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -113,18 +111,24 @@
       (local $device i32)
       (local $bgl i32)
       (local.set $device (call $get-device))
-      ;; One BGL entry at 256: binding=0, visibility=COMPUTE (4),
-      ;; buffer=some { type=some(uniform) }.
+      ;; Two BGL entries, size 56 each (record+option<u64> aligns to 8).
+      ;; Entry 0 at 256: binding=0, visibility=COMPUTE, buffer=uniform.
       (i32.store (i32.const 256) (i32.const 0))
       (i32.store (i32.const 260) (i32.const 4))
       (i32.store (i32.const 264) (i32.const 1))
       (i32.store (i32.const 272) (i32.const 1))
       (i32.store (i32.const 276) (i32.const 0))
+      ;; Entry 1 at 312: binding=1, visibility=COMPUTE, buffer=storage.
+      ;; type option disc+enum share the i32 at payload start (0x01 | 0x01<<8).
+      (i32.store (i32.const 312) (i32.const 1))
+      (i32.store (i32.const 316) (i32.const 4))
+      (i32.store (i32.const 320) (i32.const 1))
+      (i32.store (i32.const 328) (i32.const 0x0101))
       (local.set $bgl
         (call $create-bgl
           (local.get $device)
           (i32.const 256)
-          (i32.const 1)
+          (i32.const 2)
           (i32.const 0)
           (i32.const 0)
           (i32.const 0)))

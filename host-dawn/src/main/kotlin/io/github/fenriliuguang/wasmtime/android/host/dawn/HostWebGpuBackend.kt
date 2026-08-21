@@ -3,8 +3,14 @@ package io.github.fenriliuguang.wasmtime.android.host.dawn
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupEntry
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupLayoutDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupLayoutEntry
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindingResource
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBinding
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingLayout
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingType
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerBindingLayout
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureBindingLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
@@ -204,10 +210,56 @@ private class ForwardingHostCallbacks(
 
     override fun deviceCreateBindGroupLayoutDescribed(
         device: Int,
-        binding: Int,
-        visibility: Int,
-        bufferType: Int,
-    ): Int = bindings.deviceCreateBindGroupLayoutDescribed(device, binding, visibility, bufferType)
+        bindings: IntArray,
+        visibilities: IntArray,
+        bufferTypes: IntArray,
+        samplerTypes: IntArray,
+        textureSampleTypes: IntArray,
+    ): Int {
+        val n = minOf(
+            bindings.size,
+            visibilities.size,
+            bufferTypes.size,
+            samplerTypes.size,
+            textureSampleTypes.size,
+        )
+        val entries = ArrayList<BindGroupLayoutEntry>(n)
+        for (i in 0 until n) {
+            val buffer = if (bufferTypes[i] < 0) {
+                null
+            } else {
+                val type = when (bufferTypes[i]) {
+                    1 -> BufferBindingType.Storage
+                    2 -> BufferBindingType.ReadOnlyStorage
+                    else -> BufferBindingType.Uniform
+                }
+                BufferBindingLayout(type = type)
+            }
+            val sampler = if (samplerTypes[i] < 0) {
+                null
+            } else {
+                SamplerBindingLayout(type = samplerTypes[i])
+            }
+            val texture = if (textureSampleTypes[i] < 0) {
+                null
+            } else {
+                TextureBindingLayout(sampleType = textureSampleTypes[i])
+            }
+            entries.add(
+                BindGroupLayoutEntry(
+                    binding = bindings[i],
+                    visibility = visibilities[i],
+                    buffer = buffer,
+                    sampler = sampler,
+                    texture = texture,
+                ),
+            )
+        }
+        return this.bindings.deviceCreateBindGroupLayout(
+            device,
+            BindGroupLayoutDescriptor(entries = entries),
+        )
+    }
 
     override fun deviceCreateBindGroupDescribed(
         device: Int,

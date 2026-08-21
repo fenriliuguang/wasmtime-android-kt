@@ -1,6 +1,7 @@
 //! L2: `get-device` + `[method]gpu-device.create-bind-group-layout`
 //! WIT: `(borrow<gpu-device>, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>`.
-//! Guest passes one uniform buffer entry (binding=0, compute); drops own; `run` returns harness 1.
+//! Guest passes two buffer entries (binding=0 uniform, binding=1 storage, compute);
+//! drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -202,23 +203,43 @@ fn register_method_create_bind_group_layout(linker: &mut Linker<TestHost>) -> wa
             caller.data_mut().table.get(&device).map(|_| ())?;
             assert_eq!(
                 descriptor.entries.len(),
-                1,
-                "guest must pass one bind-group-layout entry"
+                2,
+                "guest must pass two bind-group-layout entries"
             );
             assert_eq!(descriptor.entries[0].binding, 0);
             assert!(
                 descriptor.entries[0]
                     .visibility
                     .contains(GpuShaderStage::COMPUTE),
-                "guest must pass visibility=compute"
+                "guest must pass visibility=compute on entry 0"
             );
             assert!(
                 matches!(
                     descriptor.entries[0].buffer.as_ref().and_then(|b| b.ty),
                     Some(GpuBufferBindingType::Uniform)
                 ),
-                "guest must pass buffer type=uniform"
+                "guest must pass buffer type=uniform on entry 0"
             );
+            assert!(descriptor.entries[0].sampler.is_none());
+            assert!(descriptor.entries[0].texture.is_none());
+            assert!(descriptor.entries[0].storage_texture.is_none());
+            assert_eq!(descriptor.entries[1].binding, 1);
+            assert!(
+                descriptor.entries[1]
+                    .visibility
+                    .contains(GpuShaderStage::COMPUTE),
+                "guest must pass visibility=compute on entry 1"
+            );
+            assert!(
+                matches!(
+                    descriptor.entries[1].buffer.as_ref().and_then(|b| b.ty),
+                    Some(GpuBufferBindingType::Storage)
+                ),
+                "guest must pass buffer type=storage on entry 1"
+            );
+            assert!(descriptor.entries[1].sampler.is_none());
+            assert!(descriptor.entries[1].texture.is_none());
+            assert!(descriptor.entries[1].storage_texture.is_none());
             assert!(descriptor.label.is_none());
             let resource = caller
                 .data_mut()

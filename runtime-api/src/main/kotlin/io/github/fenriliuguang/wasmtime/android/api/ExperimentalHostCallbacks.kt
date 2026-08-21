@@ -719,12 +719,20 @@ interface ExperimentalHostCallbacks {
     /** S6+: guest `gpu-bind-group-layout-descriptor`; L2 still host-fixed empty entries. */
     fun deviceCreateBindGroupLayout(device: Int): Int = unsupported("deviceCreateBindGroupLayout")
 
-    /** L2: Guest first layout entry (binding / visibility / buffer type; bufferType -1 = none). */
+    /**
+     * L2: Guest layout entries (parallel arrays; -1 = that option absent).
+     * buffer: 0=uniform, 1=storage, 2=read-only-storage.
+     * sampler: 0=filtering, 1=non-filtering, 2=comparison.
+     * texture: 0=float, 1=unfilterable-float, 2=depth, 3=sint, 4=uint.
+     * Empty arrays stay valid. Storage-texture stays none on existing host records.
+     */
     fun deviceCreateBindGroupLayoutDescribed(
         device: Int,
-        binding: Int,
-        visibility: Int,
-        bufferType: Int,
+        bindings: IntArray,
+        visibilities: IntArray,
+        bufferTypes: IntArray,
+        samplerTypes: IntArray,
+        textureSampleTypes: IntArray,
     ): Int = unsupported("deviceCreateBindGroupLayoutDescribed")
 
     /** S6+: guest `gpu-pipeline-layout-descriptor`; L2 still host-fixed empty bind-group-layouts. */
