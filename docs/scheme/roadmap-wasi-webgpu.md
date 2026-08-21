@@ -27,7 +27,7 @@ Live status: GitHub Project. Definitions: [`guest-shape.md`](guest-shape.md) S-s
 
 Do **not** open new host-fixed `u32` feature PRs.
 
-Guest compute/3D marshalling (bind groups, vertex layouts, depth, texture extras): [`../agent/webgpu-guest-pipeline.md`](../agent/webgpu-guest-pipeline.md).
+Guest compute/3D marshalling (bind groups, vertex layouts, depth, texture extras) is closed: [`../agent/webgpu-guest-pipeline.md`](../agent/webgpu-guest-pipeline.md). Leftover optional descriptor fields + Dawn consume: [`../agent/webgpu-guest-semantics.md`](../agent/webgpu-guest-semantics.md).
 
 **Present:** product path is proposal `gpu-canvas-context` (no `present` in wasi:webgpu). wasi-gfx remains a deferred RFC.
 

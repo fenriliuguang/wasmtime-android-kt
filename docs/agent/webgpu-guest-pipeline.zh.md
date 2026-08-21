@@ -2,7 +2,7 @@
 
 [English](webgpu-guest-pipeline.md) | **中文**
 
-形状挂名、默认 described L2、中期 first-cut（canvas A1–A4、S1–S3、`record-*`）之后用此页。选刀：`.\scripts\webgpu-guest-pipeline-remaining.ps1`（无 pwsh 则 `python3 ./scripts/webgpu-guest-pipeline-remaining.py`）打印的 **Next:**。一车道一 PR。
+**已关闭。** P1–P5 与本页点名 first-cut 已完成。当前队列：[`webgpu-guest-semantics.md`](webgpu-guest-semantics.md)（`.\scripts\webgpu-guest-semantics-remaining.ps1`）。不要重切挂名 / labels / limits / `create-sampler` first-cut / canvas first-cut。
 
 Dawn Kotlin 已能吃完整 bind-group / pipeline / pass；缺口在 Guest WIT → JNI。空 compute `submit` 与 `vertex_index` 离屏三角不算本队列验收。
 

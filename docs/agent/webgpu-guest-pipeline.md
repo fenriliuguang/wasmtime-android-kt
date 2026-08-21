@@ -2,7 +2,7 @@
 
 **English** | [中文](webgpu-guest-pipeline.zh.md)
 
-Use this **after** product `[method]` names are hung, default described L2 is done, and midterm first-cuts (canvas A1–A4, S1–S3, `record-*`) are in. Closed queues: do **not** re-hang names, re-cut labels / limits / `create-sampler` first-cut, or re-cut canvas first-cut (`device`+`format`+`usage`).
+**Closed.** P1–P5 and the named first-cuts on this page are done. Current queue: [`webgpu-guest-semantics.md`](webgpu-guest-semantics.md) (`.\scripts\webgpu-guest-semantics-remaining.ps1`). Do **not** re-hang names, re-cut labels / limits / `create-sampler` first-cut, or re-cut canvas first-cut (`device`+`format`+`usage`).
 
 Pin: `wasi:webgpu@0.3.0-rc.2` at [`third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit).
 

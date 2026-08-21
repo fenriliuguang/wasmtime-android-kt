@@ -31,6 +31,8 @@ foreach ($lane in $lanes) {
     }
 }
 
+Write-Host "Playbook closed: docs/agent/webgpu-guest-pipeline.md"
+Write-Host "Use: .\scripts\webgpu-guest-semantics-remaining.ps1"
 Write-Host "Playbook: docs/agent/webgpu-guest-pipeline.md"
 if ($leftover.Count -gt 0) {
     $n = $leftover[0]
