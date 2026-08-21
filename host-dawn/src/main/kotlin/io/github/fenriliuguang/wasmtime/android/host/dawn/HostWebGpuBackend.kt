@@ -67,6 +67,31 @@ private class ForwardingHostCallbacks(
         bindings.recordPipelineConstantValueRemove(handle, key)
     }
 
+    override fun recordPipelineConstantValueKeysCountDescribed(handle: Int): Int =
+        bindings.recordPipelineConstantValueKeysCount(handle)
+
+    override fun recordPipelineConstantValueKeysGetDescribed(handle: Int, index: Int): String =
+        bindings.recordPipelineConstantValueKeysGet(handle, index)
+
+    override fun recordPipelineConstantValueValuesCountDescribed(handle: Int): Int =
+        bindings.recordPipelineConstantValueValuesCount(handle)
+
+    override fun recordPipelineConstantValueValuesGetDescribed(handle: Int, index: Int): Double =
+        bindings.recordPipelineConstantValueValuesGet(handle, index)
+
+    override fun recordPipelineConstantValueEntriesCountDescribed(handle: Int): Int =
+        bindings.recordPipelineConstantValueEntriesCount(handle)
+
+    override fun recordPipelineConstantValueEntriesGetKeyDescribed(
+        handle: Int,
+        index: Int,
+    ): String = bindings.recordPipelineConstantValueEntriesGetKey(handle, index)
+
+    override fun recordPipelineConstantValueEntriesGetValueDescribed(
+        handle: Int,
+        index: Int,
+    ): Double = bindings.recordPipelineConstantValueEntriesGetValue(handle, index)
+
     override fun adapterRequestDevice(adapter: Int): Int = bindings.adapterRequestDevice(adapter)
 
     override fun adapterRequestDeviceDescribed(adapter: Int, hasFeature: Int, feature: Int): Int =

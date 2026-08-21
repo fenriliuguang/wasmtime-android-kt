@@ -1,5 +1,5 @@
-//! S6+: `[constructor]record-gpu-pipeline-constant-value` + `[method]record-gpu-pipeline-constant-value.values`
-//! WIT: lift-only stub; harness 1.
+//! L2: `[constructor]record-gpu-pipeline-constant-value` + `[method]record-gpu-pipeline-constant-value.values`
+//! WIT: described iterate; host empty list; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

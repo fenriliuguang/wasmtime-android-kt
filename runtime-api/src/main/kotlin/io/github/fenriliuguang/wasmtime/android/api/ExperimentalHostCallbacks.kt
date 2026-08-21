@@ -1276,6 +1276,34 @@ interface ExperimentalHostCallbacks {
         unsupported("recordPipelineConstantValueRemoveDescribed")
     }
 
+    /** L2: Guest `[method]record-gpu-pipeline-constant-value.keys` count. */
+    fun recordPipelineConstantValueKeysCountDescribed(handle: Int): Int =
+        unsupported("recordPipelineConstantValueKeysCountDescribed")
+
+    /** L2: Guest `[method]record-gpu-pipeline-constant-value.keys` entry at index. */
+    fun recordPipelineConstantValueKeysGetDescribed(handle: Int, index: Int): String =
+        unsupported("recordPipelineConstantValueKeysGetDescribed")
+
+    /** L2: Guest `[method]record-gpu-pipeline-constant-value.values` count. */
+    fun recordPipelineConstantValueValuesCountDescribed(handle: Int): Int =
+        unsupported("recordPipelineConstantValueValuesCountDescribed")
+
+    /** L2: Guest `[method]record-gpu-pipeline-constant-value.values` entry at index. */
+    fun recordPipelineConstantValueValuesGetDescribed(handle: Int, index: Int): Double =
+        unsupported("recordPipelineConstantValueValuesGetDescribed")
+
+    /** L2: Guest `[method]record-gpu-pipeline-constant-value.entries` count. */
+    fun recordPipelineConstantValueEntriesCountDescribed(handle: Int): Int =
+        unsupported("recordPipelineConstantValueEntriesCountDescribed")
+
+    /** L2: Guest `[method]record-gpu-pipeline-constant-value.entries` key at index. */
+    fun recordPipelineConstantValueEntriesGetKeyDescribed(handle: Int, index: Int): String =
+        unsupported("recordPipelineConstantValueEntriesGetKeyDescribed")
+
+    /** L2: Guest `[method]record-gpu-pipeline-constant-value.entries` value at index. */
+    fun recordPipelineConstantValueEntriesGetValueDescribed(handle: Int, index: Int): Double =
+        unsupported("recordPipelineConstantValueEntriesGetValueDescribed")
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

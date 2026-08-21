@@ -361,6 +361,101 @@ pub fn exp_record_pipeline_constant_value_remove_described(
     )
 }
 
+/// L2: Guest `record-gpu-pipeline-constant-value.keys` count.
+pub fn exp_record_pipeline_constant_value_keys_count_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordPipelineConstantValueKeysCountDescribed",
+        "(I)I",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.keys` entry at index.
+pub fn exp_record_pipeline_constant_value_keys_get_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<String, String> {
+    call_string(
+        cb,
+        "recordPipelineConstantValueKeysGetDescribed",
+        "(II)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.values` count.
+pub fn exp_record_pipeline_constant_value_values_count_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordPipelineConstantValueValuesCountDescribed",
+        "(I)I",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.values` entry at index.
+pub fn exp_record_pipeline_constant_value_values_get_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<f64, String> {
+    call_d(
+        cb,
+        "recordPipelineConstantValueValuesGetDescribed",
+        "(II)D",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.entries` count.
+pub fn exp_record_pipeline_constant_value_entries_count_described(
+    cb: &GlobalRef,
+    handle: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordPipelineConstantValueEntriesCountDescribed",
+        "(I)I",
+        vec![HostArg::Int(handle as i32)],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.entries` key at index.
+pub fn exp_record_pipeline_constant_value_entries_get_key_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<String, String> {
+    call_string(
+        cb,
+        "recordPipelineConstantValueEntriesGetKeyDescribed",
+        "(II)Ljava/lang/String;",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.entries` value at index.
+pub fn exp_record_pipeline_constant_value_entries_get_value_described(
+    cb: &GlobalRef,
+    handle: u32,
+    index: u32,
+) -> Result<f64, String> {
+    call_d(
+        cb,
+        "recordPipelineConstantValueEntriesGetValueDescribed",
+        "(II)D",
+        vec![HostArg::Int(handle as i32), HostArg::Int(index as i32)],
+    )
+}
+
 pub fn exp_adapter_request_device(cb: &GlobalRef, adapter: u32) -> Result<u32, String> {
     call_i(
         cb,
