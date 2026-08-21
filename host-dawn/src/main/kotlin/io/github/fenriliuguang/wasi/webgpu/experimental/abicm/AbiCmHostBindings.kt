@@ -29,6 +29,8 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexBufferLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
+import io.github.fenriliuguang.wasi.webgpu.experimental.dawn.DawnWasiWebGpuHost
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.CanvasConfigureLeftovers
 
 /**
  * L1→L2 adapter for experimental CM host imports (typed lists/strings).
@@ -512,8 +514,26 @@ class AbiCmHostBindings(
         host.surfaceUnconfigure(GpuHandle(surface))
     }
 
-    fun canvasContextConfigure(context: Int, device: Int, format: Int, usage: Int): Int =
-        host.canvasContextConfigure(context, GpuHandle(device), format, usage).raw
+    fun canvasContextConfigure(
+        context: Int,
+        device: Int,
+        format: Int,
+        usage: Int,
+        viewFormats: IntArray = intArrayOf(),
+        colorSpace: Int = -1,
+        toneMapping: Int = -1,
+        alphaMode: Int = -1,
+    ): Int {
+        (host as? DawnWasiWebGpuHost)?.stageCanvasConfigureLeftovers(
+            CanvasConfigureLeftovers(
+                viewFormats = viewFormats.toList(),
+                colorSpace = colorSpace,
+                toneMapping = toneMapping,
+                alphaMode = alphaMode,
+            ),
+        )
+        return host.canvasContextConfigure(context, GpuHandle(device), format, usage).raw
+    }
 
     fun canvasContextUnconfigure(context: Int) {
         host.canvasContextUnconfigure(context)

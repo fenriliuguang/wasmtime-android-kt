@@ -3070,7 +3070,20 @@ object ExperimentalWebGpuBridge {
                     device: Int,
                     format: Int,
                     usage: Int,
-                ): Int = bindings.canvasContextConfigure(context, device, format, usage)
+                    viewFormats: IntArray,
+                    colorSpace: Int,
+                    toneMapping: Int,
+                    alphaMode: Int,
+                ): Int = bindings.canvasContextConfigure(
+                    context,
+                    device,
+                    format,
+                    usage,
+                    viewFormats,
+                    colorSpace,
+                    toneMapping,
+                    alphaMode,
+                )
 
                 override fun canvasContextUnconfigureDescribed(context: Int) {
                     bindings.canvasContextUnconfigure(context)

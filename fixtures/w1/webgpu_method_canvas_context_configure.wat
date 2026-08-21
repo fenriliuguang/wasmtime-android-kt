@@ -1,7 +1,8 @@
 ;; S6+: get-canvas-context + get-device + [method]gpu-canvas-context.configure
 ;; WIT: configure: func(configuration: gpu-canvas-configuration)
-;; Guest passes device borrow + format=rgba8unorm; other fields none; harness 1.
-;; Flattened configure is 15 i32s (under the 16-arg spill). Options are none.
+;; Guest passes device borrow + format=rgba8unorm + leftover view-formats /
+;; color-space=srgb / tone-mapping=standard / alpha-mode=premultiplied; harness 1.
+;; Flattened configure is 15 i32s (under the 16-arg spill).
 ;; get-canvas-context / get-device are test constructors only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -77,16 +78,18 @@
       (local $ctx i32)
       (local.set $device (call $get-device))
       (local.set $ctx (call $get-ctx))
-      ;; self, device, format=rgba8unorm(21); remaining option payloads none
+      ;; view-formats some([rgba8unorm=21]) list payload at 256
+      (i32.store8 (i32.const 256) (i32.const 21))
+      ;; self, device, format=rgba8unorm(21); leftover options some
       (call $configure
         (local.get $ctx)
         (local.get $device)
         (i32.const 21)
         (i32.const 0) (i32.const 0)
-        (i32.const 0) (i32.const 0) (i32.const 0)
-        (i32.const 0) (i32.const 0)
-        (i32.const 0) (i32.const 0) (i32.const 0)
-        (i32.const 0) (i32.const 0))
+        (i32.const 1) (i32.const 256) (i32.const 1)
+        (i32.const 1) (i32.const 0)
+        (i32.const 1) (i32.const 1) (i32.const 0)
+        (i32.const 1) (i32.const 1))
       (i32.const 1)
     )
   )

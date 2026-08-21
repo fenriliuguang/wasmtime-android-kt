@@ -59,10 +59,21 @@ interface ExperimentalHostCallbacks {
         unsupported("surfaceGetCurrentTextureView")
 
     /**
-     * L2: Guest `[method]gpu-canvas-context.configure` (device/format/usage).
+     * L2: Guest `[method]gpu-canvas-context.configure` (device/format/usage
+     * + view-formats / color-space / tone-mapping / alpha-mode leftovers).
      * `context == 0` allocates a canvas-context handle. Not a product `surface-*`.
+     * colorSpace / toneMapping / alphaMode: `-1` = absent.
      */
-    fun canvasContextConfigureDescribed(context: Int, device: Int, format: Int, usage: Int): Int =
+    fun canvasContextConfigureDescribed(
+        context: Int,
+        device: Int,
+        format: Int,
+        usage: Int,
+        viewFormats: IntArray,
+        colorSpace: Int,
+        toneMapping: Int,
+        alphaMode: Int,
+    ): Int =
         unsupported("canvasContextConfigureDescribed")
 
     /** L2: Guest `[method]gpu-canvas-context.unconfigure`. `context == 0` is a no-op. */

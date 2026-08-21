@@ -950,24 +950,34 @@ pub fn exp_buffer_set_label_described(
     )
 }
 
-/// L2: Guest `gpu-canvas-context.configure` (context/device/format/usage).
+/// L2: Guest `gpu-canvas-context.configure` (context/device/format/usage
+/// + view-formats / color-space / tone-mapping / alpha-mode leftovers).
 /// `context == 0` → host allocates a canvas-context handle (not a product surface).
+/// color-space / tone-mapping / alpha-mode: `-1` = absent.
 pub fn exp_canvas_context_configure_described(
     cb: &GlobalRef,
     context: u32,
     device: u32,
     format: u32,
     usage: u32,
+    view_formats: Vec<i32>,
+    color_space: i32,
+    tone_mapping: i32,
+    alpha_mode: i32,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "canvasContextConfigureDescribed",
-        "(IIII)I",
+        "(IIII[IIII)I",
         vec![
             HostArg::Int(context as i32),
             HostArg::Int(device as i32),
             HostArg::Int(format as i32),
             HostArg::Int(usage as i32),
+            HostArg::Ints(view_formats),
+            HostArg::Int(color_space),
+            HostArg::Int(tone_mapping),
+            HostArg::Int(alpha_mode),
         ],
     )
 }

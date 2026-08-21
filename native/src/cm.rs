@@ -2864,6 +2864,18 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let device_rep = caller.data_mut().table.get(&config.device)?.rep;
                     let format = config.format.to_dawn_u32();
                     let usage = config.usage.map(|u| u.to_webgpu_u32()).unwrap_or(0);
+                    let view_formats: Vec<i32> = config
+                        .view_formats
+                        .as_ref()
+                        .map(|fmts| fmts.iter().map(|f| (*f as i32) + 1).collect())
+                        .unwrap_or_default();
+                    let color_space = config.color_space.map(|c| c as i32).unwrap_or(-1);
+                    let tone_mapping = config
+                        .tone_mapping
+                        .and_then(|tm| tm.mode)
+                        .map(|m| m as i32)
+                        .unwrap_or(-1);
+                    let alpha_mode = config.alpha_mode.map(|a| a as i32).unwrap_or(-1);
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -2881,7 +2893,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         device_rep
                     };
                     let handle = jvm::exp_canvas_context_configure_described(
-                        &cb, ctx_rep, l2_device, format, usage,
+                        &cb,
+                        ctx_rep,
+                        l2_device,
+                        format,
+                        usage,
+                        view_formats,
+                        color_space,
+                        tone_mapping,
+                        alpha_mode,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if handle == 0 {
