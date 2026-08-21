@@ -219,6 +219,20 @@ fn call_j(
     })
 }
 
+fn call_d(
+    cb: &GlobalRef,
+    name: &'static str,
+    sig: &'static str,
+    args: Vec<HostArg>,
+) -> Result<f64, String> {
+    let cb = cb.clone();
+    with_env(move |env| {
+        let result = call_with_host_args(env, cb.as_obj(), name, sig, &args)?;
+        check_exception(env)?;
+        result.d().map_err(|e| format!("host {name} result: {e}"))
+    })
+}
+
 fn call_void(
     cb: &GlobalRef,
     name: &'static str,
@@ -283,6 +297,67 @@ pub fn exp_request_adapter_described(
         "requestAdapterDescribed",
         "(II)I",
         vec![HostArg::Int(power_preference), HostArg::Int(force_fallback)],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.add` (resource rep + key + f64).
+pub fn exp_record_pipeline_constant_value_add_described(
+    cb: &GlobalRef,
+    handle: u32,
+    key: String,
+    value: f64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "recordPipelineConstantValueAddDescribed",
+        "(ILjava/lang/String;D)V",
+        vec![
+            HostArg::Int(handle as i32),
+            HostArg::Str(key),
+            HostArg::Double(value),
+        ],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.has` / `get` presence (0/1).
+pub fn exp_record_pipeline_constant_value_has_described(
+    cb: &GlobalRef,
+    handle: u32,
+    key: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordPipelineConstantValueHasDescribed",
+        "(ILjava/lang/String;)I",
+        vec![HostArg::Int(handle as i32), HostArg::Str(key)],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.get` value when `has` is 1.
+pub fn exp_record_pipeline_constant_value_get_value_described(
+    cb: &GlobalRef,
+    handle: u32,
+    key: String,
+) -> Result<f64, String> {
+    call_d(
+        cb,
+        "recordPipelineConstantValueGetValueDescribed",
+        "(ILjava/lang/String;)D",
+        vec![HostArg::Int(handle as i32), HostArg::Str(key)],
+    )
+}
+
+/// L2: Guest `record-gpu-pipeline-constant-value.remove`.
+pub fn exp_record_pipeline_constant_value_remove_described(
+    cb: &GlobalRef,
+    handle: u32,
+    key: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "recordPipelineConstantValueRemoveDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(handle as i32), HostArg::Str(key)],
     )
 }
 

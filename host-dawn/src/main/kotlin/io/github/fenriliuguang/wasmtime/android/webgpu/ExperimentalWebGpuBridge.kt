@@ -2730,14 +2730,42 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[constructor]record-gpu-pipeline-constant-value` and
-     * `[method]record-gpu-pipeline-constant-value.add` / `get` / `has` /
-     * `remove` / `keys` / `values` / `entries`. Native lifts; L2 unused (no new JNI).
+     * L2 described `[method]record-gpu-pipeline-constant-value.add` / `get` /
+     * `has` / `remove` (iterate keys/values/entries still lift-only).
      */
     fun attachRecordPipelineConstantValue(
         store: Store,
-        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+        host: WasiWebGpuHost,
     ) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun recordPipelineConstantValueAddDescribed(
+                    handle: Int,
+                    key: String,
+                    value: Double,
+                ) {
+                    bindings.recordPipelineConstantValueAdd(handle, key, value)
+                }
+
+                override fun recordPipelineConstantValueHasDescribed(
+                    handle: Int,
+                    key: String,
+                ): Int = if (bindings.recordPipelineConstantValueHas(handle, key)) 1 else 0
+
+                override fun recordPipelineConstantValueGetValueDescribed(
+                    handle: Int,
+                    key: String,
+                ): Double = bindings.recordPipelineConstantValueGetValue(handle, key)
+
+                override fun recordPipelineConstantValueRemoveDescribed(
+                    handle: Int,
+                    key: String,
+                ) {
+                    bindings.recordPipelineConstantValueRemove(handle, key)
+                }
+            },
+        )
     }
 
     /**

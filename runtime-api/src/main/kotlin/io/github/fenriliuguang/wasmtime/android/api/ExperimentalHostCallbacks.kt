@@ -1249,6 +1249,33 @@ interface ExperimentalHostCallbacks {
         unsupported("renderBundleEncoderSetImmediatesDescribed")
     }
 
+    /**
+     * L2: Guest `[method]record-gpu-pipeline-constant-value.add`
+     * (resource rep + key + f64).
+     */
+    fun recordPipelineConstantValueAddDescribed(handle: Int, key: String, value: Double) {
+        unsupported("recordPipelineConstantValueAddDescribed")
+    }
+
+    /**
+     * L2: Guest `[method]record-gpu-pipeline-constant-value.has` / `get` presence (0/1).
+     */
+    fun recordPipelineConstantValueHasDescribed(handle: Int, key: String): Int =
+        unsupported("recordPipelineConstantValueHasDescribed")
+
+    /**
+     * L2: Guest `[method]record-gpu-pipeline-constant-value.get` value when has is 1.
+     */
+    fun recordPipelineConstantValueGetValueDescribed(handle: Int, key: String): Double =
+        unsupported("recordPipelineConstantValueGetValueDescribed")
+
+    /**
+     * L2: Guest `[method]record-gpu-pipeline-constant-value.remove`.
+     */
+    fun recordPipelineConstantValueRemoveDescribed(handle: Int, key: String) {
+        unsupported("recordPipelineConstantValueRemoveDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }
