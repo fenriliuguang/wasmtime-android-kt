@@ -12,6 +12,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Color
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.DeviceDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
@@ -54,7 +55,7 @@ object ExperimentalWebGpuBridge {
     /**
      * W1/W2 flat `request-adapter` and S2 `[method]gpu.request-adapter` share this
      * L2 callback. `get-gpu` is a test constructor (no Kotlin). The method uses
-     * `requestAdapterDescribed` (power-preference + force-fallback; feature-level unused).
+     * `requestAdapterDescribed` (power-preference + force-fallback + feature-level).
      */
     fun attachRequestAdapter(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -62,8 +63,12 @@ object ExperimentalWebGpuBridge {
             object : ExperimentalHostCallbacks {
                 override fun requestAdapter(): Int = bindings.requestAdapter()
 
-                override fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int): Int =
-                    bindings.requestAdapterDescribed(powerPreference, forceFallback)
+                override fun requestAdapterDescribed(
+                    powerPreference: Int,
+                    forceFallback: Int,
+                    featureLevel: String,
+                ): Int =
+                    bindings.requestAdapterDescribed(powerPreference, forceFallback, featureLevel)
 
                 override fun wgslLanguageFeaturesHasDescribed(value: String): Int =
                     if (bindings.wgslLanguageFeaturesHas(value)) 1 else 0
@@ -83,7 +88,7 @@ object ExperimentalWebGpuBridge {
      * L2 `[method]gpu-adapter.request-device` shares this attach:
      * `get-adapter` is host-only (no Kotlin); the method then calls L2
      * `requestAdapter` (when adapter.rep is 0) + `adapterRequestDeviceDescribed`
-     * (optional first required-feature; limits/label unused), and
+     * (optional first required-feature + required-limits record rep + label), and
      * returns `result<own<gpu-device>, request-device-error>`.
      */
     fun attachRequestDevice(store: Store, host: WasiWebGpuHost) {
@@ -95,11 +100,29 @@ object ExperimentalWebGpuBridge {
                 override fun adapterRequestDevice(adapter: Int): Int =
                     bindings.adapterRequestDevice(adapter)
 
+                override fun recordOptionGpuSize64AddDescribed(
+                    handle: Int,
+                    key: String,
+                    hasValue: Int,
+                    value: Long,
+                ) {
+                    bindings.recordOptionGpuSize64Add(handle, key, hasValue, value)
+                }
+
                 override fun adapterRequestDeviceDescribed(
                     adapter: Int,
                     hasFeature: Int,
                     feature: Int,
-                ): Int = bindings.adapterRequestDevice(adapter)
+                    requiredLimits: Int,
+                    label: String,
+                ): Int =
+                    bindings.adapterRequestDevice(
+                        adapter,
+                        DeviceDescriptor(
+                            requiredLimits = bindings.recordOptionGpuSize64Snapshot(requiredLimits),
+                            label = label.ifEmpty { null },
+                        ),
+                    )
             },
         )
     }
@@ -3696,6 +3719,7 @@ object ExperimentalWebGpuBridge {
                 override fun requestAdapterDescribed(
                     powerPreference: Int,
                     forceFallback: Int,
+                    featureLevel: String,
                 ): Int = cachedAdapter()
 
                 override fun adapterRequestDevice(adapter: Int): Int = cachedDevice(adapter)
@@ -3704,6 +3728,8 @@ object ExperimentalWebGpuBridge {
                     adapter: Int,
                     hasFeature: Int,
                     feature: Int,
+                    requiredLimits: Int,
+                    label: String,
                 ): Int = cachedDevice(adapter)
 
                 override fun deviceCreateBufferDescribed(
@@ -3799,6 +3825,7 @@ object ExperimentalWebGpuBridge {
                 override fun requestAdapterDescribed(
                     powerPreference: Int,
                     forceFallback: Int,
+                    featureLevel: String,
                 ): Int = cachedAdapter()
 
                 override fun adapterRequestDevice(adapter: Int): Int = cachedDevice(adapter)
@@ -3807,6 +3834,8 @@ object ExperimentalWebGpuBridge {
                     adapter: Int,
                     hasFeature: Int,
                     feature: Int,
+                    requiredLimits: Int,
+                    label: String,
                 ): Int = cachedDevice(adapter)
 
                 override fun deviceCreateBufferDescribed(

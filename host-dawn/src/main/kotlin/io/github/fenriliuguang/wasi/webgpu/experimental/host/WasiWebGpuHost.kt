@@ -19,7 +19,10 @@ interface WasiWebGpuHost : AutoCloseable {
 
     fun requestAdapter(options: RequestAdapterOptions = RequestAdapterOptions()): GpuHandle
 
-    fun adapterRequestDevice(adapter: GpuHandle): GpuHandle
+    fun adapterRequestDevice(
+        adapter: GpuHandle,
+        descriptor: DeviceDescriptor = DeviceDescriptor(),
+    ): GpuHandle
 
     fun deviceGetQueue(device: GpuHandle): GpuHandle
 

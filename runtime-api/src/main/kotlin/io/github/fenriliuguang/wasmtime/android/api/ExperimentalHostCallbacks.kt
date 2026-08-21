@@ -13,19 +13,28 @@ interface ExperimentalHostCallbacks {
     /**
      * L2: Guest `[method]gpu.request-adapter`.
      * `powerPreference`: `0` none/`undefined`, `1` low-power, `2` high-performance.
-     * `forceFallback`: `0` none/false, `1` true. `feature-level` unused this cut.
+     * `forceFallback`: `0` none/false, `1` true. `featureLevel` empty = none.
      */
-    fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int): Int =
-        unsupported("requestAdapterDescribed")
+    fun requestAdapterDescribed(
+        powerPreference: Int,
+        forceFallback: Int,
+        featureLevel: String,
+    ): Int = unsupported("requestAdapterDescribed")
 
     fun adapterRequestDevice(adapter: Int): Int = unsupported("adapterRequestDevice")
 
     /**
      * L2: Guest `[method]gpu-adapter.request-device`.
-     * `hasFeature == 0` → no required-features (none / empty). Limits and label unused.
+     * `hasFeature == 0` → no required-features (none / empty).
+     * `requiredLimits` 0 = none; `label` empty = none.
      */
-    fun adapterRequestDeviceDescribed(adapter: Int, hasFeature: Int, feature: Int): Int =
-        unsupported("adapterRequestDeviceDescribed")
+    fun adapterRequestDeviceDescribed(
+        adapter: Int,
+        hasFeature: Int,
+        feature: Int,
+        requiredLimits: Int,
+        label: String,
+    ): Int = unsupported("adapterRequestDeviceDescribed")
 
     fun deviceGetQueue(device: Int): Int = unsupported("deviceGetQueue")
 

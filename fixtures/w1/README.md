@@ -11,7 +11,9 @@
 | `webgpu_begin_render_pass.wasm` | `request-adapter` + `adapter-request-device` (async) + `device-create-command-encoder` + **`command-encoder-begin-render-pass-clear` sync** `u32` | `run: async func() -> u32` | adapter → device → encoder → begin-clear(stub view 23); returns render-pass rep |
 | `webgpu_render_pass_end.wasm` | `request-adapter` + `adapter-request-device` (async) + `device-create-command-encoder` + `command-encoder-begin-render-pass-clear` + **`render-pass-end` sync** void | `run: async func() -> u32` | adapter → device → encoder → begin-clear(stub view 23) → end; returns render-pass rep |
 | `webgpu_method_request_adapter.wasm` | `get-gpu` + **`[method]gpu.request-adapter` async** `option<own<gpu-adapter>>` | `run: async func() -> u32` | construct gpu → method request-adapter (L2 described; options none, power-preference + force-fallback forwarded when some; feature-level unused) → drop own; harness returns 1 |
+| `webgpu_method_request_adapter_feature_level.wasm` | `get-gpu` + **`[method]gpu.request-adapter`** `feature-level="core"` | `run: async func() -> u32` | construct gpu → request-adapter some(options.feature-level=`core`) → drop own; harness returns 1 |
 | `webgpu_method_request_device.wasm` | `get-adapter` + **`[method]gpu-adapter.request-device` async** `result<own<gpu-device>, request-device-error>` | `run: async func() -> u32` | construct adapter → method request-device (L2 described; descriptor none, first required-feature forwarded when some) → drop own on ok; harness returns 1 |
+| `webgpu_method_request_device_required_limits.wasm` | `get-adapter` + `record-option-gpu-size64` + **`[method]gpu-adapter.request-device`** | `run: async func() -> u32` | add `max-bind-groups`=4 → request-device some(required-limits + label=`l2`) → drop own on ok; harness returns 1 |
 | `webgpu_method_device_queue.wasm` | `get-device` + **`[method]gpu-device.queue` sync** `own<gpu-queue>` | `run: async func() -> u32` | construct device → method queue (L2 described device handle; 0 → stub-create) → drop own; harness returns 1 |
 | `webgpu_method_create_command_encoder.wasm` | `get-device` + **`[method]gpu-device.create-command-encoder` sync** `own<gpu-command-encoder>` | `run: async func() -> u32` | construct device → create-encoder (label="l2") → drop own; harness returns 1 |
 | `webgpu_method_begin_render_pass.wasm` | `get-encoder` + `get-texture-view` + **`[method]gpu-command-encoder.begin-render-pass` sync** `own<gpu-render-pass-encoder>` | `run: async func() -> u32` | construct encoder+views → begin (color clear 0,0,0,1 + depth-stencil) → drop owns; harness returns 1 |
@@ -264,8 +266,12 @@ wasm-tools parse fixtures/w1/webgpu_render_pass_end.wat -o fixtures/w1/webgpu_re
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_render_pass_end.wasm
 wasm-tools parse fixtures/w1/webgpu_method_request_adapter.wat -o fixtures/w1/webgpu_method_request_adapter.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_request_adapter.wasm
+wasm-tools parse fixtures/w1/webgpu_method_request_adapter_feature_level.wat -o fixtures/w1/webgpu_method_request_adapter_feature_level.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_request_adapter_feature_level.wasm
 wasm-tools parse fixtures/w1/webgpu_method_request_device.wat -o fixtures/w1/webgpu_method_request_device.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_request_device.wasm
+wasm-tools parse fixtures/w1/webgpu_method_request_device_required_limits.wat -o fixtures/w1/webgpu_method_request_device_required_limits.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_request_device_required_limits.wasm
 wasm-tools parse fixtures/w1/webgpu_method_device_queue.wat -o fixtures/w1/webgpu_method_device_queue.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_device_queue.wasm
 wasm-tools parse fixtures/w1/webgpu_method_create_command_encoder.wat -o fixtures/w1/webgpu_method_create_command_encoder.wasm

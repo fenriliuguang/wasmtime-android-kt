@@ -14,6 +14,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureBindingLayou
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Color
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.DeviceDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
@@ -62,8 +63,11 @@ private class ForwardingHostCallbacks(
 
     override fun requestAdapter(): Int = bindings.requestAdapter()
 
-    override fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int): Int =
-        bindings.requestAdapterDescribed(powerPreference, forceFallback)
+    override fun requestAdapterDescribed(
+        powerPreference: Int,
+        forceFallback: Int,
+        featureLevel: String,
+    ): Int = bindings.requestAdapterDescribed(powerPreference, forceFallback, featureLevel)
 
     override fun recordPipelineConstantValueAddDescribed(
         handle: Int,
@@ -159,8 +163,20 @@ private class ForwardingHostCallbacks(
 
     override fun adapterRequestDevice(adapter: Int): Int = bindings.adapterRequestDevice(adapter)
 
-    override fun adapterRequestDeviceDescribed(adapter: Int, hasFeature: Int, feature: Int): Int =
-        bindings.adapterRequestDevice(adapter)
+    override fun adapterRequestDeviceDescribed(
+        adapter: Int,
+        hasFeature: Int,
+        feature: Int,
+        requiredLimits: Int,
+        label: String,
+    ): Int =
+        bindings.adapterRequestDevice(
+            adapter,
+            DeviceDescriptor(
+                requiredLimits = bindings.recordOptionGpuSize64Snapshot(requiredLimits),
+                label = label.ifEmpty { null },
+            ),
+        )
 
     override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
 

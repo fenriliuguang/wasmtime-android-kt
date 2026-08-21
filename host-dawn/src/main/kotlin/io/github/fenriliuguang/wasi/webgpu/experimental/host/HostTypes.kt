@@ -228,6 +228,13 @@ data class TextureBindingLayout(
 data class RequestAdapterOptions(
     val powerPreference: PowerPreference = PowerPreference.Undefined,
     val forceFallbackAdapter: Boolean = false,
+    val featureLevel: String? = null,
+)
+
+/** Guest `gpu-device-descriptor` leftover fields (required-limits map + label). */
+data class DeviceDescriptor(
+    val requiredLimits: Map<String, Long?> = emptyMap(),
+    val label: String? = null,
 )
 
 enum class PowerPreference {

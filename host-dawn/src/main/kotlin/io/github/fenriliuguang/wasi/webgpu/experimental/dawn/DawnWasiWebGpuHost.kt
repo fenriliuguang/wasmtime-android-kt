@@ -94,6 +94,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.CommandEncoderDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePassDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.DeviceDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuSamplerBindingType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureSampleType
@@ -220,9 +221,13 @@ class DawnWasiWebGpuHost private constructor(
         return handles.insert(ResourceKind.Adapter, adapter)
     }
 
-    override fun adapterRequestDevice(adapter: GpuHandle): GpuHandle {
+    override fun adapterRequestDevice(
+        adapter: GpuHandle,
+        descriptor: DeviceDescriptor,
+    ): GpuHandle {
         val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
-        val descriptor = GPUDeviceDescriptor(
+        val gpuDescriptor = GPUDeviceDescriptor(
+            label = descriptor.label,
             deviceLostCallbackExecutor = callbackExecutor,
             uncapturedErrorCallbackExecutor = callbackExecutor,
             deviceLostCallback = DeviceLostCallback { _, reason, message ->
@@ -233,7 +238,7 @@ class DawnWasiWebGpuHost private constructor(
             },
         )
         val device = awaitRequest<GPUDevice>("requestDevice") { callback ->
-            gpuAdapter.requestDevice(callbackExecutor, descriptor, callback)
+            gpuAdapter.requestDevice(callbackExecutor, gpuDescriptor, callback)
         }
         val deviceHandle = handles.insert(ResourceKind.Device, device)
         deviceAdapters[deviceHandle] = adapter
