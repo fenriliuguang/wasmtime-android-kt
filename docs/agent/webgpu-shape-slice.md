@@ -15,7 +15,7 @@ Pin: `wasi:webgpu@0.3.0-rc.2` at [`third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgp
 - Do **not** crate-`cargo fmt`. rustfmt **only** `.rs` files this slice changed. Never format `command_encoder_finish.rs` / `create_command_encoder.rs` / `queue_submit.rs` unless they are the slice.
 - Do **not** run full `cargo test --tests` or device instruments. Narrow commands below.
 - Do **not** add experimental JNI or a new host-fixed `u32` product surface. L2 may stay lift-only (lift guest types, ignore fields).
-- Do **not** mix `gpu-canvas-context` (WG-6) into a shape cut.
+- Do **not** mix `gpu-canvas-context` into this playbook. Canvas is [`webgpu-midterm.md`](webgpu-midterm.md) Lane A (script `-IncludeCanvas` is not a default shape cut).
 - Do **not** rewrite the long **Transitional:** paragraph in `fixtures/w1/README.md`. Append a **table row** and two `wasm-tools` lines only.
 - PowerShell: no bash `&&`, no bash HEREDOC. `git commit` / `gh pr create` use `@"..."@`.
 
@@ -65,6 +65,6 @@ cargo test --locked --test wasi_webgpu_method -- --test-threads=1 <module_a> <mo
 
 PR: `feat(webgpu): S6+ <cluster> take WIT types`, label `enhancement`.
 
-When `.\scripts\webgpu-shape-remaining.ps1` prints **Remaining: 0**, stop hanging names. Semantic L2 (guest fields → host) is [`webgpu-semantic-l2.md`](webgpu-semantic-l2.md).
+When `.\scripts\webgpu-shape-remaining.ps1` prints **Remaining: 0**, stop hanging names. Default semantic L2 is [`webgpu-semantic-l2.md`](webgpu-semantic-l2.md). Canvas / S1–S3 descriptors / records / cite: [`webgpu-midterm.md`](webgpu-midterm.md).
 
 User prompt that works: list the `[method]` names and “follow `docs/agent/webgpu-shape-slice.md`”.

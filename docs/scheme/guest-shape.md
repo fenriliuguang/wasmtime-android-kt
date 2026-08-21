@@ -38,6 +38,7 @@ S4  [method]gpu-device.create-buffer with guest gpu-buffer-descriptor
 S5  [method]gpu-queue.submit : list<borrow<gpu-command-buffer>>
 S6+ Replace remaining frozen transitional methods — shape first, then semantics
     Semantic L2: caller resource, then JNI family (2–4 methods) per PR; see webgpu-semantic-l2.md
+    After default L2 remaining is 0: canvas / S1–S3 descriptors / records / cite — see webgpu-midterm.md
 ```
 
 **Per-slice DoD (S1+):** WIT-isomorphic guest import; `cargo test --locked --tests` if `native/` changes; instrument twin or a written reason; changelog fragment; no new experimental flat names; no compliance claim.

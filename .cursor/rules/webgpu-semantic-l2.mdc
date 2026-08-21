@@ -10,6 +10,6 @@ For 语义加深 / 真实编组 / described L2 / 粗批次, read `docs/agent/web
 - Do not WebFetch wasi-webgpu. Use `third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`.
 - Do not Read `native/src/cm.rs` or `native/src/jvm.rs` without offset. Grep, then ~80 lines.
 - Batch by caller resource, then one JNI family per PR (2–4 methods). Do not dump a whole resource. Copy the `create-buffer` described stack.
-- Do not add `HostArg` string/bytes unless this PR is only that need. No `gpu-canvas-context`. Use guest `rep` when non-zero.
+- Do not add `HostArg` variants unless this PR is only that need. No `gpu-canvas-context` in this playbook (midterm Lane A). Skip S1–S3 here (midterm Lane B). Use guest `rep` when non-zero.
 - Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
-- Remaining: `.\scripts\webgpu-semantic-l2-remaining.ps1`
+- Remaining: `.\scripts\webgpu-semantic-l2-remaining.ps1`. If host-fixed remaining is 0, use `docs/agent/webgpu-midterm.md` instead of another L2 family.
