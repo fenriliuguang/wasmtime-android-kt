@@ -2727,15 +2727,30 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * S6+: `get-canvas-context` (test ctor) + `[method]gpu-canvas-context.configure` /
-     * `unconfigure` / `get-configuration` / `get-current-texture`. Native lifts;
-     * L2 unused (no new JNI).
+     * S6+: `get-canvas-context` (test ctor) + L2 `[method]gpu-canvas-context.configure`
+     * (described device/format/usage). `unconfigure` / `get-configuration` /
+     * `get-current-texture` remain lift-only until later midterm cuts.
      */
     fun attachCanvasContext(
         store: Store,
-        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+        host: WasiWebGpuHost,
     ) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = bindings.requestAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int =
+                    bindings.adapterRequestDevice(adapter)
+
+                override fun canvasContextConfigureDescribed(
+                    context: Int,
+                    device: Int,
+                    format: Int,
+                    usage: Int,
+                ): Int = bindings.canvasContextConfigure(context, device, format, usage)
+            },
+        )
     }
 
     /**

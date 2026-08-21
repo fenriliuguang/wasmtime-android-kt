@@ -64,6 +64,13 @@ private class ForwardingHostCallbacks(
     override fun surfaceGetCurrentTextureView(surface: Int): Int =
         bindings.surfaceGetCurrentTextureView(surface)
 
+    override fun canvasContextConfigureDescribed(
+        context: Int,
+        device: Int,
+        format: Int,
+        usage: Int,
+    ): Int = bindings.canvasContextConfigure(context, device, format, usage)
+
     override fun deviceCreateCommandEncoder(device: Int): Int =
         bindings.deviceCreateCommandEncoder(device)
 

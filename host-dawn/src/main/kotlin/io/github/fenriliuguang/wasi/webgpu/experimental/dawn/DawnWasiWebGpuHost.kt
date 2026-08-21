@@ -133,6 +133,14 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
+/** Guest `gpu-canvas-context` store (not a Dawn `GPUSurface` / product `surface-*`). */
+private class DawnCanvasContextState(
+    var device: Int = 0,
+    var format: Int = 0,
+    var usage: Int = 0,
+    var configured: Boolean = false,
+)
+
 /**
  * L3 Dawn backend for [WasiWebGpuHost].
  *
@@ -693,6 +701,28 @@ class DawnWasiWebGpuHost private constructor(
         synchronized(gpuLock) {
             val gpuSurface = handles.get<GPUSurface>(surface, ResourceKind.Surface)
             gpuSurface.present()
+        }
+    }
+
+    override fun canvasContextConfigure(
+        context: Int,
+        device: GpuHandle,
+        format: Int,
+        usage: Int,
+    ): GpuHandle {
+        synchronized(gpuLock) {
+            handles.get<GPUDevice>(device, ResourceKind.Device)
+            val handle = if (context != 0) {
+                GpuHandle(context)
+            } else {
+                handles.insert(ResourceKind.CanvasContext, DawnCanvasContextState())
+            }
+            val state = handles.get<DawnCanvasContextState>(handle, ResourceKind.CanvasContext)
+            state.device = device.raw
+            state.format = format
+            state.usage = usage
+            state.configured = true
+            return handle
         }
     }
 

@@ -30,6 +30,7 @@ enum class ResourceKind {
     CommandBuffer,
     Queue,
     Surface,
+    CanvasContext,
     Texture,
     TextureView,
     Sampler,

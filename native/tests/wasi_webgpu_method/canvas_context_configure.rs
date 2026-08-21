@@ -1,4 +1,4 @@
-//! S6+: `get-canvas-context` + `get-device` + `[method]gpu-canvas-context.configure`
+//! L2: `get-canvas-context` + `get-device` + `[method]gpu-canvas-context.configure`
 //! WIT: `(borrow, gpu-canvas-configuration)`. Guest format=rgba8unorm, options none; harness 1.
 
 use wasmtime::component::{

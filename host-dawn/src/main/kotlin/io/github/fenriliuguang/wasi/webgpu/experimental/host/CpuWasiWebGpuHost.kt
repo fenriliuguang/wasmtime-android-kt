@@ -51,6 +51,13 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     private class ComputePipeline(val shader: ShaderModule)
     /** Fake Android surface for AbiCm/AbiMvp View↔Texture lifetime tests (not a real window). */
     private class Surface(var configured: Boolean = false)
+    /** Guest `gpu-canvas-context` state (not a product surface). */
+    private class CanvasContext(
+        var device: Int = 0,
+        var format: Int = 0,
+        var usage: Int = 0,
+        var configured: Boolean = false,
+    )
     /** Handle-only stubs so abi-mvp flat render chain can exercise Cpu Host without Dawn. */
     private class RenderPipeline
     private class RenderPassEncoder
@@ -778,6 +785,26 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     override fun surfacePresent(surface: GpuHandle) {
         handles.get<Surface>(surface, ResourceKind.Surface)
+    }
+
+    override fun canvasContextConfigure(
+        context: Int,
+        device: GpuHandle,
+        format: Int,
+        usage: Int,
+    ): GpuHandle {
+        handles.get<Device>(device, ResourceKind.Device)
+        val handle = if (context != 0) {
+            GpuHandle(context)
+        } else {
+            handles.insert(ResourceKind.CanvasContext, CanvasContext())
+        }
+        val state = handles.get<CanvasContext>(handle, ResourceKind.CanvasContext)
+        state.device = device.raw
+        state.format = format
+        state.usage = usage
+        state.configured = true
+        return handle
     }
 
     /** Test / diagnostics: live handle-table size. */

@@ -492,6 +492,28 @@ pub fn exp_buffer_set_label_described(
     )
 }
 
+/// L2: Guest `gpu-canvas-context.configure` (context/device/format/usage).
+/// `context == 0` → host allocates a canvas-context handle (not a product surface).
+pub fn exp_canvas_context_configure_described(
+    cb: &GlobalRef,
+    context: u32,
+    device: u32,
+    format: u32,
+    usage: u32,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "canvasContextConfigureDescribed",
+        "(IIII)I",
+        vec![
+            HostArg::Int(context as i32),
+            HostArg::Int(device as i32),
+            HostArg::Int(format as i32),
+            HostArg::Int(usage as i32),
+        ],
+    )
+}
+
 /// L2: Guest gpu-render-pipeline handle → WIT `gpu-render-pipeline.label`.
 pub fn exp_render_pipeline_label_described(cb: &GlobalRef, handle: u32) -> Result<String, String> {
     call_string(
