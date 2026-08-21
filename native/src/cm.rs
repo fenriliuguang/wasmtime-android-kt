@@ -20,7 +20,7 @@ use crate::webgpu_abi::{
     GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
     GpuDeviceDescriptor, GpuDeviceLostInfo, GpuDeviceLostReason, GpuError, GpuErrorFilter,
     GpuErrorKind, GpuExtent3D, GpuIndexFormat, GpuLayoutMode, GpuMapMode,
-    GpuBlendFactor, GpuBlendOperation, GpuCompareFunction, GpuCullMode, GpuFrontFace,
+    GpuBlendFactor, GpuBlendOperation, GpuColorWrite, GpuCompareFunction, GpuCullMode, GpuFrontFace,
     GpuMipmapFilterMode, GpuPipelineErrorReason, GpuPipelineLayoutDescriptor,
     GpuPrimitiveTopology,
     GpuQuerySetDescriptor, GpuQueryType, GpuRenderBundleDescriptor,
@@ -156,10 +156,35 @@ fn dawn_blend_factor(f: GpuBlendFactor) -> i32 {
     (f as i32) + 1
 }
 
-/// F1: primitive (topology/strip/front/cull) + multisample + per-target blend 7-tuples.
+/// WIT `gpu-color-write` bits as i32; `-1` = absent (Dawn All). `0` = explicit none.
+fn pack_color_write(mask: Option<GpuColorWrite>) -> i32 {
+    let Some(m) = mask else {
+        return -1;
+    };
+    let mut bits = 0i32;
+    if m.contains(GpuColorWrite::RED) {
+        bits |= 1 << 0;
+    }
+    if m.contains(GpuColorWrite::GREEN) {
+        bits |= 1 << 1;
+    }
+    if m.contains(GpuColorWrite::BLUE) {
+        bits |= 1 << 2;
+    }
+    if m.contains(GpuColorWrite::ALPHA) {
+        bits |= 1 << 3;
+    }
+    if m.contains(GpuColorWrite::ALL) {
+        bits |= 1 << 4;
+    }
+    bits
+}
+
+/// F1: primitive (topology/strip/front/cull) + multisample + per-target blend 7-tuples
+/// + per-target write-mask (`-1` absent).
 fn pack_render_pipeline_semantics(
     descriptor: &GpuRenderPipelineDescriptor,
-) -> (Vec<i32>, Vec<i32>, Vec<i32>) {
+) -> (Vec<i32>, Vec<i32>, Vec<i32>, Vec<i32>) {
     let mut primitive = vec![0, 0, 0, 0];
     if let Some(p) = &descriptor.primitive {
         primitive[0] = p.topology.map(dawn_topology).unwrap_or(0);
@@ -180,6 +205,7 @@ fn pack_render_pipeline_semantics(
         multisample.extend_from_slice(&[count, has_mask, mask, alpha]);
     }
     let mut blend = Vec::new();
+    let mut write_mask = Vec::new();
     if let Some(fragment) = &descriptor.fragment {
         for target in fragment.targets.iter().flatten() {
             match &target.blend {
@@ -194,9 +220,10 @@ fn pack_render_pipeline_semantics(
                     blend.push(b.alpha.dst_factor.map(dawn_blend_factor).unwrap_or(0));
                 }
             }
+            write_mask.push(pack_color_write(target.write_mask));
         }
     }
-    (primitive, multisample, blend)
+    (primitive, multisample, blend, write_mask)
 }
 
 fn pack_color_clear_bits(c: &GpuColor) -> [i32; 4] {
@@ -4881,7 +4908,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         Some(fragment) => pipeline_constant_rep(&fragment.constants),
                         None => 0,
                     };
-                    let (primitive, multisample, blend) =
+                    let (primitive, multisample, blend, write_mask) =
                         pack_render_pipeline_semantics(&descriptor);
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
@@ -4919,6 +4946,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         primitive,
                         multisample,
                         blend,
+                        write_mask,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if pipeline_rep == 0 {
@@ -5022,6 +5050,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             primitive,
                             multisample,
                             blend,
+                            write_mask,
                         ) = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let vertex_shader = access
                                 .data_mut()
@@ -5053,7 +5082,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 Some(fragment) => pipeline_constant_rep(&fragment.constants),
                                 None => 0,
                             };
-                            let (primitive, multisample, blend) =
+                            let (primitive, multisample, blend, write_mask) =
                                 pack_render_pipeline_semantics(&descriptor);
                             let device_rep = access.data_mut().table.get(&device)?.rep;
                             let cb = access
@@ -5085,6 +5114,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 primitive,
                                 multisample,
                                 blend,
+                                write_mask,
                             ))
                         })?;
                         let (tx, rx) = oneshot::channel::<()>();
@@ -5121,6 +5151,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             primitive,
                             multisample,
                             blend,
+                            write_mask,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if pipeline_rep == 0 {

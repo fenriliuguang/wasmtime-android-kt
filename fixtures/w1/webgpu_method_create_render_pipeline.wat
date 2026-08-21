@@ -2,7 +2,7 @@
 ;; [method]gpu-device.create-render-pipeline
 ;; Guest passes shader borrow, vertex entry-point="vs_main", one float32x3
 ;; vertex buffer (stride=12), fragment target format=rgba8unorm entry="fs_main",
-;; layout=auto, label="l2", primitive cull-mode=back; drops own pipeline;
+;; layout=auto, label="l2", primitive cull-mode=back, fragment write-mask=all; drops own pipeline;
 ;; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills through memory.
 ;; Spill tuple: device @0, vertex.buffers @4, vertex.module @16, vertex entry @20,
@@ -247,8 +247,11 @@
       (i32.store (i32.const 164) (i32.const 800))
       (i32.store (i32.const 168) (i32.const 7))
       ;; option<color-target> at 400: some, format rgba8unorm=21 immediately after disc.
+      ;; blend option @402 none (payload reserved); write-mask some+all @415 (WIT all = bit 4).
       (i32.store8 (i32.const 400) (i32.const 1))
       (i32.store8 (i32.const 401) (i32.const 21))
+      (i32.store8 (i32.const 415) (i32.const 1))
+      (i32.store8 (i32.const 416) (i32.const 16))
       (i32.store (i32.const 180) (i32.const 1))
       (i32.store (i32.const 188) (i32.const 1))
       (i32.store (i32.const 192) (i32.const 784))

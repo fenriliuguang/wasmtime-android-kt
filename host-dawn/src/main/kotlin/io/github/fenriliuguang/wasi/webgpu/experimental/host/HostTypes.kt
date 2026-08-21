@@ -484,9 +484,20 @@ data class Color(
     val a: Double,
 )
 
+/** WIT `gpu-color-write` bits. Dawn `ColorWriteMask.All` is `0xF`; WIT `all` is bit 4. */
+object GpuColorWrite {
+    const val RED: Int = 1 shl 0
+    const val GREEN: Int = 1 shl 1
+    const val BLUE: Int = 1 shl 2
+    const val ALPHA: Int = 1 shl 3
+    const val ALL: Int = 1 shl 4
+}
+
 data class ColorTargetState(
     val format: Int,
     val blend: BlendState? = null,
+    /** WIT `gpu-color-write` bits; null = absent (Dawn All). */
+    val writeMask: Int? = null,
 )
 
 data class VertexState(
@@ -573,6 +584,13 @@ fun blendStateFromDescribed(blend: IntArray, targetIndex: Int = 0): BlendState? 
             dstFactor = blend[base + 6],
         ),
     )
+}
+
+/** Packed JNI write-mask: `-1` / missing = absent. */
+fun writeMaskFromDescribed(writeMasks: IntArray, targetIndex: Int = 0): Int? {
+    if (writeMasks.size <= targetIndex) return null
+    val packed = writeMasks[targetIndex]
+    return if (packed < 0) null else packed
 }
 
 data class RenderPassColorAttachment(

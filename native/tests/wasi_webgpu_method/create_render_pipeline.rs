@@ -1,10 +1,10 @@
 //! L2: `get-device` + `get-shader-module` + `[method]gpu-device.create-render-pipeline`
 //! WIT: `(borrow<gpu-device>, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>`.
 //! Guest passes shader borrow, vertex entry-point="vs_main", one float32x3 buffer,
-//! fragment target format=rgba8unorm, layout=auto, label="l2"; drops own; `run` returns harness 1.
+//! fragment target format=rgba8unorm write-mask=all, layout=auto, label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
-    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType, flags,
+    flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
 };
 use wasmtime::{Config, Engine, Store};
 
@@ -805,6 +805,11 @@ fn register_method_create_render_pipeline(linker: &mut Linker<TestHost>) -> wasm
                     Some(GpuTextureFormat::Rgba8unorm)
                 ),
                 "guest must pass fragment target format=rgba8unorm"
+            );
+            assert_eq!(
+                fragment.targets[0].as_ref().and_then(|t| t.write_mask),
+                Some(GpuColorWrite::ALL),
+                "guest must pass write-mask=all"
             );
             assert_eq!(fragment.entry_point.as_deref(), Some("fs_main"));
             assert_eq!(descriptor.label.as_deref(), Some("l2"));
