@@ -114,6 +114,33 @@ private class ForwardingHostCallbacks(
         bindings.recordOptionGpuSize64Remove(handle, key)
     }
 
+    override fun recordOptionGpuSize64KeysCountDescribed(handle: Int): Int =
+        bindings.recordOptionGpuSize64KeysCount(handle)
+
+    override fun recordOptionGpuSize64KeysGetDescribed(handle: Int, index: Int): String =
+        bindings.recordOptionGpuSize64KeysGet(handle, index)
+
+    override fun recordOptionGpuSize64ValuesCountDescribed(handle: Int): Int =
+        bindings.recordOptionGpuSize64ValuesCount(handle)
+
+    override fun recordOptionGpuSize64ValuesGetStateDescribed(handle: Int, index: Int): Int =
+        bindings.recordOptionGpuSize64ValuesGetState(handle, index)
+
+    override fun recordOptionGpuSize64ValuesGetValueDescribed(handle: Int, index: Int): Long =
+        bindings.recordOptionGpuSize64ValuesGetValue(handle, index)
+
+    override fun recordOptionGpuSize64EntriesCountDescribed(handle: Int): Int =
+        bindings.recordOptionGpuSize64EntriesCount(handle)
+
+    override fun recordOptionGpuSize64EntriesGetKeyDescribed(handle: Int, index: Int): String =
+        bindings.recordOptionGpuSize64EntriesGetKey(handle, index)
+
+    override fun recordOptionGpuSize64EntriesGetStateDescribed(handle: Int, index: Int): Int =
+        bindings.recordOptionGpuSize64EntriesGetState(handle, index)
+
+    override fun recordOptionGpuSize64EntriesGetValueDescribed(handle: Int, index: Int): Long =
+        bindings.recordOptionGpuSize64EntriesGetValue(handle, index)
+
     override fun adapterRequestDevice(adapter: Int): Int = bindings.adapterRequestDevice(adapter)
 
     override fun adapterRequestDeviceDescribed(adapter: Int, hasFeature: Int, feature: Int): Int =

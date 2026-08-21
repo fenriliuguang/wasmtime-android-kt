@@ -1,5 +1,5 @@
-//! S6+: `[constructor]record-option-gpu-size64` + `[method]record-option-gpu-size64.keys`
-//! WIT: lift-only stub; harness 1.
+//! L2: `[constructor]record-option-gpu-size64` + `[method]record-option-gpu-size64.keys`
+//! WIT: described iterate; host empty list; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
