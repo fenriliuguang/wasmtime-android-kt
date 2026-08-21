@@ -281,6 +281,9 @@ object ExperimentalWebGpuBridge {
                     depth: Int,
                     format: Int,
                     usage: Int,
+                    mipLevelCount: Int,
+                    sampleCount: Int,
+                    dimension: Int,
                 ): Int =
                     bindings.deviceCreateTexture(
                         device,
@@ -292,6 +295,9 @@ object ExperimentalWebGpuBridge {
                             ),
                             format = format,
                             usage = usage,
+                            mipLevelCount = mipLevelCount,
+                            sampleCount = sampleCount,
+                            dimension = dimension,
                         ),
                     )
             },

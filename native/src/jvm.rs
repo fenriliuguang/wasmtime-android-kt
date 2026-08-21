@@ -3076,7 +3076,8 @@ pub fn exp_create_render_bundle_encoder_described(
     )
 }
 
-/// S6+: Guest-decoded `gpu-texture-descriptor` size/format/usage (Dawn format int).
+/// S6+: Guest-decoded `gpu-texture-descriptor` size/format/usage plus
+/// mip-level-count / sample-count / Dawn `TextureDimension`.
 pub fn exp_create_texture_described(
     cb: &GlobalRef,
     device: u32,
@@ -3085,11 +3086,14 @@ pub fn exp_create_texture_described(
     depth: u32,
     format: u32,
     usage: u32,
+    mip_level_count: u32,
+    sample_count: u32,
+    dimension: u32,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateTextureDescribed",
-        "(IIIIII)I",
+        "(IIIIIIIII)I",
         vec![
             HostArg::Int(device as i32),
             HostArg::Int(width as i32),
@@ -3097,6 +3101,9 @@ pub fn exp_create_texture_described(
             HostArg::Int(depth as i32),
             HostArg::Int(format as i32),
             HostArg::Int(usage as i32),
+            HostArg::Int(mip_level_count as i32),
+            HostArg::Int(sample_count as i32),
+            HostArg::Int(dimension as i32),
         ],
     )
 }

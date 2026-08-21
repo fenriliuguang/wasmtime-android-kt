@@ -2518,6 +2518,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let width = descriptor.size.width;
                     let height = descriptor.size.height.unwrap_or(1);
                     let depth = descriptor.size.depth_or_array_layers.unwrap_or(1);
+                    let mip = descriptor.mip_level_count.unwrap_or(1);
+                    let sample = descriptor.sample_count.unwrap_or(1);
+                    // WIT d1/d2/d3 → Dawn TextureDimension 1D=1, 2D=2, 3D=3 (none → 2D).
+                    let dimension = match descriptor.dimension {
+                        Some(GpuTextureDimension::D1) => 1u32,
+                        Some(GpuTextureDimension::D3) => 3,
+                        Some(GpuTextureDimension::D2) | None => 2,
+                    };
                     let texture_rep = jvm::exp_create_texture_described(
                         &cb,
                         l2_device,
@@ -2526,6 +2534,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         depth,
                         descriptor.format.to_dawn_u32(),
                         descriptor.usage.to_webgpu_u32(),
+                        mip,
+                        sample,
+                        dimension,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if texture_rep == 0 {
