@@ -685,7 +685,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // `gpu-buffer` + `get-buffer` + `[method]gpu-buffer.map-async` (S6+: true async
     // result<_, map-async-error>; guest mode/offset/size; L2 still host-fixed MAP_READ buffer)
     // and `[method]gpu-buffer.unmap` (S6+: result<_, unmap-error>; L2 described buffer rep)
-    // and `[method]gpu-device.create-texture` (S6+: sync (borrow, gpu-texture-descriptor) -> own<gpu-texture>) and
+    // and `[method]gpu-device.create-texture` (S6+: sync (borrow, gpu-texture-descriptor) -> own<gpu-texture>; L2 described size/format/usage/mip/sample/dimension + view-formats + label) and
     // `[method]gpu-device.create-sampler` (S8: sync (borrow, option<gpu-sampler-descriptor>) -> own<gpu-sampler>)
     // and S6+ `[method]gpu-device.create-shader-module` (sync (borrow, gpu-shader-module-descriptor) -> own<gpu-shader-module>; L2 described WGSL code)
     // and `[method]gpu-queue.write-buffer-with-copy` (S6+: borrow buffer + list data → result; L2 described bytes + offset)
@@ -2661,6 +2661,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         Some(GpuTextureDimension::D3) => 3,
                         Some(GpuTextureDimension::D2) | None => 2,
                     };
+                    let view_formats: Vec<i32> = descriptor
+                        .view_formats
+                        .as_ref()
+                        .map(|v| v.iter().map(|f| f.to_dawn_u32() as i32).collect())
+                        .unwrap_or_default();
+                    let label = descriptor.label.clone().unwrap_or_default();
                     let texture_rep = jvm::exp_create_texture_described(
                         &cb,
                         l2_device,
@@ -2672,6 +2678,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         mip,
                         sample,
                         dimension,
+                        view_formats,
+                        label,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if texture_rep == 0 {

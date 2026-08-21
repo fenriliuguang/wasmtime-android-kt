@@ -146,6 +146,7 @@ data class TextureDescriptor(
     val mipLevelCount: Int = 1,
     val sampleCount: Int = 1,
     val dimension: Int = GpuTextureDimension.D2,
+    val viewFormats: List<Int> = emptyList(),
     val label: String? = null,
 )
 
