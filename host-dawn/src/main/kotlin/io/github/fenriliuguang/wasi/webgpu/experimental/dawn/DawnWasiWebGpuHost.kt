@@ -58,6 +58,7 @@ import androidx.webgpu.GPUTexelCopyBufferLayout
 import androidx.webgpu.GPUTexelCopyTextureInfo
 import androidx.webgpu.OptionalBool
 import androidx.webgpu.GPURequestAdapterOptions
+import androidx.webgpu.GPURequestAdapterWebXROptions
 import androidx.webgpu.GPURequestCallback
 import androidx.webgpu.GPUSampler
 import androidx.webgpu.GPUSamplerBindingLayout
@@ -220,6 +221,9 @@ class DawnWasiWebGpuHost private constructor(
             // Android Surface path needs Vulkan; Undefined may pick GLES and leave the
             // native window connected, so CM Vulkan createSurface hits WINDOW_IN_USE.
             backendType = BackendType.Vulkan,
+            requestAdapterWebXROptions = options.xrCompatible?.let { xr ->
+                GPURequestAdapterWebXROptions(xr)
+            },
         )
         val adapter = awaitRequest<GPUAdapter>("requestAdapter") { callback ->
             instance.requestAdapter(callbackExecutor, dawnOptions, callback)
