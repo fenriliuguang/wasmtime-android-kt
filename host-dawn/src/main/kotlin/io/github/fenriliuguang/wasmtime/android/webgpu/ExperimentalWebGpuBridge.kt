@@ -309,6 +309,8 @@ object ExperimentalWebGpuBridge {
                     mipLevelCount: Int,
                     sampleCount: Int,
                     dimension: Int,
+                    viewFormats: IntArray,
+                    label: String,
                 ): Int =
                     bindings.deviceCreateTexture(
                         device,
@@ -323,6 +325,8 @@ object ExperimentalWebGpuBridge {
                             mipLevelCount = mipLevelCount,
                             sampleCount = sampleCount,
                             dimension = dimension,
+                            viewFormats = viewFormats.toList(),
+                            label = label.ifEmpty { null },
                         ),
                     )
             },
@@ -3858,6 +3862,8 @@ object ExperimentalWebGpuBridge {
                     mipLevelCount: Int,
                     sampleCount: Int,
                     dimension: Int,
+                    viewFormats: IntArray,
+                    label: String,
                 ): Int {
                     val resolved = if (device != 0) device else cachedDevice()
                     return bindings.deviceCreateTexture(
@@ -3873,6 +3879,8 @@ object ExperimentalWebGpuBridge {
                             mipLevelCount = mipLevelCount,
                             sampleCount = sampleCount,
                             dimension = dimension,
+                            viewFormats = viewFormats.toList(),
+                            label = label.ifEmpty { null },
                         ),
                     )
                 }

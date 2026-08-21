@@ -526,6 +526,8 @@ private class ForwardingHostCallbacks(
         mipLevelCount: Int,
         sampleCount: Int,
         dimension: Int,
+        viewFormats: IntArray,
+        label: String,
     ): Int =
         bindings.deviceCreateTexture(
             device,
@@ -540,6 +542,8 @@ private class ForwardingHostCallbacks(
                 mipLevelCount = mipLevelCount,
                 sampleCount = sampleCount,
                 dimension = dimension,
+                viewFormats = viewFormats.toList(),
+                label = label.ifEmpty { null },
             ),
         )
 

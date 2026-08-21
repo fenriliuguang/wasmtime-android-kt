@@ -3,8 +3,8 @@
 ;; WIT: create-texture: func(descriptor: gpu-texture-descriptor) -> gpu-texture
 ;; Guest passes size width=1 height=some(1) depth=some(1),
 ;; mip-level-count=some(2), sample-count=some(1), dimension=some(d2),
-;; format=rgba8unorm, usage=render-attachment; view-formats/label none;
-;; drops own; run returns harness 1.
+;; format=rgba8unorm, usage=render-attachment, view-formats=some([rgba8unorm]),
+;; label=some("l2"); drops own; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills args through memory.
 ;; get-device is a test constructor only (not product WIT).
 (component
@@ -95,6 +95,17 @@
       (i32.store8 (i32.const 41) (i32.const 1))
       (i32.store8 (i32.const 42) (i32.const 21))
       (i32.store8 (i32.const 43) (i32.const 16))
+      ;; view-formats option some at 44; list ptr=128 len=1
+      (i32.store8 (i32.const 44) (i32.const 1))
+      (i32.store (i32.const 48) (i32.const 128))
+      (i32.store (i32.const 52) (i32.const 1))
+      (i32.store8 (i32.const 128) (i32.const 21))
+      ;; label option some at 60; ptr=192 len=2 ("l2")
+      (i32.store8 (i32.const 60) (i32.const 1))
+      (i32.store (i32.const 64) (i32.const 192))
+      (i32.store (i32.const 68) (i32.const 2))
+      (i32.store8 (i32.const 192) (i32.const 0x6c))
+      (i32.store8 (i32.const 193) (i32.const 0x32))
       (local.set $texture (call $create-texture (i32.const 0)))
       (call $drop-texture (local.get $texture))
       (i32.const 1)

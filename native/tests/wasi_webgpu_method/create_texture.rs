@@ -1,7 +1,8 @@
 //! S6+: `get-device` + `[method]gpu-device.create-texture`
 //! WIT: `(borrow<gpu-device>, gpu-texture-descriptor) -> own<gpu-texture>`.
 //! Guest passes size 1x1x1, mip=2, sample=1, dimension=d2, rgba8unorm,
-//! render-attachment; drops own; `run` returns harness 1.
+//! render-attachment, view-formats=[rgba8unorm], label="l2"; drops own;
+//! `run` returns harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -369,9 +370,19 @@ fn register_method_create_texture(linker: &mut Linker<TestHost>) -> wasmtime::Re
                 matches!(descriptor.dimension, Some(GpuTextureDimension::D2)),
                 "guest must pass dimension=some(d2)"
             );
-            assert!(descriptor.view_formats.is_none());
+            assert!(
+                matches!(
+                    descriptor.view_formats.as_deref(),
+                    Some([GpuTextureFormat::Rgba8unorm])
+                ),
+                "guest must pass view-formats=some([rgba8unorm])"
+            );
             assert!(descriptor.texture_binding_view_dimension.is_none());
-            assert!(descriptor.label.is_none());
+            assert_eq!(
+                descriptor.label.as_deref(),
+                Some("l2"),
+                "guest must pass label=some(\"l2\")"
+            );
             let resource = caller.data_mut().table.push(GpuTexture { rep: 37 })?;
             Ok((resource,))
         },
