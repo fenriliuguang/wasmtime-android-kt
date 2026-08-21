@@ -1,13 +1,11 @@
-;; S6+: wasi:webgpu/webgpu@0.3.0-rc.2 get-device + get-shader-module +
+;; P3: wasi:webgpu/webgpu@0.3.0-rc.2 get-device + get-shader-module +
 ;; [method]gpu-device.create-render-pipeline
-;; WIT: create-render-pipeline: func(descriptor: gpu-render-pipeline-descriptor)
-;;      -> gpu-render-pipeline
-;; Guest passes shader borrow, vertex entry-point="vs_main", buffers/primitive/depth/ms/fragment none,
+;; Guest passes shader borrow, vertex entry-point="vs_main", one float32x3
+;; vertex buffer (stride=12), fragment target format=rgba8unorm entry="fs_main",
 ;; layout=auto, label="l2"; drops own pipeline; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills through memory.
-;; Spill tuple: device @0, vertex.module @16, vertex entry-point @20, layout disc auto @180,
-;; label @188; strings at 768/784.
-;; L2 described vertex shader/entry + layout + label.
+;; Spill tuple: device @0, vertex.buffers @4, vertex.module @16, vertex entry @20,
+;; fragment option @144, layout disc auto @180, label @188; strings at 768/784/800.
 ;; get-device / get-shader-module are test constructors only (not product WIT).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -182,8 +180,12 @@
 
   (core module $builtins
     (memory (export "mem") 1)
+    (global $heap (mut i32) (i32.const 1024))
     (func (export "realloc") (param i32 i32 i32 i32) (result i32)
-      (i32.const 256)
+      (local $ptr i32)
+      (local.set $ptr (global.get $heap))
+      (global.set $heap (i32.add (global.get $heap) (local.get 3)))
+      (local.get $ptr)
     )
   )
   (core instance $builtins (instantiate $builtins))
@@ -204,18 +206,43 @@
     (import "" "drop-pipeline" (func $drop-pipeline (param i32)))
     (data (i32.const 768) "vs_main")
     (data (i32.const 784) "l2")
+    (data (i32.const 800) "fs_main")
     (func (export "run") (result i32)
       (local $device i32)
       (local $shader i32)
       (local $pipeline i32)
       (local.set $device (call $get-device))
       (local.set $shader (call $get-shader))
-      ;; Spill tuple; zeros = none. vertex.module @16, layout auto disc @180.
+      ;; Spill tuple. vertex.module @16, layout auto disc @180.
       (i32.store (i32.const 0) (local.get $device))
+      ;; vertex.buffers = some([some(vbl)]); list at 256, option<vbl> size 32.
+      (i32.store (i32.const 4) (i32.const 1))
+      (i32.store (i32.const 8) (i32.const 256))
+      (i32.store (i32.const 12) (i32.const 1))
       (i32.store (i32.const 16) (local.get $shader))
       (i32.store (i32.const 20) (i32.const 1))
       (i32.store (i32.const 24) (i32.const 768))
       (i32.store (i32.const 28) (i32.const 7))
+      ;; option<vbl> at 256: some, payload at 264 (stride u64, step none, attrs list).
+      (i32.store (i32.const 256) (i32.const 1))
+      (i64.store (i32.const 264) (i64.const 12))
+      (i32.store (i32.const 276) (i32.const 320))
+      (i32.store (i32.const 280) (i32.const 1))
+      ;; one attribute at 320: float32x3=29, offset=0, location=0 (align 8).
+      (i32.store (i32.const 320) (i32.const 29))
+      (i64.store (i32.const 328) (i64.const 0))
+      (i32.store (i32.const 336) (i32.const 0))
+      ;; fragment option @144: some; payload @148.
+      (i32.store (i32.const 144) (i32.const 1))
+      (i32.store (i32.const 148) (i32.const 400))
+      (i32.store (i32.const 152) (i32.const 1))
+      (i32.store (i32.const 156) (local.get $shader))
+      (i32.store (i32.const 160) (i32.const 1))
+      (i32.store (i32.const 164) (i32.const 800))
+      (i32.store (i32.const 168) (i32.const 7))
+      ;; option<color-target> at 400: some, format rgba8unorm=21 immediately after disc.
+      (i32.store8 (i32.const 400) (i32.const 1))
+      (i32.store8 (i32.const 401) (i32.const 21))
       (i32.store (i32.const 180) (i32.const 1))
       (i32.store (i32.const 188) (i32.const 1))
       (i32.store (i32.const 192) (i32.const 784))

@@ -15,7 +15,10 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.PipelineLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ProgrammableStage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPipelineDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexAttribute
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexBufferLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexState
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuVertexStepMode
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuBufferUsage
@@ -574,6 +577,12 @@ object ExperimentalWebGpuBridge {
                     format: Int,
                     layout: Int,
                     label: String,
+                    vbStrides: IntArray,
+                    vbStepModes: IntArray,
+                    attrBufferIndex: IntArray,
+                    attrFormats: IntArray,
+                    attrOffsets: IntArray,
+                    attrLocations: IntArray,
                 ): Int {
                     val vertexModule =
                         if (vertexShader != 0) {
@@ -599,12 +608,42 @@ object ExperimentalWebGpuBridge {
                             )
                         }
                     val targetFormat = if (format != 0) format else GpuTextureFormat.RGBA8_UNORM
+                    val n = minOf(vbStrides.size, vbStepModes.size)
+                    val buffers = ArrayList<VertexBufferLayout>(n)
+                    for (i in 0 until n) {
+                        val attrs = ArrayList<VertexAttribute>()
+                        val attrN = minOf(
+                            attrBufferIndex.size,
+                            attrFormats.size,
+                            attrOffsets.size,
+                            attrLocations.size,
+                        )
+                        for (j in 0 until attrN) {
+                            if (attrBufferIndex[j] != i) continue
+                            attrs.add(
+                                VertexAttribute(
+                                    format = attrFormats[j],
+                                    offset = attrOffsets[j].toLong(),
+                                    shaderLocation = attrLocations[j],
+                                ),
+                            )
+                        }
+                        val step = if (vbStepModes[i] != 0) vbStepModes[i] else GpuVertexStepMode.VERTEX
+                        buffers.add(
+                            VertexBufferLayout(
+                                arrayStride = vbStrides[i].toLong(),
+                                stepMode = step,
+                                attributes = attrs,
+                            ),
+                        )
+                    }
                     return bindings.deviceCreateRenderPipeline(
                         device,
                         RenderPipelineDescriptor(
                             vertex = VertexState(
                                 module = vertexModule,
                                 entryPoint = vertexEntry.ifEmpty { "vs_main" },
+                                buffers = buffers,
                             ),
                             fragment = FragmentState(
                                 module = fragmentModule,

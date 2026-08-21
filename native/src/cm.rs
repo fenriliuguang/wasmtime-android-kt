@@ -27,7 +27,7 @@ use crate::webgpu_abi::{
     GpuSupportedLimits, GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
     GpuTextureDescriptor,
     GpuTextureDimension, GpuTextureFormat, GpuTextureUsage, GpuTextureViewDescriptor,
-    GpuTextureViewDimension, GpuUncapturedErrorEvent, MapAsyncError, PopErrorScopeError,
+    GpuTextureViewDimension, GpuUncapturedErrorEvent, GpuVertexFormat, GpuVertexStepMode, MapAsyncError, PopErrorScopeError,
     RecordGpuPipelineConstantValue, RecordOptionGpuSize64, RequestDeviceError,
     RequestDeviceErrorKind, SetBindGroupError, UnmapError, WgslLanguageFeatures, WriteBufferError,
 };
@@ -45,6 +45,67 @@ use wasmtime::component::{
 use wasmtime::{Engine, Store, StoreContextMut};
 
 type HostStore = Store<HostState>;
+
+/// P3: pack guest `vertex.buffers` into parallel JNI int arrays (Dawn step/format values).
+fn pack_vertex_buffers(
+    buffers: &Option<Vec<Option<crate::webgpu_abi::GpuVertexBufferLayout>>>,
+) -> (Vec<i32>, Vec<i32>, Vec<i32>, Vec<i32>, Vec<i32>, Vec<i32>) {
+    let mut strides = Vec::new();
+    let mut step_modes = Vec::new();
+    let mut attr_index = Vec::new();
+    let mut attr_formats = Vec::new();
+    let mut attr_offsets = Vec::new();
+    let mut attr_locations = Vec::new();
+    let Some(slots) = buffers else {
+        return (
+            strides,
+            step_modes,
+            attr_index,
+            attr_formats,
+            attr_offsets,
+            attr_locations,
+        );
+    };
+    for slot in slots {
+        let Some(layout) = slot else {
+            continue;
+        };
+        let buf_i = strides.len() as i32;
+        strides.push(layout.array_stride as i32);
+        step_modes.push(match layout.step_mode {
+            Some(GpuVertexStepMode::Instance) => 2,
+            Some(GpuVertexStepMode::Vertex) | None => 1,
+        });
+        for attr in &layout.attributes {
+            attr_index.push(buf_i);
+            attr_formats.push(match attr.format {
+                GpuVertexFormat::Float32x2 => 0x1d,
+                GpuVertexFormat::Float32x3 => 0x1e,
+                GpuVertexFormat::Float32x4 => 0x1f,
+                GpuVertexFormat::Float32 => 0x1c,
+                other => other as i32,
+            });
+            attr_offsets.push(attr.offset as i32);
+            attr_locations.push(attr.shader_location as i32);
+        }
+    }
+    (
+        strides,
+        step_modes,
+        attr_index,
+        attr_formats,
+        attr_offsets,
+        attr_locations,
+    )
+}
+
+fn first_fragment_target_format(fragment: &Option<crate::webgpu_abi::GpuFragmentState>) -> i32 {
+    fragment
+        .as_ref()
+        .and_then(|fs| fs.targets.iter().flatten().next())
+        .map(|target| target.format.to_dawn_u32() as i32)
+        .unwrap_or(0)
+}
 
 /// P3-PRIM-5: collect guest `stream.write` bytes; complete oneshot on drop.
 struct CollectConsumer {
@@ -528,7 +589,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described all entries)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 described BGL handles + label)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 described layout + entries + label)
-    // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 described vertex shader/entry + layout + label)
+    // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 described vertex.buffers + guest color format)
     // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 described shader/entry/layout/label)
     // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 described bytes + size)
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>; L2 described timestamp-write indices)
@@ -4523,6 +4584,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         }
                         GpuLayoutMode::Auto => 0,
                     };
+                    let format = first_fragment_target_format(&descriptor.fragment);
+                    let (
+                        vb_strides,
+                        vb_step_modes,
+                        attr_index,
+                        attr_formats,
+                        attr_offsets,
+                        attr_locations,
+                    ) = pack_vertex_buffers(&descriptor.vertex.buffers);
                     let label = descriptor.label.clone().unwrap_or_default();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
@@ -4546,9 +4616,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         vertex_entry,
                         fragment_shader,
                         fragment_entry,
-                        0,
+                        format,
                         layout_rep,
                         label,
+                        vb_strides,
+                        vb_step_modes,
+                        attr_index,
+                        attr_formats,
+                        attr_offsets,
+                        attr_locations,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if pipeline_rep == 0 {
@@ -4636,8 +4712,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             vertex_entry,
                             fragment_shader,
                             fragment_entry,
+                            format,
                             layout_rep,
                             label,
+                            vb_strides,
+                            vb_step_modes,
+                            attr_index,
+                            attr_formats,
+                            attr_offsets,
+                            attr_locations,
                         ) = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let vertex_shader = access
                                 .data_mut()
@@ -4660,6 +4743,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 }
                                 GpuLayoutMode::Auto => 0,
                             };
+                            let format = first_fragment_target_format(&descriptor.fragment);
+                            let packed = pack_vertex_buffers(&descriptor.vertex.buffers);
                             let label = descriptor.label.clone().unwrap_or_default();
                             let device_rep = access.data_mut().table.get(&device)?.rep;
                             let cb = access
@@ -4677,8 +4762,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 vertex_entry,
                                 fragment_shader,
                                 fragment_entry,
+                                format,
                                 layout_rep,
                                 label,
+                                packed.0,
+                                packed.1,
+                                packed.2,
+                                packed.3,
+                                packed.4,
+                                packed.5,
                             ))
                         })?;
                         let (tx, rx) = oneshot::channel::<()>();
@@ -4701,9 +4793,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             vertex_entry,
                             fragment_shader,
                             fragment_entry,
-                            0,
+                            format,
                             layout_rep,
                             label,
+                            vb_strides,
+                            vb_step_modes,
+                            attr_index,
+                            attr_formats,
+                            attr_offsets,
+                            attr_locations,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if pipeline_rep == 0 {

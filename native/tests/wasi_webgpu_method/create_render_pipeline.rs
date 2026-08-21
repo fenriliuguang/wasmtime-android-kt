@@ -1,6 +1,7 @@
 //! L2: `get-device` + `get-shader-module` + `[method]gpu-device.create-render-pipeline`
 //! WIT: `(borrow<gpu-device>, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>`.
-//! Guest passes shader borrow, vertex entry-point="vs_main", layout=auto, label="l2"; drops own; `run` returns harness 1.
+//! Guest passes shader borrow, vertex entry-point="vs_main", one float32x3 buffer,
+//! fragment target format=rgba8unorm, layout=auto, label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -761,13 +762,40 @@ fn register_method_create_render_pipeline(linker: &mut Linker<TestHost>) -> wasm
                 .get(&descriptor.vertex.module)
                 .map(|_| ())?;
             assert!(matches!(descriptor.layout, GpuLayoutMode::Auto));
-            assert!(descriptor.vertex.buffers.is_none());
+            let buffers = descriptor
+                .vertex
+                .buffers
+                .as_ref()
+                .expect("guest must pass vertex.buffers");
+            assert_eq!(buffers.len(), 1, "guest must pass one vertex buffer slot");
+            let layout = buffers[0]
+                .as_ref()
+                .expect("guest must pass a vertex buffer layout");
+            assert_eq!(layout.array_stride, 12);
+            assert_eq!(layout.attributes.len(), 1);
+            assert!(
+                matches!(layout.attributes[0].format, GpuVertexFormat::Float32x3),
+                "guest must pass float32x3 attribute"
+            );
+            assert_eq!(layout.attributes[0].shader_location, 0);
             assert_eq!(descriptor.vertex.entry_point.as_deref(), Some("vs_main"));
             assert!(descriptor.vertex.constants.is_none());
             assert!(descriptor.primitive.is_none());
             assert!(descriptor.depth_stencil.is_none());
             assert!(descriptor.multisample.is_none());
-            assert!(descriptor.fragment.is_none());
+            let fragment = descriptor
+                .fragment
+                .as_ref()
+                .expect("guest must pass fragment");
+            assert_eq!(fragment.targets.len(), 1);
+            assert!(
+                matches!(
+                    fragment.targets[0].as_ref().map(|t| t.format),
+                    Some(GpuTextureFormat::Rgba8unorm)
+                ),
+                "guest must pass fragment target format=rgba8unorm"
+            );
+            assert_eq!(fragment.entry_point.as_deref(), Some("fs_main"));
             assert_eq!(descriptor.label.as_deref(), Some("l2"));
             let resource = caller
                 .data_mut()
