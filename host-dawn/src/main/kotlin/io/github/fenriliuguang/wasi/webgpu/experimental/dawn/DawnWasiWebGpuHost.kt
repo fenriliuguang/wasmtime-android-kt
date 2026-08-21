@@ -68,6 +68,7 @@ import androidx.webgpu.GPUSamplerDescriptor
 import androidx.webgpu.GPUShaderModule
 import androidx.webgpu.GPUShaderModuleDescriptor
 import androidx.webgpu.GPUShaderSourceWGSL
+import androidx.webgpu.GPUStencilFaceState
 import androidx.webgpu.GPUSurface
 import androidx.webgpu.GPUSurfaceConfiguration
 import androidx.webgpu.GPUSurfaceDescriptor
@@ -981,6 +982,27 @@ class DawnWasiWebGpuHost private constructor(
                         OptionalBool.False
                     },
                     depthCompare = ds.depthCompare,
+                    stencilFront = ds.stencilFront?.let { face ->
+                        GPUStencilFaceState(
+                            compare = face.compare,
+                            failOp = face.failOp,
+                            depthFailOp = face.depthFailOp,
+                            passOp = face.passOp,
+                        )
+                    },
+                    stencilBack = ds.stencilBack?.let { face ->
+                        GPUStencilFaceState(
+                            compare = face.compare,
+                            failOp = face.failOp,
+                            depthFailOp = face.depthFailOp,
+                            passOp = face.passOp,
+                        )
+                    },
+                    stencilReadMask = ds.stencilReadMask ?: -1,
+                    stencilWriteMask = ds.stencilWriteMask ?: -1,
+                    depthBias = ds.depthBias ?: 0,
+                    depthBiasSlopeScale = ds.depthBiasSlopeScale ?: 0f,
+                    depthBiasClamp = ds.depthBiasClamp ?: 0f,
                 )
             }
             val pipeline = gpuDevice.createRenderPipeline(

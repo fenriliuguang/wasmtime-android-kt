@@ -74,6 +74,8 @@ object GpuTextureFormat {
     const val RGBA8_UNORM: Int = 0x00000016
     /** `androidx.webgpu.TextureFormat.Depth24Plus` */
     const val DEPTH24_PLUS: Int = 0x0000002e
+    /** `androidx.webgpu.TextureFormat.Depth24PlusStencil8` */
+    const val DEPTH24_PLUS_STENCIL8: Int = 0x0000002f
 }
 
 /**
@@ -278,6 +280,19 @@ object GpuCompareFunction {
     const val NOT_EQUAL: Int = 0x00000006
     const val GREATER_EQUAL: Int = 0x00000007
     const val ALWAYS: Int = 0x00000008
+}
+
+/** Dawn StencilOperation pass-through (`androidx.webgpu.StencilOperation`). */
+object GpuStencilOperation {
+    const val UNDEFINED: Int = 0x00000000
+    const val KEEP: Int = 0x00000001
+    const val ZERO: Int = 0x00000002
+    const val REPLACE: Int = 0x00000003
+    const val INVERT: Int = 0x00000004
+    const val INCREMENT_CLAMP: Int = 0x00000005
+    const val DECREMENT_CLAMP: Int = 0x00000006
+    const val INCREMENT_WRAP: Int = 0x00000007
+    const val DECREMENT_WRAP: Int = 0x00000008
 }
 
 /**
@@ -527,11 +542,25 @@ data class MultisampleState(
     val alphaToCoverageEnabled: Boolean = false,
 )
 
+data class StencilFaceState(
+    val compare: Int = GpuCompareFunction.UNDEFINED,
+    val failOp: Int = GpuStencilOperation.UNDEFINED,
+    val depthFailOp: Int = GpuStencilOperation.UNDEFINED,
+    val passOp: Int = GpuStencilOperation.UNDEFINED,
+)
+
 data class DepthStencilState(
     val format: Int,
     val depthWriteEnabled: Boolean = true,
     /** Dawn CompareFunction pass-through ([GpuCompareFunction]). */
     val depthCompare: Int = GpuCompareFunction.LESS,
+    val stencilFront: StencilFaceState? = null,
+    val stencilBack: StencilFaceState? = null,
+    val stencilReadMask: Int? = null,
+    val stencilWriteMask: Int? = null,
+    val depthBias: Int? = null,
+    val depthBiasSlopeScale: Float? = null,
+    val depthBiasClamp: Float? = null,
 )
 
 data class RenderPipelineDescriptor(
@@ -591,6 +620,42 @@ fun writeMaskFromDescribed(writeMasks: IntArray, targetIndex: Int = 0): Int? {
     if (writeMasks.size <= targetIndex) return null
     val packed = writeMasks[targetIndex]
     return if (packed < 0) null else packed
+}
+
+/** Empty / format-0 = absent depth-stencil. */
+fun depthStencilStateFromDescribed(packed: IntArray): DepthStencilState? {
+    if (packed.isEmpty() || packed[0] == 0) return null
+    fun face(hasIndex: Int, base: Int): StencilFaceState? {
+        if (packed.getOrElse(hasIndex) { 0 } == 0) return null
+        return StencilFaceState(
+            compare = packed.getOrElse(base) { 0 },
+            failOp = packed.getOrElse(base + 1) { 0 },
+            depthFailOp = packed.getOrElse(base + 2) { 0 },
+            passOp = packed.getOrElse(base + 3) { 0 },
+        )
+    }
+    fun flaggedInt(hasIndex: Int, valueIndex: Int): Int? =
+        if (packed.getOrElse(hasIndex) { 0 } != 0) packed.getOrElse(valueIndex) { 0 } else null
+    fun flaggedFloat(hasIndex: Int, valueIndex: Int): Float? =
+        if (packed.getOrElse(hasIndex) { 0 } != 0) {
+            Float.fromBits(packed.getOrElse(valueIndex) { 0 })
+        } else {
+            null
+        }
+    val write = packed.getOrElse(1) { -1 }
+    val compare = packed.getOrElse(2) { 0 }
+    return DepthStencilState(
+        format = packed[0],
+        depthWriteEnabled = write != 0,
+        depthCompare = if (compare != 0) compare else GpuCompareFunction.LESS,
+        stencilFront = face(3, 4),
+        stencilBack = face(8, 9),
+        stencilReadMask = flaggedInt(13, 14),
+        stencilWriteMask = flaggedInt(15, 16),
+        depthBias = flaggedInt(17, 18),
+        depthBiasSlopeScale = flaggedFloat(19, 20),
+        depthBiasClamp = flaggedFloat(21, 22),
+    )
 }
 
 data class RenderPassColorAttachment(
