@@ -230,6 +230,12 @@ class DawnWasiWebGpuHost private constructor(
         val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
         val gpuDescriptor = GPUDeviceDescriptor(
             label = descriptor.label,
+            requiredFeatures = if (descriptor.requiredFeatures.isEmpty()) {
+                intArrayOf()
+            } else {
+                // androidx FeatureName is 1-based; WIT gpu-feature-name is 0-based.
+                descriptor.requiredFeatures.map { it + 1 }.toIntArray()
+            },
             requiredLimits = dawnRequiredLimits(descriptor.requiredLimits),
             deviceLostCallbackExecutor = callbackExecutor,
             uncapturedErrorCallbackExecutor = callbackExecutor,

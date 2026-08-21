@@ -1,7 +1,8 @@
 ;; S3: wasi:webgpu/webgpu@0.3.0-rc.2 get-adapter + [method]gpu-adapter.request-device
 ;; WIT: request-device: async func(descriptor: option<gpu-device-descriptor>)
 ;;      -> result<gpu-device, request-device-error>
-;; Guest passes descriptor=some(default-queue.label="l2"); other fields none;
+;; Guest passes descriptor=some(required-features=[core-features-and-limits,
+;; depth-clip-control], default-queue.label="l2"); other fields none;
 ;; drops own device on ok; run returns harness 1.
 ;; Instance type shape matches `wasm-tools component wit --importize-world`.
 (component
@@ -70,6 +71,7 @@
         (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)))
     (import "" "drop-device" (func $drop-device (param i32)))
     (data (i32.const 48) "l2")
+    (data (i32.const 80) "\00\01")
     (func (export "run") (result i32)
       (local $adapter i32)
       (local $retptr i32)
@@ -80,7 +82,7 @@
       (call $request-device
         (local.get $adapter)
         (i32.const 1)
-        (i32.const 0) (i32.const 0) (i32.const 0)
+        (i32.const 1) (i32.const 80) (i32.const 2)
         (i32.const 0) (i32.const 0)
         (i32.const 1) (i32.const 1) (i32.const 48) (i32.const 2)
         (i32.const 0) (i32.const 0) (i32.const 0)

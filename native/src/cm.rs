@@ -1945,25 +1945,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         let (
                             cb,
                             adapter_rep,
-                            has_feature,
-                            feature,
+                            required_features,
                             required_limits,
                             label,
                             default_queue_label,
                         ) = accessor.with(|mut access| {
                             let adapter_rep = access.data_mut().table.get(&adapter)?.rep;
-                            let (has_feature, feature, required_limits, label, default_queue_label) =
+                            let (required_features, required_limits, label, default_queue_label) =
                                 match descriptor.as_ref() {
-                                    None => (0u32, 0u32, 0i32, String::new(), String::new()),
+                                    None => (Vec::new(), 0i32, String::new(), String::new()),
                                     Some(d) => {
-                                        let (has_feature, feature) = match d
+                                        let required_features = d
                                             .required_features
                                             .as_ref()
-                                            .and_then(|v| v.first())
-                                        {
-                                            Some(f) => (1u32, *f as u8 as u32),
-                                            None => (0u32, 0u32),
-                                        };
+                                            .map(|v| {
+                                                v.iter().map(|f| *f as u8 as i32).collect()
+                                            })
+                                            .unwrap_or_default();
                                         let required_limits = d
                                             .required_limits
                                             .as_ref()
@@ -1976,8 +1974,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                             .and_then(|q| q.label.clone())
                                             .unwrap_or_default();
                                         (
-                                            has_feature,
-                                            feature,
+                                            required_features,
                                             required_limits,
                                             label,
                                             default_queue_label,
@@ -1995,8 +1992,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             Ok::<_, wasmtime::Error>((
                                 cb,
                                 adapter_rep,
-                                has_feature,
-                                feature,
+                                required_features,
                                 required_limits,
                                 label,
                                 default_queue_label,
@@ -2015,8 +2011,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         let device_rep = jvm::exp_adapter_request_device_described(
                             &cb,
                             l2_adapter,
-                            has_feature,
-                            feature,
+                            required_features,
                             required_limits,
                             label,
                             default_queue_label,

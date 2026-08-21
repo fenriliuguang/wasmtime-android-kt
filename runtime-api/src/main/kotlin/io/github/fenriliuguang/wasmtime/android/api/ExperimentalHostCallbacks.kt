@@ -27,14 +27,13 @@ interface ExperimentalHostCallbacks {
 
     /**
      * L2: Guest `[method]gpu-adapter.request-device`.
-     * `hasFeature == 0` → no required-features (none / empty).
+     * `requiredFeatures` empty = none (WIT ordinals).
      * `requiredLimits` 0 = none; `label` empty = none.
      * `defaultQueueLabel` empty = default-queue none / queue label none.
      */
     fun adapterRequestDeviceDescribed(
         adapter: Int,
-        hasFeature: Int,
-        feature: Int,
+        requiredFeatures: IntArray,
         requiredLimits: Int,
         label: String,
         defaultQueueLabel: String,

@@ -233,8 +233,9 @@ data class RequestAdapterOptions(
     val xrCompatible: Boolean? = null,
 )
 
-/** Guest `gpu-device-descriptor` leftover fields (required-limits map + labels). */
+/** Guest `gpu-device-descriptor` leftover fields (features + required-limits map + labels). */
 data class DeviceDescriptor(
+    val requiredFeatures: List<Int> = emptyList(),
     val requiredLimits: Map<String, Long?> = emptyMap(),
     val label: String? = null,
     val defaultQueueLabel: String? = null,
