@@ -93,5 +93,6 @@ Full rules: [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md).
 - [`scheme/long-term-plan.md`](scheme/long-term-plan.md)  
 - [`build.md`](build.md)  
 - [`mapping/artifacts.md`](mapping/artifacts.md)  
-- [`agent/webgpu-guest-pipeline.md`](agent/webgpu-guest-pipeline.md) — guest compute/3D pipeline marshalling (bind groups, vertex layouts, depth)
+- [`agent/webgpu-guest-semantics.md`](agent/webgpu-guest-semantics.md) — leftover optional descriptor fields + Dawn consume
+- [`agent/webgpu-guest-pipeline.md`](agent/webgpu-guest-pipeline.md) — closed guest compute/3D pipeline marshalling (P1–P5)
 - [`../archive/README.md`](archive/README.md) — historical M0–M5  

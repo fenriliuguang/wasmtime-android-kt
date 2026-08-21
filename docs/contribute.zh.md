@@ -13,4 +13,4 @@ Android 主路径：
 
 GPU 仪器走仓内 `:host-dawn` + `androidx.webgpu`，见 [`blocked-gpu-host.md`](blocked-gpu-host.md)。Dawn `.so` 不进 git。
 
-禁止引入 wasmtime4j 作为运行时。用户可见变更只写 `changelog/unreleased/` 碎片。Guest 管线编组见 [`agent/webgpu-guest-pipeline.md`](agent/webgpu-guest-pipeline.md)。
+禁止引入 wasmtime4j 作为运行时。用户可见变更只写 `changelog/unreleased/` 碎片。剩余 descriptor 语义见 [`agent/webgpu-guest-semantics.md`](agent/webgpu-guest-semantics.md)。

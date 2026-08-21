@@ -68,6 +68,8 @@ def main() -> None:
         if got == sig:
             leftover.append((lane_id, title, method, sig))
 
+    print("Playbook closed: docs/agent/webgpu-guest-pipeline.md")
+    print("Use: python ./scripts/webgpu-guest-semantics-remaining.py")
     print("Playbook: docs/agent/webgpu-guest-pipeline.md")
     if leftover:
         lane_id, title, method, _ = leftover[0]
