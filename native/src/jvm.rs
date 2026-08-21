@@ -162,22 +162,47 @@ fn call_with_host_args<'a>(
             }
         })
         .collect();
-    env.call_method(cb, name, sig, &jargs)
-        .map_err(|e| format!("host {name}: {e}"))
+    match env.call_method(cb, name, sig, &jargs) {
+        Ok(v) => {
+            check_exception(env)?;
+            Ok(v)
+        }
+        Err(e) => {
+            // jni-rs leaves a JavaException pending; a later FindClass (Drop /
+            // throw_new) aborts ART ("JNI FindClass called with pending exception").
+            if env.exception_check().unwrap_or(false) {
+                let _ = env.exception_describe();
+                let _ = env.exception_clear();
+                return Err(format!("host {name} threw"));
+            }
+            Err(format!("host {name}: {e}"))
+        }
+    }
 }
 
 pub fn call_u32_u32_to_u32(cb: &GlobalRef, a: u32, b: u32) -> Result<u32, String> {
     let cb = cb.clone();
     with_env(move |env| {
-        let result = env
-            .call_method(
-                cb.as_obj(),
-                "invoke",
-                "(II)I",
-                &[JValue::Int(a as i32), JValue::Int(b as i32)],
-            )
-            .map_err(|e| format!("host invoke: {e}"))?;
-        check_exception(env)?;
+        let result = env.call_method(
+            cb.as_obj(),
+            "invoke",
+            "(II)I",
+            &[JValue::Int(a as i32), JValue::Int(b as i32)],
+        );
+        let result = match result {
+            Ok(v) => {
+                check_exception(env)?;
+                v
+            }
+            Err(e) => {
+                if env.exception_check().unwrap_or(false) {
+                    let _ = env.exception_describe();
+                    let _ = env.exception_clear();
+                    return Err("host invoke threw".into());
+                }
+                return Err(format!("host invoke: {e}"));
+            }
+        };
         result
             .i()
             .map(|v| v as u32)

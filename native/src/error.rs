@@ -31,6 +31,12 @@ impl Kind {
 
 pub fn throw_kind(env: &mut JNIEnv, kind: Kind, msg: impl AsRef<str>) {
     let msg = msg.as_ref();
+    // ART aborts if FindClass runs with a pending Java exception (host callback
+    // threw, jni-rs left it pending). Clear first, then throw our typed error.
+    if env.exception_check().unwrap_or(false) {
+        let _ = env.exception_describe();
+        let _ = env.exception_clear();
+    }
     if let Err(e) = env.throw_new(kind.class(), msg) {
         eprintln!("failed to throw {:?}: {msg}: {e}", kind.class());
     }
