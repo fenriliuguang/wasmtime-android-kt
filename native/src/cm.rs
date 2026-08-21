@@ -1942,12 +1942,19 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     Option<GpuDeviceDescriptor>,
                 )| {
                     Box::pin(async move {
-                        let (cb, adapter_rep, has_feature, feature, required_limits, label) =
-                            accessor.with(|mut access| {
+                        let (
+                            cb,
+                            adapter_rep,
+                            has_feature,
+                            feature,
+                            required_limits,
+                            label,
+                            default_queue_label,
+                        ) = accessor.with(|mut access| {
                             let adapter_rep = access.data_mut().table.get(&adapter)?.rep;
-                            let (has_feature, feature, required_limits, label) =
+                            let (has_feature, feature, required_limits, label, default_queue_label) =
                                 match descriptor.as_ref() {
-                                    None => (0u32, 0u32, 0i32, String::new()),
+                                    None => (0u32, 0u32, 0i32, String::new(), String::new()),
                                     Some(d) => {
                                         let (has_feature, feature) = match d
                                             .required_features
@@ -1963,7 +1970,18 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                             .map(|r| r.rep() as i32)
                                             .unwrap_or(0);
                                         let label = d.label.clone().unwrap_or_default();
-                                        (has_feature, feature, required_limits, label)
+                                        let default_queue_label = d
+                                            .default_queue
+                                            .as_ref()
+                                            .and_then(|q| q.label.clone())
+                                            .unwrap_or_default();
+                                        (
+                                            has_feature,
+                                            feature,
+                                            required_limits,
+                                            label,
+                                            default_queue_label,
+                                        )
                                     }
                                 };
                             let cb = access
@@ -1981,6 +1999,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 feature,
                                 required_limits,
                                 label,
+                                default_queue_label,
                             ))
                         })?;
                         let (tx, rx) = oneshot::channel::<()>();
@@ -2000,6 +2019,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             feature,
                             required_limits,
                             label,
+                            default_queue_label,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if device_rep == 0 {

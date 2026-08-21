@@ -1,7 +1,7 @@
 //! L2: `get-adapter` + `[method]gpu-adapter.request-device`
 //! WIT: async (borrow<gpu-adapter>, option<gpu-device-descriptor>)
 //!      -> result<own<gpu-device>, request-device-error>
-//! Guest passes none (limits/label unused); drops own device on ok; harness 1.
+//! Guest passes some(default-queue.label="l2"); drops own device on ok; harness 1.
 
 use futures::channel::oneshot;
 use wasmtime::component::{
@@ -152,10 +152,15 @@ fn register_method_request_device(linker: &mut Linker<TestHost>) -> wasmtime::Re
         |accessor, (adapter, descriptor): (Resource<GpuAdapter>, Option<GpuDeviceDescriptor>)| {
             Box::pin(async move {
                 accessor.with(|mut access| access.data_mut().table.get(&adapter).map(|_| ()))?;
-                assert!(
-                    descriptor.is_none(),
-                    "guest must pass descriptor=none this cut"
+                let desc = descriptor.expect("guest must pass descriptor=some this cut");
+                assert!(desc.required_features.is_none());
+                assert!(desc.required_limits.is_none());
+                assert_eq!(
+                    desc.default_queue.as_ref().and_then(|q| q.label.as_deref()),
+                    Some("l2"),
+                    "guest must pass default-queue.label=some(l2)"
                 );
+                assert!(desc.label.is_none());
                 let (tx, rx) = oneshot::channel::<()>();
                 std::thread::spawn(move || {
                     let _ = tx.send(());

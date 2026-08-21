@@ -29,6 +29,7 @@ interface ExperimentalHostCallbacks {
      * L2: Guest `[method]gpu-adapter.request-device`.
      * `hasFeature == 0` → no required-features (none / empty).
      * `requiredLimits` 0 = none; `label` empty = none.
+     * `defaultQueueLabel` empty = default-queue none / queue label none.
      */
     fun adapterRequestDeviceDescribed(
         adapter: Int,
@@ -36,6 +37,7 @@ interface ExperimentalHostCallbacks {
         feature: Int,
         requiredLimits: Int,
         label: String,
+        defaultQueueLabel: String,
     ): Int = unsupported("adapterRequestDeviceDescribed")
 
     fun deviceGetQueue(device: Int): Int = unsupported("deviceGetQueue")

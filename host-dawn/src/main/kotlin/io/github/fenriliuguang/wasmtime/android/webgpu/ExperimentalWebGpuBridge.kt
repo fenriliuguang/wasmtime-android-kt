@@ -92,7 +92,8 @@ object ExperimentalWebGpuBridge {
      * L2 `[method]gpu-adapter.request-device` shares this attach:
      * `get-adapter` is host-only (no Kotlin); the method then calls L2
      * `requestAdapter` (when adapter.rep is 0) + `adapterRequestDeviceDescribed`
-     * (optional first required-feature + required-limits record rep + label), and
+     * (optional first required-feature + required-limits record rep + label +
+     * default-queue label), and
      * returns `result<own<gpu-device>, request-device-error>`.
      */
     fun attachRequestDevice(store: Store, host: WasiWebGpuHost) {
@@ -119,12 +120,14 @@ object ExperimentalWebGpuBridge {
                     feature: Int,
                     requiredLimits: Int,
                     label: String,
+                    defaultQueueLabel: String,
                 ): Int =
                     bindings.adapterRequestDevice(
                         adapter,
                         DeviceDescriptor(
                             requiredLimits = bindings.recordOptionGpuSize64Snapshot(requiredLimits),
                             label = label.ifEmpty { null },
+                            defaultQueueLabel = defaultQueueLabel.ifEmpty { null },
                         ),
                     )
             },
@@ -3768,6 +3771,7 @@ object ExperimentalWebGpuBridge {
                     feature: Int,
                     requiredLimits: Int,
                     label: String,
+                    defaultQueueLabel: String,
                 ): Int = cachedDevice(adapter)
 
                 override fun deviceCreateBufferDescribed(
@@ -3883,6 +3887,7 @@ object ExperimentalWebGpuBridge {
                     feature: Int,
                     requiredLimits: Int,
                     label: String,
+                    defaultQueueLabel: String,
                 ): Int = cachedDevice(adapter)
 
                 override fun deviceCreateBufferDescribed(
