@@ -647,19 +647,28 @@ class DawnWasiWebGpuHost private constructor(
     ): GpuHandle {
         val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
         val module = handles.get<GPUShaderModule>(descriptor.compute.module, ResourceKind.ShaderModule)
-        val layoutHandle = descriptor.layout
-            ?: throw HostException.Unsupported("auto pipeline layout; pass an explicit pipeline-layout handle")
-        val pipelineLayout = handles.get<GPUPipelineLayout>(layoutHandle, ResourceKind.PipelineLayout)
+        val pipelineLayout = descriptor.layout?.let { layoutHandle ->
+            handles.get<GPUPipelineLayout>(layoutHandle, ResourceKind.PipelineLayout)
+        }
+        val compute = GPUComputeState(
+            module = module,
+            entryPoint = descriptor.compute.entryPoint ?: "main",
+            constants = dawnPipelineConstants(descriptor.compute.constants),
+        )
+        // WIT layout: auto → omit GPUPipelineLayout (androidx 2-arg ctor; Dawn auto).
         val pipeline = gpuDevice.createComputePipeline(
-            GPUComputePipelineDescriptor(
-                layout = pipelineLayout,
-                compute = GPUComputeState(
-                    module = module,
-                    entryPoint = descriptor.compute.entryPoint ?: "main",
-                    constants = dawnPipelineConstants(descriptor.compute.constants),
-                ),
-                label = descriptor.label,
-            ),
+            if (pipelineLayout != null) {
+                GPUComputePipelineDescriptor(
+                    layout = pipelineLayout,
+                    compute = compute,
+                    label = descriptor.label,
+                )
+            } else {
+                GPUComputePipelineDescriptor(
+                    compute = compute,
+                    label = descriptor.label,
+                )
+            },
         )
         return handles.insert(ResourceKind.ComputePipeline, pipeline)
     }

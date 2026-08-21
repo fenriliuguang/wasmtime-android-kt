@@ -337,9 +337,9 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         descriptor: ComputePipelineDescriptor,
     ): GpuHandle {
         handles.get<Device>(device, ResourceKind.Device)
-        val layout = descriptor.layout
-            ?: throw HostException.Unsupported("auto pipeline layout; pass an explicit pipeline-layout handle")
-        handles.get<PipelineLayout>(layout, ResourceKind.PipelineLayout)
+        descriptor.layout?.let { layout ->
+            handles.get<PipelineLayout>(layout, ResourceKind.PipelineLayout)
+        }
         val shader = handles.get<ShaderModule>(descriptor.compute.module, ResourceKind.ShaderModule)
         return handles.insert(ResourceKind.ComputePipeline, ComputePipeline(shader))
     }
