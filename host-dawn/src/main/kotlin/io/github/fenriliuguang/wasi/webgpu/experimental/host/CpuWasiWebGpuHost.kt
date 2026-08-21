@@ -837,6 +837,32 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         )
     }
 
+    override fun canvasContextHasConfiguration(context: Int): Int {
+        if (context == 0) return 0
+        val state = handles.get<CanvasContext>(GpuHandle(context), ResourceKind.CanvasContext)
+        return if (state.configured) 1 else 0
+    }
+
+    override fun canvasContextConfigurationDevice(context: Int): Int =
+        configuredCanvas(context).device
+
+    override fun canvasContextConfigurationFormat(context: Int): Int =
+        configuredCanvas(context).format
+
+    override fun canvasContextConfigurationUsage(context: Int): Int =
+        configuredCanvas(context).usage
+
+    private fun configuredCanvas(context: Int): CanvasContext {
+        if (context == 0) {
+            throw HostException.Validation("canvas context not configured")
+        }
+        val state = handles.get<CanvasContext>(GpuHandle(context), ResourceKind.CanvasContext)
+        if (!state.configured) {
+            throw HostException.Validation("canvas context not configured")
+        }
+        return state
+    }
+
     /** Test / diagnostics: live handle-table size. */
     fun handleCount(): Int = handles.size()
 

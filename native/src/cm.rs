@@ -2396,8 +2396,49 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]gpu-canvas-context.get-configuration",
                 |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
-                    let _ = caller.data_mut().table.get(&ctx)?;
-                    Ok((Option::<GpuCanvasConfigurationOwned>::None,))
+                    let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| {
+                            wasmtime::Error::msg("experimental host callback not set")
+                        })
+                        .cloned()?;
+                    let has = jvm::exp_canvas_context_has_configuration_described(&cb, ctx_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                    if has == 0 {
+                        return Ok((Option::<GpuCanvasConfigurationOwned>::None,));
+                    }
+                    let device_rep =
+                        jvm::exp_canvas_context_configuration_device_described(&cb, ctx_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                    let format =
+                        jvm::exp_canvas_context_configuration_format_described(&cb, ctx_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                    let usage =
+                        jvm::exp_canvas_context_configuration_usage_described(&cb, ctx_rep)
+                            .map_err(wasmtime::Error::msg)?;
+                    let device = caller
+                        .data_mut()
+                        .table
+                        .push(GpuDevice { rep: device_rep })?;
+                    let usage_opt = if usage == 0 {
+                        None
+                    } else {
+                        Some(GpuTextureUsage::from_webgpu_u32(usage))
+                    };
+                    Ok((
+                        Some(GpuCanvasConfigurationOwned {
+                            device,
+                            format: GpuTextureFormat::from_dawn_u32(format),
+                            usage: usage_opt,
+                            view_formats: None,
+                            color_space: None,
+                            tone_mapping: None,
+                            alpha_mode: None,
+                        }),
+                    ))
                 },
             )
             .map_err(|e| e.to_string())?;
