@@ -73,7 +73,12 @@ class AbiCmHostBindings(
 
     fun requestAdapter(): Int = host.requestAdapter().raw
 
-    fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int, featureLevel: String): Int {
+    fun requestAdapterDescribed(
+        powerPreference: Int,
+        forceFallback: Int,
+        featureLevel: String,
+        xrCompatible: Int = -1,
+    ): Int {
         val options = RequestAdapterOptions(
             powerPreference = when (powerPreference) {
                 1 -> PowerPreference.LowPower
@@ -82,6 +87,11 @@ class AbiCmHostBindings(
             },
             forceFallbackAdapter = forceFallback != 0,
             featureLevel = featureLevel.ifEmpty { null },
+            xrCompatible = when (xrCompatible) {
+                0 -> false
+                1 -> true
+                else -> null
+            },
         )
         return host.requestAdapter(options).raw
     }

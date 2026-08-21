@@ -230,6 +230,7 @@ data class RequestAdapterOptions(
     val powerPreference: PowerPreference = PowerPreference.Undefined,
     val forceFallbackAdapter: Boolean = false,
     val featureLevel: String? = null,
+    val xrCompatible: Boolean? = null,
 )
 
 /** Guest `gpu-device-descriptor` leftover fields (required-limits map + label). */

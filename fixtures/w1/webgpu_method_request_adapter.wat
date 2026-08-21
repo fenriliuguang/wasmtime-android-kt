@@ -1,7 +1,8 @@
 ;; S2: wasi:webgpu/webgpu@0.3.0-rc.2 get-gpu + [method]gpu.request-adapter
 ;; WIT: request-adapter: async func(options: option<gpu-request-adapter-options>)
 ;;      -> option<gpu-adapter>
-;; Guest passes options=none; drops own adapter; run returns harness 1.
+;; Guest passes options=some(xr-compatible=true); other fields none;
+;; drops own adapter; run returns harness 1.
 ;; Instance type shape matches `wasm-tools component wit --importize-world`.
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -67,11 +68,11 @@
       (local.set $gpu (call $get-gpu))
       (call $request-adapter
         (local.get $gpu)
-        (i32.const 0)
+        (i32.const 1)
         (i32.const 0) (i32.const 0) (i32.const 0)
         (i32.const 0) (i32.const 0)
         (i32.const 0) (i32.const 0)
-        (i32.const 0) (i32.const 0)
+        (i32.const 1) (i32.const 1)
         (local.get $retptr))
       (local.set $tag (i32.load (local.get $retptr)))
       (local.set $handle (i32.load offset=4 (local.get $retptr)))

@@ -70,7 +70,8 @@ private class ForwardingHostCallbacks(
         powerPreference: Int,
         forceFallback: Int,
         featureLevel: String,
-    ): Int = bindings.requestAdapterDescribed(powerPreference, forceFallback, featureLevel)
+        xrCompatible: Int,
+    ): Int = bindings.requestAdapterDescribed(powerPreference, forceFallback, featureLevel, xrCompatible)
 
     override fun recordPipelineConstantValueAddDescribed(
         handle: Int,
