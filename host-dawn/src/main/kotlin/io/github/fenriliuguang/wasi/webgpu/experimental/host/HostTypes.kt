@@ -68,6 +68,8 @@ object GpuTextureDimension {
  * Values match `androidx.webgpu` 1.0.0-alpha05.
  */
 object GpuTextureFormat {
+    /** Dawn `TextureFormat.Undefined`. */
+    const val UNDEFINED: Int = 0x00000000
     /** `androidx.webgpu.TextureFormat.RGBA8Unorm` (alpha05 = 0x16; older 0x12 was wrong). */
     const val RGBA8_UNORM: Int = 0x00000016
     /** `androidx.webgpu.TextureFormat.Depth24Plus` */
@@ -90,6 +92,16 @@ object GpuAddressMode {
  * Undefined=0 lets Dawn apply Nearest.
  */
 object GpuFilterMode {
+    const val UNDEFINED: Int = 0x00000000
+    const val NEAREST: Int = 0x00000001
+    const val LINEAR: Int = 0x00000002
+}
+
+/**
+ * Dawn MipmapFilterMode pass-through (`androidx.webgpu.MipmapFilterMode`).
+ * Undefined=0 lets Dawn apply Nearest.
+ */
+object GpuMipmapFilterMode {
     const val UNDEFINED: Int = 0x00000000
     const val NEAREST: Int = 0x00000001
     const val LINEAR: Int = 0x00000002
@@ -137,12 +149,18 @@ data class TextureDescriptor(
     val label: String? = null,
 )
 
-/** Sampler descriptor; Dawn ints (0 = Undefined → host default). */
+/** Sampler descriptor; Dawn ints (0 = Undefined → host default). Lod defaults match WebGPU. */
 data class SamplerDescriptor(
     val label: String? = null,
     val magFilter: Int = GpuFilterMode.UNDEFINED,
     val minFilter: Int = GpuFilterMode.UNDEFINED,
     val addressModeU: Int = GpuAddressMode.UNDEFINED,
+    val addressModeV: Int = GpuAddressMode.UNDEFINED,
+    val addressModeW: Int = GpuAddressMode.UNDEFINED,
+    val mipmapFilter: Int = GpuMipmapFilterMode.UNDEFINED,
+    val lodMinClamp: Float = 0f,
+    val lodMaxClamp: Float = 32f,
+    val compare: Int = GpuCompareFunction.UNDEFINED,
 )
 
 /**
@@ -180,10 +198,16 @@ object GpuDawnTextureViewDimension {
     const val D3: Int = 0x00000006
 }
 
-/** Texture-view descriptor; Dawn ints (0 = Undefined → host default). */
+/** Texture-view descriptor; Dawn ints (0 = Undefined → host default).
+ * `mipLevelCount` / `arrayLayerCount` `-1` = Dawn UNDEFINED (all remaining). */
 data class TextureViewDescriptor(
     val dimension: Int = GpuDawnTextureViewDimension.UNDEFINED,
     val aspect: Int = GpuTextureAspect.UNDEFINED,
+    val format: Int = GpuTextureFormat.UNDEFINED,
+    val baseMipLevel: Int = 0,
+    val mipLevelCount: Int = -1,
+    val baseArrayLayer: Int = 0,
+    val arrayLayerCount: Int = -1,
 )
 
 data class PipelineLayoutDescriptor(
@@ -234,7 +258,14 @@ object GpuVertexFormat {
  * Dawn CompareFunction pass-through (`androidx.webgpu.CompareFunction`).
  */
 object GpuCompareFunction {
+    const val UNDEFINED: Int = 0x00000000
+    const val NEVER: Int = 0x00000001
     const val LESS: Int = 0x00000002
+    const val EQUAL: Int = 0x00000003
+    const val LESS_EQUAL: Int = 0x00000004
+    const val GREATER: Int = 0x00000005
+    const val NOT_EQUAL: Int = 0x00000006
+    const val GREATER_EQUAL: Int = 0x00000007
     const val ALWAYS: Int = 0x00000008
 }
 

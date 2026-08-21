@@ -2,8 +2,9 @@
 ;; [method]gpu-device.create-sampler
 ;; WIT: create-sampler: func(descriptor: option<gpu-sampler-descriptor>)
 ;;      -> gpu-sampler
-;; Guest passes some(descriptor) with address-mode-u=repeat, mag/min-filter=linear;
-;; other fields none; drops own sampler; run returns harness 1.
+;; Guest passes some(descriptor) with address-mode-u/v=repeat, w=clamp-to-edge,
+;; mag/min/mipmap-filter=linear, lod-min=0, lod-max=32, compare=never;
+;; max-anisotropy/label none; drops own sampler; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills args through memory.
 ;; get-device is a test constructor only (not product WIT).
 (component
@@ -84,12 +85,30 @@
       ;; address-mode-u = some(repeat)
       (i32.store8 (i32.const 8) (i32.const 1))
       (i32.store8 (i32.const 9) (i32.const 1))
+      ;; address-mode-v = some(repeat)
+      (i32.store8 (i32.const 10) (i32.const 1))
+      (i32.store8 (i32.const 11) (i32.const 1))
+      ;; address-mode-w = some(clamp-to-edge)
+      (i32.store8 (i32.const 12) (i32.const 1))
+      (i32.store8 (i32.const 13) (i32.const 0))
       ;; mag-filter = some(linear)
       (i32.store8 (i32.const 14) (i32.const 1))
       (i32.store8 (i32.const 15) (i32.const 1))
       ;; min-filter = some(linear)
       (i32.store8 (i32.const 16) (i32.const 1))
       (i32.store8 (i32.const 17) (i32.const 1))
+      ;; mipmap-filter = some(linear)
+      (i32.store8 (i32.const 18) (i32.const 1))
+      (i32.store8 (i32.const 19) (i32.const 1))
+      ;; lod-min-clamp = some(0)
+      (i32.store8 (i32.const 20) (i32.const 1))
+      (f32.store (i32.const 24) (f32.const 0))
+      ;; lod-max-clamp = some(32)
+      (i32.store8 (i32.const 28) (i32.const 1))
+      (f32.store (i32.const 32) (f32.const 32))
+      ;; compare = some(never)
+      (i32.store8 (i32.const 36) (i32.const 1))
+      (i32.store8 (i32.const 37) (i32.const 0))
       (local.set $sampler (call $create-sampler (i32.const 0)))
       (call $drop-sampler (local.get $sampler))
       (i32.const 1)

@@ -15,7 +15,8 @@ import org.junit.runner.RunWith
 /**
  * L2 `[method]` slice: guest imports `get-texture` then
  * `[method]gpu-texture.create-view`
- * (`option<gpu-texture-view-descriptor>` = some(d2 + aspect all)
+ * (`option<gpu-texture-view-descriptor>` = some(rgba8unorm + d2 + aspect all
+ * + mip 0/1 + array 0/1)
  * → `own<gpu-texture-view>`; drops the own; `run` returns 1) via
  * [ExperimentalWebGpuBridge.attachCreateTextureView] + [callRunConcurrent].
  * Flat names remain registered. Not compliance.

@@ -1,6 +1,7 @@
 //! L2: `get-device` + `[method]gpu-device.create-sampler`
 //! WIT: `(borrow<gpu-device>, option<gpu-sampler-descriptor>) -> own<gpu-sampler>`.
-//! Guest passes some(descriptor) address-mode-u=repeat, mag/min-filter=linear;
+//! Guest passes some(descriptor) address-mode-u/v=repeat, w=clamp-to-edge,
+//! mag/min/mipmap-filter=linear, lod 0..32, compare=never;
 //! drops own; `run` returns harness 1.
 
 use wasmtime::component::{
@@ -44,7 +45,7 @@ enum GpuFilterMode {
     Linear,
 }
 
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
@@ -55,7 +56,7 @@ enum GpuMipmapFilterMode {
     Linear,
 }
 
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
@@ -142,8 +143,16 @@ fn register_method_create_sampler(linker: &mut Linker<TestHost>) -> wasmtime::Re
                 Some(GpuAddressMode::Repeat),
                 "guest must pass address-mode-u=repeat"
             );
-            assert!(desc.address_mode_v.is_none());
-            assert!(desc.address_mode_w.is_none());
+            assert_eq!(
+                desc.address_mode_v,
+                Some(GpuAddressMode::Repeat),
+                "guest must pass address-mode-v=repeat"
+            );
+            assert_eq!(
+                desc.address_mode_w,
+                Some(GpuAddressMode::ClampToEdge),
+                "guest must pass address-mode-w=clamp-to-edge"
+            );
             assert_eq!(
                 desc.mag_filter,
                 Some(GpuFilterMode::Linear),
@@ -154,10 +163,26 @@ fn register_method_create_sampler(linker: &mut Linker<TestHost>) -> wasmtime::Re
                 Some(GpuFilterMode::Linear),
                 "guest must pass min-filter=linear"
             );
-            assert!(desc.mipmap_filter.is_none());
-            assert!(desc.lod_min_clamp.is_none());
-            assert!(desc.lod_max_clamp.is_none());
-            assert!(desc.compare.is_none());
+            assert_eq!(
+                desc.mipmap_filter,
+                Some(GpuMipmapFilterMode::Linear),
+                "guest must pass mipmap-filter=linear"
+            );
+            assert_eq!(
+                desc.lod_min_clamp,
+                Some(0.0),
+                "guest must pass lod-min-clamp=some(0)"
+            );
+            assert_eq!(
+                desc.lod_max_clamp,
+                Some(32.0),
+                "guest must pass lod-max-clamp=some(32)"
+            );
+            assert_eq!(
+                desc.compare,
+                Some(GpuCompareFunction::Never),
+                "guest must pass compare=never"
+            );
             assert!(desc.max_anisotropy.is_none());
             assert!(desc.label.is_none());
             let resource = caller.data_mut().table.push(GpuSampler { rep: 53 })?;
