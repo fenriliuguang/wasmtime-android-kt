@@ -2602,11 +2602,19 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         device_rep
                     };
+                    let mapped = match descriptor.mapped_at_creation {
+                        None => -1,
+                        Some(false) => 0,
+                        Some(true) => 1,
+                    };
+                    let label = descriptor.label.clone().unwrap_or_default();
                     let buffer_rep = jvm::exp_create_buffer_described(
                         &cb,
                         l2_device,
                         descriptor.size,
                         descriptor.usage.to_webgpu_u32(),
+                        mapped,
+                        label,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if buffer_rep == 0 {

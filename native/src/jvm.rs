@@ -811,21 +811,26 @@ pub fn exp_create_buffer(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     )
 }
 
-/// S4: Guest-decoded `gpu-buffer-descriptor` size/usage (mapped/label still unused).
+/// S4: Guest-decoded `gpu-buffer-descriptor` size/usage plus mapped-at-creation
+/// (`-1` = none, `0` = false, `1` = true) and label (empty → none).
 pub fn exp_create_buffer_described(
     cb: &GlobalRef,
     device: u32,
     size: u64,
     usage: u32,
+    mapped_at_creation: i32,
+    label: String,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateBufferDescribed",
-        "(IJI)I",
+        "(IJIILjava/lang/String;)I",
         vec![
             HostArg::Int(device as i32),
             HostArg::Long(size as i64),
             HostArg::Int(usage as i32),
+            HostArg::Int(mapped_at_creation),
+            HostArg::Str(label),
         ],
     )
 }

@@ -174,7 +174,15 @@ object ExperimentalWebGpuBridge {
                     device: Int,
                     size: Long,
                     usage: Int,
-                ): Int = bindings.deviceCreateBuffer(device, size = size, usage = usage)
+                    mappedAtCreation: Int,
+                    label: String,
+                ): Int = bindings.deviceCreateBuffer(
+                    device,
+                    size = size,
+                    usage = usage,
+                    mappedAtCreation = mappedAtCreation > 0,
+                    label = label.ifEmpty { null },
+                )
             },
         )
     }
@@ -3741,9 +3749,17 @@ object ExperimentalWebGpuBridge {
                     device: Int,
                     size: Long,
                     usage: Int,
+                    mappedAtCreation: Int,
+                    label: String,
                 ): Int {
                     val resolved = if (device != 0) device else cachedDevice()
-                    return bindings.deviceCreateBuffer(resolved, size = size, usage = usage)
+                    return bindings.deviceCreateBuffer(
+                        resolved,
+                        size = size,
+                        usage = usage,
+                        mappedAtCreation = mappedAtCreation > 0,
+                        label = label.ifEmpty { null },
+                    )
                 }
 
                 override fun deviceCreateCommandEncoder(device: Int): Int {
@@ -3847,9 +3863,17 @@ object ExperimentalWebGpuBridge {
                     device: Int,
                     size: Long,
                     usage: Int,
+                    mappedAtCreation: Int,
+                    label: String,
                 ): Int {
                     val resolved = if (device != 0) device else cachedDevice()
-                    return bindings.deviceCreateBuffer(resolved, size = size, usage = usage)
+                    return bindings.deviceCreateBuffer(
+                        resolved,
+                        size = size,
+                        usage = usage,
+                        mappedAtCreation = mappedAtCreation > 0,
+                        label = label.ifEmpty { null },
+                    )
                 }
 
                 override fun deviceCreateTextureDescribed(
