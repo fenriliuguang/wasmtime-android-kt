@@ -108,6 +108,13 @@ fn first_fragment_target_format(fragment: &Option<crate::webgpu_abi::GpuFragment
         .unwrap_or(0)
 }
 
+/// Guest `option<record-gpu-pipeline-constant-value>` → host handle (0 = none).
+fn pipeline_constant_rep(
+    rec: &Option<Resource<RecordGpuPipelineConstantValue>>,
+) -> i32 {
+    rec.as_ref().map(|r| r.rep() as i32).unwrap_or(0)
+}
+
 /// P3-PRIM-5: collect guest `stream.write` bytes; complete oneshot on drop.
 struct CollectConsumer {
     buf: Arc<Mutex<Vec<u8>>>,
@@ -4673,6 +4680,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         attr_locations,
                     ) = pack_vertex_buffers(&descriptor.vertex.buffers);
                     let label = descriptor.label.clone().unwrap_or_default();
+                    let vertex_constants = pipeline_constant_rep(&descriptor.vertex.constants);
+                    let fragment_constants = match &descriptor.fragment {
+                        Some(fragment) => pipeline_constant_rep(&fragment.constants),
+                        None => 0,
+                    };
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
@@ -4704,6 +4716,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         attr_formats,
                         attr_offsets,
                         attr_locations,
+                        vertex_constants,
+                        fragment_constants,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if pipeline_rep == 0 {
@@ -4739,6 +4753,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     };
                     let entry_point = descriptor.compute.entry_point.clone().unwrap_or_default();
                     let label = descriptor.label.clone().unwrap_or_default();
+                    let constants = pipeline_constant_rep(&descriptor.compute.constants);
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
@@ -4761,6 +4776,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         entry_point,
                         layout_rep,
                         label,
+                        constants,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if pipeline_rep == 0 {
@@ -4800,6 +4816,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             attr_formats,
                             attr_offsets,
                             attr_locations,
+                            vertex_constants,
+                            fragment_constants,
                         ) = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let vertex_shader = access
                                 .data_mut()
@@ -4825,6 +4843,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             let format = first_fragment_target_format(&descriptor.fragment);
                             let packed = pack_vertex_buffers(&descriptor.vertex.buffers);
                             let label = descriptor.label.clone().unwrap_or_default();
+                            let vertex_constants =
+                                pipeline_constant_rep(&descriptor.vertex.constants);
+                            let fragment_constants = match &descriptor.fragment {
+                                Some(fragment) => pipeline_constant_rep(&fragment.constants),
+                                None => 0,
+                            };
                             let device_rep = access.data_mut().table.get(&device)?.rep;
                             let cb = access
                                 .data_mut()
@@ -4850,6 +4874,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 packed.3,
                                 packed.4,
                                 packed.5,
+                                vertex_constants,
+                                fragment_constants,
                             ))
                         })?;
                         let (tx, rx) = oneshot::channel::<()>();
@@ -4881,6 +4907,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             attr_formats,
                             attr_offsets,
                             attr_locations,
+                            vertex_constants,
+                            fragment_constants,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if pipeline_rep == 0 {
@@ -4910,7 +4938,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     GpuComputePipelineDescriptor,
                 )| {
                     Box::pin(async move {
-                        let (cb, device_rep, shader_rep, entry_point, layout_rep, label) =
+                        let (cb, device_rep, shader_rep, entry_point, layout_rep, label, constants) =
                             accessor.with(|mut access| -> wasmtime::Result<_> {
                                 let shader_rep = access
                                     .data_mut()
@@ -4926,6 +4954,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 let entry_point =
                                     descriptor.compute.entry_point.clone().unwrap_or_default();
                                 let label = descriptor.label.clone().unwrap_or_default();
+                                let constants =
+                                    pipeline_constant_rep(&descriptor.compute.constants);
                                 let device_rep = access.data_mut().table.get(&device)?.rep;
                                 let cb = access
                                     .data_mut()
@@ -4935,7 +4965,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                         wasmtime::Error::msg("experimental host callback not set")
                                     })
                                     .cloned()?;
-                                Ok((cb, device_rep, shader_rep, entry_point, layout_rep, label))
+                                Ok((
+                                    cb,
+                                    device_rep,
+                                    shader_rep,
+                                    entry_point,
+                                    layout_rep,
+                                    label,
+                                    constants,
+                                ))
                             })?;
                         let (tx, rx) = oneshot::channel::<()>();
                         std::thread::spawn(move || {
@@ -4957,6 +4995,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             entry_point,
                             layout_rep,
                             label,
+                            constants,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if pipeline_rep == 0 {

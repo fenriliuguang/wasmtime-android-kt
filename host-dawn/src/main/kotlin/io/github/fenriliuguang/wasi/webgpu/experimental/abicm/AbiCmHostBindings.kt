@@ -121,6 +121,12 @@ class AbiCmHostBindings(
     fun recordPipelineConstantValueEntriesGetValue(handle: Int, index: Int): Double =
         recordPipelineConstantValueValuesGet(handle, index)
 
+    /** Snapshot keyed f64 constants for create-*-pipeline (handle 0 → empty). */
+    fun recordPipelineConstantValueSnapshot(handle: Int): Map<String, Double> {
+        if (handle == 0) return emptyMap()
+        return pipelineConstantMaps[handle]?.toMap() ?: emptyMap()
+    }
+
     /** WIT `record-option-gpu-size64` maps keyed by guest resource rep. */
     private val size64Maps = LinkedHashMap<Int, LinkedHashMap<String, Long?>>()
 

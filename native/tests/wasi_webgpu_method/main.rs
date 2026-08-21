@@ -70,6 +70,7 @@ mod create_buffer;
 mod create_command_encoder;
 mod create_compute_pipeline;
 mod create_compute_pipeline_async;
+mod create_compute_pipeline_constants;
 mod create_pipeline_layout;
 mod pipeline_layout_label;
 mod pipeline_layout_set_label;

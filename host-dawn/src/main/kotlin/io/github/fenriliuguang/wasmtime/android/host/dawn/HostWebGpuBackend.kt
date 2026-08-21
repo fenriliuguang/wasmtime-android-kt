@@ -316,6 +316,7 @@ private class ForwardingHostCallbacks(
         entryPoint: String,
         layout: Int,
         label: String,
+        constants: Int,
     ): Int {
         val module =
             if (shader != 0) {
@@ -340,6 +341,7 @@ private class ForwardingHostCallbacks(
                 compute = ProgrammableStage(
                     module = module,
                     entryPoint = entryPoint.ifEmpty { "main" },
+                    constants = bindings.recordPipelineConstantValueSnapshot(constants),
                 ),
                 layout = pipelineLayout,
                 label = label.ifEmpty { null },
@@ -362,6 +364,8 @@ private class ForwardingHostCallbacks(
         attrFormats: IntArray,
         attrOffsets: IntArray,
         attrLocations: IntArray,
+        vertexConstants: Int,
+        fragmentConstants: Int,
     ): Int {
         val vertexModule =
             if (vertexShader != 0) {
@@ -423,11 +427,13 @@ private class ForwardingHostCallbacks(
                     module = vertexModule,
                     entryPoint = vertexEntry.ifEmpty { "vs_main" },
                     buffers = buffers,
+                    constants = bindings.recordPipelineConstantValueSnapshot(vertexConstants),
                 ),
                 fragment = FragmentState(
                     module = fragmentModule,
                     entryPoint = fragmentEntry.ifEmpty { "fs_main" },
                     targets = listOf(ColorTargetState(format = targetFormat)),
+                    constants = bindings.recordPipelineConstantValueSnapshot(fragmentConstants),
                 ),
                 layout = pipelineLayout,
                 label = label.ifEmpty { null },
