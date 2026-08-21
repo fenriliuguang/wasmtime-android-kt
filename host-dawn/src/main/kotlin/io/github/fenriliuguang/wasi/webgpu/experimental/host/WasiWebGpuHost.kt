@@ -269,77 +269,81 @@ interface WasiWebGpuHost : AutoCloseable {
     /** Validate an adapter handle (features / limits / info getter L2). */
     fun adapterValidate(adapter: GpuHandle)
 
-    fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle): Int
+    /**
+     * Guest `gpu-supported-limits` scalars.
+     * [device] null = adapter-only query (do not construct [GpuHandle] 0).
+     */
+    fun supportedLimitsMaxBindGroups(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxBindGroupsPlusVertexBuffers(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxBindGroupsPlusVertexBuffers(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxBindingsPerBindGroup(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxBindingsPerBindGroup(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle): Long
+    fun supportedLimitsMaxBufferSize(adapter: GpuHandle, device: GpuHandle?): Long
 
-    fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxColorAttachmentBytesPerSample(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxColorAttachments(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxColorAttachments(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxComputeInvocationsPerWorkgroup(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxComputeWorkgroupSizeX(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxComputeWorkgroupSizeY(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxComputeWorkgroupSizeZ(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxComputeWorkgroupsPerDimension(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxComputeWorkgroupStorageSize(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxDynamicStorageBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxDynamicUniformBuffersPerPipelineLayout(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxImmediateSize(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxImmediateSize(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxInterStageShaderVariables(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxInterStageShaderVariables(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxSampledTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxSampledTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxSamplersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxSamplersPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxStorageBufferBindingSize(adapter: GpuHandle, device: GpuHandle): Long
+    fun supportedLimitsMaxStorageBufferBindingSize(adapter: GpuHandle, device: GpuHandle?): Long
 
-    fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxStorageBuffersInFragmentStage(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxStorageBuffersInVertexStage(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxStorageBuffersInVertexStage(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxStorageBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxStorageBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxStorageTexturesInFragmentStage(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxStorageTexturesInFragmentStage(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxStorageTexturesInVertexStage(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxStorageTexturesInVertexStage(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxStorageTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxStorageTexturesPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxTextureArrayLayers(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxTextureArrayLayers(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxTextureDimension1D(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxTextureDimension1D(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxTextureDimension2D(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxTextureDimension2D(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxTextureDimension3D(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxTextureDimension3D(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxUniformBufferBindingSize(adapter: GpuHandle, device: GpuHandle): Long
+    fun supportedLimitsMaxUniformBufferBindingSize(adapter: GpuHandle, device: GpuHandle?): Long
 
-    fun supportedLimitsMaxUniformBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxUniformBuffersPerShaderStage(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxVertexAttributes(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxVertexAttributes(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxVertexBufferArrayStride(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxVertexBufferArrayStride(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMaxVertexBuffers(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMaxVertexBuffers(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMinStorageBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMinStorageBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle?): Int
 
-    fun supportedLimitsMinUniformBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle): Int
+    fun supportedLimitsMinUniformBufferOffsetAlignment(adapter: GpuHandle, device: GpuHandle?): Int
 
     fun adapterInfoSubgroupMinSize(adapter: GpuHandle): Int
 
