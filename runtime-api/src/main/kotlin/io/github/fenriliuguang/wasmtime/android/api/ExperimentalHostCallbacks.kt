@@ -1304,6 +1304,39 @@ interface ExperimentalHostCallbacks {
     fun recordPipelineConstantValueEntriesGetValueDescribed(handle: Int, index: Int): Double =
         unsupported("recordPipelineConstantValueEntriesGetValueDescribed")
 
+    /**
+     * L2: Guest `[method]record-option-gpu-size64.add`.
+     * `hasValue == 0` → `none`; `1` → `some(value)`.
+     */
+    fun recordOptionGpuSize64AddDescribed(
+        handle: Int,
+        key: String,
+        hasValue: Int,
+        value: Long,
+    ) {
+        unsupported("recordOptionGpuSize64AddDescribed")
+    }
+
+    /** L2: Guest `[method]record-option-gpu-size64.has` (0/1). */
+    fun recordOptionGpuSize64HasDescribed(handle: Int, key: String): Int =
+        unsupported("recordOptionGpuSize64HasDescribed")
+
+    /**
+     * L2: Guest `[method]record-option-gpu-size64.get` state:
+     * `0` missing, `1` present-none, `2` present-some.
+     */
+    fun recordOptionGpuSize64GetStateDescribed(handle: Int, key: String): Int =
+        unsupported("recordOptionGpuSize64GetStateDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.get` inner u64 when state is 2. */
+    fun recordOptionGpuSize64GetValueDescribed(handle: Int, key: String): Long =
+        unsupported("recordOptionGpuSize64GetValueDescribed")
+
+    /** L2: Guest `[method]record-option-gpu-size64.remove`. */
+    fun recordOptionGpuSize64RemoveDescribed(handle: Int, key: String) {
+        unsupported("recordOptionGpuSize64RemoveDescribed")
+    }
+
     fun surfacePresent(surface: Int) {
         unsupported("surfacePresent")
     }

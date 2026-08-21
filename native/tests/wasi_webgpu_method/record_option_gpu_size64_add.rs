@@ -1,5 +1,5 @@
-//! S6+: `[constructor]record-option-gpu-size64` + `[method]record-option-gpu-size64.add`
-//! WIT: lift-only stub; harness 1.
+//! L2: `[constructor]record-option-gpu-size64` + `[method]record-option-gpu-size64.add`
+//! WIT: described mutate; guest empty key + none; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -32,8 +32,10 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
     webgpu.func_wrap(
         "[method]record-option-gpu-size64.add",
         move |mut caller,
-              (record, _key, _value): (Resource<RecordOptionGpuSize64>, String, Option<u64>)| {
+              (record, key, value): (Resource<RecordOptionGpuSize64>, String, Option<u64>)| {
             caller.data_mut().table.get(&record).map(|_| ())?;
+            assert!(key.is_empty(), "guest must pass empty key this cut");
+            assert!(value.is_none(), "guest must pass value=none this cut");
             called.store(true, Ordering::SeqCst);
             Ok(())
         },

@@ -121,6 +121,30 @@ class AbiCmHostBindings(
     fun recordPipelineConstantValueEntriesGetValue(handle: Int, index: Int): Double =
         recordPipelineConstantValueValuesGet(handle, index)
 
+    /** WIT `record-option-gpu-size64` maps keyed by guest resource rep. */
+    private val size64Maps = LinkedHashMap<Int, LinkedHashMap<String, Long?>>()
+
+    fun recordOptionGpuSize64Add(handle: Int, key: String, hasValue: Int, value: Long) {
+        size64Maps.getOrPut(handle) { LinkedHashMap() }[key] =
+            if (hasValue != 0) value else null
+    }
+
+    fun recordOptionGpuSize64Has(handle: Int, key: String): Boolean =
+        size64Maps[handle]?.containsKey(key) == true
+
+    fun recordOptionGpuSize64GetState(handle: Int, key: String): Int {
+        val map = size64Maps[handle] ?: return 0
+        if (!map.containsKey(key)) return 0
+        return if (map[key] == null) 1 else 2
+    }
+
+    fun recordOptionGpuSize64GetValue(handle: Int, key: String): Long =
+        size64Maps[handle]?.get(key) ?: 0L
+
+    fun recordOptionGpuSize64Remove(handle: Int, key: String) {
+        size64Maps[handle]?.remove(key)
+    }
+
     fun createSurfaceFromNativeWindow(windowHandle: Long): Int =
         host.instanceCreateSurfaceFromAndroidNativeWindow(windowHandle).raw
 

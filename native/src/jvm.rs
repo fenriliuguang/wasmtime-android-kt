@@ -456,6 +456,83 @@ pub fn exp_record_pipeline_constant_value_entries_get_value_described(
     )
 }
 
+/// L2: Guest `record-option-gpu-size64.add`. `has_value==0` means `none`.
+pub fn exp_record_option_gpu_size64_add_described(
+    cb: &GlobalRef,
+    handle: u32,
+    key: String,
+    has_value: i32,
+    value: u64,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "recordOptionGpuSize64AddDescribed",
+        "(ILjava/lang/String;IJ)V",
+        vec![
+            HostArg::Int(handle as i32),
+            HostArg::Str(key),
+            HostArg::Int(has_value),
+            HostArg::Long(value as i64),
+        ],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.has` (0/1).
+pub fn exp_record_option_gpu_size64_has_described(
+    cb: &GlobalRef,
+    handle: u32,
+    key: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordOptionGpuSize64HasDescribed",
+        "(ILjava/lang/String;)I",
+        vec![HostArg::Int(handle as i32), HostArg::Str(key)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.get` state: 0 missing, 1 present-none, 2 present-some.
+pub fn exp_record_option_gpu_size64_get_state_described(
+    cb: &GlobalRef,
+    handle: u32,
+    key: String,
+) -> Result<u32, String> {
+    call_i(
+        cb,
+        "recordOptionGpuSize64GetStateDescribed",
+        "(ILjava/lang/String;)I",
+        vec![HostArg::Int(handle as i32), HostArg::Str(key)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.get` inner u64 when state is 2.
+pub fn exp_record_option_gpu_size64_get_value_described(
+    cb: &GlobalRef,
+    handle: u32,
+    key: String,
+) -> Result<u64, String> {
+    call_j(
+        cb,
+        "recordOptionGpuSize64GetValueDescribed",
+        "(ILjava/lang/String;)J",
+        vec![HostArg::Int(handle as i32), HostArg::Str(key)],
+    )
+}
+
+/// L2: Guest `record-option-gpu-size64.remove`.
+pub fn exp_record_option_gpu_size64_remove_described(
+    cb: &GlobalRef,
+    handle: u32,
+    key: String,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "recordOptionGpuSize64RemoveDescribed",
+        "(ILjava/lang/String;)V",
+        vec![HostArg::Int(handle as i32), HostArg::Str(key)],
+    )
+}
+
 pub fn exp_adapter_request_device(cb: &GlobalRef, adapter: u32) -> Result<u32, String> {
     call_i(
         cb,
