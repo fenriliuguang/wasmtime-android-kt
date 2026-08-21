@@ -568,3 +568,37 @@ data class RenderPassDescriptor(
     val depthStencilAttachment: RenderPassDepthStencilAttachment? = null,
     val label: String? = null,
 )
+
+fun renderPassColorAttachmentsFromDescribed(
+    views: IntArray,
+    loadOps: IntArray,
+    storeOps: IntArray,
+    hasClears: IntArray,
+    clearBits: IntArray,
+): List<RenderPassColorAttachment> {
+    val n = views.size
+    val out = ArrayList<RenderPassColorAttachment>(n)
+    for (i in 0 until n) {
+        if (views[i] == 0) continue
+        val base = i * 4
+        val clear = if (hasClears.getOrElse(i) { 0 } != 0 && clearBits.size >= base + 4) {
+            Color(
+                r = Float.fromBits(clearBits[base]).toDouble(),
+                g = Float.fromBits(clearBits[base + 1]).toDouble(),
+                b = Float.fromBits(clearBits[base + 2]).toDouble(),
+                a = Float.fromBits(clearBits[base + 3]).toDouble(),
+            )
+        } else {
+            null
+        }
+        out.add(
+            RenderPassColorAttachment(
+                view = GpuHandle(views[i]),
+                clearValue = clear,
+                loadOp = loadOps.getOrElse(i) { GpuLoadOp.CLEAR },
+                storeOp = storeOps.getOrElse(i) { GpuStoreOp.STORE },
+            ),
+        )
+    }
+    return out
+}

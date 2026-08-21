@@ -19,14 +19,14 @@ use crate::webgpu_abi::{
     GpuCommandEncoderDescriptor, GpuCompilationInfo, GpuCompilationMessage,
     GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
     GpuDeviceDescriptor, GpuDeviceLostInfo, GpuDeviceLostReason, GpuError, GpuErrorFilter,
-    GpuErrorKind, GpuExtent3D, GpuIndexFormat, GpuLayoutMode, GpuLoadOp, GpuMapMode,
+    GpuErrorKind, GpuExtent3D, GpuIndexFormat, GpuLayoutMode, GpuMapMode,
     GpuBlendFactor, GpuBlendOperation, GpuCompareFunction, GpuCullMode, GpuFrontFace,
     GpuMipmapFilterMode, GpuPipelineErrorReason, GpuPipelineLayoutDescriptor,
     GpuPrimitiveTopology,
     GpuQuerySetDescriptor, GpuQueryType, GpuRenderBundleDescriptor,
     GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor, GpuRenderPipelineDescriptor,
     GpuRequestAdapterOptions, GpuSamplerDescriptor,
-    GpuShaderModuleDescriptor, GpuShaderStage, GpuStoreOp, GpuSupportedFeatures,
+    GpuShaderModuleDescriptor, GpuShaderStage, GpuSupportedFeatures,
     GpuSupportedLimits, GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
     GpuTextureDescriptor,
     GpuTextureDimension, GpuTextureFormat, GpuTextureUsage, GpuTextureViewDescriptor,
@@ -197,6 +197,15 @@ fn pack_render_pipeline_semantics(
         }
     }
     (primitive, multisample, blend)
+}
+
+fn pack_color_clear_bits(c: &GpuColor) -> [i32; 4] {
+    [
+        (c.r as f32).to_bits() as i32,
+        (c.g as f32).to_bits() as i32,
+        (c.b as f32).to_bits() as i32,
+        (c.a as f32).to_bits() as i32,
+    ]
 }
 
 /// Guest `option<record-gpu-pipeline-constant-value>` → host handle (0 = none).
@@ -692,7 +701,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S6+ `[method]gpu-device.create-compute-pipeline` (sync (borrow, gpu-compute-pipeline-descriptor) -> own<gpu-compute-pipeline>; L2 described shader/entry/layout/label)
     // and `[method]gpu-queue.write-texture-with-copy` (S6+: texel copy info + list data; L2 described bytes + size)
     // and S8 `[method]gpu-command-encoder.begin-compute-pass` (sync (borrow, option<gpu-compute-pass-descriptor>) -> own<gpu-compute-pass-encoder>; L2 described timestamp-write indices)
-    // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 described first color + depth-stencil + clear)
+    // and S6+ `[method]gpu-command-encoder.begin-render-pass` (sync (borrow, gpu-render-pass-descriptor) -> own<gpu-render-pass-encoder>; L2 described all color attachments + depth-stencil)
     // and `gpu-compute-pass-encoder` + `get-compute-pass` + `[method]gpu-compute-pass-encoder.end` (sync void; L2 described pass rep)
     // and `[method]gpu-compute-pass-encoder.set-pipeline` (S6+: borrow<gpu-compute-pipeline>; L2 described pass+pipeline reps)
     // and `[method]gpu-compute-pass-encoder.set-bind-group` (S6+: index + option bind-group + option offsets → result; L2 described JNI, offsets none → empty)
@@ -5406,32 +5415,38 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 "[method]gpu-command-encoder.begin-render-pass",
                 |mut caller, (encoder, descriptor): (Resource<GpuCommandEncoder>, GpuRenderPassDescriptor)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let (view_rep, load_op, store_op, has_clear, cr, cg, cb_r, ca) = match descriptor
-                        .color_attachments
-                        .iter()
-                        .find_map(|att| att.as_ref())
-                    {
-                        Some(att) => {
-                            let load_op = att.load_op.to_dawn_u32();
-                            let store_op = att.store_op.to_dawn_u32();
-                            let view_rep = caller.data_mut().table.get(&att.view)?.rep;
-                            let (has_clear, cr, cg, cb_r, ca) = match &att.clear_value {
-                                Some(c) => (1, c.r as f32, c.g as f32, c.b as f32, c.a as f32),
-                                None => (0, 0.0, 0.0, 0.0, 0.0),
-                            };
-                            (view_rep, load_op, store_op, has_clear, cr, cg, cb_r, ca)
+                    let mut color_views = Vec::new();
+                    let mut color_loads = Vec::new();
+                    let mut color_stores = Vec::new();
+                    let mut color_has_clears = Vec::new();
+                    let mut color_clear_bits = Vec::new();
+                    for att in &descriptor.color_attachments {
+                        match att {
+                            None => {
+                                color_views.push(0);
+                                color_loads.push(0);
+                                color_stores.push(0);
+                                color_has_clears.push(0);
+                                color_clear_bits.extend_from_slice(&[0, 0, 0, 0]);
+                            }
+                            Some(att) => {
+                                let view_rep = caller.data_mut().table.get(&att.view)?.rep as i32;
+                                color_views.push(view_rep);
+                                color_loads.push(att.load_op.to_dawn_u32() as i32);
+                                color_stores.push(att.store_op.to_dawn_u32() as i32);
+                                match &att.clear_value {
+                                    Some(c) => {
+                                        color_has_clears.push(1);
+                                        color_clear_bits.extend_from_slice(&pack_color_clear_bits(c));
+                                    }
+                                    None => {
+                                        color_has_clears.push(0);
+                                        color_clear_bits.extend_from_slice(&[0, 0, 0, 0]);
+                                    }
+                                }
+                            }
                         }
-                        None => (
-                            0,
-                            GpuLoadOp::Clear.to_dawn_u32(),
-                            GpuStoreOp::Store.to_dawn_u32(),
-                            0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                        ),
-                    };
+                    }
                     let (depth_view, depth_load, depth_store, has_depth_clear, depth_clear) =
                         match &descriptor.depth_stencil_attachment {
                             Some(ds) => {
@@ -5471,14 +5486,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let pass_rep = jvm::exp_begin_render_pass_described(
                         &cb,
                         l2_encoder,
-                        view_rep,
-                        load_op,
-                        store_op,
-                        has_clear,
-                        cr,
-                        cg,
-                        cb_r,
-                        ca,
+                        color_views,
+                        color_loads,
+                        color_stores,
+                        color_has_clears,
+                        color_clear_bits,
                         depth_view,
                         depth_load,
                         depth_store,
