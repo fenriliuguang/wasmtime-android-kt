@@ -2,7 +2,10 @@ package io.github.fenriliuguang.wasmtime.android.webgpu
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupEntry
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupLayoutDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindingResource
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBinding
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
@@ -428,31 +431,31 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * W3+: adapter + device + empty BGL then empty bind-group.
-     * Guest passes `gpu-bind-group-descriptor`; L2 still host-fixed empty BGL + empty entries.
+     * W3+: adapter + device + BGL then bind-group.
+     * Guest `gpu-bind-group-descriptor` entries (binding + resource) reach L2.
      * `[method]gpu-device.create-bind-group`.
      */
     fun attachCreateBindGroup(store: Store, host: WasiWebGpuHost) {
-        val bindings = AbiCmHostBindings(host)
+        val abi = AbiCmHostBindings(host)
         store.setExperimentalHost(
             object : ExperimentalHostCallbacks {
-                override fun requestAdapter(): Int = bindings.requestAdapter()
+                override fun requestAdapter(): Int = abi.requestAdapter()
 
                 override fun adapterRequestDevice(adapter: Int): Int =
-                    bindings.adapterRequestDevice(adapter)
+                    abi.adapterRequestDevice(adapter)
 
                 override fun deviceCreateBindGroupLayout(device: Int): Int =
-                    bindings.deviceCreateBindGroupLayout(
+                    abi.deviceCreateBindGroupLayout(
                         device,
                         BindGroupLayoutDescriptor(entries = emptyList()),
                     )
 
                 override fun deviceCreateBindGroup(device: Int): Int {
-                    val layout = bindings.deviceCreateBindGroupLayout(
+                    val layout = abi.deviceCreateBindGroupLayout(
                         device,
                         BindGroupLayoutDescriptor(entries = emptyList()),
                     )
-                    return bindings.deviceCreateBindGroup(
+                    return abi.deviceCreateBindGroup(
                         device,
                         BindGroupDescriptor(
                             layout = GpuHandle(layout),
@@ -465,15 +468,30 @@ object ExperimentalWebGpuBridge {
                     device: Int,
                     layout: Int,
                     label: String,
-                ): Int =
-                    bindings.deviceCreateBindGroup(
+                    bindings: IntArray,
+                    kinds: IntArray,
+                    handles: IntArray,
+                ): Int {
+                    val n = minOf(bindings.size, kinds.size, handles.size)
+                    val entries = ArrayList<BindGroupEntry>(n)
+                    for (i in 0 until n) {
+                        val handle = GpuHandle(handles[i])
+                        val resource = when (kinds[i]) {
+                            1 -> BindingResource.Sampler(handle)
+                            2 -> BindingResource.TextureView(handle)
+                            else -> BindingResource.Buffer(BufferBinding(buffer = handle))
+                        }
+                        entries.add(BindGroupEntry(binding = bindings[i], resource = resource))
+                    }
+                    return abi.deviceCreateBindGroup(
                         device,
                         BindGroupDescriptor(
                             layout = GpuHandle(layout),
-                            entries = emptyList(),
+                            entries = entries,
                             label = label.ifEmpty { null },
                         ),
                     )
+                }
             },
         )
     }

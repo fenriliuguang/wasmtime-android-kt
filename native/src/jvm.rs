@@ -3231,21 +3231,28 @@ pub fn exp_create_bind_group(cb: &GlobalRef, device: u32) -> Result<u32, String>
     )
 }
 
-/// L2: Guest layout handle + optional label (none → empty string).
+/// L2: Guest layout handle + bind-group entries (binding/kind/handle arrays) + optional label.
+/// kind: 0 = buffer, 1 = sampler, 2 = texture-view.
 pub fn exp_create_bind_group_described(
     cb: &GlobalRef,
     device: u32,
     layout: u32,
     label: String,
+    bindings: Vec<i32>,
+    kinds: Vec<i32>,
+    handles: Vec<i32>,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateBindGroupDescribed",
-        "(IILjava/lang/String;)I",
+        "(IILjava/lang/String;[I[I[I)I",
         vec![
             HostArg::Int(device as i32),
             HostArg::Int(layout as i32),
             HostArg::Str(label),
+            HostArg::Ints(bindings),
+            HostArg::Ints(kinds),
+            HostArg::Ints(handles),
         ],
     )
 }

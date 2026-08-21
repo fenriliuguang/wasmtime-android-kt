@@ -2,6 +2,9 @@ package io.github.fenriliuguang.wasmtime.android.host.dawn
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupEntry
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindingResource
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBinding
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
@@ -206,15 +209,34 @@ private class ForwardingHostCallbacks(
         bufferType: Int,
     ): Int = bindings.deviceCreateBindGroupLayoutDescribed(device, binding, visibility, bufferType)
 
-    override fun deviceCreateBindGroupDescribed(device: Int, layout: Int, label: String): Int =
-        bindings.deviceCreateBindGroup(
+    override fun deviceCreateBindGroupDescribed(
+        device: Int,
+        layout: Int,
+        label: String,
+        bindings: IntArray,
+        kinds: IntArray,
+        handles: IntArray,
+    ): Int {
+        val n = minOf(bindings.size, kinds.size, handles.size)
+        val entries = ArrayList<BindGroupEntry>(n)
+        for (i in 0 until n) {
+            val handle = GpuHandle(handles[i])
+            val resource = when (kinds[i]) {
+                1 -> BindingResource.Sampler(handle)
+                2 -> BindingResource.TextureView(handle)
+                else -> BindingResource.Buffer(BufferBinding(buffer = handle))
+            }
+            entries.add(BindGroupEntry(binding = bindings[i], resource = resource))
+        }
+        return this.bindings.deviceCreateBindGroup(
             device,
             BindGroupDescriptor(
                 layout = GpuHandle(layout),
-                entries = emptyList(),
+                entries = entries,
                 label = label.ifEmpty { null },
             ),
         )
+    }
 
     override fun deviceCreatePipelineLayoutDescribed(
         device: Int,
