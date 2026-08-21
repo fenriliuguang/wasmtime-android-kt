@@ -26,6 +26,7 @@ import androidx.webgpu.GPUComputePassEncoder
 import androidx.webgpu.GPUComputePipeline
 import androidx.webgpu.GPUComputePipelineDescriptor
 import androidx.webgpu.GPUComputeState
+import androidx.webgpu.GPUConstantEntry
 import androidx.webgpu.GPUDepthStencilState
 import androidx.webgpu.GPUDevice
 import androidx.webgpu.GPUDeviceDescriptor
@@ -626,6 +627,7 @@ class DawnWasiWebGpuHost private constructor(
                 compute = GPUComputeState(
                     module = module,
                     entryPoint = descriptor.compute.entryPoint ?: "main",
+                    constants = dawnPipelineConstants(descriptor.compute.constants),
                 ),
                 label = descriptor.label,
             ),
@@ -963,6 +965,7 @@ class DawnWasiWebGpuHost private constructor(
                     vertex = GPUVertexState(
                         module = vertexModule,
                         entryPoint = descriptor.vertex.entryPoint ?: "vs_main",
+                        constants = dawnPipelineConstants(descriptor.vertex.constants),
                         buffers = dawnBuffers,
                     ),
                     layout = pipelineLayout,
@@ -973,6 +976,7 @@ class DawnWasiWebGpuHost private constructor(
                     fragment = GPUFragmentState(
                         module = fragmentModule,
                         entryPoint = descriptor.fragment.entryPoint ?: "fs_main",
+                        constants = dawnPipelineConstants(descriptor.fragment.constants),
                         targets = descriptor.fragment.targets.map { target ->
                             GPUColorTargetState(format = target.format)
                         }.toTypedArray(),
@@ -983,6 +987,11 @@ class DawnWasiWebGpuHost private constructor(
             return handles.insert(ResourceKind.RenderPipeline, pipeline)
         }
     }
+
+    private fun dawnPipelineConstants(
+        constants: Map<String, Double>,
+    ): Array<GPUConstantEntry> =
+        constants.entries.map { GPUConstantEntry(key = it.key, value = it.value) }.toTypedArray()
 
     private fun createRenderPipelineTriangle(
         device: GpuHandle,
