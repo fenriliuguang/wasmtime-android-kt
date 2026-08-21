@@ -13,6 +13,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerBindingLayou
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureBindingLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.blendStateFromDescribed
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.depthStencilStateFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.multisampleStateFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.primitiveStateFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.writeMaskFromDescribed
@@ -404,6 +405,7 @@ private class ForwardingHostCallbacks(
         multisample: IntArray,
         blend: IntArray,
         writeMask: IntArray,
+        depthStencil: IntArray,
     ): Int {
         val vertexModule =
             if (vertexShader != 0) {
@@ -481,6 +483,7 @@ private class ForwardingHostCallbacks(
                 ),
                 layout = pipelineLayout,
                 primitive = primitiveStateFromDescribed(primitive),
+                depthStencil = depthStencilStateFromDescribed(depthStencil),
                 multisample = multisampleStateFromDescribed(multisample),
                 label = label.ifEmpty { null },
             ),

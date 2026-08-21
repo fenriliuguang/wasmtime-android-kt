@@ -3361,7 +3361,7 @@ pub fn exp_create_render_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, St
 /// + layout (0 = auto) + label + vertex.buffers (stride/step/attributes)
 /// + vertex/fragment `record-gpu-pipeline-constant-value` reps (0 = none)
 /// + primitive (topology/strip/front/cull) + multisample + per-target blend tuples
-/// + per-target write-mask (`-1` = absent).
+/// + per-target write-mask (`-1` = absent) + depth-stencil leftovers.
 pub fn exp_create_render_pipeline_described(
     cb: &GlobalRef,
     device: u32,
@@ -3384,11 +3384,12 @@ pub fn exp_create_render_pipeline_described(
     multisample: Vec<i32>,
     blend: Vec<i32>,
     write_mask: Vec<i32>,
+    depth_stencil: Vec<i32>,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateRenderPipelineDescribed",
-        "(IILjava/lang/String;ILjava/lang/String;IILjava/lang/String;[I[I[I[I[I[III[I[I[I[I)I",
+        "(IILjava/lang/String;ILjava/lang/String;IILjava/lang/String;[I[I[I[I[I[III[I[I[I[I[I)I",
         vec![
             HostArg::Int(device as i32),
             HostArg::Int(vertex_shader as i32),
@@ -3410,6 +3411,7 @@ pub fn exp_create_render_pipeline_described(
             HostArg::Ints(multisample),
             HostArg::Ints(blend),
             HostArg::Ints(write_mask),
+            HostArg::Ints(depth_stencil),
         ],
     )
 }

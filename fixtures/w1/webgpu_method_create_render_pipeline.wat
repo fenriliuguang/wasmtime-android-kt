@@ -2,11 +2,13 @@
 ;; [method]gpu-device.create-render-pipeline
 ;; Guest passes shader borrow, vertex entry-point="vs_main", one float32x3
 ;; vertex buffer (stride=12), fragment target format=rgba8unorm entry="fs_main",
-;; layout=auto, label="l2", primitive cull-mode=back, fragment write-mask=all; drops own pipeline;
+;; layout=auto, label="l2", primitive cull-mode=back, fragment write-mask=all,
+;; depth-stencil leftover (stencil-front/back, masks, depth-bias); drops own pipeline;
 ;; run returns harness 1.
 ;; Flattened params exceed 16, so canon lower spills through memory.
 ;; Spill tuple: device @0, vertex.buffers @4, vertex.module @16, vertex entry @20,
-;; primitive option @40 (cull back), fragment option @144, layout disc auto @180,
+;; primitive option @40 (cull back), depth-stencil option @52 (payload @56),
+;; fragment option @144, layout disc auto @180,
 ;; label @188; strings at 768/784/800.
 ;; get-device / get-shader-module are test constructors only (not product WIT).
 (component
@@ -229,6 +231,39 @@
       (i32.store8 (i32.const 40) (i32.const 1))
       (i32.store8 (i32.const 47) (i32.const 1))
       (i32.store8 (i32.const 48) (i32.const 2))
+      ;; depth-stencil option @52: some; payload @56 (align 4).
+      ;; format depth24plus-stencil8=46; write some+true; compare some+less;
+      ;; stencil-front some (always/keep/keep/replace); stencil-back some (always/keep/keep/keep);
+      ;; read-mask 0xff; write-mask 0x0f; bias=2; slope=1.5; clamp=0.25.
+      (i32.store8 (i32.const 52) (i32.const 1))
+      (i32.store8 (i32.const 56) (i32.const 46))
+      (i32.store8 (i32.const 57) (i32.const 1))
+      (i32.store8 (i32.const 58) (i32.const 1))
+      (i32.store8 (i32.const 59) (i32.const 1))
+      (i32.store8 (i32.const 60) (i32.const 1))
+      (i32.store8 (i32.const 61) (i32.const 1))
+      (i32.store8 (i32.const 62) (i32.const 1))
+      (i32.store8 (i32.const 63) (i32.const 7))
+      (i32.store8 (i32.const 64) (i32.const 1))
+      (i32.store8 (i32.const 66) (i32.const 1))
+      (i32.store8 (i32.const 68) (i32.const 1))
+      (i32.store8 (i32.const 69) (i32.const 2))
+      (i32.store8 (i32.const 70) (i32.const 1))
+      (i32.store8 (i32.const 71) (i32.const 1))
+      (i32.store8 (i32.const 72) (i32.const 7))
+      (i32.store8 (i32.const 73) (i32.const 1))
+      (i32.store8 (i32.const 75) (i32.const 1))
+      (i32.store8 (i32.const 77) (i32.const 1))
+      (i32.store8 (i32.const 80) (i32.const 1))
+      (i32.store (i32.const 84) (i32.const 255))
+      (i32.store8 (i32.const 88) (i32.const 1))
+      (i32.store (i32.const 92) (i32.const 15))
+      (i32.store8 (i32.const 96) (i32.const 1))
+      (i32.store (i32.const 100) (i32.const 2))
+      (i32.store8 (i32.const 104) (i32.const 1))
+      (f32.store (i32.const 108) (f32.const 1.5))
+      (i32.store8 (i32.const 112) (i32.const 1))
+      (f32.store (i32.const 116) (f32.const 0.25))
       ;; option<vbl> at 256: some, payload at 264 (stride u64, step none, attrs list).
       (i32.store (i32.const 256) (i32.const 1))
       (i64.store (i32.const 264) (i64.const 12))

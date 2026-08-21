@@ -21,6 +21,7 @@ use crate::webgpu_abi::{
     GpuDeviceDescriptor, GpuDeviceLostInfo, GpuDeviceLostReason, GpuError, GpuErrorFilter,
     GpuErrorKind, GpuExtent3D, GpuIndexFormat, GpuLayoutMode, GpuMapMode,
     GpuBlendFactor, GpuBlendOperation, GpuColorWrite, GpuCompareFunction, GpuCullMode, GpuFrontFace,
+    GpuStencilFaceState, GpuStencilOperation,
     GpuMipmapFilterMode, GpuPipelineErrorReason, GpuPipelineLayoutDescriptor,
     GpuPrimitiveTopology,
     GpuQuerySetDescriptor, GpuQueryType, GpuRenderBundleDescriptor,
@@ -156,6 +157,83 @@ fn dawn_blend_factor(f: GpuBlendFactor) -> i32 {
     (f as i32) + 1
 }
 
+fn dawn_compare(c: GpuCompareFunction) -> i32 {
+    (c as i32) + 1
+}
+
+fn dawn_stencil_op(op: GpuStencilOperation) -> i32 {
+    (op as i32) + 1
+}
+
+fn pack_stencil_face(face: &Option<GpuStencilFaceState>) -> [i32; 5] {
+    match face {
+        None => [0, 0, 0, 0, 0],
+        Some(f) => [
+            1,
+            f.compare.map(dawn_compare).unwrap_or(0),
+            f.fail_op.map(dawn_stencil_op).unwrap_or(0),
+            f.depth_fail_op.map(dawn_stencil_op).unwrap_or(0),
+            f.pass_op.map(dawn_stencil_op).unwrap_or(0),
+        ],
+    }
+}
+
+/// Empty vec = absent. Packed ints: format, depth-write, compare, front/back 5-tuples,
+/// then (has, value) for read-mask / write-mask / bias / slope-bits / clamp-bits.
+fn pack_depth_stencil(
+    depth_stencil: &Option<crate::webgpu_abi::GpuDepthStencilState>,
+) -> Vec<i32> {
+    let Some(ds) = depth_stencil else {
+        return Vec::new();
+    };
+    let mut v = Vec::with_capacity(23);
+    v.push((ds.format as i32) + 1);
+    v.push(match ds.depth_write_enabled {
+        Some(true) => 1,
+        Some(false) => 0,
+        None => -1,
+    });
+    v.push(ds.depth_compare.map(dawn_compare).unwrap_or(0));
+    v.extend_from_slice(&pack_stencil_face(&ds.stencil_front));
+    v.extend_from_slice(&pack_stencil_face(&ds.stencil_back));
+    match ds.stencil_read_mask {
+        Some(m) => {
+            v.push(1);
+            v.push(m as i32);
+        }
+        None => v.extend_from_slice(&[0, 0]),
+    }
+    match ds.stencil_write_mask {
+        Some(m) => {
+            v.push(1);
+            v.push(m as i32);
+        }
+        None => v.extend_from_slice(&[0, 0]),
+    }
+    match ds.depth_bias {
+        Some(b) => {
+            v.push(1);
+            v.push(b);
+        }
+        None => v.extend_from_slice(&[0, 0]),
+    }
+    match ds.depth_bias_slope_scale {
+        Some(s) => {
+            v.push(1);
+            v.push(s.to_bits() as i32);
+        }
+        None => v.extend_from_slice(&[0, 0]),
+    }
+    match ds.depth_bias_clamp {
+        Some(c) => {
+            v.push(1);
+            v.push(c.to_bits() as i32);
+        }
+        None => v.extend_from_slice(&[0, 0]),
+    }
+    v
+}
+
 /// WIT `gpu-color-write` bits as i32; `-1` = absent (Dawn All). `0` = explicit none.
 fn pack_color_write(mask: Option<GpuColorWrite>) -> i32 {
     let Some(m) = mask else {
@@ -181,10 +259,10 @@ fn pack_color_write(mask: Option<GpuColorWrite>) -> i32 {
 }
 
 /// F1: primitive (topology/strip/front/cull) + multisample + per-target blend 7-tuples
-/// + per-target write-mask (`-1` absent).
+/// + per-target write-mask (`-1` absent) + depth-stencil leftovers.
 fn pack_render_pipeline_semantics(
     descriptor: &GpuRenderPipelineDescriptor,
-) -> (Vec<i32>, Vec<i32>, Vec<i32>, Vec<i32>) {
+) -> (Vec<i32>, Vec<i32>, Vec<i32>, Vec<i32>, Vec<i32>) {
     let mut primitive = vec![0, 0, 0, 0];
     if let Some(p) = &descriptor.primitive {
         primitive[0] = p.topology.map(dawn_topology).unwrap_or(0);
@@ -223,7 +301,8 @@ fn pack_render_pipeline_semantics(
             write_mask.push(pack_color_write(target.write_mask));
         }
     }
-    (primitive, multisample, blend, write_mask)
+    let depth_stencil = pack_depth_stencil(&descriptor.depth_stencil);
+    (primitive, multisample, blend, write_mask, depth_stencil)
 }
 
 fn pack_color_clear_bits(c: &GpuColor) -> [i32; 4] {
@@ -4908,7 +4987,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         Some(fragment) => pipeline_constant_rep(&fragment.constants),
                         None => 0,
                     };
-                    let (primitive, multisample, blend, write_mask) =
+                    let (primitive, multisample, blend, write_mask, depth_stencil) =
                         pack_render_pipeline_semantics(&descriptor);
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
@@ -4947,6 +5026,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         multisample,
                         blend,
                         write_mask,
+                        depth_stencil,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if pipeline_rep == 0 {
@@ -5051,6 +5131,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             multisample,
                             blend,
                             write_mask,
+                            depth_stencil,
                         ) = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let vertex_shader = access
                                 .data_mut()
@@ -5082,7 +5163,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 Some(fragment) => pipeline_constant_rep(&fragment.constants),
                                 None => 0,
                             };
-                            let (primitive, multisample, blend, write_mask) =
+                            let (primitive, multisample, blend, write_mask, depth_stencil) =
                                 pack_render_pipeline_semantics(&descriptor);
                             let device_rep = access.data_mut().table.get(&device)?.rep;
                             let cb = access
@@ -5115,6 +5196,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 multisample,
                                 blend,
                                 write_mask,
+                                depth_stencil,
                             ))
                         })?;
                         let (tx, rx) = oneshot::channel::<()>();
@@ -5152,6 +5234,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             multisample,
                             blend,
                             write_mask,
+                            depth_stencil,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if pipeline_rep == 0 {

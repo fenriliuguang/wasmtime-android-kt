@@ -11,6 +11,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.blendStateFromDescribed
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.depthStencilStateFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.multisampleStateFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.primitiveStateFromDescribed
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.writeMaskFromDescribed
@@ -682,6 +683,7 @@ object ExperimentalWebGpuBridge {
                     multisample: IntArray,
                     blend: IntArray,
                     writeMask: IntArray,
+                    depthStencil: IntArray,
                 ): Int {
                     val vertexModule =
                         if (vertexShader != 0) {
@@ -763,6 +765,7 @@ object ExperimentalWebGpuBridge {
                             ),
                             layout = pipelineLayout,
                             primitive = primitiveStateFromDescribed(primitive),
+                            depthStencil = depthStencilStateFromDescribed(depthStencil),
                             multisample = multisampleStateFromDescribed(multisample),
                             label = label.ifEmpty { null },
                         ),

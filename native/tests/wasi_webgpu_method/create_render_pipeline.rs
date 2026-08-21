@@ -1,7 +1,8 @@
 //! L2: `get-device` + `get-shader-module` + `[method]gpu-device.create-render-pipeline`
 //! WIT: `(borrow<gpu-device>, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>`.
 //! Guest passes shader borrow, vertex entry-point="vs_main", one float32x3 buffer,
-//! fragment target format=rgba8unorm write-mask=all, layout=auto, label="l2"; drops own; `run` returns harness 1.
+//! fragment target format=rgba8unorm write-mask=all, depth-stencil leftovers,
+//! layout=auto, label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -792,7 +793,46 @@ fn register_method_create_render_pipeline(linker: &mut Linker<TestHost>) -> wasm
                 "guest must pass cull-mode=back"
             );
             assert!(primitive.unclipped_depth.is_none());
-            assert!(descriptor.depth_stencil.is_none());
+            let ds = descriptor
+                .depth_stencil
+                .as_ref()
+                .expect("guest must pass depth-stencil");
+            assert!(
+                matches!(ds.format, GpuTextureFormat::Depth24plusStencil8),
+                "guest must pass depth24plus-stencil8"
+            );
+            assert_eq!(ds.depth_write_enabled, Some(true));
+            assert!(
+                matches!(ds.depth_compare, Some(GpuCompareFunction::Less)),
+                "guest must pass depth-compare=less"
+            );
+            let front = ds
+                .stencil_front
+                .as_ref()
+                .expect("guest must pass stencil-front");
+            assert!(matches!(front.compare, Some(GpuCompareFunction::Always)));
+            assert!(matches!(front.fail_op, Some(GpuStencilOperation::Keep)));
+            assert!(matches!(
+                front.depth_fail_op,
+                Some(GpuStencilOperation::Keep)
+            ));
+            assert!(matches!(front.pass_op, Some(GpuStencilOperation::Replace)));
+            let back = ds
+                .stencil_back
+                .as_ref()
+                .expect("guest must pass stencil-back");
+            assert!(matches!(back.compare, Some(GpuCompareFunction::Always)));
+            assert!(matches!(back.fail_op, Some(GpuStencilOperation::Keep)));
+            assert!(matches!(
+                back.depth_fail_op,
+                Some(GpuStencilOperation::Keep)
+            ));
+            assert!(matches!(back.pass_op, Some(GpuStencilOperation::Keep)));
+            assert_eq!(ds.stencil_read_mask, Some(0xff));
+            assert_eq!(ds.stencil_write_mask, Some(0x0f));
+            assert_eq!(ds.depth_bias, Some(2));
+            assert_eq!(ds.depth_bias_slope_scale, Some(1.5));
+            assert_eq!(ds.depth_bias_clamp, Some(0.25));
             assert!(descriptor.multisample.is_none());
             let fragment = descriptor
                 .fragment
