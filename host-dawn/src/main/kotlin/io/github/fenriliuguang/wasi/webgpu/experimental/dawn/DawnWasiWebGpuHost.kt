@@ -13,6 +13,8 @@ import androidx.webgpu.GPUBindGroupEntry
 import androidx.webgpu.GPUBindGroupLayout
 import androidx.webgpu.GPUBindGroupLayoutDescriptor
 import androidx.webgpu.GPUBindGroupLayoutEntry
+import androidx.webgpu.GPUBlendComponent
+import androidx.webgpu.GPUBlendState
 import androidx.webgpu.GPUBuffer
 import androidx.webgpu.GPUBufferBindingLayout
 import androidx.webgpu.GPUBufferDescriptor
@@ -34,6 +36,7 @@ import androidx.webgpu.GPUExtent3D
 import androidx.webgpu.GPUFragmentState
 import androidx.webgpu.GPUInstance
 import androidx.webgpu.GPULimits
+import androidx.webgpu.GPUMultisampleState
 import androidx.webgpu.GPUPipelineLayout
 import androidx.webgpu.GPUPipelineLayoutDescriptor
 import androidx.webgpu.GPUPrimitiveState
@@ -121,6 +124,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.SurfaceTextureStatu
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Color
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.BlendState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuLoadOp
@@ -956,7 +960,8 @@ class DawnWasiWebGpuHost private constructor(
                     }.toTypedArray(),
                 )
             }.toTypedArray()
-            val topology = descriptor.primitive?.topology ?: GpuPrimitiveTopology.TRIANGLE_LIST
+            val primitive = descriptor.primitive
+            val topology = primitive?.topology ?: GpuPrimitiveTopology.TRIANGLE_LIST
             val depthStencil = descriptor.depthStencil?.let { ds ->
                 GPUDepthStencilState(
                     format = ds.format,
@@ -977,16 +982,29 @@ class DawnWasiWebGpuHost private constructor(
                         buffers = dawnBuffers,
                     ),
                     layout = pipelineLayout,
-                    // androidx GPUPrimitiveState extra ctor params (cull/front/strip)
-                    // not assumed in this AAR; guest values stay on the Kotlin record (F1 DoD).
-                    primitive = GPUPrimitiveState(topology = topology),
+                    primitive = GPUPrimitiveState(
+                        topology = topology,
+                        stripIndexFormat = primitive?.stripIndexFormat ?: 0,
+                        frontFace = primitive?.frontFace ?: 0,
+                        cullMode = primitive?.cullMode ?: 0,
+                    ),
                     depthStencil = depthStencil,
+                    multisample = descriptor.multisample?.let { ms ->
+                        GPUMultisampleState(
+                            count = ms.count,
+                            mask = ms.mask,
+                            alphaToCoverageEnabled = ms.alphaToCoverageEnabled,
+                        )
+                    },
                     fragment = GPUFragmentState(
                         module = fragmentModule,
                         entryPoint = descriptor.fragment.entryPoint ?: "fs_main",
                         constants = dawnPipelineConstants(descriptor.fragment.constants),
                         targets = descriptor.fragment.targets.map { target ->
-                            GPUColorTargetState(format = target.format)
+                            GPUColorTargetState(
+                                format = target.format,
+                                blend = dawnBlendState(target.blend),
+                            )
                         }.toTypedArray(),
                     ),
                     label = descriptor.label,
@@ -1000,6 +1018,22 @@ class DawnWasiWebGpuHost private constructor(
         constants: Map<String, Double>,
     ): Array<GPUConstantEntry> =
         constants.entries.map { GPUConstantEntry(key = it.key, value = it.value) }.toTypedArray()
+
+    private fun dawnBlendState(blend: BlendState?): GPUBlendState? =
+        blend?.let {
+            GPUBlendState(
+                color = GPUBlendComponent(
+                    operation = it.color.operation,
+                    srcFactor = it.color.srcFactor,
+                    dstFactor = it.color.dstFactor,
+                ),
+                alpha = GPUBlendComponent(
+                    operation = it.alpha.operation,
+                    srcFactor = it.alpha.srcFactor,
+                    dstFactor = it.alpha.dstFactor,
+                ),
+            )
+        }
 
     /** Empty map → none. Unknown / androidx-missing keys are skipped. */
     private fun dawnRequiredLimits(required: Map<String, Long?>): GPULimits? {
