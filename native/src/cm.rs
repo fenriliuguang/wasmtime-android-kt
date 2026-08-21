@@ -13,7 +13,7 @@ use crate::jvm;
 use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
     GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBindingResource,
-    GpuBufferBindingType,
+    GpuBufferBindingType, GpuSamplerBindingType, GpuTextureSampleType,
     GpuBufferDescriptor, GpuBufferMapState, GpuBufferUsage, GpuCanvasConfiguration,
     GpuCanvasConfigurationOwned, GpuCanvasContext, GpuColor, GpuCommandBufferDescriptor,
     GpuCommandEncoderDescriptor, GpuCompilationInfo, GpuCompilationMessage,
@@ -525,7 +525,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
     // and S6+ `[method]gpu-texture.*` info getters / label / set-label (L2 described extent: width/height/depth/mip; remaining still lift-only).
     // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (L2 described mutate + iterate).
-    // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described first entry)
+    // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described all entries)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 described BGL handles + label)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 described layout + entries + label)
     // and S6+ `[method]gpu-device.create-render-pipeline` (sync (borrow, gpu-render-pipeline-descriptor) -> own<gpu-render-pipeline>; L2 described vertex shader/entry + layout + label)
@@ -3964,28 +3964,49 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     GpuBindGroupLayoutDescriptor,
                 )| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let (binding, visibility, buffer_type) = match descriptor.entries.first() {
-                        Some(entry) => {
-                            let buffer_type = match entry.buffer.as_ref().and_then(|b| b.ty) {
-                                Some(GpuBufferBindingType::Uniform) => 0,
-                                Some(GpuBufferBindingType::Storage) => 1,
-                                Some(GpuBufferBindingType::ReadOnlyStorage) => 2,
-                                None => -1,
-                            };
-                            let mut visibility = 0i32;
-                            if entry.visibility.contains(GpuShaderStage::VERTEX) {
-                                visibility |= 1;
-                            }
-                            if entry.visibility.contains(GpuShaderStage::FRAGMENT) {
-                                visibility |= 2;
-                            }
-                            if entry.visibility.contains(GpuShaderStage::COMPUTE) {
-                                visibility |= 4;
-                            }
-                            (entry.binding as i32, visibility, buffer_type)
+                    let mut bindings = Vec::with_capacity(descriptor.entries.len());
+                    let mut visibilities = Vec::with_capacity(descriptor.entries.len());
+                    let mut buffer_types = Vec::with_capacity(descriptor.entries.len());
+                    let mut sampler_types = Vec::with_capacity(descriptor.entries.len());
+                    let mut texture_sample_types = Vec::with_capacity(descriptor.entries.len());
+                    for entry in &descriptor.entries {
+                        bindings.push(entry.binding as i32);
+                        let mut visibility = 0i32;
+                        if entry.visibility.contains(GpuShaderStage::VERTEX) {
+                            visibility |= 1;
                         }
-                        None => (0, 0, -1),
-                    };
+                        if entry.visibility.contains(GpuShaderStage::FRAGMENT) {
+                            visibility |= 2;
+                        }
+                        if entry.visibility.contains(GpuShaderStage::COMPUTE) {
+                            visibility |= 4;
+                        }
+                        visibilities.push(visibility);
+                        buffer_types.push(match entry.buffer.as_ref().and_then(|b| b.ty) {
+                            Some(GpuBufferBindingType::Uniform) => 0,
+                            Some(GpuBufferBindingType::Storage) => 1,
+                            Some(GpuBufferBindingType::ReadOnlyStorage) => 2,
+                            None => -1,
+                        });
+                        sampler_types.push(match &entry.sampler {
+                            None => -1,
+                            Some(sampler) => match sampler.ty {
+                                Some(GpuSamplerBindingType::NonFiltering) => 1,
+                                Some(GpuSamplerBindingType::Comparison) => 2,
+                                Some(GpuSamplerBindingType::Filtering) | None => 0,
+                            },
+                        });
+                        texture_sample_types.push(match &entry.texture {
+                            None => -1,
+                            Some(texture) => match texture.sample_type {
+                                Some(GpuTextureSampleType::UnfilterableFloat) => 1,
+                                Some(GpuTextureSampleType::Depth) => 2,
+                                Some(GpuTextureSampleType::Sint) => 3,
+                                Some(GpuTextureSampleType::Uint) => 4,
+                                Some(GpuTextureSampleType::Float) | None => 0,
+                            },
+                        });
+                    }
                     let cb = caller
                         .data()
                         .experimental_host_cb
@@ -4003,9 +4024,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     let layout_rep = jvm::exp_create_bind_group_layout_described(
                         &cb,
                         l2_device,
-                        binding,
-                        visibility,
-                        buffer_type,
+                        bindings,
+                        visibilities,
+                        buffer_types,
+                        sampler_types,
+                        texture_sample_types,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if layout_rep == 0 {

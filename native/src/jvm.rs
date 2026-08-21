@@ -3169,23 +3169,30 @@ pub fn exp_create_bind_group_layout(cb: &GlobalRef, device: u32) -> Result<u32, 
     )
 }
 
-/// L2: Guest first bind-group-layout entry (binding / visibility / buffer type; -1 = none).
+/// L2: Guest bind-group-layout entries (parallel arrays; -1 = that option absent).
+/// buffer: 0=uniform, 1=storage, 2=read-only-storage.
+/// sampler: 0=filtering, 1=non-filtering, 2=comparison.
+/// texture: 0=float, 1=unfilterable-float, 2=depth, 3=sint, 4=uint.
 pub fn exp_create_bind_group_layout_described(
     cb: &GlobalRef,
     device: u32,
-    binding: i32,
-    visibility: i32,
-    buffer_type: i32,
+    bindings: Vec<i32>,
+    visibilities: Vec<i32>,
+    buffer_types: Vec<i32>,
+    sampler_types: Vec<i32>,
+    texture_sample_types: Vec<i32>,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateBindGroupLayoutDescribed",
-        "(IIII)I",
+        "(I[I[I[I[I[I)I",
         vec![
             HostArg::Int(device as i32),
-            HostArg::Int(binding),
-            HostArg::Int(visibility),
-            HostArg::Int(buffer_type),
+            HostArg::Ints(bindings),
+            HostArg::Ints(visibilities),
+            HostArg::Ints(buffer_types),
+            HostArg::Ints(sampler_types),
+            HostArg::Ints(texture_sample_types),
         ],
     )
 }
