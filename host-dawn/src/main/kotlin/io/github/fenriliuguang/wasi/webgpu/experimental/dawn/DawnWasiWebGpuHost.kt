@@ -43,6 +43,7 @@ import androidx.webgpu.GPUPrimitiveState
 import androidx.webgpu.GPUQuerySet
 import androidx.webgpu.GPUQuerySetDescriptor
 import androidx.webgpu.GPUQueue
+import androidx.webgpu.GPUQueueDescriptor
 import androidx.webgpu.GPURenderBundle
 import androidx.webgpu.GPURenderBundleDescriptor
 import androidx.webgpu.GPURenderBundleEncoder
@@ -245,6 +246,7 @@ class DawnWasiWebGpuHost private constructor(
                 descriptor.requiredFeatures.map { it + 1 }.toIntArray()
             },
             requiredLimits = dawnRequiredLimits(descriptor.requiredLimits),
+            defaultQueue = descriptor.defaultQueueLabel?.let { GPUQueueDescriptor(label = it) },
             deviceLostCallbackExecutor = callbackExecutor,
             uncapturedErrorCallbackExecutor = callbackExecutor,
             deviceLostCallback = DeviceLostCallback { _, reason, message ->
