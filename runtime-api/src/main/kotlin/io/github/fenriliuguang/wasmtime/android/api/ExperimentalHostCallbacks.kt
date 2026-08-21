@@ -812,9 +812,23 @@ interface ExperimentalHostCallbacks {
     /** Host picks a fixed clear color (smoke). */
     fun beginRenderPassClear(encoder: Int, view: Int): Int = unsupported("beginRenderPassClear")
 
-    /** L2: Guest encoder + first color-attachment view / load-op / store-op (view 0 → stub). */
-    fun beginRenderPassDescribed(encoder: Int, view: Int, loadOp: Int, storeOp: Int): Int =
-        unsupported("beginRenderPassDescribed")
+    /** L2: Guest encoder + first color view/load/store + optional clear + depth-stencil. */
+    fun beginRenderPassDescribed(
+        encoder: Int,
+        view: Int,
+        loadOp: Int,
+        storeOp: Int,
+        hasClear: Int,
+        clearR: Float,
+        clearG: Float,
+        clearB: Float,
+        clearA: Float,
+        depthView: Int,
+        depthLoad: Int,
+        depthStore: Int,
+        hasDepthClear: Int,
+        depthClear: Float,
+    ): Int = unsupported("beginRenderPassDescribed")
 
     fun renderPassEnd(pass: Int) {
         unsupported("renderPassEnd")

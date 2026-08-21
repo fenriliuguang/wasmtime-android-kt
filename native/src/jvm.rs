@@ -3388,23 +3388,43 @@ pub fn exp_begin_render_pass_clear(cb: &GlobalRef, encoder: u32, view: u32) -> R
     )
 }
 
-/// L2: Guest encoder + first color-attachment view/load/store (view 0 → stub in attach).
+/// L2: Guest encoder + first color view/load/store + optional clear + depth-stencil.
 pub fn exp_begin_render_pass_described(
     cb: &GlobalRef,
     encoder: u32,
     view: u32,
     load_op: u32,
     store_op: u32,
+    has_clear: i32,
+    clear_r: f32,
+    clear_g: f32,
+    clear_b: f32,
+    clear_a: f32,
+    depth_view: u32,
+    depth_load: i32,
+    depth_store: i32,
+    has_depth_clear: i32,
+    depth_clear: f32,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "beginRenderPassDescribed",
-        "(IIII)I",
+        "(IIIIIFFFFIIIIF)I",
         vec![
             HostArg::Int(encoder as i32),
             HostArg::Int(view as i32),
             HostArg::Int(load_op as i32),
             HostArg::Int(store_op as i32),
+            HostArg::Int(has_clear),
+            HostArg::Float(clear_r),
+            HostArg::Float(clear_g),
+            HostArg::Float(clear_b),
+            HostArg::Float(clear_a),
+            HostArg::Int(depth_view as i32),
+            HostArg::Int(depth_load),
+            HostArg::Int(depth_store),
+            HostArg::Int(has_depth_clear),
+            HostArg::Float(depth_clear),
         ],
     )
 }

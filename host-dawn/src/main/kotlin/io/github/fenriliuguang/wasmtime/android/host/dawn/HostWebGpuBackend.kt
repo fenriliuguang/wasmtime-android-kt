@@ -11,6 +11,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BufferBindingType
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerBindingLayout
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureBindingLayout
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.Color
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ColorTargetState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.ComputePipelineDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.FragmentState
@@ -23,8 +24,11 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexState
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuVertexStepMode
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.Extent3D
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuHandle
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuLoadOp
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuStoreOp
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassColorAttachment
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDepthStencilAttachment
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.RenderPassDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.SamplerDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
@@ -442,19 +446,52 @@ private class ForwardingHostCallbacks(
         view: Int,
         loadOp: Int,
         storeOp: Int,
-    ): Int =
-        bindings.commandEncoderBeginRenderPass(
+        hasClear: Int,
+        clearR: Float,
+        clearG: Float,
+        clearB: Float,
+        clearA: Float,
+        depthView: Int,
+        depthLoad: Int,
+        depthStore: Int,
+        hasDepthClear: Int,
+        depthClear: Float,
+    ): Int {
+        val clear = if (hasClear != 0) {
+            Color(
+                r = clearR.toDouble(),
+                g = clearG.toDouble(),
+                b = clearB.toDouble(),
+                a = clearA.toDouble(),
+            )
+        } else {
+            null
+        }
+        val depth = if (depthView != 0) {
+            RenderPassDepthStencilAttachment(
+                view = GpuHandle(depthView),
+                depthClearValue = if (hasDepthClear != 0) depthClear else 1f,
+                depthLoadOp = if (depthLoad < 0) GpuLoadOp.CLEAR else depthLoad,
+                depthStoreOp = if (depthStore < 0) GpuStoreOp.STORE else depthStore,
+            )
+        } else {
+            null
+        }
+        return bindings.commandEncoderBeginRenderPass(
             encoder,
             RenderPassDescriptor(
                 colorAttachments = listOf(
                     RenderPassColorAttachment(
                         view = GpuHandle(view),
+                        clearValue = clear,
                         loadOp = loadOp,
                         storeOp = storeOp,
                     ),
                 ),
+                depthStencilAttachment = depth,
             ),
         )
+    }
 
     override fun deviceCreateBufferDescribed(device: Int, size: Long, usage: Int): Int =
         bindings.deviceCreateBuffer(device, size = size, usage = usage)
