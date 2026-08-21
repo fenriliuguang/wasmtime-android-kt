@@ -698,14 +698,13 @@ pub fn exp_adapter_request_device(cb: &GlobalRef, adapter: u32) -> Result<u32, S
     )
 }
 
-/// L2: Guest `gpu-adapter.request-device`. `has_feature==0` means no required-features
-/// (descriptor none / empty). `required_limits` 0 = none; `label` empty = none.
+/// L2: Guest `gpu-adapter.request-device`. `required_features` empty = none.
+/// `required_limits` 0 = none; `label` empty = none.
 /// `default_queue_label` empty = default-queue none / queue label none.
 pub fn exp_adapter_request_device_described(
     cb: &GlobalRef,
     adapter: u32,
-    has_feature: u32,
-    feature: u32,
+    required_features: Vec<i32>,
     required_limits: i32,
     label: String,
     default_queue_label: String,
@@ -713,11 +712,10 @@ pub fn exp_adapter_request_device_described(
     call_i(
         cb,
         "adapterRequestDeviceDescribed",
-        "(IIIILjava/lang/String;Ljava/lang/String;)I",
+        "(I[IILjava/lang/String;Ljava/lang/String;)I",
         vec![
             HostArg::Int(adapter as i32),
-            HostArg::Int(has_feature as i32),
-            HostArg::Int(feature as i32),
+            HostArg::Ints(required_features),
             HostArg::Int(required_limits),
             HostArg::Str(label),
             HostArg::Str(default_queue_label),

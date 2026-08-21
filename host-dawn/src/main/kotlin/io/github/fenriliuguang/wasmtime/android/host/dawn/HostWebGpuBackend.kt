@@ -169,8 +169,7 @@ private class ForwardingHostCallbacks(
 
     override fun adapterRequestDeviceDescribed(
         adapter: Int,
-        hasFeature: Int,
-        feature: Int,
+        requiredFeatures: IntArray,
         requiredLimits: Int,
         label: String,
         defaultQueueLabel: String,
@@ -178,6 +177,7 @@ private class ForwardingHostCallbacks(
         bindings.adapterRequestDevice(
             adapter,
             DeviceDescriptor(
+                requiredFeatures = requiredFeatures.toList(),
                 requiredLimits = bindings.recordOptionGpuSize64Snapshot(requiredLimits),
                 label = label.ifEmpty { null },
                 defaultQueueLabel = defaultQueueLabel.ifEmpty { null },

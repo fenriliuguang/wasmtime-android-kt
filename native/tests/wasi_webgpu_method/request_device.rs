@@ -1,7 +1,8 @@
 //! L2: `get-adapter` + `[method]gpu-adapter.request-device`
 //! WIT: async (borrow<gpu-adapter>, option<gpu-device-descriptor>)
 //!      -> result<own<gpu-device>, request-device-error>
-//! Guest passes some(default-queue.label="l2"); drops own device on ok; harness 1.
+//! Guest passes some(required-features=[core-features-and-limits, depth-clip-control],
+//! default-queue.label="l2"); drops own device on ok; harness 1.
 
 use futures::channel::oneshot;
 use wasmtime::component::{
@@ -21,7 +22,7 @@ struct GpuDevice {
 #[derive(Debug)]
 struct RecordOptionGpuSize64;
 
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
@@ -153,7 +154,17 @@ fn register_method_request_device(linker: &mut Linker<TestHost>) -> wasmtime::Re
             Box::pin(async move {
                 accessor.with(|mut access| access.data_mut().table.get(&adapter).map(|_| ()))?;
                 let desc = descriptor.expect("guest must pass descriptor=some this cut");
-                assert!(desc.required_features.is_none());
+                assert_eq!(
+                    desc.required_features.as_deref(),
+                    Some(
+                        [
+                            GpuFeatureName::CoreFeaturesAndLimits,
+                            GpuFeatureName::DepthClipControl,
+                        ]
+                        .as_slice()
+                    ),
+                    "guest must pass required-features=[core-features-and-limits, depth-clip-control]"
+                );
                 assert!(desc.required_limits.is_none());
                 assert_eq!(
                     desc.default_queue.as_ref().and_then(|q| q.label.as_deref()),

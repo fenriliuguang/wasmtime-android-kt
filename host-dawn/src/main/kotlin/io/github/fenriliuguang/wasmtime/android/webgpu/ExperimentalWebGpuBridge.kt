@@ -92,7 +92,7 @@ object ExperimentalWebGpuBridge {
      * L2 `[method]gpu-adapter.request-device` shares this attach:
      * `get-adapter` is host-only (no Kotlin); the method then calls L2
      * `requestAdapter` (when adapter.rep is 0) + `adapterRequestDeviceDescribed`
-     * (optional first required-feature + required-limits record rep + label +
+     * (optional required-features list + required-limits record rep + label +
      * default-queue label), and
      * returns `result<own<gpu-device>, request-device-error>`.
      */
@@ -116,8 +116,7 @@ object ExperimentalWebGpuBridge {
 
                 override fun adapterRequestDeviceDescribed(
                     adapter: Int,
-                    hasFeature: Int,
-                    feature: Int,
+                    requiredFeatures: IntArray,
                     requiredLimits: Int,
                     label: String,
                     defaultQueueLabel: String,
@@ -125,6 +124,7 @@ object ExperimentalWebGpuBridge {
                     bindings.adapterRequestDevice(
                         adapter,
                         DeviceDescriptor(
+                            requiredFeatures = requiredFeatures.toList(),
                             requiredLimits = bindings.recordOptionGpuSize64Snapshot(requiredLimits),
                             label = label.ifEmpty { null },
                             defaultQueueLabel = defaultQueueLabel.ifEmpty { null },
@@ -3767,8 +3767,7 @@ object ExperimentalWebGpuBridge {
 
                 override fun adapterRequestDeviceDescribed(
                     adapter: Int,
-                    hasFeature: Int,
-                    feature: Int,
+                    requiredFeatures: IntArray,
                     requiredLimits: Int,
                     label: String,
                     defaultQueueLabel: String,
@@ -3883,8 +3882,7 @@ object ExperimentalWebGpuBridge {
 
                 override fun adapterRequestDeviceDescribed(
                     adapter: Int,
-                    hasFeature: Int,
-                    feature: Int,
+                    requiredFeatures: IntArray,
                     requiredLimits: Int,
                     label: String,
                     defaultQueueLabel: String,
