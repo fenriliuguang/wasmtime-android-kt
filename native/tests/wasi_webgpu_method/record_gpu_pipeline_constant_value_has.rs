@@ -1,5 +1,5 @@
-//! S6+: `[constructor]record-gpu-pipeline-constant-value` + `[method]record-gpu-pipeline-constant-value.has`
-//! WIT: lift-only stub; harness 1.
+//! L2: `[constructor]record-gpu-pipeline-constant-value` + `[method]record-gpu-pipeline-constant-value.has`
+//! WIT: described mutate; guest empty key; host false; harness 1.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -25,14 +25,21 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
             Ok(())
         },
     )?;
-    webgpu.func_wrap("[constructor]record-gpu-pipeline-constant-value", |mut store, ()| {
-        let resource = store.data_mut().table.push(RecordGpuPipelineConstantValue)?;
-        Ok((resource,))
-    })?;
+    webgpu.func_wrap(
+        "[constructor]record-gpu-pipeline-constant-value",
+        |mut store, ()| {
+            let resource = store
+                .data_mut()
+                .table
+                .push(RecordGpuPipelineConstantValue)?;
+            Ok((resource,))
+        },
+    )?;
     webgpu.func_wrap(
         "[method]record-gpu-pipeline-constant-value.has",
-        move |mut caller, (record, _key): (Resource<RecordGpuPipelineConstantValue>, String)| {
+        move |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
             caller.data_mut().table.get(&record).map(|_| ())?;
+            assert!(key.is_empty(), "guest must pass empty key this cut");
             called.store(true, Ordering::SeqCst);
             Ok((false,))
         },

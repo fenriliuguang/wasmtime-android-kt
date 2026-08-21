@@ -523,7 +523,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // and S7 `[method]gpu-command-encoder.finish` (sync (borrow, option<gpu-command-buffer-descriptor>) -> own<gpu-command-buffer>; L2 described label)
     // and `gpu-texture` + `get-texture` + S8 `[method]gpu-texture.create-view` (sync (borrow, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>)
     // and S6+ `[method]gpu-texture.*` info getters / label / set-label (L2 described extent: width/height/depth/mip; remaining still lift-only).
-    // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (lift-only stubs).
+    // and S6+ `[method]record-gpu-pipeline-constant-value.*` map methods (L2 described mutate: add/get/has/remove; iterate still lift-only).
     // and S6+ `[method]gpu-device.create-bind-group-layout` (sync (borrow, gpu-bind-group-layout-descriptor) -> own<gpu-bind-group-layout>; L2 described first entry)
     // and S6+ `[method]gpu-device.create-pipeline-layout` (sync (borrow, gpu-pipeline-layout-descriptor) -> own<gpu-pipeline-layout>; L2 described BGL handles + label)
     // and S6+ `[method]gpu-device.create-bind-group` (sync (borrow, gpu-bind-group-descriptor) -> own<gpu-bind-group>; L2 described layout + label)
@@ -3580,12 +3580,21 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]record-gpu-pipeline-constant-value.add",
                 |mut caller,
-                 (record, _key, _value): (
+                 (record, key, value): (
                     Resource<RecordGpuPipelineConstantValue>,
                     String,
                     f64,
                 )| {
                     let _ = caller.data_mut().table.get(&record)?;
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    jvm::exp_record_pipeline_constant_value_add_described(&cb, handle, key, value)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -3593,26 +3602,65 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]record-gpu-pipeline-constant-value.get",
-                |mut caller, (record, _key): (Resource<RecordGpuPipelineConstantValue>, String)| {
+                |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((None::<f64>,))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let has = jvm::exp_record_pipeline_constant_value_has_described(
+                        &cb,
+                        handle,
+                        key.clone(),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    if has == 0 {
+                        return Ok((None,));
+                    }
+                    let value = jvm::exp_record_pipeline_constant_value_get_value_described(
+                        &cb, handle, key,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    Ok((Some(value),))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]record-gpu-pipeline-constant-value.has",
-                |mut caller, (record, _key): (Resource<RecordGpuPipelineConstantValue>, String)| {
+                |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((false,))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let has =
+                        jvm::exp_record_pipeline_constant_value_has_described(&cb, handle, key)
+                            .map_err(wasmtime::Error::msg)?;
+                    Ok((has != 0,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]record-gpu-pipeline-constant-value.remove",
-                |mut caller, (record, _key): (Resource<RecordGpuPipelineConstantValue>, String)| {
+                |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    jvm::exp_record_pipeline_constant_value_remove_described(&cb, handle, key)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

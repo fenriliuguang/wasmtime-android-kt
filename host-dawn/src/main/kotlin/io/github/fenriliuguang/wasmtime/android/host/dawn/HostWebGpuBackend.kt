@@ -49,6 +49,24 @@ private class ForwardingHostCallbacks(
     override fun requestAdapterDescribed(powerPreference: Int, forceFallback: Int): Int =
         bindings.requestAdapterDescribed(powerPreference, forceFallback)
 
+    override fun recordPipelineConstantValueAddDescribed(
+        handle: Int,
+        key: String,
+        value: Double,
+    ) {
+        bindings.recordPipelineConstantValueAdd(handle, key, value)
+    }
+
+    override fun recordPipelineConstantValueHasDescribed(handle: Int, key: String): Int =
+        if (bindings.recordPipelineConstantValueHas(handle, key)) 1 else 0
+
+    override fun recordPipelineConstantValueGetValueDescribed(handle: Int, key: String): Double =
+        bindings.recordPipelineConstantValueGetValue(handle, key)
+
+    override fun recordPipelineConstantValueRemoveDescribed(handle: Int, key: String) {
+        bindings.recordPipelineConstantValueRemove(handle, key)
+    }
+
     override fun adapterRequestDevice(adapter: Int): Int = bindings.adapterRequestDevice(adapter)
 
     override fun adapterRequestDeviceDescribed(adapter: Int, hasFeature: Int, feature: Int): Int =

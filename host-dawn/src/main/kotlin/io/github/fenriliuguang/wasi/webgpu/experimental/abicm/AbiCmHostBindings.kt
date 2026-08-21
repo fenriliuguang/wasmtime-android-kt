@@ -83,6 +83,23 @@ class AbiCmHostBindings(
         return host.requestAdapter(options).raw
     }
 
+    /** WIT `record-gpu-pipeline-constant-value` maps keyed by guest resource rep. */
+    private val pipelineConstantMaps = LinkedHashMap<Int, LinkedHashMap<String, Double>>()
+
+    fun recordPipelineConstantValueAdd(handle: Int, key: String, value: Double) {
+        pipelineConstantMaps.getOrPut(handle) { LinkedHashMap() }[key] = value
+    }
+
+    fun recordPipelineConstantValueHas(handle: Int, key: String): Boolean =
+        pipelineConstantMaps[handle]?.containsKey(key) == true
+
+    fun recordPipelineConstantValueGetValue(handle: Int, key: String): Double =
+        pipelineConstantMaps[handle]?.get(key) ?: 0.0
+
+    fun recordPipelineConstantValueRemove(handle: Int, key: String) {
+        pipelineConstantMaps[handle]?.remove(key)
+    }
+
     fun createSurfaceFromNativeWindow(windowHandle: Long): Int =
         host.instanceCreateSurfaceFromAndroidNativeWindow(windowHandle).raw
 
