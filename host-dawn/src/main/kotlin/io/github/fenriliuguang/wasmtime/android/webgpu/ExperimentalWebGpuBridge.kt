@@ -2844,14 +2844,43 @@ object ExperimentalWebGpuBridge {
 
     /**
      * S6+: `[constructor]record-option-gpu-size64` and
-     * `[method]record-option-gpu-size64.add` / `get` / `has` /
-     * `remove` / `keys` / `values` / `entries`. Native lifts; L2 unused (no new JNI).
+     * L2 described `[method]record-option-gpu-size64.add` / `get` /
+     * `has` / `remove` (iterate keys/values/entries still lift-only).
      */
     fun attachRecordOptionGpuSize64(
         store: Store,
-        @Suppress("UNUSED_PARAMETER") host: WasiWebGpuHost,
+        host: WasiWebGpuHost,
     ) {
-        store.setExperimentalHost(object : ExperimentalHostCallbacks {})
+        val bindings = AbiCmHostBindings(host)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun recordOptionGpuSize64AddDescribed(
+                    handle: Int,
+                    key: String,
+                    hasValue: Int,
+                    value: Long,
+                ) {
+                    bindings.recordOptionGpuSize64Add(handle, key, hasValue, value)
+                }
+
+                override fun recordOptionGpuSize64HasDescribed(handle: Int, key: String): Int =
+                    if (bindings.recordOptionGpuSize64Has(handle, key)) 1 else 0
+
+                override fun recordOptionGpuSize64GetStateDescribed(
+                    handle: Int,
+                    key: String,
+                ): Int = bindings.recordOptionGpuSize64GetState(handle, key)
+
+                override fun recordOptionGpuSize64GetValueDescribed(
+                    handle: Int,
+                    key: String,
+                ): Long = bindings.recordOptionGpuSize64GetValue(handle, key)
+
+                override fun recordOptionGpuSize64RemoveDescribed(handle: Int, key: String) {
+                    bindings.recordOptionGpuSize64Remove(handle, key)
+                }
+            },
+        )
     }
 
     /**

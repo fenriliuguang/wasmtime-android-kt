@@ -1551,8 +1551,23 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap(
                 "[method]record-option-gpu-size64.add",
                 |mut caller,
-                 (record, _key, _value): (Resource<RecordOptionGpuSize64>, String, Option<u64>)| {
+                 (record, key, value): (Resource<RecordOptionGpuSize64>, String, Option<u64>)| {
                     let _ = caller.data_mut().table.get(&record)?;
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let (has_value, raw) = match value {
+                        None => (0i32, 0u64),
+                        Some(v) => (1i32, v),
+                    };
+                    jvm::exp_record_option_gpu_size64_add_described(
+                        &cb, handle, key, has_value, raw,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )
@@ -1560,26 +1575,67 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap(
                 "[method]record-option-gpu-size64.get",
-                |mut caller, (record, _key): (Resource<RecordOptionGpuSize64>, String)| {
+                |mut caller, (record, key): (Resource<RecordOptionGpuSize64>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((None::<Option<u64>>,))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let state = jvm::exp_record_option_gpu_size64_get_state_described(
+                        &cb,
+                        handle,
+                        key.clone(),
+                    )
+                    .map_err(wasmtime::Error::msg)?;
+                    match state {
+                        0 => Ok((None,)),
+                        1 => Ok((Some(None),)),
+                        _ => {
+                            let raw = jvm::exp_record_option_gpu_size64_get_value_described(
+                                &cb, handle, key,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            Ok((Some(Some(raw)),))
+                        }
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]record-option-gpu-size64.has",
-                |mut caller, (record, _key): (Resource<RecordOptionGpuSize64>, String)| {
+                |mut caller, (record, key): (Resource<RecordOptionGpuSize64>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
-                    Ok((false,))
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    let has = jvm::exp_record_option_gpu_size64_has_described(&cb, handle, key)
+                        .map_err(wasmtime::Error::msg)?;
+                    Ok((has != 0,))
                 },
             )
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap(
                 "[method]record-option-gpu-size64.remove",
-                |mut caller, (record, _key): (Resource<RecordOptionGpuSize64>, String)| {
+                |mut caller, (record, key): (Resource<RecordOptionGpuSize64>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
+                    let handle = record.rep();
+                    let cb = caller
+                        .data()
+                        .experimental_host_cb
+                        .as_ref()
+                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
+                        .cloned()?;
+                    jvm::exp_record_option_gpu_size64_remove_described(&cb, handle, key)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok(())
                 },
             )

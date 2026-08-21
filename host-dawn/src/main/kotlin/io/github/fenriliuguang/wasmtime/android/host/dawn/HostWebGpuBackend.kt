@@ -92,6 +92,28 @@ private class ForwardingHostCallbacks(
         index: Int,
     ): Double = bindings.recordPipelineConstantValueEntriesGetValue(handle, index)
 
+    override fun recordOptionGpuSize64AddDescribed(
+        handle: Int,
+        key: String,
+        hasValue: Int,
+        value: Long,
+    ) {
+        bindings.recordOptionGpuSize64Add(handle, key, hasValue, value)
+    }
+
+    override fun recordOptionGpuSize64HasDescribed(handle: Int, key: String): Int =
+        if (bindings.recordOptionGpuSize64Has(handle, key)) 1 else 0
+
+    override fun recordOptionGpuSize64GetStateDescribed(handle: Int, key: String): Int =
+        bindings.recordOptionGpuSize64GetState(handle, key)
+
+    override fun recordOptionGpuSize64GetValueDescribed(handle: Int, key: String): Long =
+        bindings.recordOptionGpuSize64GetValue(handle, key)
+
+    override fun recordOptionGpuSize64RemoveDescribed(handle: Int, key: String) {
+        bindings.recordOptionGpuSize64Remove(handle, key)
+    }
+
     override fun adapterRequestDevice(adapter: Int): Int = bindings.adapterRequestDevice(adapter)
 
     override fun adapterRequestDeviceDescribed(adapter: Int, hasFeature: Int, feature: Int): Int =
