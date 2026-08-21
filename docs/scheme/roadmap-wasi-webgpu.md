@@ -27,7 +27,7 @@ Live status: GitHub Project. Definitions: [`guest-shape.md`](guest-shape.md) S-s
 
 Do **not** open new host-fixed `u32` feature PRs.
 
-After default semantic-L2 remaining is 0: [`../agent/webgpu-midterm.md`](../agent/webgpu-midterm.md) (WG-6 canvas, S1–S3 guest fields, named `record-*`, citable Dawn / WG-5).
+Guest compute/3D marshalling (bind groups, vertex layouts, depth, texture extras): [`../agent/webgpu-guest-pipeline.md`](../agent/webgpu-guest-pipeline.md).
 
 **Present:** product path is proposal `gpu-canvas-context` (no `present` in wasi:webgpu). wasi-gfx remains a deferred RFC.
 

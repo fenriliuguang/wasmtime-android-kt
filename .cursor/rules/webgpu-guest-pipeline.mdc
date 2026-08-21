@@ -1,0 +1,16 @@
+---
+description: wasi:webgpu guest compute/3D pipeline marshalling — P1–P5 JNI; no full-file reads
+alwaysApply: true
+---
+
+# WebGPU guest pipeline
+
+For 下一刀 / guest pipeline / bind-group / 3D / compute / P1–P5 / 上屏 / canvas present / 语义加深 / 下一阶段 / WG-6, read `docs/agent/webgpu-guest-pipeline.md` and follow it.
+
+Shape hang, default described L2, and midterm first-cuts are closed. Do not start another labels/limits/sampler/canvas-first-cut PR.
+
+- Next PR: `.\scripts\webgpu-guest-pipeline-remaining.ps1` or `python3 ./scripts/webgpu-guest-pipeline-remaining.py` (one printed Next: only).
+- Do not WebFetch wasi-webgpu. Use `third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`.
+- Do not Read `native/src/cm.rs` or `native/src/jvm.rs` without offset. Grep, then ~80 lines.
+- One lane per PR. No product `surface-*`. No wasi-gfx. Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
+- Never file GitHub issues (or Discussions-as-issues) on wasi-webgpu, Wasmtime, or any other upstream. No `gh issue create`.
