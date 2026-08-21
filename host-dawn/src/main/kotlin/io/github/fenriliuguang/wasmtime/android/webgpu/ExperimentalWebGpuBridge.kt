@@ -3454,6 +3454,108 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * Lane D: cite Dawn via a canonical `[method]` compute slice.
+     * Guest `get-device` pushes `rep == 0`; cache one adapter/device so
+     * create-buffer → encoder → pass → finish → submit share a Dawn device.
+     */
+    fun attachDawnComputeSlice(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var adapter = 0
+        var device = 0
+        fun cachedAdapter(): Int {
+            if (adapter == 0) {
+                adapter = bindings.requestAdapter()
+            }
+            return adapter
+        }
+        fun cachedDevice(fromAdapter: Int = 0): Int {
+            if (device == 0) {
+                val a = if (fromAdapter != 0) fromAdapter else cachedAdapter()
+                device = bindings.adapterRequestDevice(a)
+            }
+            return device
+        }
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = cachedAdapter()
+
+                override fun requestAdapterDescribed(
+                    powerPreference: Int,
+                    forceFallback: Int,
+                ): Int = cachedAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int = cachedDevice(adapter)
+
+                override fun adapterRequestDeviceDescribed(
+                    adapter: Int,
+                    hasFeature: Int,
+                    feature: Int,
+                ): Int = cachedDevice(adapter)
+
+                override fun deviceCreateBufferDescribed(
+                    device: Int,
+                    size: Long,
+                    usage: Int,
+                ): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateBuffer(resolved, size = size, usage = usage)
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateCommandEncoder(resolved)
+                }
+
+                override fun deviceCreateCommandEncoderDescribed(device: Int, label: String): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateCommandEncoder(resolved, label)
+                }
+
+                override fun deviceGetQueue(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceGetQueue(resolved)
+                }
+
+                override fun deviceGetQueueDescribed(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceGetQueue(resolved)
+                }
+
+                override fun beginComputePass(encoder: Int): Int =
+                    bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun beginComputePassDescribed(
+                    encoder: Int,
+                    beginningOfPassWriteIndex: Int,
+                    endOfPassWriteIndex: Int,
+                ): Int = bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun computePassEnd(pass: Int) {
+                    bindings.computePassEnd(pass)
+                }
+
+                override fun computePassEndDescribed(pass: Int) {
+                    bindings.computePassEnd(pass)
+                }
+
+                override fun commandEncoderFinish(encoder: Int): Int =
+                    bindings.commandEncoderFinish(encoder)
+
+                override fun commandEncoderFinishDescribed(encoder: Int, label: String): Int =
+                    bindings.commandEncoderFinish(encoder, label)
+
+                override fun queueSubmit1(queue: Int, commandBuffer: Int) {
+                    bindings.queueSubmit1(queue, commandBuffer)
+                }
+
+                override fun queueSubmitDescribed(queue: Int, commandBuffers: IntArray) {
+                    bindings.queueSubmit(queue, commandBuffers.toList())
+                }
+            },
+        )
+    }
+
+    /**
      * L2: adapter + device + host-fixed 1×1 texture + `[method]gpu-texture.create-view`
      * with Guest `gpu-texture-view-descriptor` dimension/aspect forwarded to L2.
      */

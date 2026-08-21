@@ -84,6 +84,7 @@ mod shader_module_get_compilation_info;
 mod shader_module_label;
 mod shader_module_set_label;
 mod create_texture;
+mod dawn_compute_slice;
 mod device_adapter_info;
 mod device_destroy;
 mod device_features;

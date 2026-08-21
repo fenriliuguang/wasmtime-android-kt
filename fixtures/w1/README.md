@@ -18,6 +18,7 @@
 | `webgpu_method_render_pass_end.wasm` | `get-pass` + **`[method]gpu-render-pass-encoder.end` sync** void | `run: async func() -> u32` | construct pass → end (described JNI uses pass rep); harness returns 1 |
 | `webgpu_method_command_encoder_finish.wasm` | `get-encoder` + **`[method]gpu-command-encoder.finish` sync** `own<gpu-command-buffer>` | `run: async func() -> u32` | construct encoder → finish (label="l2") → drop own; harness returns 1 |
 | `webgpu_method_queue_submit.wasm` | `get-queue` + `get-command-buffer` + **`[method]gpu-queue.submit` sync** void (`list<borrow<gpu-command-buffer>>`) | `run: async func() -> u32` | construct queue + command-buffer → submit(one-element list, L2 described handles) → drop owns; harness returns 1 |
+| `webgpu_method_dawn_compute_slice.wasm` | `get-device` → **`[method]gpu-device.create-buffer`** + **`[method]gpu-device.create-command-encoder`** + **`[method]gpu-device.queue`** + **`[method]gpu-command-encoder.begin-compute-pass`** + **`[method]gpu-compute-pass-encoder.end`** + **`[method]gpu-command-encoder.finish`** + **`[method]gpu-queue.submit`** | `run: async func() -> u32` | D1 cite: buffer + encoder + one compute pass + submit (descriptor none); harness returns 1 |
 | `webgpu_method_create_buffer.wasm` | `get-device` + **`[method]gpu-device.create-buffer` sync** `own<gpu-buffer>` | `run: async func() -> u32` | construct device → create-buffer (`gpu-buffer-descriptor` size=4 COPY_DST\|VERTEX) → drop own; harness returns 1 |
 | `webgpu_method_create_texture.wasm` | `get-device` + **`[method]gpu-device.create-texture` sync** `own<gpu-texture>` | `run: async func() -> u32` | construct device → create-texture (`gpu-texture-descriptor` 1×1×1 rgba8unorm RENDER_ATTACHMENT) → drop own; harness returns 1 |
 | `webgpu_method_create_sampler.wasm` | `get-device` + **`[method]gpu-device.create-sampler` sync** `own<gpu-sampler>` | `run: async func() -> u32` | construct device → create-sampler (`option<gpu-sampler-descriptor>` some: address-mode-u=repeat, mag/min-filter=linear) → drop own; harness returns 1 |
@@ -274,6 +275,8 @@ wasm-tools parse fixtures/w1/webgpu_method_command_encoder_finish.wat -o fixture
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_command_encoder_finish.wasm
 wasm-tools parse fixtures/w1/webgpu_method_queue_submit.wat -o fixtures/w1/webgpu_method_queue_submit.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_queue_submit.wasm
+wasm-tools parse fixtures/w1/webgpu_method_dawn_compute_slice.wat -o fixtures/w1/webgpu_method_dawn_compute_slice.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_dawn_compute_slice.wasm
 wasm-tools parse fixtures/w1/webgpu_method_create_buffer.wat -o fixtures/w1/webgpu_method_create_buffer.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/w1/webgpu_method_create_buffer.wasm
 wasm-tools parse fixtures/w1/webgpu_method_create_texture.wat -o fixtures/w1/webgpu_method_create_texture.wasm
