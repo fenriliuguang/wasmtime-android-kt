@@ -4,7 +4,7 @@
 //! fragment target format=rgba8unorm, layout=auto, label="l2"; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
-    flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType, flags,
 };
 use wasmtime::{Config, Engine, Store};
 
@@ -780,7 +780,18 @@ fn register_method_create_render_pipeline(linker: &mut Linker<TestHost>) -> wasm
             assert_eq!(layout.attributes[0].shader_location, 0);
             assert_eq!(descriptor.vertex.entry_point.as_deref(), Some("vs_main"));
             assert!(descriptor.vertex.constants.is_none());
-            assert!(descriptor.primitive.is_none());
+            let primitive = descriptor
+                .primitive
+                .as_ref()
+                .expect("guest must pass primitive some");
+            assert!(primitive.topology.is_none());
+            assert!(primitive.strip_index_format.is_none());
+            assert!(primitive.front_face.is_none());
+            assert!(
+                matches!(primitive.cull_mode, Some(GpuCullMode::Back)),
+                "guest must pass cull-mode=back"
+            );
+            assert!(primitive.unclipped_depth.is_none());
             assert!(descriptor.depth_stencil.is_none());
             assert!(descriptor.multisample.is_none());
             let fragment = descriptor

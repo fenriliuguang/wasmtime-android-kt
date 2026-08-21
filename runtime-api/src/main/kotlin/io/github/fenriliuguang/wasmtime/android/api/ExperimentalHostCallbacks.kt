@@ -791,7 +791,8 @@ interface ExperimentalHostCallbacks {
      * + layout (0 = auto) + label + vertex.buffers (stride/step/attributes).
      */
     /** L2: Guest vertex/fragment shaders + entry-points + format + layout + label + vertex.buffers
-     *  + vertex/fragment `record-gpu-pipeline-constant-value` reps (0 = none). */
+     *  + vertex/fragment `record-gpu-pipeline-constant-value` reps (0 = none)
+     *  + primitive (topology/strip/front/cull) + multisample + per-target blend 7-tuples. */
     fun deviceCreateRenderPipelineDescribed(
         device: Int,
         vertexShader: Int,
@@ -809,6 +810,9 @@ interface ExperimentalHostCallbacks {
         attrLocations: IntArray,
         vertexConstants: Int,
         fragmentConstants: Int,
+        primitive: IntArray,
+        multisample: IntArray,
+        blend: IntArray,
     ): Int = unsupported("deviceCreateRenderPipelineDescribed")
 
     /** S6+: guest `gpu-compute-pipeline-descriptor`; L2 leftover host-fixed stub shader + empty layout.

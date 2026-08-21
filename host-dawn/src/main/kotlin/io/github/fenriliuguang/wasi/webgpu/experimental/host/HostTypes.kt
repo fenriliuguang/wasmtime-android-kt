@@ -425,6 +425,32 @@ object GpuPrimitiveTopology {
     const val TRIANGLE_STRIP: Int = 5
 }
 
+/** Dawn CullMode pass-through. Undefined=0, None=1, Front=2, Back=3. */
+object GpuCullMode {
+    const val UNDEFINED: Int = 0
+    const val NONE: Int = 1
+    const val FRONT: Int = 2
+    const val BACK: Int = 3
+}
+
+/** Dawn FrontFace pass-through. Undefined=0, CCW=1, CW=2. */
+object GpuFrontFace {
+    const val UNDEFINED: Int = 0
+    const val CCW: Int = 1
+    const val CW: Int = 2
+}
+
+data class BlendComponent(
+    val operation: Int = 0,
+    val srcFactor: Int = 0,
+    val dstFactor: Int = 0,
+)
+
+data class BlendState(
+    val color: BlendComponent = BlendComponent(),
+    val alpha: BlendComponent = BlendComponent(),
+)
+
 data class Color(
     val r: Double,
     val g: Double,
@@ -434,6 +460,7 @@ data class Color(
 
 data class ColorTargetState(
     val format: Int,
+    val blend: BlendState? = null,
 )
 
 data class VertexState(
@@ -452,6 +479,15 @@ data class FragmentState(
 
 data class PrimitiveState(
     val topology: Int = GpuPrimitiveTopology.TRIANGLE_LIST,
+    val cullMode: Int = GpuCullMode.UNDEFINED,
+    val stripIndexFormat: Int = GpuIndexFormat.UNDEFINED,
+    val frontFace: Int = GpuFrontFace.UNDEFINED,
+)
+
+data class MultisampleState(
+    val count: Int = 1,
+    val mask: Int = -1,
+    val alphaToCoverageEnabled: Boolean = false,
 )
 
 data class DepthStencilState(
@@ -468,8 +504,50 @@ data class RenderPipelineDescriptor(
     val layout: GpuHandle,
     val primitive: PrimitiveState? = PrimitiveState(),
     val depthStencil: DepthStencilState? = null,
+    val multisample: MultisampleState? = null,
     val label: String? = null,
 )
+
+fun primitiveStateFromDescribed(primitive: IntArray): PrimitiveState {
+    val topology = primitive.getOrElse(0) { 0 }.let { if (it != 0) it else GpuPrimitiveTopology.TRIANGLE_LIST }
+    return PrimitiveState(
+        topology = topology,
+        stripIndexFormat = primitive.getOrElse(1) { 0 },
+        frontFace = primitive.getOrElse(2) { 0 },
+        cullMode = primitive.getOrElse(3) { 0 },
+    )
+}
+
+fun multisampleStateFromDescribed(multisample: IntArray): MultisampleState? {
+    if (multisample.isEmpty()) return null
+    val count = multisample.getOrElse(0) { 0 }
+    val hasMask = multisample.getOrElse(1) { 0 }
+    val mask = multisample.getOrElse(2) { 0 }
+    val alpha = multisample.getOrElse(3) { -1 }
+    if (count == 0 && hasMask == 0 && alpha < 0) return null
+    return MultisampleState(
+        count = if (count != 0) count else 1,
+        mask = if (hasMask != 0) mask else -1,
+        alphaToCoverageEnabled = alpha == 1,
+    )
+}
+
+fun blendStateFromDescribed(blend: IntArray, targetIndex: Int = 0): BlendState? {
+    val base = targetIndex * 7
+    if (blend.size < base + 7 || blend[base] == 0) return null
+    return BlendState(
+        color = BlendComponent(
+            operation = blend[base + 1],
+            srcFactor = blend[base + 2],
+            dstFactor = blend[base + 3],
+        ),
+        alpha = BlendComponent(
+            operation = blend[base + 4],
+            srcFactor = blend[base + 5],
+            dstFactor = blend[base + 6],
+        ),
+    )
+}
 
 data class RenderPassColorAttachment(
     val view: GpuHandle,

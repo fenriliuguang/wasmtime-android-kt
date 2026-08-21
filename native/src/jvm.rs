@@ -4,8 +4,8 @@ use jni::objects::{GlobalRef, JByteArray, JIntArray, JObject, JString, JValue};
 use jni::sys::JavaVM as SysJavaVM;
 use jni::{JNIEnv, JavaVM};
 use std::cell::RefCell;
-use std::sync::mpsc::{self, Sender};
 use std::sync::OnceLock;
+use std::sync::mpsc::{self, Sender};
 
 static JVM: OnceLock<JavaVM> = OnceLock::new();
 
@@ -3336,7 +3336,8 @@ pub fn exp_create_render_pipeline(cb: &GlobalRef, device: u32) -> Result<u32, St
 
 /// L2: Guest vertex/fragment shaders + entry-points + color format (0 = host RGBA8)
 /// + layout (0 = auto) + label + vertex.buffers (stride/step/attributes)
-/// + vertex/fragment `record-gpu-pipeline-constant-value` reps (0 = none).
+/// + vertex/fragment `record-gpu-pipeline-constant-value` reps (0 = none)
+/// + primitive (topology/strip/front/cull) + multisample + per-target blend tuples.
 pub fn exp_create_render_pipeline_described(
     cb: &GlobalRef,
     device: u32,
@@ -3355,11 +3356,14 @@ pub fn exp_create_render_pipeline_described(
     attr_locations: Vec<i32>,
     vertex_constants: i32,
     fragment_constants: i32,
+    primitive: Vec<i32>,
+    multisample: Vec<i32>,
+    blend: Vec<i32>,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateRenderPipelineDescribed",
-        "(IILjava/lang/String;ILjava/lang/String;IILjava/lang/String;[I[I[I[I[I[III)I",
+        "(IILjava/lang/String;ILjava/lang/String;IILjava/lang/String;[I[I[I[I[I[III[I[I[I)I",
         vec![
             HostArg::Int(device as i32),
             HostArg::Int(vertex_shader as i32),
@@ -3377,6 +3381,9 @@ pub fn exp_create_render_pipeline_described(
             HostArg::Ints(attr_locations),
             HostArg::Int(vertex_constants),
             HostArg::Int(fragment_constants),
+            HostArg::Ints(primitive),
+            HostArg::Ints(multisample),
+            HostArg::Ints(blend),
         ],
     )
 }

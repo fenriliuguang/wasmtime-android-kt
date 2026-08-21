@@ -20,7 +20,9 @@ use crate::webgpu_abi::{
     GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
     GpuDeviceDescriptor, GpuDeviceLostInfo, GpuDeviceLostReason, GpuError, GpuErrorFilter,
     GpuErrorKind, GpuExtent3D, GpuIndexFormat, GpuLayoutMode, GpuLoadOp, GpuMapMode,
-    GpuCompareFunction, GpuMipmapFilterMode, GpuPipelineErrorReason, GpuPipelineLayoutDescriptor,
+    GpuBlendFactor, GpuBlendOperation, GpuCompareFunction, GpuCullMode, GpuFrontFace,
+    GpuMipmapFilterMode, GpuPipelineErrorReason, GpuPipelineLayoutDescriptor,
+    GpuPrimitiveTopology,
     GpuQuerySetDescriptor, GpuQueryType, GpuRenderBundleDescriptor,
     GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor, GpuRenderPipelineDescriptor,
     GpuRequestAdapterOptions, GpuSamplerDescriptor,
@@ -106,6 +108,95 @@ fn first_fragment_target_format(fragment: &Option<crate::webgpu_abi::GpuFragment
         .and_then(|fs| fs.targets.iter().flatten().next())
         .map(|target| target.format.to_dawn_u32() as i32)
         .unwrap_or(0)
+}
+
+fn dawn_topology(t: GpuPrimitiveTopology) -> i32 {
+    match t {
+        GpuPrimitiveTopology::PointList => 1,
+        GpuPrimitiveTopology::LineList => 2,
+        GpuPrimitiveTopology::LineStrip => 3,
+        GpuPrimitiveTopology::TriangleList => 4,
+        GpuPrimitiveTopology::TriangleStrip => 5,
+    }
+}
+
+fn dawn_cull(c: GpuCullMode) -> i32 {
+    match c {
+        GpuCullMode::None => 1,
+        GpuCullMode::Front => 2,
+        GpuCullMode::Back => 3,
+    }
+}
+
+fn dawn_front_face(f: GpuFrontFace) -> i32 {
+    match f {
+        GpuFrontFace::Ccw => 1,
+        GpuFrontFace::Cw => 2,
+    }
+}
+
+fn dawn_index_format(f: GpuIndexFormat) -> i32 {
+    match f {
+        GpuIndexFormat::Uint16 => 1,
+        GpuIndexFormat::Uint32 => 2,
+    }
+}
+
+fn dawn_blend_op(op: GpuBlendOperation) -> i32 {
+    match op {
+        GpuBlendOperation::Add => 1,
+        GpuBlendOperation::Subtract => 2,
+        GpuBlendOperation::ReverseSubtract => 3,
+        GpuBlendOperation::Min => 4,
+        GpuBlendOperation::Max => 5,
+    }
+}
+
+fn dawn_blend_factor(f: GpuBlendFactor) -> i32 {
+    (f as i32) + 1
+}
+
+/// F1: primitive (topology/strip/front/cull) + multisample + per-target blend 7-tuples.
+fn pack_render_pipeline_semantics(
+    descriptor: &GpuRenderPipelineDescriptor,
+) -> (Vec<i32>, Vec<i32>, Vec<i32>) {
+    let mut primitive = vec![0, 0, 0, 0];
+    if let Some(p) = &descriptor.primitive {
+        primitive[0] = p.topology.map(dawn_topology).unwrap_or(0);
+        primitive[1] = p.strip_index_format.map(dawn_index_format).unwrap_or(0);
+        primitive[2] = p.front_face.map(dawn_front_face).unwrap_or(0);
+        primitive[3] = p.cull_mode.map(dawn_cull).unwrap_or(0);
+    }
+    let mut multisample = Vec::new();
+    if let Some(ms) = &descriptor.multisample {
+        let count = ms.count.unwrap_or(0) as i32;
+        let has_mask = if ms.mask.is_some() { 1 } else { 0 };
+        let mask = ms.mask.unwrap_or(0) as i32;
+        let alpha = match ms.alpha_to_coverage_enabled {
+            Some(true) => 1,
+            Some(false) => 0,
+            None => -1,
+        };
+        multisample.extend_from_slice(&[count, has_mask, mask, alpha]);
+    }
+    let mut blend = Vec::new();
+    if let Some(fragment) = &descriptor.fragment {
+        for target in fragment.targets.iter().flatten() {
+            match &target.blend {
+                None => blend.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0]),
+                Some(b) => {
+                    blend.push(1);
+                    blend.push(b.color.operation.map(dawn_blend_op).unwrap_or(0));
+                    blend.push(b.color.src_factor.map(dawn_blend_factor).unwrap_or(0));
+                    blend.push(b.color.dst_factor.map(dawn_blend_factor).unwrap_or(0));
+                    blend.push(b.alpha.operation.map(dawn_blend_op).unwrap_or(0));
+                    blend.push(b.alpha.src_factor.map(dawn_blend_factor).unwrap_or(0));
+                    blend.push(b.alpha.dst_factor.map(dawn_blend_factor).unwrap_or(0));
+                }
+            }
+        }
+    }
+    (primitive, multisample, blend)
 }
 
 /// Guest `option<record-gpu-pipeline-constant-value>` → host handle (0 = none).
@@ -4712,6 +4803,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         Some(fragment) => pipeline_constant_rep(&fragment.constants),
                         None => 0,
                     };
+                    let (primitive, multisample, blend) =
+                        pack_render_pipeline_semantics(&descriptor);
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let cb = caller
                         .data()
@@ -4745,6 +4838,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         attr_locations,
                         vertex_constants,
                         fragment_constants,
+                        primitive,
+                        multisample,
+                        blend,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if pipeline_rep == 0 {
@@ -4845,6 +4941,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             attr_locations,
                             vertex_constants,
                             fragment_constants,
+                            primitive,
+                            multisample,
+                            blend,
                         ) = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let vertex_shader = access
                                 .data_mut()
@@ -4876,6 +4975,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 Some(fragment) => pipeline_constant_rep(&fragment.constants),
                                 None => 0,
                             };
+                            let (primitive, multisample, blend) =
+                                pack_render_pipeline_semantics(&descriptor);
                             let device_rep = access.data_mut().table.get(&device)?.rep;
                             let cb = access
                                 .data_mut()
@@ -4903,6 +5004,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                 packed.5,
                                 vertex_constants,
                                 fragment_constants,
+                                primitive,
+                                multisample,
+                                blend,
                             ))
                         })?;
                         let (tx, rx) = oneshot::channel::<()>();
@@ -4936,6 +5040,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             attr_locations,
                             vertex_constants,
                             fragment_constants,
+                            primitive,
+                            multisample,
+                            blend,
                         )
                         .map_err(wasmtime::Error::msg)?;
                         if pipeline_rep == 0 {
