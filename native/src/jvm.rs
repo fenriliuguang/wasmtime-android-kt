@@ -3119,23 +3119,40 @@ pub fn exp_create_sampler(cb: &GlobalRef, device: u32) -> Result<u32, String> {
     )
 }
 
-/// L2: Guest-decoded `gpu-sampler-descriptor` mag/min filter + address-mode-u (Dawn ints).
+/// L2: Guest-decoded `gpu-sampler-descriptor` mag/min + address-mode u/v/w +
+/// mipmap + compare (Dawn ints) + optional lod clamps (`hasLod*` 0 = absent).
 pub fn exp_create_sampler_described(
     cb: &GlobalRef,
     device: u32,
     mag_filter: u32,
     min_filter: u32,
     address_mode_u: u32,
+    address_mode_v: u32,
+    address_mode_w: u32,
+    mipmap_filter: u32,
+    compare: u32,
+    has_lod_min: i32,
+    lod_min_clamp: f32,
+    has_lod_max: i32,
+    lod_max_clamp: f32,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "deviceCreateSamplerDescribed",
-        "(IIII)I",
+        "(IIIIIIIIIFIF)I",
         vec![
             HostArg::Int(device as i32),
             HostArg::Int(mag_filter as i32),
             HostArg::Int(min_filter as i32),
             HostArg::Int(address_mode_u as i32),
+            HostArg::Int(address_mode_v as i32),
+            HostArg::Int(address_mode_w as i32),
+            HostArg::Int(mipmap_filter as i32),
+            HostArg::Int(compare as i32),
+            HostArg::Int(has_lod_min),
+            HostArg::Float(lod_min_clamp),
+            HostArg::Int(has_lod_max),
+            HostArg::Float(lod_max_clamp),
         ],
     )
 }
@@ -4151,21 +4168,32 @@ pub fn exp_texture_destroy_described(cb: &GlobalRef, texture: u32) -> Result<(),
     )
 }
 
-/// L2: Guest-decoded `gpu-texture-view-descriptor` dimension + aspect (Dawn ints).
+/// L2: Guest-decoded `gpu-texture-view-descriptor` dimension/aspect/format (Dawn ints)
+/// plus mip / array-layer window (`mipLevelCount`/`arrayLayerCount` `-1` = absent).
 pub fn exp_texture_create_view_described(
     cb: &GlobalRef,
     texture: u32,
     dimension: u32,
     aspect: u32,
+    format: u32,
+    base_mip_level: i32,
+    mip_level_count: i32,
+    base_array_layer: i32,
+    array_layer_count: i32,
 ) -> Result<u32, String> {
     call_i(
         cb,
         "textureCreateViewDescribed",
-        "(III)I",
+        "(IIIIIIII)I",
         vec![
             HostArg::Int(texture as i32),
             HostArg::Int(dimension as i32),
             HostArg::Int(aspect as i32),
+            HostArg::Int(format as i32),
+            HostArg::Int(base_mip_level),
+            HostArg::Int(mip_level_count),
+            HostArg::Int(base_array_layer),
+            HostArg::Int(array_layer_count),
         ],
     )
 }

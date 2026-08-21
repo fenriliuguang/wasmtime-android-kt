@@ -20,9 +20,10 @@ use crate::webgpu_abi::{
     GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
     GpuDeviceDescriptor, GpuDeviceLostInfo, GpuDeviceLostReason, GpuError, GpuErrorFilter,
     GpuErrorKind, GpuExtent3D, GpuIndexFormat, GpuLayoutMode, GpuLoadOp, GpuMapMode,
-    GpuPipelineErrorReason, GpuPipelineLayoutDescriptor, GpuQuerySetDescriptor, GpuQueryType,
-    GpuRenderBundleDescriptor, GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor,
-    GpuRenderPipelineDescriptor, GpuRequestAdapterOptions, GpuSamplerDescriptor,
+    GpuCompareFunction, GpuMipmapFilterMode, GpuPipelineErrorReason, GpuPipelineLayoutDescriptor,
+    GpuQuerySetDescriptor, GpuQueryType, GpuRenderBundleDescriptor,
+    GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor, GpuRenderPipelineDescriptor,
+    GpuRequestAdapterOptions, GpuSamplerDescriptor,
     GpuShaderModuleDescriptor, GpuShaderStage, GpuStoreOp, GpuSupportedFeatures,
     GpuSupportedLimits, GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
     GpuTextureDescriptor,
@@ -2747,16 +2748,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         texture_rep
                     };
-                    let (dimension, aspect) = match &descriptor {
-                        None => (0, 0),
-                        Some(d) => (
-                            d.dimension.map(|m| m.to_dawn_u32()).unwrap_or(0),
-                            d.aspect.map(|m| m.to_dawn_u32()).unwrap_or(0),
-                        ),
-                    };
-                    let view_rep =
-                        jvm::exp_texture_create_view_described(&cb, l2_texture, dimension, aspect)
-                            .map_err(wasmtime::Error::msg)?;
+                    let (dimension, aspect, format, base_mip, mip_count, base_layer, layer_count) =
+                        match &descriptor {
+                            None => (0, 0, 0, 0, -1, 0, -1),
+                            Some(d) => (
+                                d.dimension.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                                d.aspect.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                                d.format.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                                d.base_mip_level.unwrap_or(0) as i32,
+                                d.mip_level_count.map(|v| v as i32).unwrap_or(-1),
+                                d.base_array_layer.unwrap_or(0) as i32,
+                                d.array_layer_count.map(|v| v as i32).unwrap_or(-1),
+                            ),
+                        };
+                    let view_rep = jvm::exp_texture_create_view_described(
+                        &cb,
+                        l2_texture,
+                        dimension,
+                        aspect,
+                        format,
+                        base_mip,
+                        mip_count,
+                        base_layer,
+                        layer_count,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     if view_rep == 0 {
                         return Err(wasmtime::Error::msg("texture-create-view returned 0"));
                     }
@@ -2792,7 +2808,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .map_err(wasmtime::Error::msg)?;
                         let texture_rep = jvm::exp_create_texture(&cb, device_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_texture_create_view_described(&cb, texture_rep, 0, 0)
+                        jvm::exp_texture_create_view_described(
+                            &cb, texture_rep, 0, 0, 0, 0, -1, 0, -1,
+                        )
                             .map_err(wasmtime::Error::msg)?
                     } else {
                         view_rep
@@ -2821,7 +2839,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .map_err(wasmtime::Error::msg)?;
                         let texture_rep = jvm::exp_create_texture(&cb, device_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_texture_create_view_described(&cb, texture_rep, 0, 0)
+                        jvm::exp_texture_create_view_described(
+                            &cb, texture_rep, 0, 0, 0, 0, -1, 0, -1,
+                        )
                             .map_err(wasmtime::Error::msg)?
                     } else {
                         view_rep
@@ -3500,12 +3520,48 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                     } else {
                         device_rep
                     };
-                    let (mag_filter, min_filter, address_mode_u) = match &descriptor {
-                        None => (0, 0, 0),
+                    let (
+                        mag_filter,
+                        min_filter,
+                        address_mode_u,
+                        address_mode_v,
+                        address_mode_w,
+                        mipmap_filter,
+                        compare,
+                        has_lod_min,
+                        lod_min,
+                        has_lod_max,
+                        lod_max,
+                    ) = match &descriptor {
+                        None => (0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0.0),
                         Some(d) => (
                             d.mag_filter.map(|m| m.to_dawn_u32()).unwrap_or(0),
                             d.min_filter.map(|m| m.to_dawn_u32()).unwrap_or(0),
                             d.address_mode_u.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                            d.address_mode_v.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                            d.address_mode_w.map(|m| m.to_dawn_u32()).unwrap_or(0),
+                            d.mipmap_filter
+                                .map(|m| match m {
+                                    GpuMipmapFilterMode::Nearest => 1u32,
+                                    GpuMipmapFilterMode::Linear => 2,
+                                })
+                                .unwrap_or(0),
+                            d.compare
+                                .map(|c| match c {
+                                    GpuCompareFunction::Never => 1u32,
+                                    GpuCompareFunction::Less => 2,
+                                    GpuCompareFunction::Equal => 3,
+                                    GpuCompareFunction::LessEqual => 4,
+                                    GpuCompareFunction::Greater => 5,
+                                    GpuCompareFunction::NotEqual => 6,
+                                    GpuCompareFunction::GreaterEqual => 7,
+                                    GpuCompareFunction::Always => 8,
+                                })
+                                .unwrap_or(0),
+                            if d.lod_min_clamp.is_some() { 1i32 } else { 0 },
+                            d.lod_min_clamp.unwrap_or(0.0),
+                            if d.lod_max_clamp.is_some() { 1i32 } else { 0 },
+                            d.lod_max_clamp.unwrap_or(0.0),
                         ),
                     };
                     let sampler_rep = jvm::exp_create_sampler_described(
@@ -3514,6 +3570,14 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         mag_filter,
                         min_filter,
                         address_mode_u,
+                        address_mode_v,
+                        address_mode_w,
+                        mipmap_filter,
+                        compare,
+                        has_lod_min,
+                        lod_min,
+                        has_lod_max,
+                        lod_max,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if sampler_rep == 0 {
@@ -3549,7 +3613,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_sampler_described(&cb, device_rep, 0, 0, 0)
+                        jvm::exp_create_sampler_described(
+                            &cb, device_rep, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0.0,
+                        )
                             .map_err(wasmtime::Error::msg)?
                     } else {
                         sampler_rep
@@ -3576,7 +3642,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_sampler_described(&cb, device_rep, 0, 0, 0)
+                        jvm::exp_create_sampler_described(
+                            &cb, device_rep, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0.0,
+                        )
                             .map_err(wasmtime::Error::msg)?
                     } else {
                         sampler_rep
@@ -7015,7 +7083,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .map_err(wasmtime::Error::msg)?;
                         let texture_rep = jvm::exp_create_texture(&cb, device_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        let view_rep = jvm::exp_texture_create_view_described(&cb, texture_rep, 0, 0)
+                        let view_rep = jvm::exp_texture_create_view_described(
+                            &cb, texture_rep, 0, 0, 0, 0, -1, 0, -1,
+                        )
                             .map_err(wasmtime::Error::msg)?;
                         jvm::exp_begin_render_pass_clear(&cb, encoder_rep, view_rep)
                             .map_err(wasmtime::Error::msg)?
@@ -7048,7 +7118,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                             .map_err(wasmtime::Error::msg)?;
                         let texture_rep = jvm::exp_create_texture(&cb, device_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        let view_rep = jvm::exp_texture_create_view_described(&cb, texture_rep, 0, 0)
+                        let view_rep = jvm::exp_texture_create_view_described(
+                            &cb, texture_rep, 0, 0, 0, 0, -1, 0, -1,
+                        )
                             .map_err(wasmtime::Error::msg)?;
                         jvm::exp_begin_render_pass_clear(&cb, encoder_rep, view_rep)
                             .map_err(wasmtime::Error::msg)?

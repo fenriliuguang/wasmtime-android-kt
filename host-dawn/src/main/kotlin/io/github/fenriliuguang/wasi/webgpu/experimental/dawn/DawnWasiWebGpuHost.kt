@@ -565,6 +565,12 @@ class DawnWasiWebGpuHost private constructor(
                 magFilter = descriptor.magFilter,
                 minFilter = descriptor.minFilter,
                 addressModeU = descriptor.addressModeU,
+                addressModeV = descriptor.addressModeV,
+                addressModeW = descriptor.addressModeW,
+                mipmapFilter = descriptor.mipmapFilter,
+                lodMinClamp = descriptor.lodMinClamp,
+                lodMaxClamp = descriptor.lodMaxClamp,
+                compare = descriptor.compare,
             ),
         )
         return handles.insert(ResourceKind.Sampler, sampler)
@@ -931,6 +937,11 @@ class DawnWasiWebGpuHost private constructor(
                     GPUTextureViewDescriptor(
                         dimension = descriptor.dimension,
                         aspect = descriptor.aspect,
+                        format = descriptor.format,
+                        baseMipLevel = descriptor.baseMipLevel,
+                        mipLevelCount = descriptor.mipLevelCount,
+                        baseArrayLayer = descriptor.baseArrayLayer,
+                        arrayLayerCount = descriptor.arrayLayerCount,
                     ),
                 ),
             )

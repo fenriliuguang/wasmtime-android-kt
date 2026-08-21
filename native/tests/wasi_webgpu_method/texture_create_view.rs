@@ -1,6 +1,7 @@
 ﻿//! L2: `get-texture` + `[method]gpu-texture.create-view`
 //! WIT: `(borrow<gpu-texture>, option<gpu-texture-view-descriptor>) -> own<gpu-texture-view>`.
-//! Guest passes some(descriptor) dimension=d2, aspect=all; drops own; `run` returns harness 1.
+//! Guest passes some(descriptor) format=rgba8unorm, dimension=d2, aspect=all,
+//! mip 0/1, array layers 0/1; drops own; `run` returns harness 1.
 
 use wasmtime::component::{
     flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
@@ -329,7 +330,10 @@ fn register_method_texture_create_view(linker: &mut Linker<TestHost>) -> wasmtim
          (texture, descriptor): (Resource<GpuTexture>, Option<GpuTextureViewDescriptor>)| {
             caller.data_mut().table.get(&texture).map(|_| ())?;
             let desc = descriptor.expect("guest must pass some(gpu-texture-view-descriptor)");
-            assert!(desc.format.is_none());
+            assert!(
+                matches!(desc.format, Some(GpuTextureFormat::Rgba8unorm)),
+                "guest must pass format=rgba8unorm"
+            );
             assert_eq!(
                 desc.dimension,
                 Some(GpuTextureViewDimension::D2),
@@ -341,10 +345,26 @@ fn register_method_texture_create_view(linker: &mut Linker<TestHost>) -> wasmtim
                 Some(GpuTextureAspect::All),
                 "guest must pass aspect=all"
             );
-            assert!(desc.base_mip_level.is_none());
-            assert!(desc.mip_level_count.is_none());
-            assert!(desc.base_array_layer.is_none());
-            assert!(desc.array_layer_count.is_none());
+            assert_eq!(
+                desc.base_mip_level,
+                Some(0),
+                "guest must pass base-mip-level=some(0)"
+            );
+            assert_eq!(
+                desc.mip_level_count,
+                Some(1),
+                "guest must pass mip-level-count=some(1)"
+            );
+            assert_eq!(
+                desc.base_array_layer,
+                Some(0),
+                "guest must pass base-array-layer=some(0)"
+            );
+            assert_eq!(
+                desc.array_layer_count,
+                Some(1),
+                "guest must pass array-layer-count=some(1)"
+            );
             assert!(desc.swizzle.is_none());
             assert!(desc.label.is_none());
             let resource = caller.data_mut().table.push(GpuTextureView { rep: 41 })?;

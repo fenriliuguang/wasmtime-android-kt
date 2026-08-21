@@ -322,6 +322,14 @@ object ExperimentalWebGpuBridge {
                     magFilter: Int,
                     minFilter: Int,
                     addressModeU: Int,
+                    addressModeV: Int,
+                    addressModeW: Int,
+                    mipmapFilter: Int,
+                    compare: Int,
+                    hasLodMin: Int,
+                    lodMinClamp: Float,
+                    hasLodMax: Int,
+                    lodMaxClamp: Float,
                 ): Int =
                     bindings.deviceCreateSampler(
                         device,
@@ -329,6 +337,12 @@ object ExperimentalWebGpuBridge {
                             magFilter = magFilter,
                             minFilter = minFilter,
                             addressModeU = addressModeU,
+                            addressModeV = addressModeV,
+                            addressModeW = addressModeW,
+                            mipmapFilter = mipmapFilter,
+                            compare = compare,
+                            lodMinClamp = if (hasLodMin != 0) lodMinClamp else 0f,
+                            lodMaxClamp = if (hasLodMax != 0) lodMaxClamp else 32f,
                         ),
                     )
                 override fun samplerLabelDescribed(handle: Int): String =
@@ -3326,12 +3340,22 @@ object ExperimentalWebGpuBridge {
                     texture: Int,
                     dimension: Int,
                     aspect: Int,
+                    format: Int,
+                    baseMipLevel: Int,
+                    mipLevelCount: Int,
+                    baseArrayLayer: Int,
+                    arrayLayerCount: Int,
                 ): Int =
                     bindings.textureCreateView(
                         texture,
                         TextureViewDescriptor(
                             dimension = dimension,
                             aspect = aspect,
+                            format = format,
+                            baseMipLevel = baseMipLevel,
+                            mipLevelCount = mipLevelCount,
+                            baseArrayLayer = baseArrayLayer,
+                            arrayLayerCount = arrayLayerCount,
                         ),
                     )
 
@@ -3727,12 +3751,22 @@ object ExperimentalWebGpuBridge {
                     texture: Int,
                     dimension: Int,
                     aspect: Int,
+                    format: Int,
+                    baseMipLevel: Int,
+                    mipLevelCount: Int,
+                    baseArrayLayer: Int,
+                    arrayLayerCount: Int,
                 ): Int =
                     bindings.textureCreateView(
                         texture,
                         TextureViewDescriptor(
                             dimension = dimension,
                             aspect = aspect,
+                            format = format,
+                            baseMipLevel = baseMipLevel,
+                            mipLevelCount = mipLevelCount,
+                            baseArrayLayer = baseArrayLayer,
+                            arrayLayerCount = arrayLayerCount,
                         ),
                     )
                 override fun textureViewLabelDescribed(handle: Int): String =
