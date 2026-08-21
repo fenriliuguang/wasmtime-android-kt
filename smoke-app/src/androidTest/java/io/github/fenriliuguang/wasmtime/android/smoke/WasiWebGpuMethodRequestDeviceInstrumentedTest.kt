@@ -13,8 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * S3 `[method]` slice: guest imports `get-adapter` then
- * `wasi:webgpu/webgpu@0.3.0-rc.2#[method]gpu-adapter.request-device`
+ * L2 `[method]gpu-adapter.request-device`
  * (async; `(borrow gpu-adapter, option<gpu-device-descriptor>)
  * -> result<own gpu-device, request-device-error>`; descriptor=none;
  * drops own on ok; `run` returns 1)

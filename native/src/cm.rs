@@ -1607,13 +1607,21 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         webgpu
             .func_wrap_concurrent(
                 "[method]gpu-adapter.request-device",
-                |accessor, (adapter, _descriptor): (
+                |accessor, (adapter, descriptor): (
                     Resource<GpuAdapter>,
                     Option<GpuDeviceDescriptor>,
                 )| {
                     Box::pin(async move {
-                        let (cb, adapter_rep) = accessor.with(|mut access| {
+                        let (cb, adapter_rep, has_feature, feature) = accessor.with(|mut access| {
                             let adapter_rep = access.data_mut().table.get(&adapter)?.rep;
+                            let (has_feature, feature) = match descriptor.as_ref() {
+                                None => (0u32, 0u32),
+                                Some(d) => match d.required_features.as_ref().and_then(|v| v.first())
+                                {
+                                    Some(f) => (1u32, *f as u8 as u32),
+                                    None => (0u32, 0u32),
+                                },
+                            };
                             let cb = access
                                 .data_mut()
                                 .experimental_host_cb
@@ -1622,7 +1630,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                                     wasmtime::Error::msg("experimental host callback not set")
                                 })
                                 .cloned()?;
-                            Ok::<_, wasmtime::Error>((cb, adapter_rep))
+                            Ok::<_, wasmtime::Error>((cb, adapter_rep, has_feature, feature))
                         })?;
                         let (tx, rx) = oneshot::channel::<()>();
                         std::thread::spawn(move || {
@@ -1634,8 +1642,13 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         } else {
                             adapter_rep
                         };
-                        let device_rep = jvm::exp_adapter_request_device(&cb, l2_adapter)
-                            .map_err(wasmtime::Error::msg)?;
+                        let device_rep = jvm::exp_adapter_request_device_described(
+                            &cb,
+                            l2_adapter,
+                            has_feature,
+                            feature,
+                        )
+                        .map_err(wasmtime::Error::msg)?;
                         if device_rep == 0 {
                             return Ok((Err(RequestDeviceError {
                                 kind: RequestDeviceErrorKind::OperationError,

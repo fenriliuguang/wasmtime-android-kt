@@ -48,6 +48,9 @@ private class ForwardingHostCallbacks(
 
     override fun adapterRequestDevice(adapter: Int): Int = bindings.adapterRequestDevice(adapter)
 
+    override fun adapterRequestDeviceDescribed(adapter: Int, hasFeature: Int, feature: Int): Int =
+        bindings.adapterRequestDevice(adapter)
+
     override fun deviceGetQueue(device: Int): Int = bindings.deviceGetQueue(device)
 
     override fun deviceGetQueueDescribed(device: Int): Int = bindings.deviceGetQueue(device)
