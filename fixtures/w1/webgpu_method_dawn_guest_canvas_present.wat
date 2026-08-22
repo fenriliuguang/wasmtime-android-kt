@@ -1,5 +1,6 @@
 ;; WG-6: guest-drawn frame via gpu-canvas-context.get-current-texture (not host clear).
-;; get-canvas-context + configure + get-device → shader + VERTEX buffer + pipeline →
+;; get-gpu + get-preferred-canvas-format (JS-like) → configure + pipeline use that format.
+;; get-canvas-context + get-device → shader + VERTEX buffer + pipeline →
 ;; get-current-texture → create-view → render pass → draw(3) → submit → drop owns.
 ;; Host presents after guest submit. Harness 1. get-* ctors are test-only.
 ;; Flattened configure is 15 i32s. Options are none.
@@ -422,6 +423,12 @@
     (export "[method]gpu-canvas-context.get-current-texture" (func (type $get-tex-ty)))
     (type $own-ctx (own $gpu-canvas-context))
     (export "get-canvas-context" (func (result $own-ctx)))
+    (export "gpu" (type $gpu (sub resource)))
+    (type $borrow-gpu (borrow $gpu))
+    (type $own-gpu (own $gpu))
+    (type $pref-ty (func (param "self" $borrow-gpu) (result $gpu-texture-format)))
+    (export "[method]gpu.get-preferred-canvas-format" (func (type $pref-ty)))
+    (export "get-gpu" (func (result $own-gpu)))
   ))
 
   (alias export $webgpu "gpu-shader-module" (type $gpu-shader-module))
@@ -441,6 +448,9 @@
   (alias export $webgpu "get-canvas-context" (func $get-ctx))
   (alias export $webgpu "[method]gpu-canvas-context.configure" (func $configure))
   (alias export $webgpu "[method]gpu-canvas-context.get-current-texture" (func $get-tex))
+  (alias export $webgpu "gpu" (type $gpu))
+  (alias export $webgpu "get-gpu" (func $get-gpu))
+  (alias export $webgpu "[method]gpu.get-preferred-canvas-format" (func $get-pref))
   (alias export $webgpu "[method]gpu-texture.create-view" (func $create-view))
   (alias export $webgpu "[method]gpu-device.create-command-encoder" (func $create-encoder))
   (alias export $webgpu "[method]gpu-device.queue" (func $queue))
@@ -465,6 +475,8 @@
   (core instance $builtins (instantiate $builtins))
 
   (core func $gd_lower (canon lower (func $get-device)))
+  (core func $gg_lower (canon lower (func $get-gpu)))
+  (core func $pref_lower (canon lower (func $get-pref)))
   (core func $gc_lower (canon lower (func $get-ctx)))
   (core func $cf_lower
     (canon lower (func $configure)
@@ -521,6 +533,8 @@
   (core module $m
     (import "" "mem" (memory 1))
     (import "" "get-device" (func $get-device (result i32)))
+    (import "" "get-gpu" (func $get-gpu (result i32)))
+    (import "" "get-preferred" (func $get-pref (param i32) (result i32)))
     (import "" "get-canvas-context" (func $get-ctx (result i32)))
     (import "" "configure" (func $configure
       (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)))
@@ -561,6 +575,8 @@
     (data (i32.const 1024) "@vertex fn vs_main(@location(0) p: vec3<f32>) -> @builtin(position) vec4<f32> { return vec4<f32>(p, 1.0); } @fragment fn fs_main() -> @location(0) vec4<f32> { return vec4<f32>(0.0, 1.0, 0.0, 1.0); }")
     (func (export "run") (result i32)
       (local $device i32)
+      (local $gpu i32)
+      (local $fmt i32)
       (local $ctx i32)
       (local $shader i32)
       (local $buffer i32)
@@ -573,11 +589,13 @@
       (local $cb i32)
       (local $z i32)
       (local.set $device (call $get-device))
+      (local.set $gpu (call $get-gpu))
+      (local.set $fmt (call $get-pref (local.get $gpu)))
       (local.set $ctx (call $get-ctx))
       (call $configure
         (local.get $ctx)
         (local.get $device)
-        (i32.const 21)
+        (local.get $fmt)
         (i32.const 0) (i32.const 0)
         (i32.const 0) (i32.const 0) (i32.const 0)
         (i32.const 0) (i32.const 0)
@@ -633,7 +651,7 @@
       (i32.store (i32.const 164) (i32.const 800))
       (i32.store (i32.const 168) (i32.const 7))
       (i32.store8 (i32.const 400) (i32.const 1))
-      (i32.store8 (i32.const 401) (i32.const 21))
+      (i32.store8 (i32.const 401) (local.get $fmt))
       (i32.store8 (i32.const 415) (i32.const 1))
       (i32.store8 (i32.const 416) (i32.const 16))
       (i32.store (i32.const 180) (i32.const 1))
@@ -711,6 +729,8 @@
     (with "" (instance
       (export "mem" (memory $builtins "mem"))
       (export "get-device" (func $gd_lower))
+      (export "get-gpu" (func $gg_lower))
+      (export "get-preferred" (func $pref_lower))
       (export "get-canvas-context" (func $gc_lower))
       (export "configure" (func $cf_lower))
       (export "get-current-texture" (func $gt_lower))

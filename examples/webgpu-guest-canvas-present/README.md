@@ -1,11 +1,11 @@
 # Guest canvas present (WG-6)
 
-Guest records a render pass on `gpu-canvas-context.get-current-texture`. The host presents after `queue.submit` — not a host-only clear, and not a 1×1 `create-texture` cite.
+Guest records a render pass on `gpu-canvas-context.get-current-texture`. The guest queries `gpu.get-preferred-canvas-format` (same pattern as JS `navigator.gpu.getPreferredCanvasFormat()`) and uses that format for `configure` and the render pipeline. The host presents after `queue.submit` — not a host-only clear, and not a 1×1 `create-texture` cite.
 
 ## Fixture
 
 - **Wasm:** `fixtures/w1/webgpu_method_dawn_guest_canvas_present.wasm`
-- **Product WIT:** `gpu-canvas-context.configure` + `get-current-texture` + shader / VERTEX buffer / render pipeline / `draw(3)` / `queue.submit`
+- **Product WIT:** `gpu.get-preferred-canvas-format` + `gpu-canvas-context.configure` + `get-current-texture` + shader / VERTEX buffer / render pipeline / `draw(3)` / `queue.submit`
 - Regenerate: `python scripts/merge_guest_canvas_present_wat.py` then `wasm-tools parse` / `validate --features=cm-async,component-model`
 
 ## Android smoke (device)

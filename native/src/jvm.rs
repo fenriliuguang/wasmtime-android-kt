@@ -3519,7 +3519,7 @@ pub fn exp_begin_render_pass_described(
     call_i(
         cb,
         "beginRenderPassDescribed",
-        "(I[I[I[I[I[IIIIIIF)I",
+        "(I[I[I[I[I[IIIIIF)I",
         vec![
             HostArg::Int(encoder as i32),
             HostArg::Ints(views),

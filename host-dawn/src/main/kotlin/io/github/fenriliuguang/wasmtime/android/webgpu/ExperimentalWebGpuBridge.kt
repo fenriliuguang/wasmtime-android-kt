@@ -4337,8 +4337,10 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
-     * WG-6: guest-drawn frame to `gpu-canvas-context.get-current-texture` + host present after submit.
-     * Combines [attachDawnGuestRender] with [attachCanvasContext]. Bind window before instantiate.
+     * WG-6: guest-drawn frame to `gpu-canvas-context.get-current-texture` + host present
+     * after `queue.submit`. Combines [attachDawnGuestRender] with
+     * [attachCanvasContext] and [gpuGetPreferredCanvasFormatDescribed].
+     * Bind window before instantiate.
      */
     fun attachDawnGuestCanvasPresent(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
@@ -4383,6 +4385,9 @@ object ExperimentalWebGpuBridge {
 
                 override fun canvasContextConfigurationUsageDescribed(context: Int): Int =
                     bindings.canvasContextConfigurationUsage(context)
+
+                override fun gpuGetPreferredCanvasFormatDescribed(): Int =
+                    bindings.gpuGetPreferredCanvasFormat()
             },
         )
     }

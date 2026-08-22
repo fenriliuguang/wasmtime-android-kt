@@ -809,10 +809,13 @@ pub enum GpuTextureFormat {
 
 impl GpuTextureFormat {
     /// `androidx.webgpu.TextureFormat` / Dawn value used by L2.
-    /// This slice only needs RGBA8Unorm (`0x16` on alpha05).
+    /// Canvas present needs RGBA8Unorm (`0x16`) and BGRA8Unorm (`0x1B` on alpha05).
     pub fn to_dawn_u32(self) -> u32 {
         match self {
             Self::Rgba8unorm => 0x16,
+            Self::Rgba8unormSrgb => 0x17,
+            Self::Bgra8unorm => 0x1B,
+            Self::Bgra8unormSrgb => 0x1C,
             _ => 0x16,
         }
     }
@@ -821,6 +824,9 @@ impl GpuTextureFormat {
     pub fn from_dawn_u32(value: u32) -> Self {
         match value {
             0x16 => Self::Rgba8unorm,
+            0x17 => Self::Rgba8unormSrgb,
+            0x1B => Self::Bgra8unorm,
+            0x1C => Self::Bgra8unormSrgb,
             _ => Self::Rgba8unorm,
         }
     }

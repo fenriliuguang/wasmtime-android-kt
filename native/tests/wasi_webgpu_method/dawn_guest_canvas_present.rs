@@ -84,6 +84,9 @@ struct GpuQuerySet;
 #[derive(Debug)]
 struct GpuCanvasContext;
 
+#[derive(Debug)]
+struct Gpu;
+
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
@@ -1089,6 +1092,7 @@ struct Flags {
     draw: Arc<AtomicBool>,
     submitted: Arc<AtomicBool>,
     current_texture: Arc<AtomicBool>,
+    preferred: Arc<AtomicBool>,
 }
 
 fn push_res<T: Send + Sync + 'static>(
@@ -1112,6 +1116,7 @@ fn clone_flags(flags: &Flags) -> Flags {
         draw: flags.draw.clone(),
         submitted: flags.submitted.clone(),
         current_texture: flags.current_texture.clone(),
+        preferred: flags.preferred.clone(),
     }
 }
 
@@ -1134,6 +1139,7 @@ fn register_dawn_guest_canvas_present(
     push_res::<GpuCommandBuffer>(&mut webgpu, "gpu-command-buffer")?;
     push_res::<GpuQuerySet>(&mut webgpu, "gpu-query-set")?;
     push_res::<GpuCanvasContext>(&mut webgpu, "gpu-canvas-context")?;
+    push_res::<Gpu>(&mut webgpu, "gpu")?;
     webgpu.func_wrap("get-device", |mut store, ()| {
         let resource = store.data_mut().table.push(GpuDevice { rep: 0 })?;
         Ok((resource,))
@@ -1142,14 +1148,26 @@ fn register_dawn_guest_canvas_present(
         let resource = store.data_mut().table.push(GpuCanvasContext)?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap("get-gpu", |mut store, ()| {
+        let resource = store.data_mut().table.push(Gpu)?;
+        Ok((resource,))
+    })?;
+    webgpu.func_wrap("[method]gpu.get-preferred-canvas-format", {
+        let preferred = flags.preferred.clone();
+        move |mut caller, (gpu,): (Resource<Gpu>,)| {
+            caller.data_mut().table.get(&gpu).map(|_| ())?;
+            preferred.store(true, Ordering::SeqCst);
+            Ok((GpuTextureFormat::Bgra8unorm,))
+        }
+    })?;
     webgpu.func_wrap(
         "[method]gpu-canvas-context.configure",
         |mut caller, (ctx, config): (Resource<GpuCanvasContext>, GpuCanvasConfiguration)| {
             caller.data_mut().table.get(&ctx).map(|_| ())?;
             caller.data_mut().table.get(&config.device).map(|_| ())?;
             assert!(
-                matches!(config.format, GpuTextureFormat::Rgba8unorm),
-                "guest must pass format=rgba8unorm"
+                matches!(config.format, GpuTextureFormat::Bgra8unorm),
+                "guest must pass format from get-preferred-canvas-format (bgra8unorm)"
             );
             assert!(config.usage.is_none());
             assert!(config.view_formats.is_none());
@@ -1257,9 +1275,9 @@ fn register_dawn_guest_canvas_present(
             assert!(
                 matches!(
                     fragment.targets[0].as_ref().map(|t| t.format),
-                    Some(GpuTextureFormat::Rgba8unorm)
+                    Some(GpuTextureFormat::Bgra8unorm)
                 ),
-                "guest must pass fragment target format=rgba8unorm"
+                "guest must pass fragment target format from get-preferred-canvas-format"
             );
             assert_eq!(
                 fragment.targets[0].as_ref().and_then(|t| t.write_mask),
@@ -1435,6 +1453,7 @@ fn flags() -> Flags {
         draw: Arc::new(AtomicBool::new(false)),
         submitted: Arc::new(AtomicBool::new(false)),
         current_texture: Arc::new(AtomicBool::new(false)),
+        preferred: Arc::new(AtomicBool::new(false)),
     }
 }
 
@@ -1454,6 +1473,10 @@ fn assert_chain(flags: &Flags) {
         flags.current_texture.load(Ordering::SeqCst),
         "get-current-texture"
     );
+    assert!(
+        flags.preferred.load(Ordering::SeqCst),
+        "get-preferred-canvas-format"
+    );
     assert!(flags.submitted.load(Ordering::SeqCst), "submit");
 }
 
@@ -1463,6 +1486,10 @@ fn wasi_webgpu_method_dawn_guest_canvas_present_smoke() -> wasmtime::Result<()> 
     assert!(
         wat.contains("[method]gpu-canvas-context.get-current-texture"),
         "fixture must acquire canvas swapchain texture"
+    );
+    assert!(
+        wat.contains("[method]gpu.get-preferred-canvas-format"),
+        "fixture must query preferred canvas format"
     );
     assert!(
         !wat.contains("[method]gpu-device.create-texture"),

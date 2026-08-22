@@ -48,11 +48,18 @@ CANVAS_TYPES = """
     (export "[method]gpu-canvas-context.get-current-texture" (func (type $get-tex-ty)))
     (type $own-ctx (own $gpu-canvas-context))
     (export "get-canvas-context" (func (result $own-ctx)))
+    (export "gpu" (type $gpu (sub resource)))
+    (type $borrow-gpu (borrow $gpu))
+    (type $own-gpu (own $gpu))
+    (type $pref-ty (func (param "self" $borrow-gpu) (result $gpu-texture-format)))
+    (export "[method]gpu.get-preferred-canvas-format" (func (type $pref-ty)))
+    (export "get-gpu" (func (result $own-gpu)))
 """
 
 HEADER = """\
 ;; WG-6: guest-drawn frame via gpu-canvas-context.get-current-texture (not host clear).
-;; get-canvas-context + configure + get-device → shader + VERTEX buffer + pipeline →
+;; get-gpu + get-preferred-canvas-format (JS-like) → configure + pipeline use that format.
+;; get-canvas-context + get-device → shader + VERTEX buffer + pipeline →
 ;; get-current-texture → create-view → render pass → draw(3) → submit → drop owns.
 ;; Host presents after guest submit. Harness 1. get-* ctors are test-only.
 ;; Flattened configure is 15 i32s. Options are none.
@@ -85,13 +92,18 @@ def main() -> None:
         '  (alias export $webgpu "gpu-canvas-context" (type $gpu-canvas-context))\n'
         '  (alias export $webgpu "get-canvas-context" (func $get-ctx))\n'
         '  (alias export $webgpu "[method]gpu-canvas-context.configure" (func $configure))\n'
-        '  (alias export $webgpu "[method]gpu-canvas-context.get-current-texture" (func $get-tex))\n',
+        '  (alias export $webgpu "[method]gpu-canvas-context.get-current-texture" (func $get-tex))\n'
+        '  (alias export $webgpu "gpu" (type $gpu))\n'
+        '  (alias export $webgpu "get-gpu" (func $get-gpu))\n'
+        '  (alias export $webgpu "[method]gpu.get-preferred-canvas-format" (func $get-pref))\n',
         1,
     )
 
     text = text.replace(
         '  (core func $gd_lower (canon lower (func $get-device)))\n',
         '  (core func $gd_lower (canon lower (func $get-device)))\n'
+        '  (core func $gg_lower (canon lower (func $get-gpu)))\n'
+        '  (core func $pref_lower (canon lower (func $get-pref)))\n'
         '  (core func $gc_lower (canon lower (func $get-ctx)))\n'
         '  (core func $cf_lower\n'
         '    (canon lower (func $configure)\n'
@@ -112,6 +124,8 @@ def main() -> None:
     text = text.replace(
         '    (import "" "get-device" (func $get-device (result i32)))\n',
         '    (import "" "get-device" (func $get-device (result i32)))\n'
+        '    (import "" "get-gpu" (func $get-gpu (result i32)))\n'
+        '    (import "" "get-preferred" (func $get-pref (param i32) (result i32)))\n'
         '    (import "" "get-canvas-context" (func $get-ctx (result i32)))\n'
         '    (import "" "configure" (func $configure\n'
         '      (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)))\n'
@@ -126,17 +140,19 @@ def main() -> None:
 
     text = text.replace(
         "      (local $device i32)\n      (local $shader i32)",
-        "      (local $device i32)\n      (local $ctx i32)\n      (local $shader i32)",
+        "      (local $device i32)\n      (local $gpu i32)\n      (local $fmt i32)\n      (local $ctx i32)\n      (local $shader i32)",
         1,
     )
     text = text.replace(
         "      (local.set $device (call $get-device))\n      (local.set $shader",
         "      (local.set $device (call $get-device))\n"
+        "      (local.set $gpu (call $get-gpu))\n"
+        "      (local.set $fmt (call $get-pref (local.get $gpu)))\n"
         "      (local.set $ctx (call $get-ctx))\n"
         "      (call $configure\n"
         "        (local.get $ctx)\n"
         "        (local.get $device)\n"
-        "        (i32.const 21)\n"
+        "        (local.get $fmt)\n"
         "        (i32.const 0) (i32.const 0)\n"
         "        (i32.const 0) (i32.const 0) (i32.const 0)\n"
         "        (i32.const 0) (i32.const 0)\n"
@@ -168,8 +184,16 @@ def main() -> None:
     text = text.replace(old_tex, new_tex, 1)
 
     text = text.replace(
+        "(i32.store8 (i32.const 401) (i32.const 21))",
+        "(i32.store8 (i32.const 401) (local.get $fmt))",
+        1,
+    )
+
+    text = text.replace(
         '      (export "get-device" (func $gd_lower))\n',
         '      (export "get-device" (func $gd_lower))\n'
+        '      (export "get-gpu" (func $gg_lower))\n'
+        '      (export "get-preferred" (func $pref_lower))\n'
         '      (export "get-canvas-context" (func $gc_lower))\n'
         '      (export "configure" (func $cf_lower))\n'
         '      (export "get-current-texture" (func $gt_lower))\n',
