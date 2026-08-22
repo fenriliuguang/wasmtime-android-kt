@@ -3854,6 +3854,281 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * WG-6: guest BGL + bind-group + compute pipeline + set-bind-group +
+     * dispatch-workgroups + submit on one cached Dawn device.
+     * Not empty begin-compute-pass; not Cpu VectorAddScenario shader-text match.
+     */
+    fun attachDawnGuestCompute(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var adapter = 0
+        var device = 0
+        fun cachedAdapter(): Int {
+            if (adapter == 0) {
+                adapter = bindings.requestAdapter()
+            }
+            return adapter
+        }
+        fun cachedDevice(fromAdapter: Int = 0): Int {
+            if (device == 0) {
+                val a = if (fromAdapter != 0) fromAdapter else cachedAdapter()
+                device = bindings.adapterRequestDevice(a)
+            }
+            return device
+        }
+        fun resolvedDevice(from: Int): Int = if (from != 0) from else cachedDevice()
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = cachedAdapter()
+
+                override fun requestAdapterDescribed(
+                    powerPreference: Int,
+                    forceFallback: Int,
+                    featureLevel: String,
+                    xrCompatible: Int,
+                ): Int = cachedAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int = cachedDevice(adapter)
+
+                override fun adapterRequestDeviceDescribed(
+                    adapter: Int,
+                    requiredFeatures: IntArray,
+                    requiredLimits: Int,
+                    label: String,
+                    defaultQueueLabel: String,
+                ): Int = cachedDevice(adapter)
+
+                override fun deviceCreateShaderModuleDescribed(
+                    device: Int,
+                    code: String,
+                    label: String,
+                    hintLayouts: IntArray,
+                    hintEntries: String,
+                ): Int =
+                    bindings.deviceCreateShaderModule(
+                        resolvedDevice(device),
+                        code,
+                        label = label.ifEmpty { null },
+                        compilationHints = shaderCompilationHintsFromDescribed(hintLayouts, hintEntries),
+                    )
+
+                override fun deviceCreateBufferDescribed(
+                    device: Int,
+                    size: Long,
+                    usage: Int,
+                    mappedAtCreation: Int,
+                    label: String,
+                ): Int =
+                    bindings.deviceCreateBuffer(
+                        resolvedDevice(device),
+                        size = size,
+                        usage = usage,
+                        mappedAtCreation = mappedAtCreation > 0,
+                        label = label.ifEmpty { null },
+                    )
+
+                override fun deviceCreateBindGroupLayoutDescribed(
+                    device: Int,
+                    bindingsArr: IntArray,
+                    visibilities: IntArray,
+                    bufferTypes: IntArray,
+                    samplerTypes: IntArray,
+                    textureSampleTypes: IntArray,
+                ): Int {
+                    val resolved = resolvedDevice(device)
+                    val n = minOf(
+                        bindingsArr.size,
+                        visibilities.size,
+                        bufferTypes.size,
+                        samplerTypes.size,
+                        textureSampleTypes.size,
+                    )
+                    val entries = ArrayList<BindGroupLayoutEntry>(n)
+                    for (i in 0 until n) {
+                        val buffer = if (bufferTypes[i] < 0) {
+                            null
+                        } else {
+                            val type = when (bufferTypes[i]) {
+                                1 -> BufferBindingType.Storage
+                                2 -> BufferBindingType.ReadOnlyStorage
+                                else -> BufferBindingType.Uniform
+                            }
+                            BufferBindingLayout(type = type)
+                        }
+                        val sampler = if (samplerTypes[i] < 0) {
+                            null
+                        } else {
+                            SamplerBindingLayout(type = samplerTypes[i])
+                        }
+                        val texture = if (textureSampleTypes[i] < 0) {
+                            null
+                        } else {
+                            TextureBindingLayout(sampleType = textureSampleTypes[i])
+                        }
+                        entries.add(
+                            BindGroupLayoutEntry(
+                                binding = bindingsArr[i],
+                                visibility = visibilities[i],
+                                buffer = buffer,
+                                sampler = sampler,
+                                texture = texture,
+                            ),
+                        )
+                    }
+                    return bindings.deviceCreateBindGroupLayout(
+                        resolved,
+                        BindGroupLayoutDescriptor(entries = entries),
+                    )
+                }
+
+                override fun deviceCreatePipelineLayoutDescribed(
+                    device: Int,
+                    bindGroupLayouts: IntArray,
+                    label: String,
+                ): Int =
+                    bindings.deviceCreatePipelineLayout(
+                        resolvedDevice(device),
+                        PipelineLayoutDescriptor(
+                            bindGroupLayouts = bindGroupLayouts.map { GpuHandle(it) },
+                            label = label.ifEmpty { null },
+                        ),
+                    )
+
+                override fun deviceCreateComputePipelineDescribed(
+                    device: Int,
+                    shader: Int,
+                    entryPoint: String,
+                    layout: Int,
+                    label: String,
+                    constants: Int,
+                ): Int {
+                    val resolved = resolvedDevice(device)
+                    val module =
+                        if (shader != 0) {
+                            GpuHandle(shader)
+                        } else {
+                            GpuHandle(bindings.deviceCreateShaderModule(resolved, STUB_WGSL))
+                        }
+                    val pipelineLayout = if (layout != 0) GpuHandle(layout) else null
+                    return bindings.deviceCreateComputePipeline(
+                        resolved,
+                        ComputePipelineDescriptor(
+                            compute = ProgrammableStage(
+                                module = module,
+                                entryPoint = entryPoint.ifEmpty { "main" },
+                                constants = bindings.recordPipelineConstantValueSnapshot(constants),
+                            ),
+                            layout = pipelineLayout,
+                            label = label.ifEmpty { null },
+                        ),
+                    )
+                }
+
+                override fun deviceCreateBindGroupDescribed(
+                    device: Int,
+                    layout: Int,
+                    label: String,
+                    bindingsArr: IntArray,
+                    kinds: IntArray,
+                    handles: IntArray,
+                ): Int {
+                    val resolved = resolvedDevice(device)
+                    val n = minOf(bindingsArr.size, kinds.size, handles.size)
+                    val entries = ArrayList<BindGroupEntry>(n)
+                    for (i in 0 until n) {
+                        val handle = GpuHandle(handles[i])
+                        val resource = when (kinds[i]) {
+                            1 -> BindingResource.Sampler(handle)
+                            2 -> BindingResource.TextureView(handle)
+                            else -> BindingResource.Buffer(BufferBinding(buffer = handle))
+                        }
+                        entries.add(BindGroupEntry(binding = bindingsArr[i], resource = resource))
+                    }
+                    return bindings.deviceCreateBindGroup(
+                        resolved,
+                        BindGroupDescriptor(
+                            layout = GpuHandle(layout),
+                            entries = entries,
+                            label = label.ifEmpty { null },
+                        ),
+                    )
+                }
+
+                override fun deviceCreateCommandEncoder(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateCommandEncoder(resolved)
+                }
+
+                override fun deviceCreateCommandEncoderDescribed(device: Int, label: String): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateCommandEncoder(resolved, label)
+                }
+
+                override fun deviceGetQueue(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceGetQueue(resolved)
+                }
+
+                override fun deviceGetQueueDescribed(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceGetQueue(resolved)
+                }
+
+                override fun beginComputePass(encoder: Int): Int =
+                    bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun beginComputePassDescribed(
+                    encoder: Int,
+                    beginningOfPassWriteIndex: Int,
+                    endOfPassWriteIndex: Int,
+                ): Int = bindings.commandEncoderBeginComputePass(encoder)
+
+                override fun computePassSetPipelineDescribed(pass: Int, pipeline: Int) {
+                    bindings.computePassSetPipeline(pass, pipeline)
+                }
+
+                override fun computePassSetBindGroupDescribed(
+                    pass: Int,
+                    index: Int,
+                    bindGroup: Int,
+                ) {
+                    bindings.computePassSetBindGroup(pass, index, bindGroup)
+                }
+
+                override fun computePassDispatchWorkgroupsDescribed(
+                    pass: Int,
+                    x: Int,
+                    y: Int,
+                    z: Int,
+                ) {
+                    bindings.computePassDispatchWorkgroups(pass, x, y, z)
+                }
+
+                override fun computePassEnd(pass: Int) {
+                    bindings.computePassEnd(pass)
+                }
+
+                override fun computePassEndDescribed(pass: Int) {
+                    bindings.computePassEnd(pass)
+                }
+
+                override fun commandEncoderFinish(encoder: Int): Int =
+                    bindings.commandEncoderFinish(encoder)
+
+                override fun commandEncoderFinishDescribed(encoder: Int, label: String): Int =
+                    bindings.commandEncoderFinish(encoder, label)
+
+                override fun queueSubmit1(queue: Int, commandBuffer: Int) {
+                    bindings.queueSubmit1(queue, commandBuffer)
+                }
+
+                override fun queueSubmitDescribed(queue: Int, commandBuffers: IntArray) {
+                    bindings.queueSubmit(queue, commandBuffers.toList())
+                }
+            },
+        )
+    }
+
+    /**
      * Lane D: cite Dawn via a canonical `[method]` render slice.
      * Guest `get-device` pushes `rep == 0`; cache one adapter/device so
      * create-buffer → create-texture → create-view → encoder → pass →
