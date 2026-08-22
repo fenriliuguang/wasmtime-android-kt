@@ -169,6 +169,12 @@ private data class CanvasTextureSnap(
     val surface: GpuHandle?,
 )
 
+/** Swapchain frame acquired via `gpu-canvas-context.get-current-texture`; presented after guest submit. */
+private data class PendingCanvasPresent(
+    val surface: GpuHandle,
+    val texture: GpuHandle,
+)
+
 /**
  * L3 Dawn backend for [WasiWebGpuHost].
  *
@@ -193,6 +199,7 @@ class DawnWasiWebGpuHost private constructor(
     private var canvasWidth: Int = 0
     private var canvasHeight: Int = 0
     private var pendingCanvasLeftovers: CanvasConfigureLeftovers? = null
+    private var pendingCanvasPresent: PendingCanvasPresent? = null
     /** Serializes Dawn GPU work with [GPUInstance.processEvents] (Mali SIGSEGV under races). */
     private val gpuLock = Any()
     @Volatile private var closed = false
@@ -713,6 +720,7 @@ class DawnWasiWebGpuHost private constructor(
         width: Int,
         height: Int,
         leftover: CanvasConfigureLeftovers?,
+        preferredFormat: Int = 0,
     ): Int {
         require(width > 0 && height > 0) { "invalid surface size ${width}x$height" }
         synchronized(gpuLock) {
@@ -720,7 +728,8 @@ class DawnWasiWebGpuHost private constructor(
             val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
             val caps = gpuSurface.getCapabilities(gpuAdapter)
-            val format = caps.formats.firstOrNull()
+            val format = caps.formats.firstOrNull { preferredFormat != 0 && it == preferredFormat }
+                ?: caps.formats.firstOrNull()
                 ?: throw HostException.Backend("surface has no texture formats")
             val presentMode = PresentMode.Fifo
             val alphaMode = leftover?.alphaMode?.takeIf { it >= 0 }?.let { wit ->
@@ -841,6 +850,7 @@ class DawnWasiWebGpuHost private constructor(
                     width,
                     height,
                     leftover,
+                    preferredFormat = format,
                 )
                 state.surface = surface
                 if (chosen != 0) {
@@ -897,12 +907,17 @@ class DawnWasiWebGpuHost private constructor(
         }
         val surface = snapshot.surface
         if (surface != null) {
+            synchronized(gpuLock) {
+                presentPendingCanvasFrameLocked()
+            }
             val acquired = surfaceGetCurrentTexture(surface)
             val texture = acquired.texture
                 ?: throw HostException.Validation(
                     "canvas get-current-texture status=${acquired.status}",
                 )
-            presentCanvasClear(snapshot.device, surface, texture)
+            synchronized(gpuLock) {
+                pendingCanvasPresent = PendingCanvasPresent(surface, texture)
+            }
             return texture
         }
         return deviceCreateTexture(
@@ -915,26 +930,19 @@ class DawnWasiWebGpuHost private constructor(
         )
     }
 
-    private fun presentCanvasClear(
-        device: GpuHandle,
-        surface: GpuHandle,
-        texture: GpuHandle,
-    ) {
-        val view = textureCreateView(texture, TextureViewDescriptor())
-        val encoder = deviceCreateCommandEncoder(device, CommandEncoderDescriptor())
-        val pass = commandEncoderBeginRenderPassClear(
-            encoder,
-            view,
-            0.15f,
-            0.45f,
-            0.85f,
-            1f,
-        )
-        renderPassEnd(pass)
-        val commands = commandEncoderFinish(encoder, null)
-        val queue = deviceGetQueue(device)
-        queueSubmit(queue, listOf(commands))
-        surfacePresent(surface)
+    /** Caller must hold [gpuLock]. Present swapchain frame after guest submit (WG-6 guest-drawn). */
+    private fun presentPendingCanvasFrameLocked() {
+        val pending = pendingCanvasPresent ?: return
+        surfacePresent(pending.surface)
+        pendingCanvasPresent = null
+        runCatching { instance.processEvents() }
+    }
+
+    /** Caller must hold [gpuLock]. Present if guest drops swapchain texture without submit. */
+    private fun presentPendingCanvasTextureLocked(texture: GpuHandle) {
+        val pending = pendingCanvasPresent ?: return
+        if (pending.texture != texture) return
+        presentPendingCanvasFrameLocked()
     }
 
     override fun canvasContextHasConfiguration(context: Int): Int {
@@ -2348,6 +2356,7 @@ class DawnWasiWebGpuHost private constructor(
                 handles.get<GPUCommandBuffer>(it, ResourceKind.CommandBuffer)
             }.toTypedArray()
             gpuQueue.submit(buffers)
+            presentPendingCanvasFrameLocked()
         }
     }
 
@@ -2684,6 +2693,9 @@ class DawnWasiWebGpuHost private constructor(
     /** Caller must hold [gpuLock]. */
     private fun tryDropLocked(handle: GpuHandle, closeResource: Boolean): Boolean {
         val entry = handles.tryDrop(handle) ?: return false
+        if (entry.kind == ResourceKind.Texture) {
+            presentPendingCanvasTextureLocked(handle)
+        }
         pipelineLayouts.remove(handle.raw)?.let { layout ->
             runCatching { layout.close() }
         }
@@ -2731,6 +2743,7 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun releaseSurfaces() {
         synchronized(gpuLock) {
+            presentPendingCanvasFrameLocked()
             // Encoders + leftover swapchain Texture/View so GPUSurface can disconnect.
             // Guest-owned textures should already be gone via drop-cube / releaseAllGpuObjects.
             releaseFrameResourcesLocked()
@@ -2756,6 +2769,7 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun releaseAllGpuObjects() {
         synchronized(gpuLock) {
+            presentPendingCanvasFrameLocked()
             for (handle in handles.handlesOfKind(ResourceKind.Surface)) {
                 runCatching {
                     handles.get<GPUSurface>(handle, ResourceKind.Surface).unconfigure()
