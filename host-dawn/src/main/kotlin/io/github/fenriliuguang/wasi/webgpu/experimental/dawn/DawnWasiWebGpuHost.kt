@@ -136,6 +136,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuColorWrite
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuLoadOp
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuPrimitiveTopology
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuStoreOp
+import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureAspect
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureFormat
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.GpuTextureUsage
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.VertexBufferLayout
@@ -169,6 +170,13 @@ private data class CanvasTextureSnap(
     val surface: GpuHandle?,
 )
 
+/** Swapchain frame acquired via `gpu-canvas-context.get-current-texture`; presented after `queue.submit`. */
+private data class PendingCanvasPresent(
+    val surface: GpuHandle,
+    val texture: GpuHandle,
+    val views: MutableSet<Int> = mutableSetOf(),
+)
+
 /**
  * L3 Dawn backend for [WasiWebGpuHost].
  *
@@ -193,6 +201,9 @@ class DawnWasiWebGpuHost private constructor(
     private var canvasWidth: Int = 0
     private var canvasHeight: Int = 0
     private var pendingCanvasLeftovers: CanvasConfigureLeftovers? = null
+    private var pendingCanvasPresent: PendingCanvasPresent? = null
+    /** Dawn format of the bound-window swapchain; 0 when no windowed canvas is configured. */
+    private var canvasSwapchainFormat: Int = 0
     /** Serializes Dawn GPU work with [GPUInstance.processEvents] (Mali SIGSEGV under races). */
     private val gpuLock = Any()
     @Volatile private var closed = false
@@ -255,7 +266,8 @@ class DawnWasiWebGpuHost private constructor(
                 descriptor.requiredFeatures.map { it + 1 }.toIntArray()
             },
             requiredLimits = dawnRequiredLimits(descriptor.requiredLimits),
-            defaultQueue = descriptor.defaultQueueLabel?.let { GPUQueueDescriptor(label = it) },
+            defaultQueue = descriptor.defaultQueueLabel?.let { GPUQueueDescriptor(label = it) }
+                ?: GPUQueueDescriptor(),
             deviceLostCallbackExecutor = callbackExecutor,
             uncapturedErrorCallbackExecutor = callbackExecutor,
             deviceLostCallback = DeviceLostCallback { _, reason, message ->
@@ -713,6 +725,7 @@ class DawnWasiWebGpuHost private constructor(
         width: Int,
         height: Int,
         leftover: CanvasConfigureLeftovers?,
+        preferredFormat: Int = 0,
     ): Int {
         require(width > 0 && height > 0) { "invalid surface size ${width}x$height" }
         synchronized(gpuLock) {
@@ -720,7 +733,8 @@ class DawnWasiWebGpuHost private constructor(
             val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
             val gpuAdapter = handles.get<GPUAdapter>(adapter, ResourceKind.Adapter)
             val caps = gpuSurface.getCapabilities(gpuAdapter)
-            val format = caps.formats.firstOrNull()
+            val format = caps.formats.firstOrNull { preferredFormat != 0 && it == preferredFormat }
+                ?: caps.formats.firstOrNull()
                 ?: throw HostException.Backend("surface has no texture formats")
             val presentMode = PresentMode.Fifo
             val alphaMode = leftover?.alphaMode?.takeIf { it >= 0 }?.let { wit ->
@@ -841,10 +855,14 @@ class DawnWasiWebGpuHost private constructor(
                     width,
                     height,
                     leftover,
+                    preferredFormat = format,
                 )
                 state.surface = surface
                 if (chosen != 0) {
                     state.format = chosen
+                    canvasSwapchainFormat = chosen
+                } else {
+                    canvasSwapchainFormat = format
                 }
             }
             return handle
@@ -859,6 +877,7 @@ class DawnWasiWebGpuHost private constructor(
                 ResourceKind.CanvasContext,
             )
             state.configured = false
+            canvasSwapchainFormat = 0
             state.surface?.let { surface ->
                 runCatching {
                     handles.get<GPUSurface>(surface, ResourceKind.Surface).unconfigure()
@@ -902,7 +921,9 @@ class DawnWasiWebGpuHost private constructor(
                 ?: throw HostException.Validation(
                     "canvas get-current-texture status=${acquired.status}",
                 )
-            presentCanvasClear(snapshot.device, surface, texture)
+            synchronized(gpuLock) {
+                pendingCanvasPresent = PendingCanvasPresent(surface, texture)
+            }
             return texture
         }
         return deviceCreateTexture(
@@ -915,26 +936,12 @@ class DawnWasiWebGpuHost private constructor(
         )
     }
 
-    private fun presentCanvasClear(
-        device: GpuHandle,
-        surface: GpuHandle,
-        texture: GpuHandle,
-    ) {
-        val view = textureCreateView(texture, TextureViewDescriptor())
-        val encoder = deviceCreateCommandEncoder(device, CommandEncoderDescriptor())
-        val pass = commandEncoderBeginRenderPassClear(
-            encoder,
-            view,
-            0.15f,
-            0.45f,
-            0.85f,
-            1f,
-        )
-        renderPassEnd(pass)
-        val commands = commandEncoderFinish(encoder, null)
-        val queue = deviceGetQueue(device)
-        queueSubmit(queue, listOf(commands))
-        surfacePresent(surface)
+    /** Caller must hold [gpuLock]. Present once after [queueSubmit]. */
+    private fun presentPendingCanvasFrameLocked() {
+        val pending = pendingCanvasPresent ?: return
+        pendingCanvasPresent = null
+        surfacePresent(pending.surface)
+        runCatching { instance.processEvents() }
     }
 
     override fun canvasContextHasConfiguration(context: Int): Int {
@@ -1035,7 +1042,7 @@ class DawnWasiWebGpuHost private constructor(
                             depthFailOp = face.depthFailOp,
                             passOp = face.passOp,
                         )
-                    },
+                    } ?: GPUStencilFaceState(),
                     stencilBack = ds.stencilBack?.let { face ->
                         GPUStencilFaceState(
                             compare = face.compare,
@@ -1043,7 +1050,7 @@ class DawnWasiWebGpuHost private constructor(
                             depthFailOp = face.depthFailOp,
                             passOp = face.passOp,
                         )
-                    },
+                    } ?: GPUStencilFaceState(),
                     stencilReadMask = ds.stencilReadMask ?: -1,
                     stencilWriteMask = ds.stencilWriteMask ?: -1,
                     depthBias = ds.depthBias ?: 0,
@@ -1073,14 +1080,18 @@ class DawnWasiWebGpuHost private constructor(
                             mask = ms.mask,
                             alphaToCoverageEnabled = ms.alphaToCoverageEnabled,
                         )
-                    },
+                    } ?: GPUMultisampleState(),
                     fragment = GPUFragmentState(
                         module = fragmentModule,
                         entryPoint = descriptor.fragment.entryPoint ?: "fs_main",
                         constants = dawnPipelineConstants(descriptor.fragment.constants),
                         targets = descriptor.fragment.targets.map { target ->
+                            val requested =
+                                if (target.format != 0) target.format else GpuTextureFormat.RGBA8_UNORM
+                            val targetFormat =
+                                if (canvasSwapchainFormat != 0) canvasSwapchainFormat else requested
                             GPUColorTargetState(
-                                format = target.format,
+                                format = targetFormat,
                                 blend = dawnBlendState(target.blend),
                                 writeMask = dawnColorWriteMask(target.writeMask),
                             )
@@ -1230,20 +1241,45 @@ class DawnWasiWebGpuHost private constructor(
     ): GpuHandle {
         synchronized(gpuLock) {
             val gpuTexture = handles.get<GPUTexture>(texture, ResourceKind.Texture)
-            return handles.insert(
-                ResourceKind.TextureView,
+            // Guest `create-view` none lowers aspect/format/dimension 0 (Undefined).
+            // androidx defaults aspect to All; passing Undefined on a swapchain
+            // texture fails later at begin-render-pass. Match JS `texture.createView()`.
+            val unspecified = descriptor.format == 0 &&
+                descriptor.dimension == 0 &&
+                descriptor.aspect == 0 &&
+                descriptor.baseMipLevel == 0 &&
+                descriptor.mipLevelCount < 0 &&
+                descriptor.baseArrayLayer == 0 &&
+                descriptor.arrayLayerCount < 0
+            val gpuView = if (unspecified) {
+                gpuTexture.createView()
+            } else {
                 gpuTexture.createView(
                     GPUTextureViewDescriptor(
                         dimension = descriptor.dimension,
-                        aspect = descriptor.aspect,
+                        aspect = if (descriptor.aspect != 0) {
+                            descriptor.aspect
+                        } else {
+                            GpuTextureAspect.ALL
+                        },
                         format = descriptor.format,
                         baseMipLevel = descriptor.baseMipLevel,
                         mipLevelCount = descriptor.mipLevelCount,
                         baseArrayLayer = descriptor.baseArrayLayer,
                         arrayLayerCount = descriptor.arrayLayerCount,
                     ),
-                ),
+                )
+            }
+            val view = handles.insert(
+                ResourceKind.TextureView,
+                gpuView,
             )
+            pendingCanvasPresent?.let { pending ->
+                if (pending.texture == texture) {
+                    pending.views.add(view.raw)
+                }
+            }
+            return view
         }
     }
 
@@ -1697,8 +1733,14 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun gpuGetPreferredCanvasFormat(): Int {
         synchronized(gpuLock) {
-            // androidx.webgpu alpha05 has no GPU.getPreferredCanvasFormat; match Cpu stub.
-            return GpuTextureFormat.RGBA8_UNORM
+            val result = if (canvasSwapchainFormat != 0) {
+                canvasSwapchainFormat
+            } else if (canvasNativeWindow != 0L) {
+                GpuTextureFormat.BGRA8_UNORM
+            } else {
+                GpuTextureFormat.RGBA8_UNORM
+            }
+            return result
         }
     }
 
@@ -1941,13 +1983,17 @@ class DawnWasiWebGpuHost private constructor(
                     depthClearValue = depth.depthClearValue,
                 )
             }
-            val pass = commandEncoder.beginRenderPass(
-                GPURenderPassDescriptor(
-                    colorAttachments = attachments,
-                    depthStencilAttachment = depthAttachment,
-                    label = descriptor.label,
-                ),
-            )
+            val pass = try {
+                commandEncoder.beginRenderPass(
+                    GPURenderPassDescriptor(
+                        colorAttachments = attachments,
+                        depthStencilAttachment = depthAttachment,
+                        label = descriptor.label,
+                    ),
+                )
+            } catch (t: Throwable) {
+                throw HostException.Backend("begin-render-pass: ${t.message}")
+            }
             return handles.insert(ResourceKind.RenderPassEncoder, pass)
         }
     }
@@ -2348,6 +2394,7 @@ class DawnWasiWebGpuHost private constructor(
                 handles.get<GPUCommandBuffer>(it, ResourceKind.CommandBuffer)
             }.toTypedArray()
             gpuQueue.submit(buffers)
+            presentPendingCanvasFrameLocked()
         }
     }
 
@@ -2684,6 +2731,10 @@ class DawnWasiWebGpuHost private constructor(
     /** Caller must hold [gpuLock]. */
     private fun tryDropLocked(handle: GpuHandle, closeResource: Boolean): Boolean {
         val entry = handles.tryDrop(handle) ?: return false
+        // Do not present on view/texture drop. Guest resource.drop does not
+        // reach here, but other host drops can fire before begin-render-pass
+        // and APIPresent then unconfigures the swapchain. Present after submit
+        // (and in releaseAllGpuObjects for acquire-only cite).
         pipelineLayouts.remove(handle.raw)?.let { layout ->
             runCatching { layout.close() }
         }
@@ -2731,6 +2782,8 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun releaseSurfaces() {
         synchronized(gpuLock) {
+            presentPendingCanvasFrameLocked()
+            canvasSwapchainFormat = 0
             // Encoders + leftover swapchain Texture/View so GPUSurface can disconnect.
             // Guest-owned textures should already be gone via drop-cube / releaseAllGpuObjects.
             releaseFrameResourcesLocked()
@@ -2756,6 +2809,8 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun releaseAllGpuObjects() {
         synchronized(gpuLock) {
+            presentPendingCanvasFrameLocked()
+            canvasSwapchainFormat = 0
             for (handle in handles.handlesOfKind(ResourceKind.Surface)) {
                 runCatching {
                     handles.get<GPUSurface>(handle, ResourceKind.Surface).unconfigure()

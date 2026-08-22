@@ -38,7 +38,7 @@ If a later slice proves “CM loop must share GpuThread”, merge them and revis
 ### Device on-screen smoke (2026-08-11)
 
 - Instrument `DawnRenderSmokeInstrumentedTest`: CM instantiate / host callbacks / Dawn present **all on one GpuThread** (anonymous background thread).  
-- Instrument `WasiWebGpuMethodCanvasContextPresentInstrumentedTest`: bind the host-owned window on GpuThread, then guest `gpu-canvas-context.configure` / `get-current-texture` (`run_concurrent`). Host clears + presents; no product `surface-*` guest names.  
+- Instrument `WasiWebGpuMethodCanvasContextPresentInstrumentedTest`: bind the host-owned window on GpuThread, then guest `gpu-canvas-context.configure` / `get-current-texture` (`run_concurrent`). Host acquires; present of a guest-drawn frame is `WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`.  
 - UI thread: Surface lifecycle and Activity start/stop only; `windowFromSurface` on GpuThread.  
 - Before starting `MainActivity`, unblank / unlock and use privileged `am start -W` (`targetContext.startActivity` on Android 16 / some OEMs is a background start and never reaches `RESUMED`).  
 - First on-screen slice may still be sync-compat (no second CM async pump); keep it isolated from the M2 `run_concurrent` path.

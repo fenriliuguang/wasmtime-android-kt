@@ -72,6 +72,8 @@ object GpuTextureFormat {
     const val UNDEFINED: Int = 0x00000000
     /** `androidx.webgpu.TextureFormat.RGBA8Unorm` (alpha05 = 0x16; older 0x12 was wrong). */
     const val RGBA8_UNORM: Int = 0x00000016
+    /** `androidx.webgpu.TextureFormat.BGRA8Unorm` (alpha05 = 0x1B). Android native window typical. */
+    const val BGRA8_UNORM: Int = 0x0000001B
     /** `androidx.webgpu.TextureFormat.Depth24Plus` */
     const val DEPTH24_PLUS: Int = 0x0000002e
     /** `androidx.webgpu.TextureFormat.Depth24PlusStencil8` */

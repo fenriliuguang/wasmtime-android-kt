@@ -4333,7 +4333,66 @@ object ExperimentalWebGpuBridge {
      * Not 1×1 color-clear cite; not `@builtin(vertex_index)` stub triangle.
      */
     fun attachDawnGuestRender(store: Store, host: WasiWebGpuHost) {
+        store.setExperimentalHost(dawnGuestRenderCallbacks(AbiCmHostBindings(host)))
+    }
+
+    /**
+     * WG-6: guest-drawn frame to `gpu-canvas-context.get-current-texture` + host present
+     * after `queue.submit`. Combines [attachDawnGuestRender] with
+     * [attachCanvasContext] and [gpuGetPreferredCanvasFormatDescribed].
+     * Bind window before instantiate.
+     */
+    fun attachDawnGuestCanvasPresent(store: Store, host: WasiWebGpuHost) {
         val bindings = AbiCmHostBindings(host)
+        val render = dawnGuestRenderCallbacks(bindings)
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks by render {
+                override fun canvasContextConfigureDescribed(
+                    context: Int,
+                    device: Int,
+                    format: Int,
+                    usage: Int,
+                    viewFormats: IntArray,
+                    colorSpace: Int,
+                    toneMapping: Int,
+                    alphaMode: Int,
+                ): Int = bindings.canvasContextConfigure(
+                    context,
+                    device,
+                    format,
+                    usage,
+                    viewFormats,
+                    colorSpace,
+                    toneMapping,
+                    alphaMode,
+                )
+
+                override fun canvasContextUnconfigureDescribed(context: Int) {
+                    bindings.canvasContextUnconfigure(context)
+                }
+
+                override fun canvasContextGetCurrentTextureDescribed(context: Int): Int =
+                    bindings.canvasContextGetCurrentTexture(context)
+
+                override fun canvasContextHasConfigurationDescribed(context: Int): Int =
+                    bindings.canvasContextHasConfiguration(context)
+
+                override fun canvasContextConfigurationDeviceDescribed(context: Int): Int =
+                    bindings.canvasContextConfigurationDevice(context)
+
+                override fun canvasContextConfigurationFormatDescribed(context: Int): Int =
+                    bindings.canvasContextConfigurationFormat(context)
+
+                override fun canvasContextConfigurationUsageDescribed(context: Int): Int =
+                    bindings.canvasContextConfigurationUsage(context)
+
+                override fun gpuGetPreferredCanvasFormatDescribed(): Int =
+                    bindings.gpuGetPreferredCanvasFormat()
+            },
+        )
+    }
+
+    private fun dawnGuestRenderCallbacks(bindings: AbiCmHostBindings): ExperimentalHostCallbacks {
         var adapter = 0
         var device = 0
         fun cachedAdapter(): Int {
@@ -4350,8 +4409,7 @@ object ExperimentalWebGpuBridge {
             return device
         }
         fun resolvedDevice(from: Int): Int = if (from != 0) from else cachedDevice()
-        store.setExperimentalHost(
-            object : ExperimentalHostCallbacks {
+        return object : ExperimentalHostCallbacks {
                 override fun requestAdapter(): Int = cachedAdapter()
 
                 override fun requestAdapterDescribed(
@@ -4673,8 +4731,7 @@ object ExperimentalWebGpuBridge {
                 override fun queueSubmitDescribed(queue: Int, commandBuffers: IntArray) {
                     bindings.queueSubmit(queue, commandBuffers.toList())
                 }
-            },
-        )
+            }
     }
 
     /**
