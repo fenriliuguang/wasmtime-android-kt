@@ -24,6 +24,7 @@ import androidx.webgpu.GPUColorTargetState
 import androidx.webgpu.GPUCommandBuffer
 import androidx.webgpu.GPUCommandEncoder
 import androidx.webgpu.GPUCommandEncoderDescriptor
+import androidx.webgpu.GPUCompatibilityModeLimits
 import androidx.webgpu.GPUComputePassDescriptor
 import androidx.webgpu.GPUComputePassEncoder
 import androidx.webgpu.GPUComputePipeline
@@ -1138,10 +1139,13 @@ class DawnWasiWebGpuHost private constructor(
         return dawn
     }
 
-    /** Empty map → none. Unknown / androidx-missing keys are skipped. */
+    /** Empty map → none. Unknown keys are skipped. Stage-only storage keys go on compatibilityModeLimits. */
     private fun dawnRequiredLimits(required: Map<String, Long?>): GPULimits? {
         if (required.isEmpty()) return null
         val limits = GPULimits()
+        var compat: GPUCompatibilityModeLimits? = null
+        fun compatLimits(): GPUCompatibilityModeLimits =
+            compat ?: GPUCompatibilityModeLimits().also { compat = it }
         for ((key, value) in required) {
             if (value == null) continue
             when (key) {
@@ -1165,8 +1169,16 @@ class DawnWasiWebGpuHost private constructor(
                     limits.maxSamplersPerShaderStage = value.toGpuLimitU32()
                 "max-storage-buffers-per-shader-stage" ->
                     limits.maxStorageBuffersPerShaderStage = value.toGpuLimitU32()
+                "max-storage-buffers-in-vertex-stage" ->
+                    compatLimits().maxStorageBuffersInVertexStage = value.toGpuLimitU32()
+                "max-storage-buffers-in-fragment-stage" ->
+                    compatLimits().maxStorageBuffersInFragmentStage = value.toGpuLimitU32()
                 "max-storage-textures-per-shader-stage" ->
                     limits.maxStorageTexturesPerShaderStage = value.toGpuLimitU32()
+                "max-storage-textures-in-vertex-stage" ->
+                    compatLimits().maxStorageTexturesInVertexStage = value.toGpuLimitU32()
+                "max-storage-textures-in-fragment-stage" ->
+                    compatLimits().maxStorageTexturesInFragmentStage = value.toGpuLimitU32()
                 "max-uniform-buffers-per-shader-stage" ->
                     limits.maxUniformBuffersPerShaderStage = value.toGpuLimitU32()
                 "max-uniform-buffer-binding-size" -> limits.maxUniformBufferBindingSize = value
@@ -1200,6 +1212,7 @@ class DawnWasiWebGpuHost private constructor(
                 else -> Unit
             }
         }
+        limits.compatibilityModeLimits = compat
         return limits
     }
 

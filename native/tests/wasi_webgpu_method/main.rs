@@ -167,6 +167,7 @@ mod request_adapter;
 mod request_adapter_feature_level;
 mod request_device;
 mod request_device_required_limits;
+mod request_device_stage_storage_limits;
 mod resolve_query_set;
 mod record_gpu_pipeline_constant_value_add;
 mod record_gpu_pipeline_constant_value_entries;
