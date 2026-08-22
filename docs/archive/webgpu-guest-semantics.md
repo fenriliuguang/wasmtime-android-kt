@@ -1,5 +1,7 @@
 # Agent playbook: leftover descriptor semantics
 
+> **Archived 2026-08-22.** Do not implement from this file. P0 close-out: [`p0-wasi-webgpu.md`](p0-wasi-webgpu.md). Current queue: [`../agent/wasi-p3.md`](../agent/wasi-p3.md).
+
 **English** | [中文](webgpu-guest-semantics.zh.md)
 
 **Closed.** F1–F9 and the named handle-0 / full `required-features` lanes on this page are done. Current queue: [`webgpu-guest-dawn.md`](webgpu-guest-dawn.md) (`.\scripts\webgpu-guest-dawn-remaining.ps1`). Do **not** re-hang `[method]` names, re-cut P1–P5 / F1–F9, re-cut labels / limits / `create-sampler` first-cut, or re-cut canvas first-cut.

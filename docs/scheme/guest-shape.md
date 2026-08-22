@@ -2,9 +2,7 @@
 
 **English** | [中文](guest-shape.zh.md)
 
-Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (vendored [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit), tag `v0.3.0-rc.2`). Agent playbook: [`../agent/webgpu-guest-dawn.md`](../agent/webgpu-guest-dawn.md) (Dawn consume + WG-6 leftovers). Closed queues: [`../agent/webgpu-guest-pipeline.md`](../agent/webgpu-guest-pipeline.md), [`../agent/webgpu-guest-semantics.md`](../agent/webgpu-guest-semantics.md).
-
-Extracted from the 2026-08-16 shape RFC (now in [`../archive/`](../archive/README.md)). Dual-product scheduling in that RFC is **not** current; see [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md).
+Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (vendored [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). **P0 is closed** ([`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md)). Holes vs androidx: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work: [`../agent/wasi-p3.md`](../agent/wasi-p3.md).
 
 ## 1. A method is shape-complete iff
 
@@ -26,29 +24,14 @@ Test-only constructors (`get-gpu`, `get-device`) may remain in fixtures. They **
 4. `result` / `option` follow WIT; do not panic on failure and call it a result.  
 5. **Forbidden:** new slices whose acceptance is host-fixed descriptor + transitional `u32`.
 
-## 3. S-series order
+## 3. S-series (closed)
 
-Live status: GitHub Project. This page only defines order and DoD.
+S1–S5 and S6+ hang + L2 described JNI landed in 2026-08. Do not open new host-fixed `u32` feature PRs. Do not re-cut F1–F9 / G1–G9 / WG-6.
 
-```text
-S1  [method]gpu-device.queue : (borrow<gpu-device>) -> own<gpu-queue>
-S2  [method]gpu.request-adapter async → option<own<gpu-adapter>>   (hard async gate)
-S3  [method]gpu-adapter.request-device async → result<own<gpu-device>, …>
-S4  [method]gpu-device.create-buffer with guest gpu-buffer-descriptor
-S5  [method]gpu-queue.submit : list<borrow<gpu-command-buffer>>
-S6+ Replace remaining frozen transitional methods — shape first, then semantics
-    Shape hang, default described L2, and midterm first-cuts are done.
-    Guest compute/3D marshalling is closed: webgpu-guest-pipeline.md
-    Leftover optional descriptor JNI (F1–F9) is closed: webgpu-guest-semantics.md
-    Dawn consume + WG-6 leftovers: webgpu-guest-dawn.md
-```
+**Hard gate (still):** If S2 cannot be true async, stop expanding `option`/`result` until the pump is fixed.
 
-**Per-slice DoD (S1+):** WIT-isomorphic guest import; `cargo test --locked --tests` if `native/` changes; instrument twin or a written reason; changelog fragment; no new experimental flat names; no compliance claim.
-
-**Hard gate:** If S2 cannot be true async, stop expanding `option`/`result` surface until the pump is fixed.
-
-**No backend / no adapter:** S2 returns **`none`** (WebGPU `requestAdapter()` → `null`). Do not trap, fail instantiate, or invent a guest “resource not found”. Kotlin may still expose `backendKind` for tests. See [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md).
+**No backend / no adapter:** S2 returns **`none`**. See [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md).
 
 ## 4. Present / canvas
 
-`wasi:webgpu` has **no** `present`. Product shape is `gpu-canvas-context` (after marshalling). `wasi-gfx` stays a deferred RFC (NG-9). Demo on-screen paths that use experimental surface APIs are **not** product WIT.
+`wasi:webgpu` has **no** `present`. Product shape is `gpu-canvas-context`. `wasi-gfx` stays deferred (NG-9).

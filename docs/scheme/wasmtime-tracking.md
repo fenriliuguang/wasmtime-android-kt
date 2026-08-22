@@ -39,7 +39,7 @@ Refresh the “last checked” row when evaluating upstream; do not churn code f
 | Pin | 47.0.2 |
 | Upstream latest stable (at check) | (fill from crates.io / GitHub; docs-only PRs need not fetch) |
 | WASI 0.3 / CM async default | Upstream treats WASI 0.3.0 + CM async as mainline from 46; this repo 47.x already uses CM async |
-| Gaps vs long-term plan | **stream** JNI/Kotlin surface not fully exposed; WASI packages not wired through `wasmtime-wasi` |
+| Gaps vs long-term plan | P1: remaining official WASI 0.3 package shapes (see [`../agent/wasi-p3.md`](../agent/wasi-p3.md)); `wasmtime-wasi` crate still **optional** |
 | Known risks | major may change concurrent APIs; Android cross-compile must regress load + async smoke |
 | Next eval trigger | §5 |
 

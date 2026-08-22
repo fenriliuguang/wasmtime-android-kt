@@ -1,42 +1,22 @@
-# Roadmap: `wasi:webgpu` (P0)
+# Roadmap: `wasi:webgpu` (P0, closed)
 
 **English** | [中文](roadmap-wasi-webgpu.zh.md)
 
-Proposal: [WebAssembly/wasi-webgpu](https://github.com/WebAssembly/wasi-webgpu) (Phase 2 at time of writing).  
-Pin: `wasi:webgpu@0.3.0-rc.2`.  
-Shape: [`guest-shape.md`](guest-shape.md). Plan: [`long-term-plan.md`](long-term-plan.md).
+Proposal: [WebAssembly/wasi-webgpu](https://github.com/WebAssembly/wasi-webgpu). Pin: `wasi:webgpu@0.3.0-rc.2`. Shape: [`guest-shape.md`](guest-shape.md). **Closed 2026-08-22** — [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Remaining holes: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work is P1: [`../agent/wasi-p3.md`](../agent/wasi-p3.md).
 
-## 1. Why P0
-
-Standard / proposal `wasi:webgpu` is full of WIT `async func`. This repo’s L1 is the Android path that can register those with **true** CM async. Windowing is out of scope for the proposal (`wasi-gfx` is NG-9 here).
-
-## 2. Goals
+## Goals (done)
 
 | ID | Goal |
 |----|------|
-| WG-1 | Pin WIT (tag / commit) and keep guests aligned |
-| WG-2 | Register critical `async func`s with true CM async (no Latch) |
-| WG-3 | Own linker / resource / canonical marshalling; GPU backend is pluggable — **this repo owns the SPI**; default Dawn bundle ([`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)) |
-| WG-4 | Device instruments: `gpu.request-adapter` / `gpu-adapter.request-device` in WIT shape |
-| WG-5 | Citable threading + mapping notes in this repo only; **never** file upstream GitHub issues |
-| WG-6 | (Mid) render or compute slice; present via `gpu-canvas-context` after marshalling — not wasi-gfx |
+| WG-1 | Pin WIT — vendored rc.2 |
+| WG-2 | True CM async — `func_wrap_concurrent` |
+| WG-3 | SPI + default Dawn bundle |
+| WG-4 | Device instruments including WG-6 guest-drawn slices |
+| WG-5 | Local notes only; never upstream GitHub issues |
+| WG-6 | Guest-drawn compute / 3D / `gpu-canvas-context` present |
 
-## 3. Slice order
+Do **not** open new host-fixed `u32` feature PRs. wasi-gfx is not P0 (NG-9). No CTS claim (NG-5).
 
-Live status: GitHub Project. Definitions: [`guest-shape.md`](guest-shape.md) S-series.
+## Upstream
 
-Do **not** open new host-fixed `u32` feature PRs.
-
-Guest compute/3D marshalling and leftover-descriptor F1–F9 are closed: [`../agent/webgpu-guest-pipeline.md`](../agent/webgpu-guest-pipeline.md), [`../agent/webgpu-guest-semantics.md`](../agent/webgpu-guest-semantics.md). Dawn consume + WG-6 leftovers: [`../agent/webgpu-guest-dawn.md`](../agent/webgpu-guest-dawn.md).
-
-**Present:** product path is proposal `gpu-canvas-context` (no `present` in wasi:webgpu). wasi-gfx remains a deferred RFC.
-
-## 4. Upstream
-
-**Do not** create, reopen, or request GitHub Issues (or GitHub Discussions used as an issue tracker) on wasi-webgpu, Wasmtime, or any other upstream. No `gh issue create`. Android-host facts stay in `changelog/unreleased/` and [`../mapping/threading-android.md`](../mapping/threading-android.md).
-
-[wasi-webgpu#81](https://github.com/WebAssembly/wasi-webgpu/issues/81) was filed in error from this host (2026-08-21) and is retracted. Close it on GitHub if still open; do not cite it as protocol.
-
-## 5. Out of scope on this roadmap
-
-Compliance / full CTS; **rewriting** Dawn (NG-7); wasi-gfx as P0; fake async.
+**Do not** create GitHub Issues on wasi-webgpu, Wasmtime, or any other upstream. [wasi-webgpu#81](https://github.com/WebAssembly/wasi-webgpu/issues/81) was filed in error and is retracted.
