@@ -88,6 +88,7 @@ mod shader_module_set_label;
 mod create_texture;
 mod dawn_compute_slice;
 mod dawn_guest_compute;
+mod dawn_guest_render;
 mod dawn_render_slice;
 mod device_adapter_info;
 mod device_destroy;

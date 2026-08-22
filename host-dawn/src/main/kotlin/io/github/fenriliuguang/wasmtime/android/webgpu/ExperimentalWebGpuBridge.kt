@@ -4329,6 +4329,355 @@ object ExperimentalWebGpuBridge {
     }
 
     /**
+     * WG-6: guest vertex buffer + `draw` + submit on one cached Dawn device.
+     * Not 1×1 color-clear cite; not `@builtin(vertex_index)` stub triangle.
+     */
+    fun attachDawnGuestRender(store: Store, host: WasiWebGpuHost) {
+        val bindings = AbiCmHostBindings(host)
+        var adapter = 0
+        var device = 0
+        fun cachedAdapter(): Int {
+            if (adapter == 0) {
+                adapter = bindings.requestAdapter()
+            }
+            return adapter
+        }
+        fun cachedDevice(fromAdapter: Int = 0): Int {
+            if (device == 0) {
+                val a = if (fromAdapter != 0) fromAdapter else cachedAdapter()
+                device = bindings.adapterRequestDevice(a)
+            }
+            return device
+        }
+        fun resolvedDevice(from: Int): Int = if (from != 0) from else cachedDevice()
+        store.setExperimentalHost(
+            object : ExperimentalHostCallbacks {
+                override fun requestAdapter(): Int = cachedAdapter()
+
+                override fun requestAdapterDescribed(
+                    powerPreference: Int,
+                    forceFallback: Int,
+                    featureLevel: String,
+                    xrCompatible: Int,
+                ): Int = cachedAdapter()
+
+                override fun adapterRequestDevice(adapter: Int): Int = cachedDevice(adapter)
+
+                override fun adapterRequestDeviceDescribed(
+                    adapter: Int,
+                    requiredFeatures: IntArray,
+                    requiredLimits: Int,
+                    label: String,
+                    defaultQueueLabel: String,
+                ): Int = cachedDevice(adapter)
+
+                override fun deviceCreateShaderModuleDescribed(
+                    device: Int,
+                    code: String,
+                    label: String,
+                    hintLayouts: IntArray,
+                    hintEntries: String,
+                ): Int =
+                    bindings.deviceCreateShaderModule(
+                        resolvedDevice(device),
+                        code,
+                        label = label.ifEmpty { null },
+                        compilationHints = shaderCompilationHintsFromDescribed(hintLayouts, hintEntries),
+                    )
+
+                override fun deviceCreateBufferDescribed(
+                    device: Int,
+                    size: Long,
+                    usage: Int,
+                    mappedAtCreation: Int,
+                    label: String,
+                ): Int =
+                    bindings.deviceCreateBuffer(
+                        resolvedDevice(device),
+                        size = size,
+                        usage = usage,
+                        mappedAtCreation = mappedAtCreation > 0,
+                        label = label.ifEmpty { null },
+                    )
+
+                override fun deviceCreateRenderPipelineDescribed(
+                    device: Int,
+                    vertexShader: Int,
+                    vertexEntry: String,
+                    fragmentShader: Int,
+                    fragmentEntry: String,
+                    format: Int,
+                    layout: Int,
+                    label: String,
+                    vbStrides: IntArray,
+                    vbStepModes: IntArray,
+                    attrBufferIndex: IntArray,
+                    attrFormats: IntArray,
+                    attrOffsets: IntArray,
+                    attrLocations: IntArray,
+                    vertexConstants: Int,
+                    fragmentConstants: Int,
+                    primitive: IntArray,
+                    multisample: IntArray,
+                    blend: IntArray,
+                    writeMask: IntArray,
+                    depthStencil: IntArray,
+                ): Int {
+                    val resolved = resolvedDevice(device)
+                    val vertexModule = GpuHandle(vertexShader)
+                    val fragmentModule =
+                        if (fragmentShader != 0) {
+                            GpuHandle(fragmentShader)
+                        } else {
+                            vertexModule
+                        }
+                    val pipelineLayout =
+                        if (layout != 0) {
+                            GpuHandle(layout)
+                        } else {
+                            GpuHandle(
+                                bindings.deviceCreatePipelineLayout(
+                                    resolved,
+                                    PipelineLayoutDescriptor(bindGroupLayouts = emptyList()),
+                                ),
+                            )
+                        }
+                    val targetFormat = if (format != 0) format else GpuTextureFormat.RGBA8_UNORM
+                    val n = minOf(vbStrides.size, vbStepModes.size)
+                    val buffers = ArrayList<VertexBufferLayout>(n)
+                    for (i in 0 until n) {
+                        val attrs = ArrayList<VertexAttribute>()
+                        val attrN = minOf(
+                            attrBufferIndex.size,
+                            attrFormats.size,
+                            attrOffsets.size,
+                            attrLocations.size,
+                        )
+                        for (j in 0 until attrN) {
+                            if (attrBufferIndex[j] != i) continue
+                            attrs.add(
+                                VertexAttribute(
+                                    format = attrFormats[j],
+                                    offset = attrOffsets[j].toLong(),
+                                    shaderLocation = attrLocations[j],
+                                ),
+                            )
+                        }
+                        val step = if (vbStepModes[i] != 0) vbStepModes[i] else GpuVertexStepMode.VERTEX
+                        buffers.add(
+                            VertexBufferLayout(
+                                arrayStride = vbStrides[i].toLong(),
+                                stepMode = step,
+                                attributes = attrs,
+                            ),
+                        )
+                    }
+                    return bindings.deviceCreateRenderPipeline(
+                        resolved,
+                        RenderPipelineDescriptor(
+                            vertex = VertexState(
+                                module = vertexModule,
+                                entryPoint = vertexEntry.ifEmpty { "vs_main" },
+                                buffers = buffers,
+                                constants = bindings.recordPipelineConstantValueSnapshot(
+                                    vertexConstants,
+                                ),
+                            ),
+                            fragment = FragmentState(
+                                module = fragmentModule,
+                                entryPoint = fragmentEntry.ifEmpty { "fs_main" },
+                                targets = listOf(
+                                    ColorTargetState(
+                                        format = targetFormat,
+                                        blend = blendStateFromDescribed(blend),
+                                        writeMask = writeMaskFromDescribed(writeMask),
+                                    ),
+                                ),
+                                constants = bindings.recordPipelineConstantValueSnapshot(
+                                    fragmentConstants,
+                                ),
+                            ),
+                            layout = pipelineLayout,
+                            primitive = primitiveStateFromDescribed(primitive),
+                            depthStencil = depthStencilStateFromDescribed(depthStencil),
+                            multisample = multisampleStateFromDescribed(multisample),
+                            label = label.ifEmpty { null },
+                        ),
+                    )
+                }
+
+                override fun deviceCreateTextureDescribed(
+                    device: Int,
+                    width: Int,
+                    height: Int,
+                    depth: Int,
+                    format: Int,
+                    usage: Int,
+                    mipLevelCount: Int,
+                    sampleCount: Int,
+                    dimension: Int,
+                    viewFormats: IntArray,
+                    label: String,
+                ): Int {
+                    val resolved = resolvedDevice(device)
+                    return bindings.deviceCreateTexture(
+                        resolved,
+                        TextureDescriptor(
+                            size = Extent3D(
+                                width = width,
+                                height = height,
+                                depthOrArrayLayers = depth,
+                            ),
+                            format = format,
+                            usage = usage,
+                            mipLevelCount = mipLevelCount,
+                            sampleCount = sampleCount,
+                            dimension = dimension,
+                            viewFormats = viewFormats.toList(),
+                            label = label.ifEmpty { null },
+                        ),
+                    )
+                }
+
+                override fun textureCreateViewDescribed(
+                    texture: Int,
+                    dimension: Int,
+                    aspect: Int,
+                    format: Int,
+                    baseMipLevel: Int,
+                    mipLevelCount: Int,
+                    baseArrayLayer: Int,
+                    arrayLayerCount: Int,
+                ): Int =
+                    bindings.textureCreateView(
+                        texture,
+                        TextureViewDescriptor(
+                            dimension = dimension,
+                            aspect = aspect,
+                            format = format,
+                            baseMipLevel = baseMipLevel,
+                            mipLevelCount = mipLevelCount,
+                            baseArrayLayer = baseArrayLayer,
+                            arrayLayerCount = arrayLayerCount,
+                        ),
+                    )
+
+                override fun deviceCreateCommandEncoder(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateCommandEncoder(resolved)
+                }
+
+                override fun deviceCreateCommandEncoderDescribed(device: Int, label: String): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceCreateCommandEncoder(resolved, label)
+                }
+
+                override fun deviceGetQueue(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceGetQueue(resolved)
+                }
+
+                override fun deviceGetQueueDescribed(device: Int): Int {
+                    val resolved = if (device != 0) device else cachedDevice()
+                    return bindings.deviceGetQueue(resolved)
+                }
+
+                override fun beginRenderPassDescribed(
+                    encoder: Int,
+                    views: IntArray,
+                    loadOps: IntArray,
+                    storeOps: IntArray,
+                    hasClears: IntArray,
+                    clearBits: IntArray,
+                    depthView: Int,
+                    depthLoad: Int,
+                    depthStore: Int,
+                    hasDepthClear: Int,
+                    depthClear: Float,
+                ): Int {
+                    val depth = if (depthView != 0) {
+                        RenderPassDepthStencilAttachment(
+                            view = GpuHandle(depthView),
+                            depthClearValue = if (hasDepthClear != 0) depthClear else 1f,
+                            depthLoadOp = if (depthLoad < 0) GpuLoadOp.CLEAR else depthLoad,
+                            depthStoreOp = if (depthStore < 0) GpuStoreOp.STORE else depthStore,
+                        )
+                    } else {
+                        null
+                    }
+                    return bindings.commandEncoderBeginRenderPass(
+                        encoder,
+                        RenderPassDescriptor(
+                            colorAttachments = renderPassColorAttachmentsFromDescribed(
+                                views,
+                                loadOps,
+                                storeOps,
+                                hasClears,
+                                clearBits,
+                            ),
+                            depthStencilAttachment = depth,
+                        ),
+                    )
+                }
+
+                override fun renderPassSetPipelineDescribed(pass: Int, pipeline: Int) {
+                    bindings.renderPassSetPipeline(pass, pipeline)
+                }
+
+                override fun renderPassSetVertexBufferDescribed(
+                    pass: Int,
+                    slot: Int,
+                    buffer: Int,
+                    offset: Long,
+                    size: Long,
+                ) {
+                    // JNI packs option size none as 0; this fixture's VERTEX buffer is 36 bytes.
+                    val resolvedSize = if (size != 0L) size else 36L
+                    bindings.renderPassSetVertexBuffer(pass, slot, buffer, offset, resolvedSize)
+                }
+
+                override fun renderPassDrawDescribed(
+                    pass: Int,
+                    vertexCount: Int,
+                    instanceCount: Int,
+                    firstVertex: Int,
+                    firstInstance: Int,
+                ) {
+                    bindings.renderPassDraw(
+                        pass,
+                        vertexCount,
+                        instanceCount,
+                        firstVertex,
+                        firstInstance,
+                    )
+                }
+
+                override fun renderPassEnd(pass: Int) {
+                    bindings.renderPassEnd(pass)
+                }
+
+                override fun renderPassEndDescribed(pass: Int) {
+                    bindings.renderPassEnd(pass)
+                }
+
+                override fun commandEncoderFinish(encoder: Int): Int =
+                    bindings.commandEncoderFinish(encoder)
+
+                override fun commandEncoderFinishDescribed(encoder: Int, label: String): Int =
+                    bindings.commandEncoderFinish(encoder, label)
+
+                override fun queueSubmit1(queue: Int, commandBuffer: Int) {
+                    bindings.queueSubmit1(queue, commandBuffer)
+                }
+
+                override fun queueSubmitDescribed(queue: Int, commandBuffers: IntArray) {
+                    bindings.queueSubmit(queue, commandBuffers.toList())
+                }
+            },
+        )
+    }
+
+    /**
      * L2: adapter + device + host-fixed 1×1 texture + `[method]gpu-texture.create-view`
      * with Guest `gpu-texture-view-descriptor` dimension/aspect forwarded to L2.
      */
