@@ -1,5 +1,7 @@
 # Agent playbook: Dawn consume + WG-6 leftovers
 
+> **Archived 2026-08-22.** Do not implement from this file. P0 close-out: [`p0-wasi-webgpu.md`](p0-wasi-webgpu.md). Gap: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current queue: [`../agent/wasi-p3.md`](../agent/wasi-p3.md).
+
 **English** | [中文](webgpu-guest-dawn.zh.md)
 
 Use this **after** guest-pipeline P1–P5 and leftover-descriptor semantics F1–F9 (including named handle-0 and full `required-features`). Closed: [`webgpu-guest-pipeline.md`](webgpu-guest-pipeline.md), [`webgpu-guest-semantics.md`](webgpu-guest-semantics.md). Do **not** re-hang `[method]` names, re-cut P1–P5 / F1–F9, re-cut labels / limits / `create-sampler` first-cut, re-cut canvas first-cut (`device`+`format`+`usage`), or re-cut Dawn compute/render **cite** slices.

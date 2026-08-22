@@ -27,7 +27,7 @@ Still **experimental** until a separate product RFC. Not a compliant wasi:webgpu
 
 ## Goal stack
 
-See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 is L3 (wasi:webgpu shape). L4 is citable host. L5 is optional productization.
+See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 (L3 wasi:webgpu shape) is **closed**. Current work is P1 (WASI 0.3). L4 is citable host. L5 is optional productization.
 
 ## Claims
 

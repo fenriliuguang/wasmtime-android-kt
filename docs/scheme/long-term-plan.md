@@ -9,21 +9,21 @@
 
 Build an **Android-first JVM Component runtime** that:
 
-1. Hosts **ratified WASI 0.3** capabilities as needed;  
-2. Treats **canonical `wasi:webgpu` WIT** as the first proposal world (P0);  
+1. Hosts **ratified WASI 0.3** capabilities (current: P1);  
+2. Treats **canonical `wasi:webgpu` WIT** as the first proposal world (**P0 closed** 2026-08-22);  
 3. Tracks **upstream Wasmtime** only.
 
 Remain experimental. No default publish. No compliance claim.
 
-## 2. Priority (unchanged)
+## 2. Priority
 
 ```text
-P0  wasi:webgpu canonical shape + true CM async
-P1  WASI 0.3 ratified primitives / package subset
+P0  wasi:webgpu canonical shape + true CM async     CLOSED
+P1  WASI 0.3 ratified primitives / packages + device  current
 P2  Upstream Wasmtime pin + upgrade RFC
 ```
 
-Proposal work (Phase 2 `wasi:webgpu`) **may** lead implementation and feedback. Wording must stay “proposal host”, not “standard product”.
+P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). P1 playbook: [`../agent/wasi-p3.md`](../agent/wasi-p3.md). Wording stays “proposal host” for webgpu, not “standard product”.
 
 ## 3. Stack L0–L5
 
@@ -44,8 +44,8 @@ L5  Productization RFC (API freeze / publish-or-not)
 
 | Stage | Looks like |
 |-------|------------|
-| Near | Docs IA: English front door; archive history; Dawn default bundle; Host Kotlin vendored in `:host-dawn`; Dawn via `androidx.webgpu` |
-| Mid | JNI/Kotlin can carry WASI 0.3 `stream` + a small package subset; guests see pinned WIT types (not transitional `u32`); true async on device; **third party can reproduce and cite**; default test APK includes Dawn; at least one **local** mapping/changelog note (never an upstream GitHub issue) |
+| Near | **Done:** English front door; Dawn default bundle; Host Kotlin in `:host-dawn`; P0 webgpu shape |
+| Mid | **Current (P1):** official WASI 0.3 package WIT (not transitional smokes) on device; stream beyond 4-byte smoke; **third party can reproduce and cite**; default test APK includes Dawn |
 | Far | Outsiders describe this repo as Android + Wasmtime + canonical wasi:webgpu without a second ABI story |
 
 ## 4. Principles
@@ -65,8 +65,9 @@ L5  Productization RFC (API freeze / publish-or-not)
 | This page | Strategy |
 | [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md) | Citability / L4 |
 | [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md) | Dawn default bundle; SPI; `request-adapter` `none` |
-| [`guest-shape.md`](guest-shape.md) | Shape + S-series |
-| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 roadmap |
+| [`guest-shape.md`](guest-shape.md) | Shape gates (P0 closed) |
+| [`../agent/wasi-p3.md`](../agent/wasi-p3.md) | P1 WASI 0.3 playbook |
+| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 (closed) |
 | [`wasi-p3-surface.md`](wasi-p3-surface.md) | P3 cuts |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | Engine |
 | [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Vendor path: Host Kotlin in-tree; Dawn via androidx.webgpu |
@@ -74,4 +75,5 @@ L5  Productization RFC (API freeze / publish-or-not)
 ## 6. Revisions
 
 - 2026-08-16: Canonical WIT (archived RFC).  
-- 2026-08-17: Ecosystem citability; remove dual-product L4; English front door; pluggable GPU / Dawn default bundle.
+- 2026-08-17: Ecosystem citability; remove dual-product L4; English front door; pluggable GPU / Dawn default bundle.  
+- 2026-08-22: P0 closed; P1 WASI 0.3 is the living queue.

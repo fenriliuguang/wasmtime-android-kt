@@ -1,5 +1,7 @@
 # Agent 手册：Dawn consume + WG-6 剩余
 
+> **已于 2026-08-22 归档。** 不要按本页实现。P0 收口：[`p0-wasi-webgpu.zh.md`](p0-wasi-webgpu.zh.md)。差距：[`../mapping/gap-webgpu-wit-androidx.zh.md`](../mapping/gap-webgpu-wit-androidx.zh.md)。现行队列：[`../agent/wasi-p3.zh.md`](../agent/wasi-p3.zh.md)。
+
 [English](webgpu-guest-dawn.md) | **中文**
 
 Guest 管线 P1–P5 与 leftover descriptor F1–F9（含 handle-0 / required-features 全列表）**之后**用此页。关闭队列：[`webgpu-guest-pipeline.md`](webgpu-guest-pipeline.md)、[`webgpu-guest-semantics.md`](webgpu-guest-semantics.md)。选刀：`.\scripts\webgpu-guest-dawn-remaining.ps1`（无 pwsh 则 `python3 ./scripts/webgpu-guest-dawn-remaining.py`）打印的 **Next:**。一车道一 PR。

@@ -1,0 +1,15 @@
+---
+description: WASI 0.3 (P1) — official package shapes + device instruments; no full-file cm.rs reads
+alwaysApply: true
+---
+
+# WASI 0.3 (P1)
+
+For 下一刀 / P1 / WASI 0.3 / clocks instant / stream multi-chunk / cli result / filesystem / sockets / http, read `docs/agent/wasi-p3.md` and follow it.
+
+P0 `wasi:webgpu` (guest-pipeline, F1–F9, G1–G9, WG-6) is **closed**. Do not start another Dawn consume or leftover-descriptor PR. Gap only: `docs/mapping/gap-webgpu-wit-androidx.md`.
+
+- Next PR: `.\scripts\wasi-p3-remaining.ps1` or `python3 ./scripts/wasi-p3-remaining.py` (one printed Next: only).
+- Do not add `wasmtime-wasi` without a size + Android thread note. Grep `wasi:clocks` / `wasi:cli` in `cm.rs`, then Read ~80 lines.
+- One lane per PR. Every lane has a device instrument. Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
+- Never file GitHub issues (or Discussions-as-issues) on Wasmtime, WASI, or any other upstream. No `gh issue create`.

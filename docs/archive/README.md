@@ -6,6 +6,11 @@ Living rules: [`../scheme/README.md`](../scheme/README.md).
 
 | File | What it was |
 |------|-------------|
+| `p0-wasi-webgpu.md` / `.zh.md` | P0 wasi:webgpu close-out (timeline, problems, status) |
+| `webgpu-guest-dawn.md` / `.zh.md` | P0 Dawn consume + WG-6 playbook |
+| `webgpu-guest-pipeline.md` / `.zh.md` | P0 guest compute/3D marshalling P1–P5 |
+| `webgpu-guest-semantics.md` / `.zh.md` | P0 leftover-descriptor F1–F9 |
+| `skills/` | Archived Cursor skills for the three P0 playbooks |
 | `rfc-wasi-webgpu-canonical-shape.zh.md` | 2026-08-16 shape RFC (WIT rules copied to [`../scheme/guest-shape.md`](../scheme/guest-shape.md)) |
 | `rfc-wasi-worlds.zh.md` | Early worlds RFC |
 | `dual-track.md` / `.zh.md` | Boundary with a sibling demo repo |
