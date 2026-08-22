@@ -1376,7 +1376,10 @@ fn wasi_webgpu_method_dawn_guest_render_smoke() -> wasmtime::Result<()> {
         wat.contains("@location(0)"),
         "fixture WGSL uses vertex attribute"
     );
-    assert!(!wat.contains("vertex_index"), "not vertex_index stub");
+    assert!(
+        !wat.contains("@builtin(vertex_index)"),
+        "not vertex_index stub"
+    );
     let mut config = Config::new();
     config.wasm_component_model(true);
     config.wasm_component_model_async(true);

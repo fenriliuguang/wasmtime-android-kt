@@ -1,4 +1,4 @@
-;; WG-6: true guest 3D (not 1x1 color-clear cite, not vertex_index).
+;; WG-6: true guest 3D (not 1x1 color-clear cite, not vertex-index builtin).
 ;; get-device → create-shader-module → create-buffer (VERTEX) →
 ;; create-render-pipeline (float32x3 + vs_main/fs_main, layout auto, no depth) →
 ;; create-texture → create-view → encoder → queue → begin-render-pass →
@@ -535,6 +535,7 @@
       (local $queue i32)
       (local $pass i32)
       (local $cb i32)
+      (local $z i32)
       (local.set $device (call $get-device))
       (local.set $shader
         (call $create-shader
@@ -594,6 +595,12 @@
       (i32.store (i32.const 192) (i32.const 784))
       (i32.store (i32.const 196) (i32.const 3))
       (local.set $pipeline (call $create-rp (i32.const 0)))
+      ;; Drop create-rp spill leftovers so later none option discs stay 0.
+      (local.set $z (i32.const 0))
+      (loop $clear
+        (i32.store (local.get $z) (i32.const 0))
+        (local.set $z (i32.add (local.get $z) (i32.const 4)))
+        (br_if $clear (i32.lt_u (local.get $z) (i32.const 768))))
       (i32.store (i32.const 0) (local.get $device))
       (i32.store (i32.const 4) (i32.const 1))
       (i32.store (i32.const 8) (i32.const 1))
