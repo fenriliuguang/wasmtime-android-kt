@@ -1,9 +1,8 @@
 # Agent notes
 
-WebGPU **Dawn consume + WG-6 leftovers** (copy already-snapshotted blend/cull/MSAA, texture view-formats, shader hints, xr-compatible, default-queue into androidx.webgpu; marshall write-mask / depth-stencil leftovers / canvas configuration extras; accept pipeline `layout: auto`; named guest-drawn compute/3D/present): follow [`docs/agent/webgpu-guest-dawn.md`](docs/agent/webgpu-guest-dawn.md) (Cursor skill `webgpu-guest-dawn`). Next PR: `.\scripts\webgpu-guest-dawn-remaining.ps1` or `python ./scripts/webgpu-guest-dawn-remaining.py`.
+**P1 WASI 0.3** (official package WIT on Android + a device instrument per lane): follow [`docs/agent/wasi-p3.md`](docs/agent/wasi-p3.md) (Cursor skill `wasi-p3`). Next PR: `.\scripts\wasi-p3-remaining.ps1` or `python ./scripts/wasi-p3-remaining.py`.
 
-Guest-pipeline P1–P5, leftover-descriptor F1–F9, handle-0, required-features full list, sampler/view leftovers, pipeline-constant JNI, S1–S3 leftover JNI, canvas present first-cut, and Dawn render/compute cite are **closed**. Do not re-cut labels / limits / `create-sampler` first-cut / canvas first-cut / P1–P5 / F1–F9.
+P0 `wasi:webgpu` is **closed**. Do not re-cut guest-pipeline P1–P5, leftover F1–F9, Dawn consume G1–G9, or WG-6. Close-out: [`docs/archive/p0-wasi-webgpu.md`](docs/archive/p0-wasi-webgpu.md). WIT ↔ androidx holes: [`docs/mapping/gap-webgpu-wit-androidx.md`](docs/mapping/gap-webgpu-wit-androidx.md).
 
-- WIT pin is vendored: `third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`. Do not download it.
-- Hub freeze, narrow tests, copy sources, and file whitelist are in the playbook — do not rediscover them from RFCs or by reading `cm.rs` whole.
-- **Never file upstream GitHub issues** (or Discussions used as an issue tracker) on wasi-webgpu, Wasmtime, or any other upstream. No `gh issue create`. Record Android facts only in this repo.
+- Hub freeze, narrow tests, and file whitelist are in the P1 playbook — do not rediscover them from RFCs or by reading `cm.rs` whole.
+- **Never file upstream GitHub issues** (or Discussions used as an issue tracker) on WASI, Wasmtime, wasi-webgpu, or any other upstream. No `gh issue create`. Record Android facts only in this repo.

@@ -75,7 +75,7 @@ Constraints:
 | Toolchain / ABI pins | `docs/build.md`, `scheme/tech-stack.md`, `changelog/unreleased/` fragment |
 | Public API / error types | `scheme/api-stability.md`, `mapping/errors.md`, fragment |
 | GPU host | [`blocked-gpu-host.md`](blocked-gpu-host.md) — vendor Host Kotlin; Dawn via `androidx.webgpu` |
-| WASI / webgpu scope | [`scheme/long-term-plan.md`](scheme/long-term-plan.md), [`wasi-p3-surface.md`](scheme/wasi-p3-surface.md), [`roadmap-wasi-webgpu.md`](scheme/roadmap-wasi-webgpu.md) |
+| WASI / webgpu scope | [`scheme/wasi-p3-surface.md`](scheme/wasi-p3-surface.md), [`agent/wasi-p3.md`](agent/wasi-p3.md); P0 closed: [`archive/p0-wasi-webgpu.md`](archive/p0-wasi-webgpu.md) |
 
 ## 5. PR summary
 
@@ -93,7 +93,7 @@ Full rules: [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md).
 - [`scheme/long-term-plan.md`](scheme/long-term-plan.md)  
 - [`build.md`](build.md)  
 - [`mapping/artifacts.md`](mapping/artifacts.md)  
-- [`agent/webgpu-guest-dawn.md`](agent/webgpu-guest-dawn.md) — Dawn consume + WG-6 leftovers
-- [`agent/webgpu-guest-semantics.md`](agent/webgpu-guest-semantics.md) — closed leftover-descriptor F1–F9
-- [`agent/webgpu-guest-pipeline.md`](agent/webgpu-guest-pipeline.md) — closed guest compute/3D pipeline marshalling (P1–P5)
-- [`../archive/README.md`](archive/README.md) — historical M0–M5  
+- [`agent/wasi-p3.md`](agent/wasi-p3.md) — P1 WASI 0.3  
+- [`mapping/gap-webgpu-wit-androidx.md`](mapping/gap-webgpu-wit-androidx.md) — P0 WIT ↔ androidx holes  
+- [`archive/p0-wasi-webgpu.md`](archive/p0-wasi-webgpu.md) — P0 close-out  
+- [`../archive/README.md`](archive/README.md) — historical M0–M5 / P0 playbooks  

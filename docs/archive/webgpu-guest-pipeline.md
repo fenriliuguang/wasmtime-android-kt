@@ -1,5 +1,7 @@
 # Agent playbook: guest compute / 3D pipeline marshalling
 
+> **Archived 2026-08-22.** Do not implement from this file. P0 close-out: [`p0-wasi-webgpu.md`](p0-wasi-webgpu.md). Current queue: [`../agent/wasi-p3.md`](../agent/wasi-p3.md).
+
 **English** | [中文](webgpu-guest-pipeline.zh.md)
 
 **Closed.** P1–P5 and the named first-cuts on this page are done. Current queue: [`webgpu-guest-dawn.md`](webgpu-guest-dawn.md) (`.\scripts\webgpu-guest-dawn-remaining.ps1`). Do **not** re-hang names, re-cut labels / limits / `create-sampler` first-cut, or re-cut canvas first-cut (`device`+`format`+`usage`). Leftover-descriptor F1–F9 is also closed: [`webgpu-guest-semantics.md`](webgpu-guest-semantics.md).

@@ -1,5 +1,5 @@
 ---
-description: CLOSED wasi:webgpu guest-pipeline P1–P5 — redirect to Dawn consume
+description: CLOSED wasi:webgpu guest-pipeline P1–P5 — redirect to WASI 0.3
 alwaysApply: false
 ---
 
@@ -7,4 +7,4 @@ alwaysApply: false
 
 P1–P5 and named first-cuts are **closed**. Do not start another bind-group / vertex-layout / depth / texture-mip or labels/limits/sampler/canvas-first-cut PR.
 
-Current queue: read `docs/agent/webgpu-guest-dawn.md`. Next: `.\scripts\webgpu-guest-dawn-remaining.ps1` or `python3 ./scripts/webgpu-guest-dawn-remaining.py`.
+Current queue: read `docs/agent/wasi-p3.md`. Historical: `docs/archive/webgpu-guest-pipeline.md`.

@@ -1,5 +1,7 @@
 # Agent 手册：剩余 descriptor 语义
 
+> **已于 2026-08-22 归档。** 不要按本页实现。P0 收口：[`p0-wasi-webgpu.zh.md`](p0-wasi-webgpu.zh.md)。现行队列：[`../agent/wasi-p3.zh.md`](../agent/wasi-p3.zh.md)。
+
 [English](webgpu-guest-semantics.md) | **中文**
 
 **已关闭。** F1–F9 与本页点名 handle-0 / required-features 全列表已完成。当前队列：[`webgpu-guest-dawn.md`](webgpu-guest-dawn.md)（`.\scripts\webgpu-guest-dawn-remaining.ps1`）。不要重切挂名 / P1–P5 / F1–F9 / labels / limits / `create-sampler` first-cut / canvas first-cut。

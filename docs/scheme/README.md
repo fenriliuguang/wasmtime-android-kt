@@ -7,13 +7,16 @@ Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 
 ## Now
 
+P0 `wasi:webgpu` is **closed**. Current queue: [`../agent/wasi-p3.md`](../agent/wasi-p3.md) (P1 WASI 0.3).
+
 | Doc | Role |
 |-----|------|
+| [`../agent/wasi-p3.md`](../agent/wasi-p3.md) | **P1 playbook** |
 | [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md) | **Accepted:** citable host; drop old L4 |
 | [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md) | **Accepted:** Dawn default bundle; core without Dawn; `request-adapter` `none` |
 | [`long-term-plan.md`](long-term-plan.md) | L0–L5 |
-| [`guest-shape.md`](guest-shape.md) | WIT shape gates (S-series) |
-| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 wasi:webgpu |
+| [`guest-shape.md`](guest-shape.md) | WIT shape gates (P0 closed) |
+| [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 wasi:webgpu (closed) |
 | [`wasi-p3-surface.md`](wasi-p3-surface.md) | Ratified WASI 0.3 cuts |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | Engine pin / upgrade |
 | [`charter.md`](charter.md) | Vision / principles |
@@ -22,7 +25,9 @@ Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 | [`api-stability.md`](api-stability.md) | `0.x-experimental` SemVer |
 | [`vcs-workflow.md`](vcs-workflow.md) | Short-lived branches + PR |
 | [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Vendor: Host Kotlin in-tree; Dawn via androidx.webgpu |
+| [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md) | P0 WIT ↔ androidx holes |
 | [`../mapping/threading-android.md`](../mapping/threading-android.md) | Thread contract |
+| [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md) | P0 timeline / problems |
 | [`../build.md`](../build.md) | How to build |
 | [`../contribute.md`](../contribute.md) | Contributor shell |
 
