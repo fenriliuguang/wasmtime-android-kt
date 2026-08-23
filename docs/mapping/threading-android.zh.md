@@ -7,3 +7,5 @@
 今日 GPU 对象来自仓内 `:host-dawn` + `androidx.webgpu`（[`../blocked-gpu-host.md`](../blocked-gpu-host.md)）；无论后端是谁，上述线程规则仍适用。
 
 细节与 M4 钉死以英文正文为准。
+
+帧循环仅建议（非计划 / 非 P1 刀）：[`frame-loop-suggestion.zh.md`](frame-loop-suggestion.zh.md)。
