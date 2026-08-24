@@ -51,6 +51,8 @@ If a later slice proves “CM loop must share GpuThread”, merge them and revis
 | Waiting for GPU | Latch + `processEvents` in the callback | Non-blocking request → GpuThread finishes → complete future |
 | Acceptance | Historical on-screen smoke | Prove the model first, then frame loops |
 
+A **non-plan** sketch for a later gfx `on-frame` stream loop (MoonBit guest / Kotlin vsync wiring): [`frame-loop-suggestion.md`](frame-loop-suggestion.md). Not a P1 lane; does not change NG-9.
+
 ## 5. Acceptance hints
 
 - Async path: complete happens under the documented thread model; no data-race smoke.  
