@@ -827,7 +827,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3).
     // Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
     // get-directories → list (sandbox directory, ".");
-    // open-at(path) -> result<descriptor, error-code>; r/w on the child.
+    // open-at(path) -> result; `..` is error-code.access; r/w on the child.
     {
         let mut types = linker
             .instance("wasi:filesystem/types@0.3.0")
