@@ -1,9 +1,16 @@
-//! WASI 0.3: wasi:clocks/system-clock@0.3.0#now smoke (transitional u64 unix seconds).
+//! WASI 0.3: wasi:clocks/system-clock@0.3.0#now smoke (official instant record).
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use wasmtime::component::{Component, Linker};
+use wasmtime::component::{Component, ComponentType, Lift, Linker, Lower};
 use wasmtime::{Config, Engine, Store};
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct Instant {
+    seconds: i64,
+    nanoseconds: u32,
+}
 
 #[test]
 fn wasi_system_clock_now_smoke() -> wasmtime::Result<()> {
@@ -20,11 +27,13 @@ fn wasi_system_clock_now_smoke() -> wasmtime::Result<()> {
     linker
         .instance("wasi:clocks/system-clock@0.3.0")?
         .func_wrap("now", |_store, ()| {
-            let secs = SystemTime::now()
+            let d = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
-            Ok((secs,))
+                .unwrap_or_default();
+            Ok((Instant {
+                seconds: d.as_secs() as i64,
+                nanoseconds: d.subsec_nanos(),
+            },))
         })?;
 
     let mut store = Store::new(&engine, ());

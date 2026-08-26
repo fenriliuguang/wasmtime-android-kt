@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 
 /**
  * WASI 0.3: `wasi:cli/stderr@0.3.0#write-via-stream` via guest `run`.
- * Transitional: host returns `future<u32>` byte count (4 for `ERR\n`).
+ * Official `future<result<_, error-code>>` ok path; guest returns 4 after ok.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiCliStderrInstrumentedTest {

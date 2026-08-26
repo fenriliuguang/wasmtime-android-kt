@@ -1,9 +1,20 @@
-//! WASI 0.3: wasi:cli/stdin@0.3.0#read-via-stream smoke (transitional stream<u8>).
+//! WASI 0.3: wasi:cli/stdin@0.3.0#read-via-stream smoke (official tuple + result ok).
 
-use wasmtime::component::{Component, Linker, StreamReader};
+use wasmtime::component::{
+    Component, ComponentType, FutureReader, Lift, Linker, Lower, StreamReader,
+};
 use wasmtime::{Config, Engine, Store};
 
 const PAYLOAD: &[u8] = b"IN\n";
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum CliErrorCode {
+    #[component(name = "unknown")]
+    Unknown,
+}
 
 #[test]
 fn wasi_cli_stdin_read_via_stream_smoke() -> wasmtime::Result<()> {
@@ -22,7 +33,10 @@ fn wasi_cli_stdin_read_via_stream_smoke() -> wasmtime::Result<()> {
         .instance("wasi:cli/stdin@0.3.0")?
         .func_wrap("read-via-stream", |mut store, ()| {
             let reader = StreamReader::new(&mut store, PAYLOAD.to_vec())?;
-            Ok((reader,))
+            let fut = FutureReader::new(&mut store, async move {
+                Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(()))
+            })?;
+            Ok(((reader, fut),))
         })?;
 
     let mut store = Store::new(&engine, ());

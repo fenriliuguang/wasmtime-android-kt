@@ -35,28 +35,30 @@ wasm-tools parse fixtures/wasi/monotonic_now.wat -o fixtures/wasi/monotonic_now.
 
 ## `wasi:cli` — `stdout.write-via-stream`
 
-Guest export: `run: func() -> u32`（字节数）  
+Guest export: `run: func() -> u32`（ok 后返回写入字节数 4）  
 Host: `wasi:cli/stdout@0.3.0#write-via-stream`（`CollectConsumer` 管道；钉 `@0.3.0`）
 
-**过渡签名：** `func(data: stream<u8>) -> future<u32>`（与根 import `take` 同形）。官方 WIT 为 `future<result<_, error-code>>`；手写 WAT 枚举结果另切片。
+官方签名：`func(data: stream<u8>) -> future<result<_, error-code>>`（ok 路径；`error-code` 本刀仅 `unknown` 变体）。
 
-成功：guest 写入 `OUT\n`（4 字节）后 `run` 返回 `4`。stdin 见下节；`wasi:cli/command` 另切片。
+成功：guest 写入 `OUT\n`（4 字节）且 future 为 ok 后 `run` 返回 `4`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_stdout.wat -o fixtures/wasi/cli_stdout.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdout.wasm
 ```
 
 ## `wasi:cli` — `stderr.write-via-stream`
 
-Guest export: `run: func() -> u32`（字节数）  
-Host: `wasi:cli/stderr@0.3.0#write-via-stream`（与 stdout 共用 `CollectConsumer` / `pipe`；钉 `@0.3.0`）
+Guest export: `run: func() -> u32`（ok 后返回写入字节数 4）  
+Host: `wasi:cli/stderr@0.3.0#write-via-stream`（与 stdout 共用管道；钉 `@0.3.0`）
 
-**过渡签名：** `func(data: stream<u8>) -> future<u32>`（与 stdout / 根 `take` 同形）。官方 WIT 为 `future<result<_, error-code>>`；手写 WAT 枚举结果另切片。
+官方签名：`func(data: stream<u8>) -> future<result<_, error-code>>`（ok 路径；`error-code` 本刀仅 `unknown` 变体）。
 
-成功：guest 写入 `ERR\n`（4 字节）后 `run` 返回 `4`。stdin 见文末；`wasi:cli/command` 另切片。
+成功：guest 写入 `ERR\n`（4 字节）且 future 为 ok 后 `run` 返回 `4`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_stderr.wat -o fixtures/wasi/cli_stderr.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stderr.wasm
 ```
 
 ## `wasi:clocks` — `monotonic-clock.wait-for`
@@ -100,9 +102,9 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/monotonic_
 Guest export: `run: func() -> u32`（字节数）  
 Host: `wasi:cli/stdin@0.3.0#read-via-stream`（`StreamReader::new` 产出 `IN\n`；钉 `@0.3.0`）
 
-**过渡签名：** `func() -> stream<u8>`。官方 WIT 为 `tuple<stream<u8>, future<result<_, error-code>>>`；tuple / `result` 另切片。
+官方签名：`func() -> tuple<stream<u8>, future<result<_, error-code>>>`（ok 路径；`error-code` 本刀仅 `unknown`）。
 
-成功：guest `stream.read` 后 `run` 返回 `3`。`wasi:cli/command` 另切片。
+成功：guest `stream.read` 且 future 为 ok 后 `run` 返回 `3`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_stdin.wat -o fixtures/wasi/cli_stdin.wasm
@@ -111,15 +113,14 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdin.
 
 ## `wasi:clocks` — `system-clock.now`
 
-Guest export: `run: func() -> u64`（unix 秒）  
-Host: `wasi:clocks/system-clock@0.3.0#now`（`SystemTime` → unix 秒；钉 `@0.3.0`）
+Guest export: `run: func() -> u64`（unix 秒，取自 `instant.seconds`）  
+Host: `wasi:clocks/system-clock@0.3.0#now`（`SystemTime` → official `instant` `{seconds: s64, nanoseconds: u32}`；钉 `@0.3.0`）
 
-**过渡签名：** `func() -> u64`。官方 WIT 为 `instant` record `{seconds: s64, nanoseconds: u32}`；record / `resolution` / timezone 另切片。
-
-成功：返回值落在合理 unix 秒区间（约 2024–2100）。
+成功：返回值落在合理 unix 秒区间（约 2024–2100）。**无 timezone**（0.3.0 pin 的 `system-clock` 只有 `now` + `resolution`）。
 
 ```powershell
 wasm-tools parse fixtures/wasi/system_now.wat -o fixtures/wasi/system_now.wasm
+wasm-tools validate --features=component-model fixtures/wasi/system_now.wasm
 ```
 
 ## `wasi:clocks` — `monotonic-clock.resolution`
@@ -135,12 +136,10 @@ wasm-tools parse fixtures/wasi/monotonic_resolution.wat -o fixtures/wasi/monoton
 
 ## `wasi:clocks` — `system-clock.resolution`
 
-Guest export: `run: func() -> u64`（duration 纳秒）
-Host: `wasi:clocks/system-clock@0.3.0#resolution`（host 返回 `1`；钉 `@0.3.0`）
+Guest export: `run: func() -> u64`（`instant.nanoseconds`，要求 `seconds == 0`）  
+Host: `wasi:clocks/system-clock@0.3.0#resolution`（`{seconds: 0, nanoseconds: 1}`；钉 `@0.3.0`）
 
-**过渡签名：** `func() -> u64` 纳秒。官方 WIT 可能是 datetime record；本仓与 `system-clock.now` 的过渡 `u64` 对齐。timezone 另切片。
-
-成功：返回 `1`。
+成功：返回 `1`。无 timezone。
 
 ```powershell
 wasm-tools parse fixtures/wasi/system_resolution.wat -o fixtures/wasi/system_resolution.wasm
@@ -149,12 +148,13 @@ wasm-tools validate --features=component-model fixtures/wasi/system_resolution.w
 
 ## `wasi:cli/command` — async `run`（子集）
 
-Guest export: `run: async func() -> u32`（过渡 **0 = ok**；官方 empty `result` 另切片）  
-Host: 复用已有 `wasi:cli/stdout@0.3.0#write-via-stream`（`CollectConsumer` / `pipe`；钉 `@0.3.0`）
+Guest: 根导出 `run: async func() -> u32`（0 = ok，仪器 `callRunConcurrent`）  
+官方导出：`wasi:cli/run@0.3.0#run: async func() -> result`（empty ok）  
+Host: 复用已有 `wasi:cli/stdout@0.3.0#write-via-stream`
 
-本切片是 **command-shaped** 子集：guest 写 `CMD\n` 后返回 `0`。**不是**完整 `wasi:cli/command` world（无 filesystem / sockets / environment / exit / terminal；timezone 亦不在本 PR）。
+本切片是 **command-shaped** 子集：guest 写 `CMD\n` 后 official `result` 为 ok。**不是**完整 `wasi:cli/command` world（无 filesystem / sockets / environment / exit / terminal）。
 
-成功：`run` 经 `run_concurrent` / `call_async`（仪器 `callRunConcurrent`）返回 `0`。
+成功：根 `run` 返回 `0`；`wasi:cli/run@0.3.0#run` 为 ok。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_command.wat -o fixtures/wasi/cli_command.wasm

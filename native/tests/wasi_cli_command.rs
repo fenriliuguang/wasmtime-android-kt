@@ -1,5 +1,6 @@
-//! WASI 0.3: wasi:cli/command-shaped async `run` smoke (transitional u32 0=ok).
-//! Guest imports existing `wasi:cli/stdout@0.3.0#write-via-stream` and writes `CMD\n`.
+//! WASI 0.3: wasi:cli/command-shaped async `run` smoke.
+//! Official `wasi:cli/run@0.3.0#run` is `async func() -> result` (empty ok).
+//! Root `run -> u32` harness stays 0=ok for the device pump.
 
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
@@ -7,9 +8,19 @@ use std::task::{Context, Poll};
 
 use futures::channel::oneshot;
 use wasmtime::component::{
-    Component, FutureReader, Linker, Source, StreamConsumer, StreamReader, StreamResult,
+    Component, ComponentType, FutureReader, Lift, Linker, Lower, Source, StreamConsumer,
+    StreamReader, StreamResult,
 };
 use wasmtime::{Config, Engine, Store, StoreContextMut};
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum CliErrorCode {
+    #[component(name = "unknown")]
+    Unknown,
+}
 
 struct CollectConsumer {
     buf: Arc<Mutex<Vec<u8>>>,
@@ -67,11 +78,11 @@ fn register_stdout(linker: &mut Linker<()>) -> wasmtime::Result<()> {
                 },
             )?;
             let fut = FutureReader::new(&mut store, async move {
-                let n = match rx.await {
+                let _n = match rx.await {
                     Ok(n) => n,
                     Err(_) => 0,
                 };
-                Ok::<_, wasmtime::Error>(n)
+                Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(()))
             })?;
             let _ = buf;
             Ok((fut,))
@@ -108,9 +119,8 @@ fn wasi_cli_command_run_concurrent() -> wasmtime::Result<()> {
     let v = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
-                let func = accessor.with(|mut access| {
-                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
-                })?;
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
                 let (value,) = func.call_concurrent(accessor, ()).await?;
                 Ok(value)
             })
@@ -133,5 +143,38 @@ fn wasi_cli_command_call_async() -> wasmtime::Result<()> {
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
     assert_eq!(v, 0);
+    Ok(())
+}
+
+#[test]
+fn wasi_cli_command_official_run_result() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    let component = load_component(&engine)?;
+
+    let mut linker: Linker<()> = Linker::new(&engine);
+    register_stdout(&mut linker)?;
+
+    let mut store = Store::new(&engine, ());
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let ok = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<bool> {
+                let idx = accessor.with(|mut access| {
+                    let inst = instance
+                        .get_export_index(&mut access, None, "wasi:cli/run@0.3.0")
+                        .ok_or_else(|| wasmtime::Error::msg("missing wasi:cli/run@0.3.0"))?;
+                    instance
+                        .get_export_index(&mut access, Some(&inst), "run")
+                        .ok_or_else(|| wasmtime::Error::msg("missing run"))
+                })?;
+                let func = accessor.with(|mut access| {
+                    instance.get_typed_func::<(), (Result<(), ()>,)>(&mut access, idx)
+                })?;
+                let (result,) = func.call_concurrent(accessor, ()).await?;
+                Ok(result.is_ok())
+            })
+            .await?
+    })?;
+    assert!(ok, "wasi:cli/run@0.3.0#run empty result should be ok");
     Ok(())
 }

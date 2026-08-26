@@ -1,15 +1,23 @@
 ;; WASI 0.3 package smoke: wasi:cli/command-shaped async run
-;; Subset: guest exports root `run: async func() -> u32` (0 = ok; official empty result deferred).
-;; Imports existing wasi:cli/stdout@0.3.0#write-via-stream (transitional stream<u8> -> future<u32>).
-;; Guest: stream.new → write-via-stream(readable) → write "CMD\n" → drop-writable → future.read → return 0.
+;; Official: export wasi:cli/run@0.3.0#run as async func() -> result (empty ok).
+;; Root `run: async func() -> u32` harness stays 0=ok for callRunConcurrent.
+;; Imports wasi:cli/stdout@0.3.0#write-via-stream (official future<result<_, error-code>>).
+;; Guest: stream.new → write-via-stream(readable) → write "CMD\n" → drop-writable → future.read → ok.
 ;; Not a full command world (no fs/sockets/environment/exit/terminal).
 (component
-  (type $st (stream u8))
-  (type $ft (future u32))
   (import "wasi:cli/stdout@0.3.0" (instance $stdout
+    (type $error-code-def (enum "unknown"))
+    (export "error-code" (type $error-code (eq $error-code-def)))
+    (type $write-result (result (error $error-code)))
+    (type $st (stream u8))
+    (type $ft (future $write-result))
     (export "write-via-stream" (func (param "data" $st) (result $ft)))
   ))
   (alias export $stdout "write-via-stream" (func $write-via-stream))
+  (alias export $stdout "error-code" (type $error-code))
+  (type $write-result (result (error $error-code)))
+  (type $st (stream u8))
+  (type $ft (future $write-result))
 
   (core module $libc
     (memory (export "mem") 1)
@@ -39,20 +47,20 @@
 
       (local.set $fut (call $write-via-stream (local.get $r)))
 
-      ;; Write 4 bytes ("CMD\n"); host consumer already piped so this should complete.
       (local.set $status (call $stream.write (local.get $w) (i32.const 16) (i32.const 4)))
       (if (i32.eq (local.get $status) (i32.const -1))
         (then unreachable))
 
       (call $stream.drop-writable (local.get $w))
 
-      ;; future.read(handle, ptr) — payload u32 at mem[0]
       (local.set $status (call $future.read (local.get $fut) (i32.const 0)))
       (if (i32.eq (local.get $status) (i32.const -1))
         (then unreachable))
       (call $future.drop-readable (local.get $fut))
+      (if (i32.ne (i32.load8_u (i32.const 0)) (i32.const 0))
+        (then unreachable))
 
-      ;; Transitional: 0 = ok (official empty result deferred).
+      ;; Core 0 = ok; lifted as u32 harness and as empty result (wasi:cli/run).
       i32.const 0
     )
   )
@@ -79,4 +87,9 @@
   (func (export "run") async (result u32)
     (canon lift (core func $i "run"))
   )
+  (func $command-run async (result (result))
+    (canon lift (core func $i "run")))
+  (instance $cli-run
+    (export "run" (func $command-run)))
+  (export "wasi:cli/run@0.3.0" (instance $cli-run))
 )

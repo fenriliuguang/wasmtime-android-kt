@@ -12,8 +12,8 @@ import org.junit.runner.RunWith
 
 /**
  * WASI 0.3: `wasi:clocks/system-clock@0.3.0#resolution` via guest `run`.
- * Transitional `func() -> u64` nanoseconds (official WIT may be a datetime record);
- * production host returns 1 ns. Timezone is not in this slice.
+ * Official `instant` record; host `{seconds: 0, nanoseconds: 1}`, guest returns ns.
+ * No timezone in the 0.3.0 pin.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiSystemResolutionInstrumentedTest {

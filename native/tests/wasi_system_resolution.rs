@@ -1,8 +1,14 @@
-//! WASI 0.3: wasi:clocks/system-clock@0.3.0#resolution smoke.
-//! Transitional `func() -> u64` nanoseconds (official WIT may be a datetime record).
+//! WASI 0.3: wasi:clocks/system-clock@0.3.0#resolution smoke (official instant record).
 
-use wasmtime::component::{Component, Linker};
+use wasmtime::component::{Component, ComponentType, Lift, Linker, Lower};
 use wasmtime::{Config, Engine, Store};
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct Instant {
+    seconds: i64,
+    nanoseconds: u32,
+}
 
 #[test]
 fn wasi_system_clock_resolution_smoke() -> wasmtime::Result<()> {
@@ -19,7 +25,10 @@ fn wasi_system_clock_resolution_smoke() -> wasmtime::Result<()> {
     linker
         .instance("wasi:clocks/system-clock@0.3.0")?
         .func_wrap("resolution", |_store, ()| {
-            Ok((1u64,))
+            Ok((Instant {
+                seconds: 0,
+                nanoseconds: 1,
+            },))
         })?;
 
     let mut store = Store::new(&engine, ());

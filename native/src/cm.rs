@@ -43,8 +43,8 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use wasmtime::component::{
-    Component, FutureReader, Linker, Resource, ResourceType, Source, StreamConsumer, StreamReader,
-    StreamResult,
+    Component, ComponentType, FutureReader, Lift, Linker, Lower, Resource, ResourceType, Source,
+    StreamConsumer, StreamReader, StreamResult,
 };
 use wasmtime::{Engine, Store, StoreContextMut};
 
@@ -321,6 +321,25 @@ fn pipeline_constant_rep(
     rec.as_ref().map(|r| r.rep() as i32).unwrap_or(0)
 }
 
+/// Official WASI 0.3.0 `wasi:clocks/system-clock` `instant` record
+/// (`seconds: s64`, `nanoseconds: u32`). Not a timezone type.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct SystemClockInstant {
+    seconds: i64,
+    nanoseconds: u32,
+}
+
+/// WASI 0.3.0 `wasi:cli` `error-code` (ok path only; `unknown` is the sole variant).
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum CliErrorCode {
+    #[component(name = "unknown")]
+    Unknown,
+}
+
 /// P3-PRIM-5 / W1: collect guest `stream.write` bytes; complete oneshot on drop.
 /// `max_per_poll` caps items taken per `poll_consume` (backpressure). Use
 /// `usize::MAX` for the original 4-byte `take` / cli stdio path.
@@ -545,8 +564,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     }
 
     // WASI 0.3: wasi:clocks/system-clock@0.3.0 (now + resolution).
-    // now: transitional u64 unix seconds (official WIT is instant record; deferred).
-    // resolution: transitional u64 ns (official WIT may be datetime record).
+    // Official instant record {seconds: s64, nanoseconds: u32}. No timezone in 0.3.0 pin.
     {
         let mut clock = linker
             .instance("wasi:clocks/system-clock@0.3.0")
@@ -554,23 +572,27 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         clock
             .func_wrap("now", |_store, ()| {
                 use std::time::{SystemTime, UNIX_EPOCH};
-                let secs = SystemTime::now()
+                let d = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0);
-                Ok((secs,))
+                    .unwrap_or_default();
+                Ok((SystemClockInstant {
+                    seconds: d.as_secs() as i64,
+                    nanoseconds: d.subsec_nanos(),
+                },))
             })
             .map_err(|e| e.to_string())?;
         clock
             .func_wrap("resolution", |_store, ()| {
-                // Transitional u64 ns (official WIT may be datetime record).
-                Ok((1u64,))
+                Ok((SystemClockInstant {
+                    seconds: 0,
+                    nanoseconds: 1,
+                },))
             })
             .map_err(|e| e.to_string())?;
     }
 
     // Pipe guest stream<u8> into CollectConsumer; complete future with byte count.
-    // Shared by root `take` / `take-chunks` and wasi:cli stdout/stderr write-via-stream.
+    // Shared by root `take` / `take-chunks`.
     fn pipe_stream_byte_count(
         store: &mut StoreContextMut<HostState>,
         reader: StreamReader<u8>,
@@ -592,6 +614,31 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 Err(_) => 0,
             };
             Ok::<_, wasmtime::Error>(n)
+        })?;
+        let _ = buf;
+        Ok(fut)
+    }
+
+    fn pipe_stream_write_result(
+        store: &mut StoreContextMut<HostState>,
+        reader: StreamReader<u8>,
+    ) -> wasmtime::Result<FutureReader<Result<(), CliErrorCode>>> {
+        let (tx, rx) = oneshot::channel::<u32>();
+        let buf = Arc::new(Mutex::new(Vec::new()));
+        reader.pipe(
+            &mut *store,
+            CollectConsumer {
+                buf: buf.clone(),
+                done: Some(tx),
+                max_per_poll: usize::MAX,
+            },
+        )?;
+        let fut = FutureReader::new(store, async move {
+            let _n = match rx.await {
+                Ok(n) => n,
+                Err(_) => 0,
+            };
+            Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(()))
         })?;
         let _ = buf;
         Ok(fut)
@@ -622,35 +669,35 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         )
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:cli/stdout@0.3.0 — transitional write-via-stream → future<u32>.
-    // Official WIT: future<result<_, error-code>>; enum result deferred for hand-written WAT.
+    // WASI 0.3: wasi:cli/stdout@0.3.0 — official write-via-stream →
+    // future<result<_, error-code>> (ok path).
     linker
         .instance("wasi:cli/stdout@0.3.0")
         .map_err(|e| e.to_string())?
         .func_wrap(
             "write-via-stream",
             |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
-                let fut = pipe_stream_byte_count(&mut store, reader, usize::MAX)?;
+                let fut = pipe_stream_write_result(&mut store, reader)?;
                 Ok((fut,))
             },
         )
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:cli/stderr@0.3.0 — same transitional write-via-stream → future<u32>.
+    // WASI 0.3: wasi:cli/stderr@0.3.0 — same official write-via-stream result.
     linker
         .instance("wasi:cli/stderr@0.3.0")
         .map_err(|e| e.to_string())?
         .func_wrap(
             "write-via-stream",
             |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
-                let fut = pipe_stream_byte_count(&mut store, reader, usize::MAX)?;
+                let fut = pipe_stream_write_result(&mut store, reader)?;
                 Ok((fut,))
             },
         )
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:cli/stdin@0.3.0 — transitional read-via-stream → stream<u8>.
-    // Official WIT: tuple<stream<u8>, future<result<_, error-code>>>; tuple/result deferred.
+    // WASI 0.3: wasi:cli/stdin@0.3.0 — official read-via-stream →
+    // tuple<stream<u8>, future<result<_, error-code>>> (ok path).
     linker
         .instance("wasi:cli/stdin@0.3.0")
         .map_err(|e| e.to_string())?
@@ -658,7 +705,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             "read-via-stream",
             |mut store: StoreContextMut<HostState>, ()| {
                 let reader = StreamReader::new(&mut store, b"IN\n".to_vec())?;
-                Ok((reader,))
+                let fut = FutureReader::new(&mut store, async move {
+                    Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(()))
+                })?;
+                Ok(((reader, fut),))
             },
         )
         .map_err(|e| e.to_string())?;
