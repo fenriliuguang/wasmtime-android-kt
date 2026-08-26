@@ -1,7 +1,18 @@
 //! WASI 0.3: wasi:http incoming-handler in-process ABI smoke.
 
-use wasmtime::component::{Component, Linker, Resource, ResourceTable, ResourceType};
+use wasmtime::component::{
+    Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
+};
 use wasmtime::{Config, Engine, Store};
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum HttpErrorCode {
+    #[component(name = "unknown")]
+    Unknown,
+}
 
 struct HttpRequest;
 
@@ -85,9 +96,8 @@ fn wasi_http_handler_run_returns_200() -> wasmtime::Result<()> {
     let v = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
-                let func = accessor.with(|mut access| {
-                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
-                })?;
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
                 let (value,) = func.call_concurrent(accessor, ()).await?;
                 Ok(value)
             })
@@ -108,9 +118,7 @@ fn wasi_http_incoming_handler_export() -> wasmtime::Result<()> {
     let status = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u16> {
-                let req = accessor.with(|mut access| {
-                    access.data_mut().table.push(HttpRequest)
-                })?;
+                let req = accessor.with(|mut access| access.data_mut().table.push(HttpRequest))?;
                 let idx = accessor.with(|mut access| {
                     let inst = instance
                         .get_export_index(&mut access, None, "wasi:http/incoming-handler@0.3.0")
@@ -124,13 +132,12 @@ fn wasi_http_incoming_handler_export() -> wasmtime::Result<()> {
                 let func = accessor.with(|mut access| {
                     instance.get_typed_func::<
                         (Resource<HttpRequest>,),
-                        (Resource<HttpResponse>,),
+                        (Result<Resource<HttpResponse>, HttpErrorCode>,),
                     >(&mut access, idx)
                 })?;
-                let (resp,) = func.call_concurrent(accessor, (req,)).await?;
-                accessor.with(|mut access| {
-                    Ok(access.data_mut().table.get(&resp)?.status)
-                })
+                let (result,) = func.call_concurrent(accessor, (req,)).await?;
+                let resp = result.map_err(|_| wasmtime::Error::msg("handle err"))?;
+                accessor.with(|mut access| Ok(access.data_mut().table.get(&resp)?.status))
             })
             .await?
     })?;
