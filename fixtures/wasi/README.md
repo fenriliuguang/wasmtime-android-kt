@@ -102,9 +102,9 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/monotonic_
 Guest export: `run: func() -> u32`（字节数）  
 Host: `wasi:cli/stdin@0.3.0#read-via-stream`（`StreamReader::new` 产出 `IN\n`；钉 `@0.3.0`）
 
-**过渡签名：** `func() -> stream<u8>`。官方 WIT 为 `tuple<stream<u8>, future<result<_, error-code>>>`；tuple / `result` 另切片。
+官方签名：`func() -> tuple<stream<u8>, future<result<_, error-code>>>`（ok 路径；`error-code` 本刀仅 `unknown`）。
 
-成功：guest `stream.read` 后 `run` 返回 `3`。`wasi:cli/command` 另切片。
+成功：guest `stream.read` 且 future 为 ok 后 `run` 返回 `3`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_stdin.wat -o fixtures/wasi/cli_stdin.wasm

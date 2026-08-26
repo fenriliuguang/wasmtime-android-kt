@@ -696,8 +696,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         )
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:cli/stdin@0.3.0 — transitional read-via-stream → stream<u8>.
-    // Official WIT: tuple<stream<u8>, future<result<_, error-code>>>; tuple/result deferred.
+    // WASI 0.3: wasi:cli/stdin@0.3.0 — official read-via-stream →
+    // tuple<stream<u8>, future<result<_, error-code>>> (ok path).
     linker
         .instance("wasi:cli/stdin@0.3.0")
         .map_err(|e| e.to_string())?
@@ -705,7 +705,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             "read-via-stream",
             |mut store: StoreContextMut<HostState>, ()| {
                 let reader = StreamReader::new(&mut store, b"IN\n".to_vec())?;
-                Ok((reader,))
+                let fut = FutureReader::new(&mut store, async move {
+                    Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(()))
+                })?;
+                Ok(((reader, fut),))
             },
         )
         .map_err(|e| e.to_string())?;
