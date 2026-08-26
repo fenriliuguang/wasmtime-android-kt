@@ -22,7 +22,7 @@ WASI 0.3 moved async into the Component Model (`async func`, `future<T>`, `strea
 | `wasi:cli` stdio | stdout/stderr official `future<result<_, error-code>>`; stdin official `tuple<stream, future<result>>` | **Defer** G-err (`unknown` only) |
 | `wasi:cli/command` | official `wasi:cli/run@0.3.0#run` empty `result` (stdio already official; not a full world) | **Defer** G-cmd |
 | `wasi:filesystem` | directory preopen + `open-at` + r/w `offset`; guest `..` → `access` | — |
-| `wasi:sockets` | TCP loopback echo (`create-tcp-socket` + async `connect`; INTERNET) | **G-sock-shape** P1-SK1–SK2 |
+| `wasi:sockets` | TCP loopback echo; `create-tcp-socket(family) -> result` (INTERNET) | **G-sock-shape** P1-SK2 `connect(addr)` |
 | `wasi:http` | incoming-handler in-process ABI (status 200; no `wasmtime-wasi`) | **G-http-shape** P1-HT1 |
 | `wasmtime-wasi` crate | not a dependency | named-only; size + thread review first |
 

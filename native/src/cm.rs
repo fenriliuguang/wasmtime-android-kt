@@ -417,6 +417,28 @@ struct TcpSocket {
     server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
+/// WASI 0.3.0 `ip-address-family` (P1-SK1). Smoke uses `ipv4`.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum IpAddressFamily {
+    #[component(name = "ipv4")]
+    Ipv4,
+    #[component(name = "ipv6")]
+    Ipv6,
+}
+
+/// WASI 0.3.0 sockets `error-code` subset (`unknown` only).
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum SockErrorCode {
+    #[component(name = "unknown")]
+    Unknown,
+}
+
 /// Bind `127.0.0.1:0`, spawn an echo accept thread, return the client stream.
 /// Loopback only — not WAN. Blocking IO stays off the CM executor.
 fn tcp_loopback_pair() -> std::io::Result<(
@@ -934,10 +956,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:sockets Android loopback subset (W7).
+    // WASI 0.3: wasi:sockets Android loopback subset (W7 + P1-SK1).
     // Official packages: wasi:sockets/tcp@0.3.0 + tcp-create-socket@0.3.0.
-    // Subset: create-tcp-socket takes no address-family; connect is async with
-    // no address (always 127.0.0.1); write/read via streams (cli shapes).
+    // create-tcp-socket(ip-address-family) -> result; connect is async with no
+    // address (always 127.0.0.1); write/read via streams (cli shapes).
     // No UDP, no listen, no ip-name-lookup. INTERNET + helper-thread: threading-android.md.
     {
         let mut tcp = linker
@@ -1064,12 +1086,17 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
         create
-            .func_wrap("create-tcp-socket", |mut store, ()| {
-                let resource = store.data_mut().table.push(TcpSocket {
-                    client: None,
-                    server: None,
-                })?;
-                Ok((resource,))
+            .func_wrap("create-tcp-socket", |mut store, (family,): (IpAddressFamily,)| {
+                match family {
+                    IpAddressFamily::Ipv4 => {
+                        let resource = store.data_mut().table.push(TcpSocket {
+                            client: None,
+                            server: None,
+                        })?;
+                        Ok((Ok(resource),))
+                    }
+                    IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::Unknown),)),
+                }
             })
             .map_err(|e| e.to_string())?;
     }

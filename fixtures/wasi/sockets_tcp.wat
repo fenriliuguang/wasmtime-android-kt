@@ -1,10 +1,9 @@
 ;; WASI 0.3 package smoke: wasi:sockets TCP loopback echo
 ;; Official packages: wasi:sockets/tcp@0.3.0 + tcp-create-socket@0.3.0.
-;; Subset: create-tcp-socket takes no address-family; connect is async with no
-;; address (always 127.0.0.1); write/read via streams (cli shapes).
+;; create-tcp-socket(ip-address-family) -> result<tcp-socket, error-code> (ipv4 ok).
+;; connect is async with no address (always 127.0.0.1); write/read via streams.
 ;; No UDP / listen / ip-name-lookup.
-;; Guest: create → connect → write "P3SK" → read echo → nbytes 4.
-;; gap: create-tcp-socket no address-family
+;; Guest: create ipv4 → connect → write "P3SK" → read echo → nbytes 4.
 ;; gap: connect no ip-socket-address
 (component
   (import "wasi:sockets/tcp@0.3.0" (instance $tcp
@@ -29,7 +28,13 @@
   (alias export $tcp "[method]tcp-socket.read-via-stream" (func $read-via-stream))
   (import "wasi:sockets/tcp-create-socket@0.3.0" (instance $create
     (export "tcp-socket" (type (eq $tcp-socket)))
-    (export "create-tcp-socket" (func (result (own $tcp-socket))))
+    (type $error-code-def (enum "unknown"))
+    (export "error-code" (type $ec (eq $error-code-def)))
+    (type $family-def (enum "ipv4" "ipv6"))
+    (export "ip-address-family" (type $family (eq $family-def)))
+    (type $create-result (result (own $tcp-socket) (error $ec)))
+    (export "create-tcp-socket"
+      (func (param "address-family" $family) (result $create-result)))
   ))
   (alias export $create "create-tcp-socket" (func $create-tcp-socket))
   (type $io-result (result (error $error-code)))
@@ -50,7 +55,7 @@
     (import "" "stream.drop-writable" (func $stream.drop-writable (param i32)))
     (import "" "future.read" (func $future.read (param i32 i32) (result i32)))
     (import "" "future.drop-readable" (func $future.drop-readable (param i32)))
-    (import "" "create-tcp-socket" (func $create-tcp-socket (result i32)))
+    (import "" "create-tcp-socket" (func $create-tcp-socket (param i32 i32)))
     (import "" "connect" (func $connect (param i32)))
     (import "" "write-via-stream" (func $write-via-stream (param i32 i32) (result i32)))
     (import "" "read-via-stream" (func $read-via-stream (param i32 i32)))
@@ -65,7 +70,11 @@
       (local $status i32)
       (local $n i32)
 
-      (local.set $sock (call $create-tcp-socket))
+      ;; result at mem[80]: u8 disc (0=ok), handle at 84. family ipv4 = 0.
+      (call $create-tcp-socket (i32.const 0) (i32.const 80))
+      (if (i32.ne (i32.load8_u (i32.const 80)) (i32.const 0))
+        (then unreachable))
+      (local.set $sock (i32.load (i32.const 84)))
       (call $connect (local.get $sock))
 
       (local.set $pair (call $stream.new))
@@ -114,7 +123,8 @@
   (core func $stream.drop-writable (canon stream.drop-writable $st))
   (core func $future.read (canon future.read $ft async (memory $libc "mem")))
   (core func $future.drop-readable (canon future.drop-readable $ft))
-  (core func $create_lower (canon lower (func $create-tcp-socket)))
+  (core func $create_lower
+    (canon lower (func $create-tcp-socket) (memory $libc "mem")))
   (core func $connect_lower (canon lower (func $connect)))
   (core func $write_lower (canon lower (func $write-via-stream) (memory $libc "mem")))
   (core func $read_lower (canon lower (func $read-via-stream) (memory $libc "mem")))
