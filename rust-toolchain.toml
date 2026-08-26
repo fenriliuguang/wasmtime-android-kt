@@ -1,0 +1,6 @@
+# Keep in sync with native/rust-toolchain.toml.
+# Present at repo root so rustup/cargo from /workspace (Cloud Agent install cwd)
+# select 1.97.1. Wasmtime 47 crates require edition 2024; the default image is 1.83.0.
+[toolchain]
+channel = "1.97.1"
+components = ["rustfmt", "clippy"]

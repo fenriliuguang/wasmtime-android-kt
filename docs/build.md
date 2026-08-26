@@ -11,7 +11,7 @@ Pins must stay in sync with [`scheme/tech-stack.md`](scheme/tech-stack.md) and a
 | JDK | 17+ (Gradle Daemon via Foojay uses **21**) |
 | Android SDK | includes `platforms;android-36` |
 | NDK | **28.2.13676358** |
-| Rust | **1.97.1** (`native/rust-toolchain.toml`) |
+| Rust | **1.97.1** (`native/rust-toolchain.toml`; same pin at repo-root `rust-toolchain.toml`) |
 | cargo-ndk | `cargo install cargo-ndk` |
 | Gradle | Wrapper **9.6.1** (in-repo) |
 
@@ -25,8 +25,11 @@ sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
 ```powershell
 sdkmanager --install "ndk;28.2.13676358"
 rustup toolchain install 1.97.1
+rustup default 1.97.1
 cargo install cargo-ndk
 ```
+
+Cloud Agent / some CI images already have 1.97.1 installed but leave rustup **default 1.83.0**. `cargo fetch` from the repo root then fails on Wasmtime 47 crates (`edition2024`). Run `rustup default 1.97.1` (or `cd native`) before any cargo command at `/workspace`.
 
 GPU-backed instruments use in-tree `:host-dawn` plus published `androidx.webgpu` — [`blocked-gpu-host.md`](blocked-gpu-host.md). That is **not** required to compile `:runtime-api` or `:runtime-jni`, or to build the native Wasmtime `.so`.
 
