@@ -148,12 +148,13 @@ wasm-tools validate --features=component-model fixtures/wasi/system_resolution.w
 
 ## `wasi:cli/command` — async `run`（子集）
 
-Guest export: `run: async func() -> u32`（过渡 **0 = ok**；官方 empty `result` 另切片）  
-Host: 复用已有 `wasi:cli/stdout@0.3.0#write-via-stream`（`CollectConsumer` / `pipe`；钉 `@0.3.0`）
+Guest: 根导出 `run: async func() -> u32`（0 = ok，仪器 `callRunConcurrent`）  
+官方导出：`wasi:cli/run@0.3.0#run: async func() -> result`（empty ok）  
+Host: 复用已有 `wasi:cli/stdout@0.3.0#write-via-stream`
 
-本切片是 **command-shaped** 子集：guest 写 `CMD\n` 后返回 `0`。**不是**完整 `wasi:cli/command` world（无 filesystem / sockets / environment / exit / terminal；timezone 亦不在本 PR）。
+本切片是 **command-shaped** 子集：guest 写 `CMD\n` 后 official `result` 为 ok。**不是**完整 `wasi:cli/command` world（无 filesystem / sockets / environment / exit / terminal）。
 
-成功：`run` 经 `run_concurrent` / `call_async`（仪器 `callRunConcurrent`）返回 `0`。
+成功：根 `run` 返回 `0`；`wasi:cli/run@0.3.0#run` 为 ok。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_command.wat -o fixtures/wasi/cli_command.wasm

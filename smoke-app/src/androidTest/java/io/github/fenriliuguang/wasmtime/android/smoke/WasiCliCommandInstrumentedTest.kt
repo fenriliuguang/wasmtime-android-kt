@@ -11,8 +11,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * WASI 0.3: command-shaped guest `run: async func() -> u32` (0 = ok).
- * Imports existing `wasi:cli/stdout@0.3.0#write-via-stream`; pumped by `callRunConcurrent`.
+ * WASI 0.3: command-shaped guest. Root `run: async func() -> u32` (0 = ok)
+ * harness; official export is `wasi:cli/run@0.3.0#run` → empty `result`.
+ * Imports `wasi:cli/stdout@0.3.0#write-via-stream`; pumped by `callRunConcurrent`.
  * Not a full command world; no ExperimentalWebGpuBridge.
  */
 @RunWith(AndroidJUnit4::class)
