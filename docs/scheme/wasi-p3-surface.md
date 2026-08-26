@@ -21,7 +21,7 @@ WASI 0.3 moved async into the Component Model (`async func`, `future<T>`, `strea
 | `wasi:clocks` | monotonic now/wait/resolution; **official** system `instant` `{s64,u32}` (no timezone in 0.3.0 pin) | — |
 | `wasi:cli` stdio | stdout/stderr official `future<result<_, error-code>>`; stdin official `tuple<stream, future<result>>` | **Defer** G-err (`unknown` only) |
 | `wasi:cli/command` | official `wasi:cli/run@0.3.0#run` empty `result` (stdio already official; not a full world) | **Defer** G-cmd |
-| `wasi:filesystem` | preopen list + read/write smoke (`list<tuple<descriptor, string>>`; Android cache sandbox) | **G-fs-shape** P1-FS2 offset; **G-fs-open** P1-FS3–FS4 |
+| `wasi:filesystem` | preopen list + r/w-via-stream `offset: filesize` (Android cache sandbox) | **G-fs-open** P1-FS3–FS4 |
 | `wasi:sockets` | TCP loopback echo (`create-tcp-socket` + async `connect`; INTERNET) | **G-sock-shape** P1-SK1–SK2 |
 | `wasi:http` | incoming-handler in-process ABI (status 200; no `wasmtime-wasi`) | **G-http-shape** P1-HT1 |
 | `wasmtime-wasi` crate | not a dependency | named-only; size + thread review first |
