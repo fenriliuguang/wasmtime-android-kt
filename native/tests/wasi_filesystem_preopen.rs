@@ -162,7 +162,7 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                 std::fs::write(&path, b"")?;
             }
             let resource = store.data_mut().table.push(FsDescriptor { path })?;
-            Ok((resource,))
+            Ok((vec![(resource, "p3fs.txt".to_string())],))
         })?;
     }
     Ok(())

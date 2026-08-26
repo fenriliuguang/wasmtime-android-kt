@@ -791,9 +791,9 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         )
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:filesystem Android sandbox (W6).
+    // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1).
     // Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
-    // Subset: get-directories → own<descriptor> (not list<tuple<descriptor, string>>);
+    // get-directories → list<tuple<own<descriptor>, string>> (length 1);
     // write-via-stream takes stream<u8> (cli stdout shape); read-via-stream
     // returns tuple<stream, future<result>> (cli stdin shape). No open-at.
     {
@@ -882,7 +882,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(|e| wasmtime::Error::msg(format!("sandbox create: {e}")))?;
                 }
                 let resource = store.data_mut().table.push(FsDescriptor { path })?;
-                Ok((resource,))
+                Ok((vec![(resource, "p3fs.txt".to_string())],))
             })
             .map_err(|e| e.to_string())?;
     }
