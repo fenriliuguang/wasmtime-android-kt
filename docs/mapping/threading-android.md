@@ -53,7 +53,18 @@ If a later slice proves “CM loop must share GpuThread”, merge them and revis
 
 A **non-plan** sketch for a later gfx `on-frame` stream loop (MoonBit guest / Kotlin vsync wiring): [`frame-loop-suggestion.md`](frame-loop-suggestion.md). Not a P1 lane; does not change NG-9.
 
-## 5. Acceptance hints
+## 5. WASI 0.3 filesystem sandbox (W6)
+
+`wasi:filesystem` host IO in this repo is **synchronous** inside the import (same class as `system-clock.now`): `std::fs::read` / `write` on a tiny smoke. Do not put large FS work on the ART main thread; the instrument runs on the instrumentation thread.
+
+Path policy:
+
+- Sandbox root: `std::env::temp_dir().join("wasmtime-android-kt-wasi-fs")`.
+- Android device: the instrument sets `TMPDIR` to `targetContext.cacheDir` (app-private) before instantiate. Not `/sdcard`, not other world-writable shared storage.
+- Guest-relative join (for this cut’s preopen file name and any later `open-at`): reject empty, NUL, `..`, `.`, and absolute/prefix paths (`access`).
+- This cut preopens a single file `p3fs.txt` via `get-directories` → `own<descriptor>`. No directory listing.
+
+## 6. Acceptance hints
 
 - Async path: complete happens under the documented thread model; no data-race smoke.  
 - On-screen path: no “wrong thread touched Dawn” crashes.

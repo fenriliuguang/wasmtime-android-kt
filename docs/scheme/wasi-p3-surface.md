@@ -21,7 +21,7 @@ WASI 0.3 moved async into the Component Model (`async func`, `future<T>`, `strea
 | `wasi:clocks` | monotonic now/wait/resolution; **official** system `instant` `{s64,u32}` (no timezone in 0.3.0 pin) | — |
 | `wasi:cli` stdio | stdout/stderr official `future<result<_, error-code>>`; stdin official `tuple<stream, future<result>>` | — |
 | `wasi:cli/command` | official `wasi:cli/run@0.3.0#run` empty `result` (stdio already official; not a full world) | — |
-| `wasi:filesystem` | — | W6 Android sandbox smoke |
+| `wasi:filesystem` | preopen + read/write smoke (`own<descriptor>` subset; Android cache sandbox) | — |
 | `wasi:sockets` | — | W7 Android subset |
 | `wasi:http` | — | W8 Android subset |
 | `wasmtime-wasi` crate | not a dependency | named-only; size + thread review first |

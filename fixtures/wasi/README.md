@@ -160,3 +160,17 @@ Host: 复用已有 `wasi:cli/stdout@0.3.0#write-via-stream`
 wasm-tools parse fixtures/wasi/cli_command.wat -o fixtures/wasi/cli_command.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_command.wasm
 ```
+
+## `wasi:filesystem` — preopen + read/write（Android 沙箱子集）
+
+Guest export: `run: func() -> u32`（写 `P3FS` 再读回，返回 4）  
+Host: `wasi:filesystem/preopens@0.3.0#get-directories` → `own<descriptor>`；`[method]descriptor.write-via-stream` / `read-via-stream`（钉 `@0.3.0`）
+
+官方包名如上。本切片子集：`get-directories` 不是 `list<tuple<descriptor, string>>`；write 取 `stream<u8>`（对齐 cli stdout）；read 返回 `tuple<stream, future<result>>`（对齐 stdin）。无 `open-at`。沙箱见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §5。
+
+成功：guest `run` 返回 `4` 且宿主文件内容为 `P3FS`。
+
+```powershell
+wasm-tools parse fixtures/wasi/filesystem_preopen.wat -o fixtures/wasi/filesystem_preopen.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/filesystem_preopen.wasm
+```

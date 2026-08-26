@@ -340,6 +340,44 @@ enum CliErrorCode {
     Unknown,
 }
 
+/// WASI 0.3.0 `wasi:filesystem` `error-code` subset (`unknown`, `access`).
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum FsErrorCode {
+    #[component(name = "unknown")]
+    Unknown,
+    #[component(name = "access")]
+    Access,
+}
+
+/// Host `resource descriptor` for the W6 preopen smoke. Path is under the
+/// process sandbox root (see `filesystem_sandbox_join`).
+struct FsDescriptor {
+    path: std::path::PathBuf,
+}
+
+fn filesystem_sandbox_root() -> std::path::PathBuf {
+    std::env::temp_dir().join("wasmtime-android-kt-wasi-fs")
+}
+
+/// Relative path only: reject empty, NUL, `..`, `.`, and absolute/prefix paths.
+/// Not `/sdcard` or other shared storage — root is `temp_dir()` (Android:
+/// app-private cache via `TMPDIR`).
+fn filesystem_sandbox_join(rel: &str) -> Result<std::path::PathBuf, FsErrorCode> {
+    if rel.is_empty() || rel.contains('\0') {
+        return Err(FsErrorCode::Access);
+    }
+    let p = std::path::Path::new(rel);
+    if p.components()
+        .any(|c| !matches!(c, std::path::Component::Normal(_)))
+    {
+        return Err(FsErrorCode::Access);
+    }
+    Ok(filesystem_sandbox_root().join(p))
+}
+
 /// P3-PRIM-5 / W1: collect guest `stream.write` bytes; complete oneshot on drop.
 /// `max_per_poll` caps items taken per `poll_consume` (backpressure). Use
 /// `usize::MAX` for the original 4-byte `take` / cli stdio path.
@@ -712,6 +750,102 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             },
         )
         .map_err(|e| e.to_string())?;
+
+    // WASI 0.3: wasi:filesystem Android sandbox (W6).
+    // Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
+    // Subset: get-directories → own<descriptor> (not list<tuple<descriptor, string>>);
+    // write-via-stream takes stream<u8> (cli stdout shape); read-via-stream
+    // returns tuple<stream, future<result>> (cli stdin shape). No open-at.
+    {
+        let mut types = linker
+            .instance("wasi:filesystem/types@0.3.0")
+            .map_err(|e| e.to_string())?;
+        types
+            .resource(
+                "descriptor",
+                ResourceType::host::<FsDescriptor>(),
+                |mut store, rep| {
+                    let resource = Resource::<FsDescriptor>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.write-via-stream",
+                |mut store, (desc, reader): (Resource<FsDescriptor>, StreamReader<u8>)| {
+                    let path = store.data_mut().table.get(&desc)?.path.clone();
+                    let (tx, rx) = oneshot::channel::<u32>();
+                    let buf = Arc::new(Mutex::new(Vec::new()));
+                    reader.pipe(
+                        &mut store,
+                        CollectConsumer {
+                            buf: buf.clone(),
+                            done: Some(tx),
+                            max_per_poll: usize::MAX,
+                        },
+                    )?;
+                    let fut = FutureReader::new(&mut store, async move {
+                        let _n = match rx.await {
+                            Ok(n) => n,
+                            Err(_) => 0,
+                        };
+                        let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
+                        match std::fs::write(&path, bytes) {
+                            Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(())),
+                            Err(_) => Ok(Err(FsErrorCode::Unknown)),
+                        }
+                    })?;
+                    Ok((fut,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.read-via-stream",
+                |mut store, (desc,): (Resource<FsDescriptor>,)| {
+                    let path = store.data_mut().table.get(&desc)?.path.clone();
+                    let bytes = std::fs::read(&path).unwrap_or_default();
+                    let reader = StreamReader::new(&mut store, bytes)?;
+                    let fut = FutureReader::new(&mut store, async move {
+                        Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
+                    })?;
+                    Ok(((reader, fut),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+    {
+        let mut preopens = linker
+            .instance("wasi:filesystem/preopens@0.3.0")
+            .map_err(|e| e.to_string())?;
+        preopens
+            .resource(
+                "descriptor",
+                ResourceType::host::<FsDescriptor>(),
+                |mut store, rep| {
+                    let resource = Resource::<FsDescriptor>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        preopens
+            .func_wrap("get-directories", |mut store, ()| {
+                std::fs::create_dir_all(filesystem_sandbox_root())
+                    .map_err(|e| wasmtime::Error::msg(format!("sandbox mkdir: {e}")))?;
+                let path = filesystem_sandbox_join("p3fs.txt")
+                    .map_err(|_| wasmtime::Error::msg("sandbox join"))?;
+                if !path.exists() {
+                    std::fs::write(&path, b"")
+                        .map_err(|e| wasmtime::Error::msg(format!("sandbox create: {e}")))?;
+                }
+                let resource = store.data_mut().table.push(FsDescriptor { path })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+    }
 
     // M3/M4: Track A experimental CM host (flat u32 reps) → L2 via Kotlin callbacks.
     // Scope ends before W1 wasi:webgpu dual-register (Linker::instance is once-per-name).
