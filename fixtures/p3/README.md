@@ -15,9 +15,19 @@ Guest: `stream.new` → `take(readable)` → `stream.write` `P3WR` → `drop-wri
 
 Expected: **4**（consumed byte count）.
 
+## Multi-chunk + backpressure（W1）
+
+Guest export: `run: func() -> u32`  
+Host import: `take-chunks: func(s: stream<u8>) -> future<u32>`（`pipe` + 2-byte-per-poll `StreamConsumer`）  
+Guest: `stream.new` → `take-chunks(readable)` → three `stream.write` of `P3C1` / `P3C2` / `P3C3` (retry remaining on partial count) → `drop-writable` → `future.read`.
+
+Expected: **12**. Not a second copy of the 4-byte `P3ST` / `P3WR` smokes.
+
 ## Build
 
 ```powershell
 wasm-tools parse fixtures/p3/stream_read.wat -o fixtures/p3/stream_read.wasm
 wasm-tools parse fixtures/p3/stream_write.wat -o fixtures/p3/stream_write.wasm
+wasm-tools parse fixtures/p3/stream_chunks.wat -o fixtures/p3/stream_chunks.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/p3/stream_chunks.wasm
 ```
