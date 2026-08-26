@@ -102,7 +102,7 @@
 | 动作 | 决定 |
 |------|------|
 | 是否新建 `feature/stream`、`feature/webgpu`、`feature/clocks` 等长期线 | **不新建** |
-| 已合切片 / 下一刀 | **不在本页追加清单**。活状态：[Project](https://github.com/users/fenriliuguang/projects/1)；手册 [`../agent/wasi-p3.md`](../agent/wasi-p3.md)；规格 [`wasi-p3-surface.md`](wasi-p3-surface.md)；已合行为 [`changelog/unreleased/`](../../changelog/unreleased/) |
+| 已合切片 / 下一刀 | **不在本页追加清单**。活状态：[Project](https://github.com/users/fenriliuguang/projects/1)；手册 [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)；P1 规格（归档） [`../archive/p1-wasi-p3-surface.md`](../archive/p1-wasi-p3-surface.md)；已合行为 [`changelog/unreleased/`](../../changelog/unreleased/) |
 | 热点文件 | 同一时刻仍避免两条 PR 无协调地改同一 `native/` 源文件（尤其 linker 注册）；文档/CI 枢纽按 §4 冻结 |
 
 ## 8. 修订

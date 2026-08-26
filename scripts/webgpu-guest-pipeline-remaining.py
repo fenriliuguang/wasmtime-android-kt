@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Closed guest-pipeline queue. Redirects to wasi-p3-remaining.py."""
+"""Closed guest-pipeline queue. Redirects to wasmtime-p2-remaining.py."""
 from __future__ import annotations
 
 import argparse
@@ -10,8 +10,8 @@ def main() -> None:
     ap.add_argument("-All", "--all", action="store_true")
     args = ap.parse_args()
     print("Playbook closed: docs/archive/webgpu-guest-pipeline.md")
-    print("Use: python ./scripts/wasi-p3-remaining.py")
-    print("Playbook: docs/agent/wasi-p3.md")
+    print("Use: python ./scripts/wasmtime-p2-remaining.py")
+    print("Playbook: docs/agent/wasmtime-p2.md")
     print("Next: (P1–P5 empty; P0 closed)")
     if args.all:
         print()

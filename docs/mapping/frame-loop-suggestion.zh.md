@@ -4,9 +4,9 @@
 
 **地位：仅建议 — 不是计划、不是切刀、不是 DoD。** 与英文冲突时以英文为准。
 
-本页记录：若本仓以后做连续上屏，host/guest 可以长什么样。**不**加入 [`../agent/wasi-p3.md`](../agent/wasi-p3.md) / [`../scheme/wasi-p3-surface.md`](../scheme/wasi-p3-surface.md)。**不**重开 P0 wasi:webgpu。**不**把 `wasi-gfx` 升为近端工作（NG-9 / DG-6 仍要单独 RFC）。
+本页记录：若本仓以后做连续上屏，host/guest 可以长什么样。**不**加入 [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)。**不**重开 P0 wasi:webgpu。**不**把 `wasi-gfx` 升为近端工作（NG-9 / DG-6 仍要单独 RFC）。
 
-现行队列仍是 P1 WASI 0.3。今日上屏是单帧 WG-6。线程：[`threading-android.md`](threading-android.md)。
+现行队列是 P2 Wasmtime 钉。今日上屏是单帧 WG-6。线程：[`threading-android.md`](threading-android.md)。
 
 上游草图对齐 [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) `packages/surface`（2026-08：`wasi-gfx:surface@0.2.0` + `surface-webgpu` 引用 `wasi:webgpu@0.3.0-rc.2`）。本仓 **未 vendor** 该树。
 
@@ -151,4 +151,4 @@ GpuThread 上一次 `callRunConcurrent`：**阻塞到 guest `run` 返回**。循
 
 ## 6. 若将来升格 RFC 仍缺什么
 
-托管 `wasi-gfx:surface`；`on-frame` 背压（与 P1 W1 相关，但 W1 不是本循环）；可取消的 `run`；多帧 swapchain；每帧不要在泵上 latch；MoonBit/Rust 绑定。在此之前保持单帧 WG-6，不要把本页当成 `wasi-p3-remaining` 的 Next。
+托管 `wasi-gfx:surface`；`on-frame` 背压（与已合入的 P1 W1 相关，但 W1 不是本循环）；可取消的 `run`；多帧 swapchain；每帧不要在泵上 latch；MoonBit/Rust 绑定。在此之前保持单帧 WG-6，不要把本页当成 `wasmtime-p2-remaining` 的 Next。

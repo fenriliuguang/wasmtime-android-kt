@@ -2,7 +2,7 @@
 
 **English** | [中文](p0-wasi-webgpu.zh.md)
 
-> **Closed 2026-08-22** on `main` (`0ed028b`, PR #253). Do not open another wasi:webgpu implementation queue. Living gap (WIT ↔ Kotlin ↔ androidx): [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work: [`../agent/wasi-p3.md`](../agent/wasi-p3.md). Historical playbooks in this folder: `webgpu-guest-pipeline.md`, `webgpu-guest-semantics.md`, `webgpu-guest-dawn.md`.
+> **Closed 2026-08-22** on `main` (`0ed028b`, PR #253). Do not open another wasi:webgpu implementation queue. Living gap (WIT ↔ Kotlin ↔ androidx): [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). P1 close-out: [`p1-wasi-p3.md`](p1-wasi-p3.md). Historical playbooks in this folder: `webgpu-guest-pipeline.md`, `webgpu-guest-semantics.md`, `webgpu-guest-dawn.md`.
 
 Pin: `wasi:webgpu@0.3.0-rc.2` at [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit). Shape rules stay in [`../scheme/guest-shape.md`](../scheme/guest-shape.md).
 
@@ -44,4 +44,4 @@ Not claimed: CTS / compliant product (NG-5). Not P0: wasi-gfx (NG-9).
 
 ## What remains (not a P0 queue)
 
-androidx `1.0.0-alpha05` still has no `compilationHints` ctor and no canvas `color-space` / `tone-mapping` surface slots. Test-only `get-*` constructors and frozen experimental flat names stay. Next phase is WASI 0.3 (P1), not more WebGPU lanes.
+androidx `1.0.0-alpha05` still has no `compilationHints` ctor and no canvas `color-space` / `tone-mapping` surface slots. Test-only `get-*` constructors and frozen experimental flat names stay. Next phase is P2 (upstream Wasmtime tracking), not more WebGPU lanes.

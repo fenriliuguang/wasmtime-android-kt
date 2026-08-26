@@ -2,8 +2,10 @@
 
 **English** | [中文](wasmtime-tracking.zh.md)
 
-Companion: [`long-term-plan.md`](long-term-plan.md) **P2** · [`tech-stack.md`](tech-stack.md).  
+Companion: [`long-term-plan.md`](long-term-plan.md) **P2 (current)** · [`tech-stack.md`](tech-stack.md) · playbook [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md).  
 Policy: depend only on official `wasmtime` (and explicitly chosen official sibling crates). **No wasmtime4j.**
+
+Next auto cut: `python3 ./scripts/wasmtime-p2-remaining.py`. gap: p2 pin eval pending
 
 ## 1. What we track
 
@@ -35,11 +37,11 @@ Refresh the “last checked” row when evaluating upstream; do not churn code f
 
 | Field | Current |
 |-------|---------|
-| Last checked | 2026-08-11 |
+| Last checked | 2026-08-26 (docs close-out; crate still 47.0.2 — P2-EVAL not yet run) |
 | Pin | 47.0.2 |
-| Upstream latest stable (at check) | (fill from crates.io / GitHub; docs-only PRs need not fetch) |
+| Upstream latest stable (at check) | (fill from crates.io / GitHub on P2-EVAL; docs-only PRs need not fetch) |
 | WASI 0.3 / CM async default | Upstream treats WASI 0.3.0 + CM async as mainline from 46; this repo 47.x already uses CM async |
-| Gaps vs long-term plan | P1: remaining official WASI 0.3 package shapes (see [`../agent/wasi-p3.md`](../agent/wasi-p3.md)); `wasmtime-wasi` crate still **optional** |
+| Gaps vs long-term plan | P1 WASI 0.3 official-shape **closed**; leftover shapes are named-only ([`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md)). `wasmtime-wasi` crate still **optional**. P2 pin eval pending (this table). |
 | Known risks | major may change concurrent APIs; Android cross-compile must regress load + async smoke |
 | Next eval trigger | §5 |
 

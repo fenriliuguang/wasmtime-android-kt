@@ -1,5 +1,5 @@
 ---
-description: CLOSED wasi:webgpu Dawn consume G1–G9 — redirect to WASI 0.3
+description: CLOSED wasi:webgpu Dawn consume G1–G9 — redirect to Wasmtime pin (P2)
 alwaysApply: false
 ---
 
@@ -7,4 +7,4 @@ alwaysApply: false
 
 G1–G9 and named WG-6 leftovers are **closed**. Do not start another blend / view-formats / compilation-hints / xr / default-queue / write-mask / stencil / canvas leftover / auto-layout / guest-drawn compute/3D/present PR.
 
-Current queue: read `docs/agent/wasi-p3.md`. Next: `.\scripts\wasi-p3-remaining.ps1` or `python3 ./scripts/wasi-p3-remaining.py`. Historical: `docs/archive/p0-wasi-webgpu.md`.
+Current queue: read `docs/agent/wasmtime-p2.md`. Next: `.\scripts\wasmtime-p2-remaining.ps1` or `python3 ./scripts/wasmtime-p2-remaining.py`. Historical: `docs/archive/p0-wasi-webgpu.md`.

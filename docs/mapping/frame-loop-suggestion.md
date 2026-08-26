@@ -4,9 +4,9 @@
 
 **Status: suggestion only — not a plan, not a cut, not DoD.**
 
-This page records a host/guest shape if this repo later implements a continuous on-screen loop. It does **not** add a lane to [`../agent/wasi-p3.md`](../agent/wasi-p3.md) or [`../scheme/wasi-p3-surface.md`](../scheme/wasi-p3-surface.md). It does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). It does **not** promote `wasi-gfx` to near-term work (NG-9 / DG-6 still need a separate RFC).
+This page records a host/guest shape if this repo later implements a continuous on-screen loop. It does **not** add a lane to [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) or the archived P1 surface. It does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). It does **not** promote `wasi-gfx` to near-term work (NG-9 / DG-6 still need a separate RFC).
 
-Living queue remains P1 WASI 0.3. On-screen today is one-shot WG-6 (`WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md).
+Living queue is P2 Wasmtime pin. On-screen today is one-shot WG-6 (`WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md).
 
 Upstream sketches below follow [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) `packages/surface` as of 2026-08 ( `wasi-gfx:surface@0.2.0` + `surface-webgpu` importing `wasi:webgpu@0.3.0-rc.2` ). That tree is **not** vendored here. Names may move.
 
@@ -123,7 +123,7 @@ world windowed-webgpu {
 }
 ```
 
-`run` must be **async** so reading `on-frame` can yield. Official CLI `run` result is still transitional in this repo (P1 W5); a demo world may keep a tiny export until that lane lands.
+`run` must be **async** so reading `on-frame` can yield. Official CLI `run` result landed as P1 W5 (`result`); a demo world may still keep a tiny export.
 
 Until gfx `surface` is hosted, a **host-only** stand-in is `request-frame: async func() -> timestamp` completed on GpuThread from Choreographer — same pull model, no callback type. Prefer not to ship that as a product name if gfx `on-frame` is the target.
 
@@ -259,4 +259,4 @@ If this suggestion is ever promoted (separate RFC; not this page):
 | Dawn latch on the hot path | Per-frame `mapAsync` must not `CountDownLatch` on the pump |
 | Guest toolchain | MoonBit (or Rust) CM async + generated gfx/webgpu bindings |
 
-Until then: keep one-shot WG-6; do not treat this file as the next `wasi-p3-remaining` line.
+Until then: keep one-shot WG-6; do not treat this file as the next `wasmtime-p2-remaining` line.

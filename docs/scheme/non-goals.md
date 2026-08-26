@@ -31,7 +31,7 @@ Removed from the living table (historical dual-product policy): silent-replace o
 
 ## Allowed
 
-- Ratified WASI 0.3 **slices** per [`wasi-p3-surface.md`](wasi-p3-surface.md)  
+- Ratified WASI 0.3 **slices** per [`../archive/p1-wasi-p3-surface.md`](../archive/p1-wasi-p3-surface.md)  
 - Implementing and feeding back on the **wasi:webgpu proposal** (not a compliance claim)  
 - Comparing with `wasi-webgpu-wasmtime` and other hosts  
 - A **pluggable** GPU backend — default Dawn bundle; core without Dawn ([`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)). Unpublished artifacts: [`../blocked-gpu-host.md`](../blocked-gpu-host.md)

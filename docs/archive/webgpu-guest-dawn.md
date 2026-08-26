@@ -1,6 +1,6 @@
 # Agent playbook: Dawn consume + WG-6 leftovers
 
-> **Archived 2026-08-22.** Do not implement from this file. P0 close-out: [`p0-wasi-webgpu.md`](p0-wasi-webgpu.md). Gap: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current queue: [`../agent/wasi-p3.md`](../agent/wasi-p3.md).
+> **Archived 2026-08-22.** Do not implement from this file. P0 close-out: [`p0-wasi-webgpu.md`](p0-wasi-webgpu.md). Gap: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current queue: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md).
 
 **English** | [中文](webgpu-guest-dawn.zh.md)
 
