@@ -321,10 +321,13 @@ fn pipeline_constant_rep(
     rec.as_ref().map(|r| r.rep() as i32).unwrap_or(0)
 }
 
-/// P3-PRIM-5: collect guest `stream.write` bytes; complete oneshot on drop.
+/// P3-PRIM-5 / W1: collect guest `stream.write` bytes; complete oneshot on drop.
+/// `max_per_poll` caps items taken per `poll_consume` (backpressure). Use
+/// `usize::MAX` for the original 4-byte `take` / cli stdio path.
 struct CollectConsumer {
     buf: Arc<Mutex<Vec<u8>>>,
     done: Option<oneshot::Sender<u32>>,
+    max_per_poll: usize,
 }
 
 impl Drop for CollectConsumer {
@@ -361,8 +364,8 @@ impl StreamConsumer<HostState> for CollectConsumer {
             let _ = cx;
             return Poll::Pending;
         }
-        let n = chunk.len();
-        this.buf.lock().unwrap().extend_from_slice(chunk);
+        let n = chunk.len().min(this.max_per_poll);
+        this.buf.lock().unwrap().extend_from_slice(&chunk[..n]);
         src.mark_read(n);
         Poll::Ready(Ok(StreamResult::Completed))
     }
@@ -567,10 +570,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     }
 
     // Pipe guest stream<u8> into CollectConsumer; complete future with byte count.
-    // Shared by root `take` (P3 fixture) and wasi:cli stdout/stderr write-via-stream.
+    // Shared by root `take` / `take-chunks` and wasi:cli stdout/stderr write-via-stream.
     fn pipe_stream_byte_count(
         store: &mut StoreContextMut<HostState>,
         reader: StreamReader<u8>,
+        max_per_poll: usize,
     ) -> wasmtime::Result<FutureReader<u32>> {
         let (tx, rx) = oneshot::channel::<u32>();
         let buf = Arc::new(Mutex::new(Vec::new()));
@@ -579,6 +583,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             CollectConsumer {
                 buf: buf.clone(),
                 done: Some(tx),
+                max_per_poll,
             },
         )?;
         let fut = FutureReader::new(store, async move {
@@ -598,7 +603,20 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         .func_wrap(
             "take",
             |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
-                let fut = pipe_stream_byte_count(&mut store, reader)?;
+                let fut = pipe_stream_byte_count(&mut store, reader, usize::MAX)?;
+                Ok((fut,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    // W1: same as `take` but 2 bytes per poll so a 12-byte multi-chunk write
+    // must complete across several consume polls (backpressure).
+    linker
+        .root()
+        .func_wrap(
+            "take-chunks",
+            |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
+                let fut = pipe_stream_byte_count(&mut store, reader, 2)?;
                 Ok((fut,))
             },
         )
@@ -612,7 +630,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         .func_wrap(
             "write-via-stream",
             |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
-                let fut = pipe_stream_byte_count(&mut store, reader)?;
+                let fut = pipe_stream_byte_count(&mut store, reader, usize::MAX)?;
                 Ok((fut,))
             },
         )
@@ -625,7 +643,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         .func_wrap(
             "write-via-stream",
             |mut store: StoreContextMut<HostState>, (reader,): (StreamReader<u8>,)| {
-                let fut = pipe_stream_byte_count(&mut store, reader)?;
+                let fut = pipe_stream_byte_count(&mut store, reader, usize::MAX)?;
                 Ok((fut,))
             },
         )
