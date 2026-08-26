@@ -108,6 +108,21 @@ fn fs_read_from(path: &std::path::Path, offset: u64) -> Vec<u8> {
     bytes[start..].to_vec()
 }
 
+fn fs_open_child(
+    table: &mut ResourceTable,
+    parent: &Resource<FsDescriptor>,
+    rel: &str,
+) -> Result<Resource<FsDescriptor>, FsErrorCode> {
+    let _ = table.get(parent).map_err(|_| FsErrorCode::Unknown)?;
+    let child = sandbox_join(rel)?;
+    if !child.exists() {
+        std::fs::write(&child, b"").map_err(|_| FsErrorCode::Unknown)?;
+    }
+    table
+        .push(FsDescriptor { path: child })
+        .map_err(|_| FsErrorCode::Unknown)
+}
+
 fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
     {
         let mut types = linker.instance("wasi:filesystem/types@0.3.0")?;
@@ -164,6 +179,17 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                 Ok(((reader, fut),))
             },
         )?;
+        types.func_wrap(
+            "[method]descriptor.open-at",
+            |mut store, (desc, path): (Resource<FsDescriptor>, String)| match fs_open_child(
+                &mut store.data_mut().table,
+                &desc,
+                &path,
+            ) {
+                Ok(child) => Ok((Ok(child),)),
+                Err(code) => Ok((Err(code),)),
+            },
+        )?;
     }
     {
         let mut preopens = linker.instance("wasi:filesystem/preopens@0.3.0")?;
@@ -178,13 +204,10 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
         )?;
         preopens.func_wrap("get-directories", |mut store, ()| {
             std::fs::create_dir_all(sandbox_root())?;
-            let path =
-                sandbox_join("p3fs.txt").map_err(|_| wasmtime::Error::msg("sandbox join"))?;
-            if !path.exists() {
-                std::fs::write(&path, b"")?;
-            }
-            let resource = store.data_mut().table.push(FsDescriptor { path })?;
-            Ok((vec![(resource, "p3fs.txt".to_string())],))
+            let resource = store.data_mut().table.push(FsDescriptor {
+                path: sandbox_root(),
+            })?;
+            Ok((vec![(resource, ".".to_string())],))
         })?;
     }
     Ok(())

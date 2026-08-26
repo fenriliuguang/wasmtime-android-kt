@@ -58,7 +58,7 @@ W1–W8 smokes are **landed**. Do **not** re-cut them. Remaining auto knives are
 |----|----------|-------------------------------------------|
 | P1-FS1 | *(landed)* fixture no longer has `gap: get-directories not list tuple` | `get-directories` → `list<tuple<descriptor, string>>` |
 | P1-FS2 | *(landed)* fixture no longer has `gap: read/write no filesize offset` | r/w-via-stream take `offset: filesize` |
-| P1-FS3 | same file still `gap: no open-at` | directory preopen + `open-at` happy path |
+| P1-FS3 | *(landed)* fixture no longer has `gap: no open-at` | directory preopen + `open-at` happy path |
 | P1-FS4 | same file still `gap: open-at access not guest-visible` | guest `..` → `access` |
 | P1-SK1 | `sockets_tcp.wat` still `gap: create-tcp-socket no address-family` | create takes `ip-address-family` → `result` |
 | P1-SK2 | same file still `gap: connect no ip-socket-address` | `connect: async func(ip-socket-address) -> result` |

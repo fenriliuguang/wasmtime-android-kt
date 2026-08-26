@@ -396,6 +396,21 @@ fn fs_read_from(path: &std::path::Path, offset: u64) -> Vec<u8> {
     bytes[start..].to_vec()
 }
 
+fn fs_open_child(
+    table: &mut wasmtime::component::ResourceTable,
+    parent: &wasmtime::component::Resource<FsDescriptor>,
+    rel: &str,
+) -> Result<wasmtime::component::Resource<FsDescriptor>, FsErrorCode> {
+    let _ = table.get(parent).map_err(|_| FsErrorCode::Unknown)?;
+    let child = filesystem_sandbox_join(rel)?;
+    if !child.exists() {
+        std::fs::write(&child, b"").map_err(|_| FsErrorCode::Unknown)?;
+    }
+    table
+        .push(FsDescriptor { path: child })
+        .map_err(|_| FsErrorCode::Unknown)
+}
+
 /// Host `resource tcp-socket` for the W7 loopback smoke.
 struct TcpSocket {
     client: Option<std::net::TcpStream>,
@@ -809,10 +824,10 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         )
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1 + P1-FS2).
+    // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3).
     // Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
-    // get-directories → list<tuple<own<descriptor>, string>> (length 1);
-    // write/read-via-stream take offset: filesize (smoke uses 0). No open-at.
+    // get-directories → list (sandbox directory, ".");
+    // open-at(path) -> result<descriptor, error-code>; r/w on the child.
     {
         let mut types = linker
             .instance("wasi:filesystem/types@0.3.0")
@@ -877,6 +892,17 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 },
             )
             .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.open-at",
+                |mut store, (desc, path): (Resource<FsDescriptor>, String)| {
+                    match fs_open_child(&mut store.data_mut().table, &desc, &path) {
+                        Ok(child) => Ok((Ok(child),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
     }
     {
         let mut preopens = linker
@@ -897,14 +923,13 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .func_wrap("get-directories", |mut store, ()| {
                 std::fs::create_dir_all(filesystem_sandbox_root())
                     .map_err(|e| wasmtime::Error::msg(format!("sandbox mkdir: {e}")))?;
-                let path = filesystem_sandbox_join("p3fs.txt")
-                    .map_err(|_| wasmtime::Error::msg("sandbox join"))?;
-                if !path.exists() {
-                    std::fs::write(&path, b"")
-                        .map_err(|e| wasmtime::Error::msg(format!("sandbox create: {e}")))?;
-                }
-                let resource = store.data_mut().table.push(FsDescriptor { path })?;
-                Ok((vec![(resource, "p3fs.txt".to_string())],))
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(FsDescriptor {
+                        path: filesystem_sandbox_root(),
+                    })?;
+                Ok((vec![(resource, ".".to_string())],))
             })
             .map_err(|e| e.to_string())?;
     }

@@ -1,9 +1,9 @@
-;; WASI 0.3 package smoke: wasi:filesystem preopen + read/write
+;; WASI 0.3 package smoke: wasi:filesystem directory preopen + open-at + read/write
 ;; Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
-;; get-directories → list<tuple<own<descriptor>, string>> (length 1, name "p3fs.txt").
-;; write-via-stream(data, offset: filesize) / read-via-stream(offset) (cli polarity).
-;; Guest: get-directories index 0 → write "P3FS" at offset 0 → read offset 0 → nbytes 4.
-;; gap: no open-at
+;; get-directories → list<tuple<own<descriptor>, string>> (length 1, name ".").
+;; open-at(path) -> result<descriptor, error-code> happy path "p3fs.txt".
+;; write-via-stream(data, offset: filesize) / read-via-stream(offset) on the child.
+;; Guest: get-directories index 0 → open-at → write "P3FS" at 0 → read 0 → nbytes 4.
 ;; gap: open-at access not guest-visible
 (component
   (import "wasi:filesystem/types@0.3.0" (instance $types
@@ -15,15 +15,19 @@
     (type $ft (future $io-result))
     (type $read-ret (tuple $st $ft))
     (type $borrow-desc (borrow $descriptor))
+    (type $open-result (result (own $descriptor) (error $error-code)))
     (export "[method]descriptor.write-via-stream"
       (func (param "self" $borrow-desc) (param "data" $st) (param "offset" u64) (result $ft)))
     (export "[method]descriptor.read-via-stream"
       (func (param "self" $borrow-desc) (param "offset" u64) (result $read-ret)))
+    (export "[method]descriptor.open-at"
+      (func (param "self" $borrow-desc) (param "path" string) (result $open-result)))
   ))
   (alias export $types "descriptor" (type $descriptor))
   (alias export $types "error-code" (type $error-code))
   (alias export $types "[method]descriptor.write-via-stream" (func $write-via-stream))
   (alias export $types "[method]descriptor.read-via-stream" (func $read-via-stream))
+  (alias export $types "[method]descriptor.open-at" (func $open-at))
   (import "wasi:filesystem/preopens@0.3.0" (instance $preopens
     (export "descriptor" (type (eq $descriptor)))
     (type $dir-tuple (tuple (own $descriptor) string))
@@ -37,6 +41,7 @@
   (core module $libc
     (memory (export "mem") 1)
     (data (i32.const 16) "P3FS")
+    (data (i32.const 96) "p3fs.txt")
     (global $last (mut i32) (i32.const 256))
     (func (export "realloc")
       (param $oldptr i32) (param $oldlen i32) (param $align i32) (param $newlen i32)
@@ -61,10 +66,12 @@
     (import "" "future.read" (func $future.read (param i32 i32) (result i32)))
     (import "" "future.drop-readable" (func $future.drop-readable (param i32)))
     (import "" "get-directories" (func $get-directories (param i32)))
+    (import "" "open-at" (func $open-at (param i32 i32 i32 i32)))
     (import "" "write-via-stream" (func $write-via-stream (param i32 i32 i64) (result i32)))
     (import "" "read-via-stream" (func $read-via-stream (param i32 i64 i32)))
 
     (func (export "run") (result i32)
+      (local $dir i32)
       (local $desc i32)
       (local $list i32)
       (local $len i32)
@@ -76,13 +83,19 @@
       (local $status i32)
       (local $n i32)
 
-      ;; list<tuple<own, string>> at mem[80]: ptr, len. Guest uses index 0.
+      ;; list<tuple<own, string>> at mem[80]: ptr, len. Index 0 is the sandbox dir.
       (call $get-directories (i32.const 80))
       (local.set $list (i32.load (i32.const 80)))
       (local.set $len (i32.load (i32.const 84)))
       (if (i32.eqz (local.get $len))
         (then unreachable))
-      (local.set $desc (i32.load (local.get $list)))
+      (local.set $dir (i32.load (local.get $list)))
+
+      ;; result<descriptor, error-code> at mem[80]: u8 disc (0=ok), handle at 84.
+      (call $open-at (local.get $dir) (i32.const 96) (i32.const 8) (i32.const 80))
+      (if (i32.ne (i32.load8_u (i32.const 80)) (i32.const 0))
+        (then unreachable))
+      (local.set $desc (i32.load (i32.const 84)))
 
       (local.set $pair (call $stream.new))
       (local.set $r (i32.wrap_i64 (local.get $pair)))
@@ -134,6 +147,8 @@
     (canon lower (func $get-directories)
       (memory $libc "mem")
       (realloc (func $libc "realloc"))))
+  (core func $open_at_lower
+    (canon lower (func $open-at) (memory $libc "mem")))
   (core func $write_lower (canon lower (func $write-via-stream) (memory $libc "mem")))
   (core func $read_lower (canon lower (func $read-via-stream) (memory $libc "mem")))
 
@@ -147,6 +162,7 @@
       (export "future.read" (func $future.read))
       (export "future.drop-readable" (func $future.drop-readable))
       (export "get-directories" (func $get_directories_lower))
+      (export "open-at" (func $open_at_lower))
       (export "write-via-stream" (func $write_lower))
       (export "read-via-stream" (func $read_lower))
     ))
