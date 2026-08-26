@@ -1,10 +1,9 @@
 ;; WASI 0.3 package smoke: wasi:filesystem preopen + read/write
 ;; Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
-;; Subset: get-directories → own<descriptor> (not list<tuple<descriptor, string>>).
+;; get-directories → list<tuple<own<descriptor>, string>> (length 1, name "p3fs.txt").
 ;; write-via-stream takes stream<u8> (cli stdout shape); read-via-stream returns
 ;; tuple<stream<u8>, future<result<_, error-code>>> (cli stdin shape).
-;; Guest: get-directories → write "P3FS" → read back → nbytes 4.
-;; gap: get-directories not list tuple
+;; Guest: get-directories index 0 → write "P3FS" → read back → nbytes 4.
 ;; gap: read/write no filesize offset
 ;; gap: no open-at
 ;; gap: open-at access not guest-visible
@@ -29,7 +28,8 @@
   (alias export $types "[method]descriptor.read-via-stream" (func $read-via-stream))
   (import "wasi:filesystem/preopens@0.3.0" (instance $preopens
     (export "descriptor" (type (eq $descriptor)))
-    (export "get-directories" (func (result (own $descriptor))))
+    (type $dir-tuple (tuple (own $descriptor) string))
+    (export "get-directories" (func (result (list $dir-tuple))))
   ))
   (alias export $preopens "get-directories" (func $get-directories))
   (type $io-result (result (error $error-code)))
@@ -39,6 +39,18 @@
   (core module $libc
     (memory (export "mem") 1)
     (data (i32.const 16) "P3FS")
+    (global $last (mut i32) (i32.const 256))
+    (func (export "realloc")
+      (param $oldptr i32) (param $oldlen i32) (param $align i32) (param $newlen i32)
+      (result i32)
+      (local $ret i32)
+      (local.set $ret (global.get $last))
+      (global.set $last
+        (i32.and
+          (i32.add (i32.add (local.get $ret) (local.get $newlen)) (i32.const 7))
+          (i32.const -8)))
+      (local.get $ret)
+    )
   )
   (core instance $libc (instantiate $libc))
 
@@ -50,12 +62,14 @@
     (import "" "stream.drop-writable" (func $stream.drop-writable (param i32)))
     (import "" "future.read" (func $future.read (param i32 i32) (result i32)))
     (import "" "future.drop-readable" (func $future.drop-readable (param i32)))
-    (import "" "get-directories" (func $get-directories (result i32)))
+    (import "" "get-directories" (func $get-directories (param i32)))
     (import "" "write-via-stream" (func $write-via-stream (param i32 i32) (result i32)))
     (import "" "read-via-stream" (func $read-via-stream (param i32 i32)))
 
     (func (export "run") (result i32)
       (local $desc i32)
+      (local $list i32)
+      (local $len i32)
       (local $pair i64)
       (local $r i32)
       (local $w i32)
@@ -64,7 +78,13 @@
       (local $status i32)
       (local $n i32)
 
-      (local.set $desc (call $get-directories))
+      ;; list<tuple<own, string>> at mem[80]: ptr, len. Guest uses index 0.
+      (call $get-directories (i32.const 80))
+      (local.set $list (i32.load (i32.const 80)))
+      (local.set $len (i32.load (i32.const 84)))
+      (if (i32.eqz (local.get $len))
+        (then unreachable))
+      (local.set $desc (i32.load (local.get $list)))
 
       (local.set $pair (call $stream.new))
       (local.set $r (i32.wrap_i64 (local.get $pair)))
@@ -112,7 +132,10 @@
   (core func $stream.drop-writable (canon stream.drop-writable $st))
   (core func $future.read (canon future.read $ft async (memory $libc "mem")))
   (core func $future.drop-readable (canon future.drop-readable $ft))
-  (core func $get_directories_lower (canon lower (func $get-directories)))
+  (core func $get_directories_lower
+    (canon lower (func $get-directories)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
   (core func $write_lower (canon lower (func $write-via-stream) (memory $libc "mem")))
   (core func $read_lower (canon lower (func $read-via-stream) (memory $libc "mem")))
 

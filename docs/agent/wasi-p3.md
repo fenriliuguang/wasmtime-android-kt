@@ -56,7 +56,7 @@ W1–W8 smokes are **landed**. Do **not** re-cut them. Remaining auto knives are
 
 | PR | Sentinel | DoD (summary; full table on the gap page) |
 |----|----------|-------------------------------------------|
-| P1-FS1 | `filesystem_preopen.wat` still `gap: get-directories not list tuple` | `get-directories` → `list<tuple<descriptor, string>>` |
+| P1-FS1 | *(landed)* fixture no longer has `gap: get-directories not list tuple` | `get-directories` → `list<tuple<descriptor, string>>` |
 | P1-FS2 | same file still `gap: read/write no filesize offset` | r/w-via-stream take `offset: filesize` |
 | P1-FS3 | same file still `gap: no open-at` | directory preopen + `open-at` happy path |
 | P1-FS4 | same file still `gap: open-at access not guest-visible` | guest `..` → `access` |

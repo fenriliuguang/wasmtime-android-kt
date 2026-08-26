@@ -10,7 +10,7 @@ W1–W8 已合入 **包名 smoke**，不是完整 0.3.0 guest 链接。完成目
 
 | 目标 | 短刀（自动序） |
 |------|----------------|
-| G-fs-shape | P1-FS1 `get-directories` list+名字 → P1-FS2 r/w `offset` |
+| G-fs-shape | **P1-FS1 landed** list+名字；P1-FS2 r/w `offset` |
 | G-fs-open | P1-FS3 目录 preopen + `open-at` 成功路径 → P1-FS4 guest `..` → `access` |
 | G-sock-shape | P1-SK1 `create-tcp-socket(family) -> result` → P1-SK2 `connect(addr) -> result` |
 | G-http-shape | P1-HT1 `handle -> result<response, error-code>` |
