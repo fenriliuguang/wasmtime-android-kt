@@ -166,7 +166,7 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_comman
 Guest export: `run: func() -> u32`（写 `P3FS` 再读回，返回 4）  
 Host: `wasi:filesystem/preopens@0.3.0#get-directories` → 沙箱**目录** `list`（名 `"."`）；`[method]descriptor.open-at("p3fs.txt")` → child；write/read-via-stream 带 `offset: filesize`（钉 `@0.3.0`）
 
-官方包名如上。本切片：目录 preopen + `open-at` 成功路径；write/read 取 `offset: filesize`（smoke 用 `0`）。`open-at("..")` guest 可见 `access` 见 P1-FS4。沙箱见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §5。剩余官方形状（G-fs-open access）：[`docs/mapping/gap-wasi-p3-wit.md`](../../docs/mapping/gap-wasi-p3-wit.md) P1-FS4。
+官方包名如上。本切片：目录 preopen + `open-at` 成功路径；guest `open-at("..")` → `error-code.access`；write/read 取 `offset: filesize`（smoke 用 `0`）。沙箱见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §5。G-fs-shape / G-fs-open **已完成**。
 
 成功：guest `run` 返回 `4` 且宿主文件内容为 `P3FS`。
 

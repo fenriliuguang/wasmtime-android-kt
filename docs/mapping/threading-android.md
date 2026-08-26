@@ -62,7 +62,7 @@ Path policy:
 - Sandbox root: `std::env::temp_dir().join("wasmtime-android-kt-wasi-fs")`.
 - Android device: the instrument sets `TMPDIR` to `targetContext.cacheDir` (app-private) before instantiate. Not `/sdcard`, not other world-writable shared storage.
 - Guest-relative join (for this cut’s preopen file name and any later `open-at`): reject empty, NUL, `..`, `.`, and absolute/prefix paths (`access`).
-- This cut preopens the sandbox **directory** via official `get-directories` → `list<tuple<descriptor, string>>` (length 1, name `"."`). Guest `open-at("p3fs.txt")` then r/w the child. `open-at("..")` guest-visible `access` is P1-FS4.
+- This cut preopens the sandbox **directory** via official `get-directories` → `list<tuple<descriptor, string>>` (length 1, name `"."`). Guest `open-at("p3fs.txt")` then r/w the child. Guest `open-at("..")` is `error-code.access`.
 
 ## 6. WASI 0.3 sockets (W7)
 

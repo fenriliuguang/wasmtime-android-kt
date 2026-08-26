@@ -223,6 +223,18 @@ fn sandbox_join_rejects_escape() {
 }
 
 #[test]
+fn open_at_dotdot_returns_access() -> wasmtime::Result<()> {
+    std::fs::create_dir_all(sandbox_root())?;
+    let mut table = ResourceTable::new();
+    let parent = table.push(FsDescriptor {
+        path: sandbox_root(),
+    })?;
+    let err = fs_open_child(&mut table, &parent, "..").unwrap_err();
+    assert!(matches!(err, FsErrorCode::Access));
+    Ok(())
+}
+
+#[test]
 fn wasi_filesystem_preopen_read_write_smoke() -> wasmtime::Result<()> {
     let mut config = Config::new();
     config.wasm_component_model(true);

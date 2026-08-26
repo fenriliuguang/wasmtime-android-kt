@@ -14,7 +14,7 @@ import org.junit.runner.RunWith
 /**
  * WASI 0.3: `wasi:filesystem` preopen + read/write via guest `run`.
  * `get-directories` is official `list<tuple<descriptor, string>>` (index 0 = sandbox dir).
- * Guest `open-at("p3fs.txt")` then r/w-via-stream at `offset` 0.
+ * Guest `open-at("..")` is `error-code.access`; then `open-at("p3fs.txt")` r/w at offset 0.
  * Sandbox is app-private cache (`TMPDIR`), not shared storage.
  * Guest writes `P3FS` then reads it back (4 bytes).
  */

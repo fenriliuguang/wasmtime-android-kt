@@ -3,8 +3,7 @@
 ;; get-directories → list<tuple<own<descriptor>, string>> (length 1, name ".").
 ;; open-at(path) -> result<descriptor, error-code> happy path "p3fs.txt".
 ;; write-via-stream(data, offset: filesize) / read-via-stream(offset) on the child.
-;; Guest: get-directories index 0 → open-at → write "P3FS" at 0 → read 0 → nbytes 4.
-;; gap: open-at access not guest-visible
+;; Guest: get-directories → open-at("..") access → open-at("p3fs.txt") → write/read P3FS.
 (component
   (import "wasi:filesystem/types@0.3.0" (instance $types
     (export "descriptor" (type $descriptor (sub resource)))
@@ -42,6 +41,7 @@
     (memory (export "mem") 1)
     (data (i32.const 16) "P3FS")
     (data (i32.const 96) "p3fs.txt")
+    (data (i32.const 108) "..")
     (global $last (mut i32) (i32.const 256))
     (func (export "realloc")
       (param $oldptr i32) (param $oldlen i32) (param $align i32) (param $newlen i32)
@@ -90,6 +90,13 @@
       (if (i32.eqz (local.get $len))
         (then unreachable))
       (local.set $dir (i32.load (local.get $list)))
+
+      ;; open-at("..") → error-code.access (disc 1, payload 1).
+      (call $open-at (local.get $dir) (i32.const 108) (i32.const 2) (i32.const 80))
+      (if (i32.ne (i32.load8_u (i32.const 80)) (i32.const 1))
+        (then unreachable))
+      (if (i32.ne (i32.load8_u (i32.const 84)) (i32.const 1))
+        (then unreachable))
 
       ;; result<descriptor, error-code> at mem[80]: u8 disc (0=ok), handle at 84.
       (call $open-at (local.get $dir) (i32.const 96) (i32.const 8) (i32.const 80))
