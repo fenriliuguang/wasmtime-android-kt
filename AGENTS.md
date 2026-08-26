@@ -6,3 +6,9 @@ P0 `wasi:webgpu` is **closed**. Do not re-cut guest-pipeline P1–P5, leftover F
 
 - Hub freeze, narrow tests, and file whitelist are in the P1 playbook — do not rediscover them from RFCs or by reading `cm.rs` whole.
 - **Never file upstream GitHub issues** (or Discussions used as an issue tracker) on WASI, Wasmtime, wasi-webgpu, or any other upstream. No `gh issue create`. Record Android facts only in this repo.
+
+## Cursor Cloud specific instructions
+
+Cloud Agent base images keep rustup **default 1.83.0** even when **1.97.1** is already installed. Wasmtime 47 crates need edition 2024, so `cargo fetch` from `/workspace` with 1.83.0 exits 101 (`feature edition2024 is required`).
+
+Before any `cargo fetch` / `check` / `test` from the repo root: `rustup default 1.97.1`, or `cd native` (see `native/rust-toolchain.toml`). A root `rust-toolchain.toml` pins the same channel when cwd is `/workspace`. Environment `install` must set the default **before** `cargo fetch --locked --manifest-path native/Cargo.toml`.

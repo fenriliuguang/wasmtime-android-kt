@@ -21,7 +21,7 @@ Principle: **Android-first**; desktop is convenience.
 | Tool | Pin / notes |
 |------|-------------|
 | JDK | 17+ (Gradle Daemon often 21) |
-| Rust | **1.97.1** (`native/rust-toolchain.toml`) |
+| Rust | **1.97.1** (`native/rust-toolchain.toml`; same pin at repo-root `rust-toolchain.toml`) |
 | cargo-ndk | Android cross-compile only |
 | Android SDK + NDK `28.2.13676358` | Device / emulator instruments |
 | GPU host | [`blocked-gpu-host.md`](blocked-gpu-host.md) — Host Kotlin in `:host-dawn`; Dawn `.so` via `androidx.webgpu` (not git) |
