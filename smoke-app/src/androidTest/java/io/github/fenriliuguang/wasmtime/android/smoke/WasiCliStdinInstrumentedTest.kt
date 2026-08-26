@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 
 /**
  * WASI 0.3: `wasi:cli/stdin@0.3.0#read-via-stream` via guest `run`.
- * Transitional: host returns `stream<u8>` with `IN\n` (3 bytes).
+ * Official `tuple<stream<u8>, future<result<_, error-code>>>`; payload `IN\n` (3 bytes).
  */
 @RunWith(AndroidJUnit4::class)
 class WasiCliStdinInstrumentedTest {
