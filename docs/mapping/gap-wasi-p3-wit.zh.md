@@ -17,4 +17,4 @@ W1–W8 已合入 **包名 smoke**，不是完整 0.3.0 guest 链接。完成目
 
 ## 延期（官方 0.3.0，不进 Next）
 
-G-err 全量 error-code；G-cmd command world；G-fs-full stat/目录流；G-sock-rest listen/UDP/DNS；G-http-body / service / 出站；G-http-ctor 去掉测试 constructor；G-dev 真机；G-cli-error。点名：wasi-testsuite、`wasmtime-wasi` crate。
+G-err 全量 error-code；G-cmd command world；G-fs-full stat/目录流；G-sock-rest listen/UDP/DNS；G-http-body / service / 出站；G-http-ctor 去掉测试 constructor；G-cli-error。G-dev 已录（V2458A arm64，2026-08-26）。点名：wasi-testsuite、`wasmtime-wasi` crate。

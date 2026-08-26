@@ -26,7 +26,7 @@ WASI 0.3 moved async into the Component Model (`async func`, `future<T>`, `strea
 | `wasi:http` | incoming-handler in-process ABI; `handle -> result<response>` (status 200; no `wasmtime-wasi`) | — |
 | `wasmtime-wasi` crate | not a dependency | named-only; size + thread review first |
 
-Every remaining lane needs a **device instrument**. Details and file whitelist: the playbook.
+Every remaining lane needs a **device instrument**. G-dev recorded a real-device pass of the W1–W8 / P1-* set (V2458A arm64, 2026-08-26). Details and file whitelist: the playbook.
 
 ## Ownership
 
