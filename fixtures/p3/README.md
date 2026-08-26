@@ -19,7 +19,7 @@ Expected: **4**（consumed byte count）.
 
 Guest export: `run: func() -> u32`  
 Host import: `take-chunks: func(s: stream<u8>) -> future<u32>`（`pipe` + 2-byte-per-poll `StreamConsumer`）  
-Guest: `stream.new` → `take-chunks(readable)` → three `stream.write` of `P3C1` / `P3C2` / `P3C3` → `drop-writable` → `future.read`.
+Guest: `stream.new` → `take-chunks(readable)` → three `stream.write` of `P3C1` / `P3C2` / `P3C3` (retry remaining on partial count) → `drop-writable` → `future.read`.
 
 Expected: **12**. Not a second copy of the 4-byte `P3ST` / `P3WR` smokes.
 
