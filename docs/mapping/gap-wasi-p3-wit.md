@@ -58,7 +58,6 @@ Do **not** put these on `Next:`. Record here only.
 | **G-sock-rest** | `listen` → `stream<tcp-socket>`; UDP; `ip-name-lookup`; non-loopback; sockets `types` merge | Loopback client smoke is enough for G-sock-shape |
 | **G-http-body** | request/response method, path, headers, **body `stream<u8>`**, trailers; `outgoing-handler` / `send`; `wasi:http/service` world; wire/loopback server | G-http-shape is instantiate + status 200 only |
 | **G-http-ctor** | Drop `[constructor]request` / `[constructor]response` from the **product** types surface (host supplies `request` when calling `handle`) | W8 constructors are **Fixture** (like webgpu `get-device`). Named follow-up, not P1-HT1 |
-| **G-dev** | Run every W1–W8 / P1-* instrument on a real device | Cloud has no device; instruments stay in-tree |
 | **G-cli-error** | cli `error-code` as `io` / `illegal-byte-sequence` / `pipe` (0.3 `wasi:cli/types`) | W3/W4 use `unknown` only |
 
 ## 4. Out of scope
@@ -79,3 +78,4 @@ Do **not** put these on `Next:`. Record here only.
 | `wasi:filesystem` | **Smoke** G-fs-shape + G-fs-open (list, offset, directory `open-at`, `..` → `access`) |
 | `wasi:sockets` | **Smoke** loopback echo + create family/result + connect `ip-socket-address` |
 | `wasi:http` | **Smoke** in-process 200 + `handle -> result<response, error-code>` |
+| Device (G-dev) | **Smoke** — 10 W1–W8 / P1-* instruments on V2458A arm64 Android 16 (2026-08-26). Cloud still has no device |
