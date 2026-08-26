@@ -8,7 +8,7 @@ An **upstream Wasmtime** embedding for Android (JNI / ART) that hosts [Component
 
 This repository is meant to be a **citable Android host** on the Wasm component chain — not a UI toolkit, not a **rewritten** Dawn, and not a production WASI distro. The **default product/test artifact includes Dawn**; the core runtime AAR does not. See [`rfc-pluggable-gpu-backend.md`](docs/scheme/rfc-pluggable-gpu-backend.md).
 
-Status: **experimental**. No compliant wasi:webgpu product claim. No default Maven Central publish.
+Status: **experimental `0.x`**. No compliant wasi:webgpu / CTS claim. **No Maven Central until `0.1.0` gates** ([`rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)).
 
 ## Current plan
 
@@ -16,9 +16,10 @@ Status: **experimental**. No compliant wasi:webgpu product claim. No default Mav
 |----------|------|
 | **P0** | Canonical `wasi:webgpu@0.3.0-rc.2` guest shape + true CM async — **closed** 2026-08-22 ([`guest-shape.md`](docs/scheme/guest-shape.md)) |
 | **P1** | Ratified WASI 0.3 official package shapes + device instruments — **closed** 2026-08-26 ([`p1-wasi-p3.md`](docs/archive/p1-wasi-p3.md)) |
-| **P2** | **Current:** track upstream Wasmtime ([`wasmtime-p2.md`](docs/agent/wasmtime-p2.md), [`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)) |
+| **P2** | **Current engineering:** track upstream Wasmtime ([`wasmtime-p2.md`](docs/agent/wasmtime-p2.md), [`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)) |
+| **L5** | **Accepted:** product class B; perpetual `0.x`; Central at `0.1.0` ([`rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)). Frame loop: [`rfc-wasi-gfx-frame-loop.md`](docs/scheme/rfc-wasi-gfx-frame-loop.md) |
 
-Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0 and P1 are closed.**
+Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0 and P1 are closed.** Product policy: L5.
 
 ## Quick start
 
@@ -58,6 +59,8 @@ English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)). Chinese siblings 
 | [Scheme index](docs/scheme/README.md) | Living plan only |
 | [Ecosystem RFC](docs/scheme/rfc-ecosystem-contribution.md) | **Accepted:** citable host; old L4 dropped |
 | [Pluggable GPU backend](docs/scheme/rfc-pluggable-gpu-backend.md) | **Accepted:** Dawn default bundle; core without Dawn |
+| [L5 productization](docs/scheme/rfc-l5-productization.md) | **Accepted:** 0.x class B; Central at `0.1.0` |
+| [wasi-gfx frame loop](docs/scheme/rfc-wasi-gfx-frame-loop.md) | **Accepted intent:** `0.1.0` present loop (not P0) |
 | [Long-term plan](docs/scheme/long-term-plan.md) | L0–L5 |
 | [Guest shape](docs/scheme/guest-shape.md) | WIT acceptance rules (S-series) |
 | [wasi:webgpu roadmap](docs/scheme/roadmap-wasi-webgpu.md) | P0 slices |

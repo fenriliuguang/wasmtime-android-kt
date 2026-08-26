@@ -34,4 +34,4 @@ S1–S5 and S6+ hang + L2 described JNI landed in 2026-08. Do not open new host-
 
 ## 4. Present / canvas
 
-`wasi:webgpu` has **no** `present`. Product shape is `gpu-canvas-context`. `wasi-gfx` stays deferred (NG-9). Optional implementation notes (not a cut): [`../mapping/frame-loop-suggestion.md`](../mapping/frame-loop-suggestion.md).
+`wasi:webgpu` has **no** `present`. Product canvas shape is `gpu-canvas-context`. **Continuous on-screen loop for `0.1.0`** is [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md) (not P0; NG-9). Shape notes: [`../mapping/frame-loop-suggestion.md`](../mapping/frame-loop-suggestion.md).

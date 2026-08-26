@@ -20,3 +20,5 @@
 ## 点名优化（不进 Next）
 
 G-err 全量 error-code；G-cmd command world；G-fs-full stat/目录流；G-sock-rest listen/UDP/DNS；G-http-body / service / 出站；G-http-ctor 去掉测试 constructor；G-cli-error。G-dev 已录（V2458A arm64，2026-08-26）。点名：wasi-testsuite、`wasmtime-wasi` crate。
+
+L5 §7 点名的行（出站 TCP、HTTP body stream + 出站、产品面拿掉 G-http-ctor、产品路径上的 guest 可见错误）是 **`0.1.0` backlog**，仍不进 `wasmtime-p2-remaining` `Next:`。G-cmd 全 world、G-fs-full、listen/UDP **不是** 0.1.0 门禁。

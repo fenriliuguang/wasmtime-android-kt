@@ -8,7 +8,7 @@
 
 本仓目标是成为 Wasm 组件链上 **可引用的 Android Host**——不是 UI 框架、不是重写的 Dawn、也不是生产级 WASI 发行版。**默认产品/测试构件包含 Dawn**；核心 AAR 不含。见 [`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。
 
-状态：**experimental**。不宣称合规 wasi:webgpu 产品；不默认发 Maven Central。
+状态：**experimental `0.x`**。不宣称合规 wasi:webgpu / CTS。**等到 `0.1.0` 门禁再发 Maven Central**（[`rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)）。
 
 若与英文冲突，**以 [README.md](README.md) 为准**。
 
@@ -18,9 +18,10 @@
 |--------|------|
 | **P0** | 钉版 `wasi:webgpu@0.3.0-rc.2` Guest 形状 + 真 CM async — **2026-08-22 关闭** |
 | **P1** | 已批准 WASI 0.3 官方形状 + 真机仪器 — **2026-08-26 关闭**（[`p1-wasi-p3.zh.md`](docs/archive/p1-wasi-p3.zh.md)） |
-| **P2** | **现行：** 追踪官方 Wasmtime（[`wasmtime-p2.md`](docs/agent/wasmtime-p2.md)） |
+| **P2** | **现行工程：** 追踪官方 Wasmtime（[`wasmtime-p2.md`](docs/agent/wasmtime-p2.md)） |
+| **L5** | **已接受：** 产品类 B；长期 0.x；0.1.0 才 Central（[`rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)）。帧循环：[`rfc-wasi-gfx-frame-loop.md`](docs/scheme/rfc-wasi-gfx-frame-loop.md) |
 
-成功标准：[`rfc-ecosystem-contribution.zh.md`](docs/scheme/rfc-ecosystem-contribution.zh.md) — 可复现、可引用；**禁止**向上游开 GitHub issue。GPU 接线：[`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。**P0 与 P1 已关闭。**
+成功标准：[`rfc-ecosystem-contribution.zh.md`](docs/scheme/rfc-ecosystem-contribution.zh.md) — 可复现、可引用；**禁止**向上游开 GitHub issue。GPU 接线：[`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。**P0 与 P1 已关闭。** 产品政策：L5。
 
 ## 快速开始
 

@@ -14,6 +14,8 @@ Language: English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)).
 | [`docs/contribute.md`](docs/contribute.md) | Local build, optional desktop shell |
 | [`docs/scheme/rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) | Citable host; P0 unchanged |
 | [`docs/scheme/rfc-pluggable-gpu-backend.md`](docs/scheme/rfc-pluggable-gpu-backend.md) | Dawn default bundle; SPI |
+| [`docs/scheme/rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md) | Product class B; `0.x`; Central at `0.1.0` |
+| [`docs/scheme/rfc-wasi-gfx-frame-loop.md`](docs/scheme/rfc-wasi-gfx-frame-loop.md) | `0.1.0` gfx present loop (not P0) |
 | [`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md) | wasi:webgpu WIT gates |
 | [`docs/agent/wasmtime-p2.md`](docs/agent/wasmtime-p2.md) | P2 Wasmtime pin playbook |
 | [`docs/scheme/non-goals.md`](docs/scheme/non-goals.md) | Hard no |

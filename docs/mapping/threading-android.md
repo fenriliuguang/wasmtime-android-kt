@@ -51,7 +51,7 @@ If a later slice proves “CM loop must share GpuThread”, merge them and revis
 | Waiting for GPU | Latch + `processEvents` in the callback | Non-blocking request → GpuThread finishes → complete future |
 | Acceptance | Historical on-screen smoke | Prove the model first, then frame loops |
 
-A **non-plan** sketch for a later gfx `on-frame` stream loop (MoonBit guest / Kotlin vsync wiring): [`frame-loop-suggestion.md`](frame-loop-suggestion.md). Not a P2 lane; does not change NG-9.
+A **shape-notes** page for the accepted gfx `on-frame` stream loop (MoonBit guest / Kotlin vsync wiring): [`frame-loop-suggestion.md`](frame-loop-suggestion.md). **`0.1.0` gate** is [`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md). Not a P2 lane; NG-9 still forbids a P0 re-queue.
 
 ## 5. WASI 0.3 filesystem sandbox (W6)
 
