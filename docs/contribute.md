@@ -75,7 +75,7 @@ Constraints:
 | Toolchain / ABI pins | `docs/build.md`, `scheme/tech-stack.md`, `changelog/unreleased/` fragment |
 | Public API / error types | `scheme/api-stability.md`, `mapping/errors.md`, fragment |
 | GPU host | [`blocked-gpu-host.md`](blocked-gpu-host.md) — vendor Host Kotlin; Dawn via `androidx.webgpu` |
-| WASI / webgpu scope | [`scheme/wasi-p3-surface.md`](scheme/wasi-p3-surface.md) (stub), [`agent/wasmtime-p2.md`](agent/wasmtime-p2.md); P0 closed: [`archive/p0-wasi-webgpu.md`](archive/p0-wasi-webgpu.md); P1 closed: [`archive/p1-wasi-p3.md`](archive/p1-wasi-p3.md); named leftovers: [`mapping/gap-wasi-p3-wit.md`](mapping/gap-wasi-p3-wit.md) |
+| WASI / webgpu scope | [`scheme/wasi-p3-surface.md`](scheme/wasi-p3-surface.md) (stub), [`agent/wasmtime-p2.md`](agent/wasmtime-p2.md); P0 closed: [`archive/p0-wasi-webgpu.md`](archive/p0-wasi-webgpu.md); P1 closed: [`archive/p1-wasi-p3.md`](archive/p1-wasi-p3.md); named leftovers: [`mapping/gap-wasi-p3-wit.md`](mapping/gap-wasi-p3-wit.md); product policy: [`scheme/rfc-l5-productization.md`](scheme/rfc-l5-productization.md) |
 
 ## 5. PR summary
 

@@ -6,6 +6,8 @@
 
 This page keeps **P1 leftover official 0.3.0 shapes** as **named future optimizations**. They are **not** `wasmtime-p2-remaining.py` `Next:`. Do **not** auto-cut them. Do **not** re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, or G-dev.
 
+Rows that [`rfc-l5-productization.md`](../scheme/rfc-l5-productization.md) §7 names (outbound TCP, HTTP **body stream** + outbound, drop product G-http-ctor, guest-visible errors on product cli/IO paths) are the **`0.1.0` backlog**. They still do **not** enter `wasmtime-p2-remaining` `Next:`. G-cmd full world, G-fs-full, listen/UDP stay named-only and are **not** `0.1.0` gates.
+
 Pin: [WASI 0.3.0](https://github.com/WebAssembly/WASI/releases/tag/v0.3.0) ([overview](https://wasi.dev/releases/wasi-p3)).
 
 **Degree**

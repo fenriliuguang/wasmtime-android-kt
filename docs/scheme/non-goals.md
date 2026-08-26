@@ -9,11 +9,11 @@ Hard boundaries until a new RFC.
 | NG-2 | Depend on **wasmtime4j** as the runtime (including transitive CM execution) |
 | NG-3 | Reimplement a full **Kotlin WebGPU client API** (engine-shaped) |
 | NG-4 | Treat “all WASI 0.3 worlds” or “full wasi-testsuite P3” as the single KPI |
-| NG-5 | Claim a **compliant wasi:webgpu product** or production Android Wasm runtime before a dedicated RFC |
-| NG-6 | Default **Maven Central** publish |
+| NG-5 | Claim a **compliant wasi:webgpu product**, CTS pass, or WASI 1.0 distro. L5 is a **`0.x` product subset**, not this claim |
+| NG-6 | Publish **Maven Central** / GitHub Packages **before `0.1.0` gates** (no `0.0.x-preview` Central). After gates: L5 coordinates |
 | NG-7 | Implement a **second Dawn renderer** in this repo (packaging / adapting one Dawn as `:host-dawn` is allowed; see [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)) |
 | NG-8 | Treat Latch / sync-compat as **true** CM async / WASI 0.3 async DoD |
-| NG-9 | Promote **wasi-gfx / multi-window** to the same near-term P0 as `wasi:webgpu` |
+| NG-9 | Promote **wasi-gfx / multi-window** to a **P0** wasi:webgpu re-queue. A **minimal** gfx present loop is a **`0.1.0` product gate** ([`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md)), not P0 |
 | NG-11 | Replace “track upstream Wasmtime” with a non-official engine |
 | NG-12 | Accept **host-fixed descriptor + transitional u32** as the DoD for **new** wasi:webgpu slices |
 
@@ -27,7 +27,7 @@ Removed from the living table (historical dual-product policy): silent-replace o
 | DG-2 | iOS / desktop as first-class |
 | DG-3 | Full cloud/CLI WASI distro |
 | DG-4 | Interpreter fallback (no Cranelift) |
-| DG-6 | Minimal wasi-gfx present glue |
+| DG-6 | Full wasi-gfx / multi-window (beyond the **minimal** `0.1.0` present loop in [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md)) |
 
 ## Allowed
 

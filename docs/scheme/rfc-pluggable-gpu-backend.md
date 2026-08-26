@@ -6,6 +6,7 @@
 > Amends [`charter.md`](charter.md), [`tech-stack.md`](tech-stack.md), [`non-goals.md`](non-goals.md), [`guest-shape.md`](guest-shape.md).  
 > Guest probe: [`gpu.request-adapter`](guest-shape.md) → `option<own<gpu-adapter>>` (`none` = no usable adapter).  
 > Does **not** change P0 WIT shape or true CM async.  
+> **Amended 2026-08-26** by [`rfc-l5-productization.md`](rfc-l5-productization.md): dual-track attach; three coordinates; Central at `0.1.0`.  
 > Host Kotlin is vendored in `:host-dawn`; Dawn `.so` is published `androidx.webgpu` ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)).
 
 ## 1. Decision
@@ -15,8 +16,8 @@
 | Does this repo provide a Dawn-backed host? | **Yes.** The in-tree **test runtime** and the **default product artifact** include Dawn. |
 | Must every consumer ship Dawn? | **No.** Core runtime AAR has **no** Dawn `.so`. Apps may omit the Dawn module and supply a spec-shaped host, or run with no GPU backend. |
 | How does a guest see “no backend / no adapter”? | **`request-adapter` returns `none`** — same as WebGPU `GPU.requestAdapter()` → `null`. Not a missing import, not “resource not found”, not a trap. |
-| Publish (later, L5)? | **Two (or three) coordinates**, not one fat-only jar: runtime · Dawn backend · optional bundle that depends on both. |
-| “Dynamic backend” means? | **App-chosen implementation on the classpath / via explicit register**, resolved when the store is created. Not Play Feature Delivery, not downloading `.so` at runtime. |
+| Publish (L5)? | **Three** coordinates (`runtime` / `host-dawn` / **`android-webgpu` default**). Central only after **`0.1.0` gates**. |
+| “Dynamic backend” means? | **Dual track (L5):** explicit `setWebGpuBackend` is the stable contract; ServiceLoader is default-bundle convenience. Not Play Feature Delivery, not downloading `.so` at runtime. |
 
 ## 2. Why not one AAR
 
@@ -85,16 +86,16 @@ interface WebGpuBackend : AutoCloseable {
 }
 ```
 
-### 4.1 Two legal ways to attach
+### 4.1 Two legal ways to attach (dual track; L5)
 
-1. **Explicit (preferred for apps):** `store.setWebGpuBackend(backend)` or `GpuBackends.dawn().attach(store)` before instantiate.  
-2. **Discovered (default product):** if the app did not call (1), L1 loads `WebGpuBackendFactory` via `ServiceLoader` (Android: also keep a documented `GpuBackends.dawn()` entry so R8 cannot strip it). `:host-dawn` ships `META-INF/services/…WebGpuBackendFactory`.
+1. **Stable contract (always wins):** `store.setWebGpuBackend(backend)` or `GpuBackends.dawn()` before instantiate. BYO, tests, multi-backend **only** this path.  
+2. **Default-bundle convenience:** `android-webgpu` may discover via `ServiceLoader`. Prefer a **new** factory (for example `Store.createWithDiscoveredBackend`) if changing today’s `discoverWebGpuBackend = false` default is too sharp. Zero factories → `request-adapter` **`none`**. Several factories → prefer `id == "dawn"`. R8 `consumer-rules.pro` on `:host-dawn` / `:android-webgpu` is part of the published contract.
 
 Resolution order:
 
 ```text
 1. Explicit setWebGpuBackend / attach
-2. ServiceLoader (if exactly one factory, use it; if several, prefer id "dawn", else first + log)
+2. ServiceLoader (discover path only)
 3. None → request-adapter returns none
 ```
 
@@ -160,7 +161,7 @@ store.setWebGpuBackend(MyBackend())
 - A second Dawn **implementation** (NG-7). This repo **packages / adapts** Dawn, it does not rewrite it.  
 - Full Kotlin WebGPU client API (NG-3).  
 - Compliant wasi:webgpu product claim (NG-5).  
-- Default Central publish **now** (NG-6). The **coordinate split** is designed so L5 can publish separately.  
+- Maven Central **before `0.1.0` gates** (NG-6 / L5). The **coordinate split** is what L5 publishes then.  
 - Runtime download of Dawn `.so`.
 
 ## 8. Follow-up code
@@ -170,4 +171,5 @@ Landed: `:host-dawn` / `:android-webgpu`; `ExperimentalWebGpuBridge` moved out o
 ## 9. Revisions
 
 - SPI method list grows with S-series; bump `0.x` MINOR.  
-- Changing “default product includes Dawn” or “none vs trap” needs a new RFC.
+- Changing “default product includes Dawn” or “none vs trap” needs a new RFC.  
+- 2026-08-26: L5 dual-track (explicit = stable; discover = bundle convenience); Central at `0.1.0`.

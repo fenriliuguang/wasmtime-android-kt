@@ -2,11 +2,11 @@
 
 [English](frame-loop-suggestion.md) | **中文**
 
-**地位：仅建议 — 不是计划、不是切刀、不是 DoD。** 与英文冲突时以英文为准。
+**地位：gfx RFC 的形状笔记 — 不是 DoD，不是 remaining 刀。** 与英文冲突时以英文为准。
 
-本页记录：若本仓以后做连续上屏，host/guest 可以长什么样。**不**加入 [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)。**不**重开 P0 wasi:webgpu。**不**把 `wasi-gfx` 升为近端工作（NG-9 / DG-6 仍要单独 RFC）。
+本页记录 **已接受** 的 `0.1.0` gfx 连续上屏草图。**不**加入 [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)。**不**重开 P0。**NG-9 仍禁止把 gfx 升为 P0**；产品门禁是 [gfx RFC](../scheme/rfc-wasi-gfx-frame-loop.md)，不是本页。
 
-现行队列是 P2 Wasmtime 钉。今日上屏是单帧 WG-6。线程：[`threading-android.md`](threading-android.md)。
+现行工程队列是 P2 Wasmtime 钉。今日上屏是单帧 WG-6。线程：[`threading-android.md`](threading-android.md)。实现 playbook / WIT 钉是后续 PR。
 
 上游草图对齐 [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) `packages/surface`（2026-08：`wasi-gfx:surface@0.2.0` + `surface-webgpu` 引用 `wasi:webgpu@0.3.0-rc.2`）。本仓 **未 vendor** 该树。
 

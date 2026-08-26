@@ -6,11 +6,11 @@ P0 `wasi:webgpu` **已关闭**（[`../archive/p0-wasi-webgpu.zh.md`](../archive/
 
 本队列保持 **官方 `wasmtime` 钉可知、可升级、可回滚**。追踪表：[`../scheme/wasmtime-tracking.zh.md`](../scheme/wasmtime-tracking.zh.md)。KPI **不是**“永远追最新 major”。一车道一 PR。
 
-P1 遗留 WIT 形状（G-err、G-cmd、G-fs-full、G-sock-rest、G-http-body、G-http-ctor、G-cli-error）在 [`../mapping/gap-wasi-p3-wit.zh.md`](../mapping/gap-wasi-p3-wit.zh.md)，作为**点名才做的未来优化**。不进本脚本的 `Next:`。
+P1 遗留 WIT 形状（G-err、G-cmd、G-fs-full、G-sock-rest、G-http-body、G-http-ctor、G-cli-error）在 [`../mapping/gap-wasi-p3-wit.zh.md`](../mapping/gap-wasi-p3-wit.zh.md)，作为**点名才做的未来优化**。不进本脚本的 `Next:`。L5 §7 点名的行是 **`0.1.0` backlog**，仍不自动切。gfx RFC 已接受意图，也不是 P2 `Next:`。
 
 ## 目标
 
-第三人能读追踪表 §2 / §3，知道：钉、上次检查日期、检查时上游 latest、下一步允许的升级路径（patch vs RFC）。不是 `wasmtime-wasi` crate。不是再切 WASI 0.3。不是 Maven Central。
+第三人能读追踪表 §2 / §3，知道：钉、上次检查日期、检查时上游 latest、下一步允许的升级路径（patch vs RFC）。不是 `wasmtime-wasi` crate。不是再切 WASI 0.3。不是 Maven Central（Central 等到 L5 `0.1.0` 门禁）。
 
 当前钉：**47.0.4**（`native/Cargo.toml`）。Dependabot **忽略 major**。
 

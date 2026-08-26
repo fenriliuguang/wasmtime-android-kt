@@ -2,11 +2,11 @@
 
 **English** | [中文](frame-loop-suggestion.zh.md)
 
-**Status: suggestion only — not a plan, not a cut, not DoD.**
+**Status: shape notes for [`rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md) — not DoD, not a remaining-script cut.**
 
-This page records a host/guest shape if this repo later implements a continuous on-screen loop. It does **not** add a lane to [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) or the archived P1 surface. It does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). It does **not** promote `wasi-gfx` to near-term work (NG-9 / DG-6 still need a separate RFC).
+This page records host/guest sketches for the **accepted** `0.1.0` gfx present loop. It does **not** add a lane to [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). It does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). **NG-9 still forbids promoting gfx to P0**; the product gate is the gfx RFC, not this file.
 
-Living queue is P2 Wasmtime pin. On-screen today is one-shot WG-6 (`WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md).
+Living engineering queue is P2 Wasmtime pin. On-screen today is one-shot WG-6 (`WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md). Implementation playbook / WIT pin is a later PR (gfx RFC §5).
 
 Upstream sketches below follow [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) `packages/surface` as of 2026-08 ( `wasi-gfx:surface@0.2.0` + `surface-webgpu` importing `wasi:webgpu@0.3.0-rc.2` ). That tree is **not** vendored here. Names may move.
 
@@ -246,9 +246,9 @@ Instantiate once on GpuThread: `Engine` → `Component.compile` → bind window 
 
 JNI/stream write must bounce L2 work to the Java caller thread (existing 8MiB `wasmtime-cm-pump` constraint).
 
-## 6. What a later RFC would still need
+## 6. What the gfx RFC still leaves to an implementation PR
 
-If this suggestion is ever promoted (separate RFC; not this page):
+The gfx RFC accepted the **pull `on-frame` stream** shape. This page stays sketches. An implementation PR still needs:
 
 | Gap | Note |
 |-----|------|

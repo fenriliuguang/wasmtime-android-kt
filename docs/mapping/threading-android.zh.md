@@ -8,4 +8,4 @@
 
 细节与 M4 钉死以英文正文为准。
 
-帧循环仅建议（非计划 / 非 P2 刀）：[`frame-loop-suggestion.zh.md`](frame-loop-suggestion.zh.md)。
+帧循环形状笔记（gfx RFC / 非 P2 刀）：[`frame-loop-suggestion.zh.md`](frame-loop-suggestion.zh.md)。`0.1.0` 门禁：[`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md)。

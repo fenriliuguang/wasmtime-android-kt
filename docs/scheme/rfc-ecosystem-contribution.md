@@ -1,6 +1,6 @@
 # RFC: Ecosystem contribution criteria (demote L4)
 
-**Status: Accepted** · 2026-08-17 · **Amended 2026-08-21:** never file GitHub issues on upstream repositories.
+**Status: Accepted** · 2026-08-17 · **Amended 2026-08-21:** never file GitHub issues on upstream repositories. · **Amended 2026-08-26:** L5 productization accepted ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
 **English** | [中文](rfc-ecosystem-contribution.zh.md)
 
 > Amends [`long-term-plan.md`](long-term-plan.md). Does **not** change P0 (`wasi:webgpu` canonical WIT + true Component Model async).  
@@ -13,8 +13,8 @@
 | What is mid-term success? | A **citable Android host**: outsiders can reproduce Guest → this runtime → GPU (or a documented stand-in). Android facts stay in this repo. **Do not** file GitHub issues against [`wasi-webgpu`](https://github.com/WebAssembly/wasi-webgpu), Wasmtime, or any other upstream. |
 | Does P0 change? | **No.** Canonical `wasi:webgpu@0.3.0-rc.2` shape + true CM async remain first. |
 | Old L4 (“swap another demo’s default runtime”)? | **Dropped** from the goal stack. Not a success criterion. |
-| Maven Central / “production runtime”? | Still **not** a near-term goal (NG-5 / NG-6). Citability ≠ Central. |
-| `wasi-gfx` / multi-window? | Still **not** P0 (NG-9). |
+| Maven Central / “production runtime”? | Citability ≠ Central. **L5:** no Central until **`0.1.0` gates** (NG-6). CTS / WASI 1.0 distro still forbidden (NG-5). |
+| `wasi-gfx` / multi-window? | Still **not** P0 (NG-9). Minimal present loop is a **`0.1.0` gate**: [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md). |
 
 ## 2. Why
 
@@ -24,7 +24,7 @@ Slice count and internal gates do not make this repo a link in the Wasm componen
 2. **Citable** — one English README sentence, pinned WIT tag, threading contract, no dual-product story on the front door.  
 3. **Local notes** — each completed shape cluster may record Android constraints in `changelog/unreleased/` and topic mapping docs (threads, JNI, Bionic). **Never** GitHub Issues or Discussions-as-issues on upstream.
 
-Shipping Maven or a second GPU stack is not required for (1)–(3).
+Shipping Maven or a second GPU stack is not required for (1)–(3). Maven wait is **`0.1.0` gates**, not “never.”
 
 ## 3. Goal stack (amended)
 
@@ -34,10 +34,10 @@ L1  WASI 0.3 primitives (async func, future, stream, concurrent pump)
 L2  WASI 0.3 core imports subset (as guests block)
 L3  wasi:webgpu canonical WIT (P0) — S-series shape
 L4  Citable host (this RFC) — reproduce + cite + local notes
-L5  Productization RFC (API freeze candidate, publish-or-not) — still separate
+L5  Productization — accepted ([`rfc-l5-productization.md`](rfc-l5-productization.md)): perpetual `0.x`; Central at `0.1.0` gates
 ```
 
-**Hard order:** P0 remains L3. L4 may proceed in parallel with late S-series **documentation** (build/embed notes) but must not weaken WIT shape gates. L5 is not implied by L4.
+**Hard order:** P0 remains L3. L4 may proceed in parallel with late S-series **documentation** (build/embed notes) but must not weaken WIT shape gates. L5 is **accepted**; it is not implied by L4 alone.
 
 Removed: “optional swap of an external demo runtime” as L4.
 
@@ -61,9 +61,9 @@ When an S-series cluster lands (resource/`option`/`result`/`list`/`async`):
 ## 6. Non-goals this RFC does not lift
 
 - Compliant wasi:webgpu product claim  
-- Default Maven Central publish  
+- Maven Central **before `0.1.0` gates** (NG-6; L5)  
 - **Rewriting** Dawn (packaging/adapting one Dawn as `:host-dawn` is in [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md))  
-- Promoting `wasi-gfx` to P0  
+- Promoting `wasi-gfx` to **P0** (minimal loop is L5/`0.1.0`, not this RFC)  
 - Host-fixed transitional `u32` as acceptance for new slices  
 
 ## 7. GPU host (vendored)

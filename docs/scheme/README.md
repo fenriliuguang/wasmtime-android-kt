@@ -7,13 +7,15 @@ Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 
 ## Now
 
-P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 is **closed**. Current queue: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) (P2 Wasmtime pin).
+P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 is **closed**. Current engineering queue: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) (P2 Wasmtime pin). **L5 productization is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
 
 | Doc | Role |
 |-----|------|
 | [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | **P2 playbook** |
 | [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md) | **Accepted:** citable host; drop old L4 |
 | [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md) | **Accepted:** Dawn default bundle; core without Dawn; `request-adapter` `none` |
+| [`rfc-l5-productization.md`](rfc-l5-productization.md) | **Accepted:** class B; perpetual `0.x`; Central at `0.1.0` |
+| [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md) | **Accepted intent:** `0.1.0` gfx present loop (not P0) |
 | [`long-term-plan.md`](long-term-plan.md) | L0–L5 |
 | [`guest-shape.md`](guest-shape.md) | WIT shape gates (P0 closed) |
 | [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 wasi:webgpu (closed) |
@@ -22,7 +24,7 @@ P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 is **closed**. Current queue: [`../a
 | [`charter.md`](charter.md) | Vision / principles |
 | [`non-goals.md`](non-goals.md) | Hard no |
 | [`tech-stack.md`](tech-stack.md) | Wasmtime / JNI / NDK |
-| [`api-stability.md`](api-stability.md) | `0.x-experimental` SemVer |
+| [`api-stability.md`](api-stability.md) | Perpetual `0.x` until upstream 1.0 (L5) |
 | [`vcs-workflow.md`](vcs-workflow.md) | Short-lived branches + PR |
 | [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Vendor: Host Kotlin in-tree; Dawn via androidx.webgpu |
 | [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md) | P0 WIT ↔ androidx holes |
@@ -40,5 +42,5 @@ Slice status: [GitHub Project](https://github.com/users/fenriliuguang/projects/1
 1. Canonical `wasi:webgpu` guest shape; no host-fixed `u32` as new-slice acceptance.  
 2. True CM async via upstream Wasmtime — never Latch/`sync-compat` as “true async”.  
 3. Android-first; package/adapt Dawn as the **default backend**, do not rewrite Dawn (NG-7).  
-4. Experimental; no default Central publish; no compliance claim.  
+4. Experimental `0.x`; **no Central before `0.1.0` gates**; no CTS claim.  
 5. English docs are canonical.

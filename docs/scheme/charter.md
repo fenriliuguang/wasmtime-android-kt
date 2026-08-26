@@ -14,7 +14,7 @@ First proposal world: canonical [`wasi:webgpu`](https://github.com/WebAssembly/w
 - Kotlin-friendly lifecycle, threads, and errors.  
 - **Citable** experimental host — see [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md).
 
-Still **experimental** until a separate product RFC. Not a compliant wasi:webgpu product by default.
+**L5 accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)): product class **B**, perpetual **`0.x`**, Maven Central only after **`0.1.0` gates**. Still **not** a compliant wasi:webgpu product (NG-5). Frame loop: [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md).
 
 ## Principles
 
@@ -27,8 +27,8 @@ Still **experimental** until a separate product RFC. Not a compliant wasi:webgpu
 
 ## Goal stack
 
-See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 (L3 wasi:webgpu shape) is **closed**. P1 (WASI 0.3) is **closed**. Current work is P2 (Wasmtime pin). L4 is citable host. L5 is optional productization.
+See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 (L3 wasi:webgpu shape) is **closed**. P1 (WASI 0.3) is **closed**. Current engineering queue is P2 (Wasmtime pin). L4 is citable host. **L5 is accepted** (0.x product subset; Central at `0.1.0`).
 
 ## Claims
 
-Package coordinates remain experimental (`0.x`). No default Maven Central. No production-runtime marketing.
+Package coordinates stay **`0.x`** until upstream 1.0 gates in L5 §6. **No Maven Central / GitHub Packages until `0.1.0` product gates.** No `0.0.x-preview` Central. No CTS / WASI-1.0 distro marketing.
