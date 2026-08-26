@@ -36,6 +36,22 @@ enum IpAddressFamily {
     Ipv6,
 }
 
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct Ipv4SocketAddress {
+    port: u16,
+    address: (u8, u8, u8, u8),
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum IpSocketAddress {
+    #[component(name = "ipv4")]
+    Ipv4(Ipv4SocketAddress),
+}
+
 struct TcpSocket {
     client: Option<TcpStream>,
     server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
@@ -119,7 +135,7 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
         )?;
         tcp.func_wrap_concurrent(
             "[method]tcp-socket.connect",
-            |accessor, (sock,): (Resource<TcpSocket>,)| {
+            |accessor, (sock, _addr): (Resource<TcpSocket>, IpSocketAddress)| {
                 Box::pin(async move {
                     accessor.with(|mut access| -> wasmtime::Result<()> {
                         access.data_mut().table.get(&sock)?;
@@ -141,7 +157,7 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                         entry.server = Some(server);
                         Ok(())
                     })?;
-                    Ok(())
+                    Ok((Ok::<(), SockErrorCode>(()),))
                 })
             },
         )?;

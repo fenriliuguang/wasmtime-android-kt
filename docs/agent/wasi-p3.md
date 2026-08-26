@@ -61,7 +61,7 @@ W1–W8 smokes are **landed**. Do **not** re-cut them. Remaining auto knives are
 | P1-FS3 | *(landed)* fixture no longer has `gap: no open-at` | directory preopen + `open-at` happy path |
 | P1-FS4 | *(landed)* fixture no longer has `gap: open-at access not guest-visible` | guest `..` → `access` |
 | P1-SK1 | *(landed)* fixture no longer has `gap: create-tcp-socket no address-family` | create takes `ip-address-family` → `result` |
-| P1-SK2 | same file still `gap: connect no ip-socket-address` | `connect: async func(ip-socket-address) -> result` |
+| P1-SK2 | *(landed)* fixture no longer has `gap: connect no ip-socket-address` | `connect: async func(ip-socket-address) -> result` |
 | P1-HT1 | `http_handler.wat` still `gap: handle not result<response>` | `handle -> result<response, error-code>` |
 
 Copy: existing `native/src/cm.rs` instance block for that package + `native/tests/wasi_*.rs` + `fixtures/wasi/` or `fixtures/p3/` + the matching `smoke-app/…/Wasi*InstrumentedTest.kt`. Do not add a second linker stack.

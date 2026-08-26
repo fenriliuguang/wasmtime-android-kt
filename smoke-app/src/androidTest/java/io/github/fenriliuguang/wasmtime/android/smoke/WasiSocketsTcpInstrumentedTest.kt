@@ -13,7 +13,7 @@ import org.junit.runner.RunWith
 /**
  * WASI 0.3: `wasi:sockets` TCP loopback echo via guest async `run`.
  * Requires `INTERNET` (including loopback). Host IO is on a helper thread;
- * Guest `create-tcp-socket(ipv4)` then connect + stream echo `P3SK`.
+ * Guest `create-tcp-socket(ipv4)` then `connect(ipv4 loopback)` + stream echo `P3SK`.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiSocketsTcpInstrumentedTest {
