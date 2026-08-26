@@ -1,0 +1,113 @@
+//! W1: guest multi-chunk stream.write + host 2-byte-per-poll backpressure.
+
+use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll};
+
+use futures::channel::oneshot;
+use wasmtime::component::{
+    Component, FutureReader, Linker, Source, StreamConsumer, StreamReader, StreamResult,
+};
+use wasmtime::{Config, Engine, Store, StoreContextMut};
+
+const PAYLOAD: &[u8] = b"P3C1P3C2P3C3";
+const MAX_PER_POLL: usize = 2;
+
+struct CollectConsumer {
+    buf: Arc<Mutex<Vec<u8>>>,
+    polls: Arc<Mutex<u32>>,
+    done: Option<oneshot::Sender<u32>>,
+}
+
+impl Drop for CollectConsumer {
+    fn drop(&mut self) {
+        if let Some(tx) = self.done.take() {
+            let n = self.buf.lock().map(|b| b.len() as u32).unwrap_or(0);
+            let _ = tx.send(n);
+        }
+    }
+}
+
+impl StreamConsumer<()> for CollectConsumer {
+    type Item = u8;
+
+    fn poll_consume(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        store: StoreContextMut<()>,
+        src: Source<'_, Self::Item>,
+        finish: bool,
+    ) -> Poll<wasmtime::Result<StreamResult>> {
+        let this = self.get_mut();
+        *this.polls.lock().unwrap() += 1;
+        let mut src = src.as_direct(store);
+        let chunk = src.remaining();
+        if chunk.is_empty() {
+            if finish {
+                return Poll::Ready(Ok(StreamResult::Cancelled));
+            }
+            // Match cm.rs: Pending without self-wake (self-wake reenters on Android).
+            let _ = cx;
+            return Poll::Pending;
+        }
+        let n = chunk.len().min(MAX_PER_POLL);
+        this.buf.lock().unwrap().extend_from_slice(&chunk[..n]);
+        src.mark_read(n);
+        Poll::Ready(Ok(StreamResult::Completed))
+    }
+}
+
+#[test]
+fn p3_stream_chunks_backpressure_smoke() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/p3/stream_chunks.wasm"
+    ))?;
+    let component = Component::new(&engine, bytes)?;
+
+    let mut linker = Linker::new(&engine);
+    let buf = Arc::new(Mutex::new(Vec::new()));
+    let polls = Arc::new(Mutex::new(0u32));
+    let buf_host = buf.clone();
+    let polls_host = polls.clone();
+    linker.root().func_wrap(
+        "take-chunks",
+        move |mut store: StoreContextMut<()>, (reader,): (StreamReader<u8>,)| {
+            let (tx, rx) = oneshot::channel::<u32>();
+            reader.pipe(
+                &mut store,
+                CollectConsumer {
+                    buf: buf_host.clone(),
+                    polls: polls_host.clone(),
+                    done: Some(tx),
+                },
+            )?;
+            let fut = FutureReader::new(&mut store, async move {
+                let n = match rx.await {
+                    Ok(n) => n,
+                    Err(_) => 0,
+                };
+                Ok::<_, wasmtime::Error>(n)
+            })?;
+            Ok((fut,))
+        },
+    )?;
+
+    let mut store = Store::new(&engine, ());
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
+    let (n,) = pollster::block_on(func.call_async(&mut store, ()))?;
+    assert_eq!(n, PAYLOAD.len() as u32);
+    assert_eq!(buf.lock().unwrap().as_slice(), PAYLOAD);
+    // 12 bytes at 2/poll → at least 6 consume polls (empty probes may add more).
+    let consume_polls = *polls.lock().unwrap();
+    assert!(
+        consume_polls >= 6,
+        "expected backpressure (≥6 consume polls), got {consume_polls}"
+    );
+    Ok(())
+}

@@ -16,7 +16,7 @@ WASI 0.3 moved async into the Component Model (`async func`, `future<T>`, `strea
 
 | Area | Landed | P1 remaining (W1–W8) |
 |------|--------|----------------------|
-| CM primitives | async import, oneshot future, 4-byte stream read/write | W1 multi-chunk / backpressure / error-complete |
+| CM primitives | async import, oneshot future, 4-byte stream read/write, **W1 multi-chunk + 2-byte/poll backpressure** | — |
 | `wasi:random` | u64 + bytes (cap 4096) | none |
 | `wasi:clocks` | monotonic now/wait/resolution; **transitional** system `u64` | W2 official `instant` / datetime; timezone if in 0.3.0 |
 | `wasi:cli` stdio | **transitional** `future<u32>` / `stream<u8>` | W3–W4 official `result` / tuple |
