@@ -1,10 +1,10 @@
 ;; WASI 0.3 package smoke: wasi:http incoming-handler (in-process ABI)
 ;; Official packages: wasi:http/types@0.3.0 + export incoming-handler@0.3.0.
 ;; Subset: constructors + status-code; handle is async func(own<request>) ->
-;; own<response> (not result / outparam / body). Not a listening HTTP server.
-;; Guest: construct request → handle → status-code 200.
+;; result<own<response>, error-code> (ok path; not outparam / body).
+;; Not a listening HTTP server.
+;; Guest: construct request → handle ok → status-code 200.
 ;; Root `run: async func() -> u32` harness returns 200 for callRunConcurrent.
-;; gap: handle not result<response>
 (component
   (import "wasi:http/types@0.3.0" (instance $types
     (export "request" (type $request (sub resource)))
@@ -20,6 +20,14 @@
   (alias export $types "[constructor]request" (func $request-ctor))
   (alias export $types "[constructor]response" (func $response-ctor))
   (alias export $types "[method]response.status-code" (func $status-code))
+
+  (type $error-code-def (enum "unknown"))
+  (type $handle-result (result (own $response) (error $error-code-def)))
+
+  (core module $libc
+    (memory (export "mem") 1)
+  )
+  (core instance $libc (instantiate $libc))
 
   (core func $request_ctor_lower (canon lower (func $request-ctor)))
   (core func $response_ctor_lower (canon lower (func $response-ctor)))
@@ -47,9 +55,10 @@
     ))
   ))
 
-  (func $handle-lift async (param "request" (own $request)) (result (own $response))
-    (canon lift (core func $i "handle")))
+  (func $handle-lift async (param "request" (own $request)) (result $handle-result)
+    (canon lift (core func $i "handle") (memory $libc "mem")))
   (instance $handler
+    (export "error-code" (type $error-code-def))
     (export "handle" (func $handle-lift)))
   (export "wasi:http/incoming-handler@0.3.0" (instance $handler))
 

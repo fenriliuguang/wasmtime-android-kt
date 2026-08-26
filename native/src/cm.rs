@@ -1120,11 +1120,12 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:http incoming-handler subset (W8).
+    // WASI 0.3: wasi:http incoming-handler subset (W8 + P1-HT1).
     // Official packages: wasi:http/types@0.3.0 + guest export incoming-handler@0.3.0.
     // Subset: constructors + status-code; handle is guest-exported
-    // async func(own<request>) -> own<response> (not result / outparam / body).
-    // In-process ABI smoke (not a listening HTTP server). No wasmtime-wasi.
+    // async func(own<request>) -> result<own<response>, error-code> (ok path;
+    // not outparam / body). In-process ABI smoke (not a listening HTTP server).
+    // No wasmtime-wasi.
     {
         let mut types = linker
             .instance("wasi:http/types@0.3.0")

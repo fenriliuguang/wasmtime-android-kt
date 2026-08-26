@@ -12,6 +12,7 @@ import org.junit.runner.RunWith
 
 /**
  * WASI 0.3: `wasi:http/incoming-handler@0.3.0#handle` via guest async `run`.
+ * `handle` is `async func(own<request>) -> result<own<response>, error-code>` (ok).
  * In-process ABI (not a listening HTTP server). Returns status 200.
  */
 @RunWith(AndroidJUnit4::class)
