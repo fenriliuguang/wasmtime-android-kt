@@ -34,21 +34,30 @@
   (core func $status_lower (canon lower (func $status-code)))
 
   (core module $m
+    (import "" "mem" (memory 1))
     (import "" "request-ctor" (func $request-ctor (result i32)))
     (import "" "response-ctor" (func $response-ctor (result i32)))
     (import "" "status-code" (func $status-code (param i32) (result i32)))
 
-    (func $handle (export "handle") (param $req i32) (result i32)
+    ;; Own response handle (used by root `run`).
+    (func $handle-ok (param $req i32) (result i32)
       (local.get $req)
       drop
       (call $response-ctor)
     )
+    ;; Lifted handle returns a pointer to result {u8 disc, i32 handle} at mem[16].
+    (func $handle (export "handle") (param $req i32) (result i32)
+      (i32.store8 (i32.const 16) (i32.const 0))
+      (i32.store (i32.const 20) (call $handle-ok (local.get $req)))
+      (i32.const 16)
+    )
     (func (export "run") (result i32)
-      (call $status-code (call $handle (call $request-ctor)))
+      (call $status-code (call $handle-ok (call $request-ctor)))
     )
   )
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $libc "mem"))
       (export "request-ctor" (func $request_ctor_lower))
       (export "response-ctor" (func $response_ctor_lower))
       (export "status-code" (func $status_lower))
