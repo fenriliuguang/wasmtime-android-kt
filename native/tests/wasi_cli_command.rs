@@ -7,9 +7,19 @@ use std::task::{Context, Poll};
 
 use futures::channel::oneshot;
 use wasmtime::component::{
-    Component, FutureReader, Linker, Source, StreamConsumer, StreamReader, StreamResult,
+    Component, ComponentType, FutureReader, Lift, Linker, Lower, Source, StreamConsumer,
+    StreamReader, StreamResult,
 };
 use wasmtime::{Config, Engine, Store, StoreContextMut};
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum CliErrorCode {
+    #[component(name = "unknown")]
+    Unknown,
+}
 
 struct CollectConsumer {
     buf: Arc<Mutex<Vec<u8>>>,
@@ -67,11 +77,11 @@ fn register_stdout(linker: &mut Linker<()>) -> wasmtime::Result<()> {
                 },
             )?;
             let fut = FutureReader::new(&mut store, async move {
-                let n = match rx.await {
+                let _n = match rx.await {
                     Ok(n) => n,
                     Err(_) => 0,
                 };
-                Ok::<_, wasmtime::Error>(n)
+                Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(()))
             })?;
             let _ = buf;
             Ok((fut,))
@@ -108,9 +118,8 @@ fn wasi_cli_command_run_concurrent() -> wasmtime::Result<()> {
     let v = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
-                let func = accessor.with(|mut access| {
-                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
-                })?;
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
                 let (value,) = func.call_concurrent(accessor, ()).await?;
                 Ok(value)
             })

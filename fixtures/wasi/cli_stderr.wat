@@ -1,14 +1,21 @@
 ;; WASI 0.3 package smoke: wasi:cli/stderr@0.3.0#write-via-stream
-;; Transitional signature (matches root `take` / stdout): stream<u8> -> future<u32> byte count.
-;; Official WIT uses future<result<_, error-code>>; enum result deferred.
-;; Guest: stream.new → write-via-stream(readable) → write "ERR\n" → drop-writable → future.read.
+;; Official: stream<u8> -> future<result<_, error-code>> (ok path).
+;; Guest: stream.new → write-via-stream(readable) → write "ERR\n" → drop-writable
+;;        → future.read (ok) → return 4.
 (component
-  (type $st (stream u8))
-  (type $ft (future u32))
   (import "wasi:cli/stderr@0.3.0" (instance $stderr
+    (type $error-code-def (enum "unknown"))
+    (export "error-code" (type $error-code (eq $error-code-def)))
+    (type $write-result (result (error $error-code)))
+    (type $st (stream u8))
+    (type $ft (future $write-result))
     (export "write-via-stream" (func (param "data" $st) (result $ft)))
   ))
   (alias export $stderr "write-via-stream" (func $write-via-stream))
+  (alias export $stderr "error-code" (type $error-code))
+  (type $write-result (result (error $error-code)))
+  (type $st (stream u8))
+  (type $ft (future $write-result))
 
   (core module $libc
     (memory (export "mem") 1)
@@ -38,20 +45,20 @@
 
       (local.set $fut (call $write-via-stream (local.get $r)))
 
-      ;; Write 4 bytes ("ERR\n"); host consumer already piped so this should complete.
       (local.set $status (call $stream.write (local.get $w) (i32.const 16) (i32.const 4)))
       (if (i32.eq (local.get $status) (i32.const -1))
         (then unreachable))
 
       (call $stream.drop-writable (local.get $w))
 
-      ;; future.read(handle, ptr) — payload u32 at mem[0]
       (local.set $status (call $future.read (local.get $fut) (i32.const 0)))
       (if (i32.eq (local.get $status) (i32.const -1))
         (then unreachable))
       (call $future.drop-readable (local.get $fut))
+      (if (i32.ne (i32.load8_u (i32.const 0)) (i32.const 0))
+        (then unreachable))
 
-      (i32.load (i32.const 0))
+      i32.const 4
     )
   )
 
