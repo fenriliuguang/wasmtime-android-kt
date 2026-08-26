@@ -5,7 +5,7 @@
 Companion: [`long-term-plan.md`](long-term-plan.md) **P2 (current)** · [`tech-stack.md`](tech-stack.md) · playbook [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md).  
 Policy: depend only on official `wasmtime` (and explicitly chosen official sibling crates). **No wasmtime4j.**
 
-Next auto cut: `python3 ./scripts/wasmtime-p2-remaining.py`. gap: p2 pin eval pending
+Next auto cut: `python3 ./scripts/wasmtime-p2-remaining.py`.
 
 ## 1. What we track
 
@@ -22,9 +22,9 @@ KPI is **knowable, upgradable, rollback-able** — not “always on latest major
 
 ## 2. Current pin (baseline)
 
-| Item | Value (2026-08-11) | Source |
+| Item | Value (2026-08-26) | Source |
 |------|--------------------|--------|
-| `wasmtime` | **47.0.2** | `native/Cargo.toml` |
+| `wasmtime` | **47.0.4** | `native/Cargo.toml` |
 | Intent | Stay on a current **47.x** generation that supports CM async + WASI 0.3 | [`tech-stack.md`](tech-stack.md) |
 | Features (summary) | `component-model` + async (see Cargo.toml) | lockfile at build time |
 | Artifacts | `libwasmtime_android_kt.so` / desktop cdylib | [`../mapping/artifacts.md`](../mapping/artifacts.md) |
@@ -37,11 +37,11 @@ Refresh the “last checked” row when evaluating upstream; do not churn code f
 
 | Field | Current |
 |-------|---------|
-| Last checked | 2026-08-26 (docs close-out; crate still 47.0.2 — P2-EVAL not yet run) |
-| Pin | 47.0.2 |
-| Upstream latest stable (at check) | (fill from crates.io / GitHub on P2-EVAL; docs-only PRs need not fetch) |
+| Last checked | 2026-08-26 |
+| Pin | 47.0.4 |
+| Upstream latest stable (at check) | **48.0.1** (crates.io 2026-08-24); latest **47.x** is **47.0.4** (2026-08-20) |
 | WASI 0.3 / CM async default | Upstream treats WASI 0.3.0 + CM async as mainline from 46; this repo 47.x already uses CM async |
-| Gaps vs long-term plan | P1 WASI 0.3 official-shape **closed**; leftover shapes are named-only ([`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md)). `wasmtime-wasi` crate still **optional**. P2 pin eval pending (this table). |
+| Gaps vs long-term plan | P1 WASI 0.3 official-shape **closed**; leftover shapes are named-only ([`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md)). `wasmtime-wasi` crate still **optional**. Major 48+ needs a §4.1 RFC (not this cut). |
 | Known risks | major may change concurrent APIs; Android cross-compile must regress load + async smoke |
 | Next eval trigger | §5 |
 
@@ -59,7 +59,7 @@ Refresh the “last checked” row when evaluating upstream; do not churn code f
 
 | Change | Process |
 |--------|---------|
-| **patch** (47.0.2 → 47.0.x) | Update Cargo; native build + existing instruments / JVM smoke; changelog fragment; this table |
+| **patch** (47.0.4 → 47.0.x) | Update Cargo; native build + existing instruments / JVM smoke; changelog fragment; this table |
 | **minor** (if upstream ships) | Same as patch + skim component/WASI release notes |
 | **major** (47 → 48+) | **Upgrade RFC** (short): motive, API diff, regression list, rollback pin; dual-ABI build before merge |
 

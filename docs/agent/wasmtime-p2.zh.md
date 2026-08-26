@@ -12,7 +12,7 @@ P1 遗留 WIT 形状（G-err、G-cmd、G-fs-full、G-sock-rest、G-http-body、G
 
 第三人能读追踪表 §2 / §3，知道：钉、上次检查日期、检查时上游 latest、下一步允许的升级路径（patch vs RFC）。不是 `wasmtime-wasi` crate。不是再切 WASI 0.3。不是 Maven Central。
 
-当前钉：**47.0.2**（`native/Cargo.toml`）。Dependabot **忽略 major**。
+当前钉：**47.0.4**（`native/Cargo.toml`）。Dependabot **忽略 major**。
 
 ## 选刀
 

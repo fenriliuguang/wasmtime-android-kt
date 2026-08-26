@@ -24,7 +24,7 @@ LANES = (
     (
         "P2-PATCH",
         "wasmtime-patch",
-        "wasmtime 47.0.2 → 47.0.x per tracking §4.1",
+        "wasmtime 47.0.4 → 47.0.x per tracking §4.1",
         TRACKING,
         "gap: p2 patch pending",
     ),
