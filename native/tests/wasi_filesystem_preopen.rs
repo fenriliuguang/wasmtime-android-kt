@@ -91,6 +91,23 @@ fn sandbox_join(rel: &str) -> Result<PathBuf, FsErrorCode> {
     Ok(sandbox_root().join(p))
 }
 
+fn fs_write_at(path: &std::path::Path, offset: u64, bytes: &[u8]) -> std::io::Result<()> {
+    let start = offset as usize;
+    let mut existing = std::fs::read(path).unwrap_or_default();
+    let end = start.saturating_add(bytes.len());
+    if existing.len() < end {
+        existing.resize(end, 0);
+    }
+    existing[start..end].copy_from_slice(bytes);
+    std::fs::write(path, existing)
+}
+
+fn fs_read_from(path: &std::path::Path, offset: u64) -> Vec<u8> {
+    let bytes = std::fs::read(path).unwrap_or_default();
+    let start = (offset as usize).min(bytes.len());
+    bytes[start..].to_vec()
+}
+
 fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
     {
         let mut types = linker.instance("wasi:filesystem/types@0.3.0")?;
@@ -105,7 +122,7 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
         )?;
         types.func_wrap(
             "[method]descriptor.write-via-stream",
-            |mut store, (desc, reader): (Resource<FsDescriptor>, StreamReader<u8>)| {
+            |mut store, (desc, reader, offset): (Resource<FsDescriptor>, StreamReader<u8>, u64)| {
                 let path = store.data_mut().table.get(&desc)?.path.clone();
                 let (tx, rx) = oneshot::channel::<u32>();
                 let buf = Arc::new(Mutex::new(Vec::new()));
@@ -122,7 +139,12 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                         Err(_) => 0,
                     };
                     let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
-                    match std::fs::write(&path, bytes) {
+                    let wrote = if offset == 0 {
+                        std::fs::write(&path, bytes)
+                    } else {
+                        fs_write_at(&path, offset, &bytes)
+                    };
+                    match wrote {
                         Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(())),
                         Err(_) => Ok(Err(FsErrorCode::Unknown)),
                     }
@@ -132,9 +154,9 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
         )?;
         types.func_wrap(
             "[method]descriptor.read-via-stream",
-            |mut store, (desc,): (Resource<FsDescriptor>,)| {
+            |mut store, (desc, offset): (Resource<FsDescriptor>, u64)| {
                 let path = store.data_mut().table.get(&desc)?.path.clone();
-                let bytes = std::fs::read(&path).unwrap_or_default();
+                let bytes = fs_read_from(&path, offset);
                 let reader = StreamReader::new(&mut store, bytes)?;
                 let fut = FutureReader::new(&mut store, async move {
                     Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))

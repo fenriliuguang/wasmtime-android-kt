@@ -1,10 +1,8 @@
 ;; WASI 0.3 package smoke: wasi:filesystem preopen + read/write
 ;; Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
 ;; get-directories → list<tuple<own<descriptor>, string>> (length 1, name "p3fs.txt").
-;; write-via-stream takes stream<u8> (cli stdout shape); read-via-stream returns
-;; tuple<stream<u8>, future<result<_, error-code>>> (cli stdin shape).
-;; Guest: get-directories index 0 → write "P3FS" → read back → nbytes 4.
-;; gap: read/write no filesize offset
+;; write-via-stream(data, offset: filesize) / read-via-stream(offset) (cli polarity).
+;; Guest: get-directories index 0 → write "P3FS" at offset 0 → read offset 0 → nbytes 4.
 ;; gap: no open-at
 ;; gap: open-at access not guest-visible
 (component
@@ -18,9 +16,9 @@
     (type $read-ret (tuple $st $ft))
     (type $borrow-desc (borrow $descriptor))
     (export "[method]descriptor.write-via-stream"
-      (func (param "self" $borrow-desc) (param "data" $st) (result $ft)))
+      (func (param "self" $borrow-desc) (param "data" $st) (param "offset" u64) (result $ft)))
     (export "[method]descriptor.read-via-stream"
-      (func (param "self" $borrow-desc) (result $read-ret)))
+      (func (param "self" $borrow-desc) (param "offset" u64) (result $read-ret)))
   ))
   (alias export $types "descriptor" (type $descriptor))
   (alias export $types "error-code" (type $error-code))
@@ -63,8 +61,8 @@
     (import "" "future.read" (func $future.read (param i32 i32) (result i32)))
     (import "" "future.drop-readable" (func $future.drop-readable (param i32)))
     (import "" "get-directories" (func $get-directories (param i32)))
-    (import "" "write-via-stream" (func $write-via-stream (param i32 i32) (result i32)))
-    (import "" "read-via-stream" (func $read-via-stream (param i32 i32)))
+    (import "" "write-via-stream" (func $write-via-stream (param i32 i32 i64) (result i32)))
+    (import "" "read-via-stream" (func $read-via-stream (param i32 i64 i32)))
 
     (func (export "run") (result i32)
       (local $desc i32)
@@ -89,7 +87,7 @@
       (local.set $pair (call $stream.new))
       (local.set $r (i32.wrap_i64 (local.get $pair)))
       (local.set $w (i32.wrap_i64 (i64.shr_u (local.get $pair) (i64.const 32))))
-      (local.set $fut (call $write-via-stream (local.get $desc) (local.get $r)))
+      (local.set $fut (call $write-via-stream (local.get $desc) (local.get $r) (i64.const 0)))
 
       (local.set $status (call $stream.write (local.get $w) (i32.const 16) (i32.const 4)))
       (if (i32.eq (local.get $status) (i32.const -1))
@@ -103,8 +101,8 @@
       (if (i32.ne (i32.load8_u (i32.const 0)) (i32.const 0))
         (then unreachable))
 
-      ;; tuple at mem[32]: stream handle, future handle
-      (call $read-via-stream (local.get $desc) (i32.const 32))
+      ;; tuple at mem[32]: stream handle, future handle; offset 0
+      (call $read-via-stream (local.get $desc) (i64.const 0) (i32.const 32))
       (local.set $s (i32.load (i32.const 32)))
       (local.set $fut (i32.load (i32.const 36)))
 
