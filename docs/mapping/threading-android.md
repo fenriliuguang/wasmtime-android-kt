@@ -64,7 +64,11 @@ Path policy:
 - Guest-relative join (for this cut’s preopen file name and any later `open-at`): reject empty, NUL, `..`, `.`, and absolute/prefix paths (`access`).
 - This cut preopens a single file `p3fs.txt` via `get-directories` → `own<descriptor>`. No directory listing.
 
-## 6. Acceptance hints
+## 6. WASI 0.3 sockets (W7)
+
+`wasi:sockets` this cut is **loopback TCP only** (`127.0.0.1`). Android still needs the **INTERNET** permission for any `TcpStream` / `TcpListener`, including loopback (`smoke-app` manifest). Blocking accept / connect / read / write run on a **helper thread**; the CM import is `func_wrap_concurrent` + oneshot (same class as `monotonic-clock.wait-for`). Do not bind sockets or sleep on the ART main thread. No WAN, no UDP.
+
+## 7. Acceptance hints
 
 - Async path: complete happens under the documented thread model; no data-race smoke.  
 - On-screen path: no “wrong thread touched Dawn” crashes.
