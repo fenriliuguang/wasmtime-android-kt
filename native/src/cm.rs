@@ -43,8 +43,8 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use wasmtime::component::{
-    Component, FutureReader, Linker, Resource, ResourceType, Source, StreamConsumer, StreamReader,
-    StreamResult,
+    Component, ComponentType, FutureReader, Lift, Linker, Lower, Resource, ResourceType, Source,
+    StreamConsumer, StreamReader, StreamResult,
 };
 use wasmtime::{Engine, Store, StoreContextMut};
 
@@ -321,6 +321,15 @@ fn pipeline_constant_rep(
     rec.as_ref().map(|r| r.rep() as i32).unwrap_or(0)
 }
 
+/// Official WASI 0.3.0 `wasi:clocks/system-clock` `instant` record
+/// (`seconds: s64`, `nanoseconds: u32`). Not a timezone type.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct SystemClockInstant {
+    seconds: i64,
+    nanoseconds: u32,
+}
+
 /// P3-PRIM-5 / W1: collect guest `stream.write` bytes; complete oneshot on drop.
 /// `max_per_poll` caps items taken per `poll_consume` (backpressure). Use
 /// `usize::MAX` for the original 4-byte `take` / cli stdio path.
@@ -545,8 +554,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     }
 
     // WASI 0.3: wasi:clocks/system-clock@0.3.0 (now + resolution).
-    // now: transitional u64 unix seconds (official WIT is instant record; deferred).
-    // resolution: transitional u64 ns (official WIT may be datetime record).
+    // Official instant record {seconds: s64, nanoseconds: u32}. No timezone in 0.3.0 pin.
     {
         let mut clock = linker
             .instance("wasi:clocks/system-clock@0.3.0")
@@ -554,17 +562,21 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         clock
             .func_wrap("now", |_store, ()| {
                 use std::time::{SystemTime, UNIX_EPOCH};
-                let secs = SystemTime::now()
+                let d = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0);
-                Ok((secs,))
+                    .unwrap_or_default();
+                Ok((SystemClockInstant {
+                    seconds: d.as_secs() as i64,
+                    nanoseconds: d.subsec_nanos(),
+                },))
             })
             .map_err(|e| e.to_string())?;
         clock
             .func_wrap("resolution", |_store, ()| {
-                // Transitional u64 ns (official WIT may be datetime record).
-                Ok((1u64,))
+                Ok((SystemClockInstant {
+                    seconds: 0,
+                    nanoseconds: 1,
+                },))
             })
             .map_err(|e| e.to_string())?;
     }

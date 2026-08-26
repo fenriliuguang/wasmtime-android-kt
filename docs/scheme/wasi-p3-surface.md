@@ -18,7 +18,7 @@ WASI 0.3 moved async into the Component Model (`async func`, `future<T>`, `strea
 |------|--------|----------------------|
 | CM primitives | async import, oneshot future, 4-byte stream read/write, **W1 multi-chunk + 2-byte/poll backpressure** | — |
 | `wasi:random` | u64 + bytes (cap 4096) | none |
-| `wasi:clocks` | monotonic now/wait/resolution; **transitional** system `u64` | W2 official `instant` / datetime; timezone if in 0.3.0 |
+| `wasi:clocks` | monotonic now/wait/resolution; **official** system `instant` `{s64,u32}` (no timezone in 0.3.0 pin) | — |
 | `wasi:cli` stdio | **transitional** `future<u32>` / `stream<u8>` | W3–W4 official `result` / tuple |
 | `wasi:cli/command` | **transitional** `run -> u32` | W5 official result (still not a full world) |
 | `wasi:filesystem` | — | W6 Android sandbox smoke |

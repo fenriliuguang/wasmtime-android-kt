@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 
 /**
  * WASI 0.3: `wasi:clocks/system-clock@0.3.0#now` via guest `run`.
- * Transitional: host returns unix seconds as u64 (not official instant record).
+ * Official `instant` record `{seconds: s64, nanoseconds: u32}`; guest returns seconds.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiSystemClockInstrumentedTest {

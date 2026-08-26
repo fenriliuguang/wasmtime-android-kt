@@ -111,15 +111,14 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdin.
 
 ## `wasi:clocks` — `system-clock.now`
 
-Guest export: `run: func() -> u64`（unix 秒）  
-Host: `wasi:clocks/system-clock@0.3.0#now`（`SystemTime` → unix 秒；钉 `@0.3.0`）
+Guest export: `run: func() -> u64`（unix 秒，取自 `instant.seconds`）  
+Host: `wasi:clocks/system-clock@0.3.0#now`（`SystemTime` → official `instant` `{seconds: s64, nanoseconds: u32}`；钉 `@0.3.0`）
 
-**过渡签名：** `func() -> u64`。官方 WIT 为 `instant` record `{seconds: s64, nanoseconds: u32}`；record / `resolution` / timezone 另切片。
-
-成功：返回值落在合理 unix 秒区间（约 2024–2100）。
+成功：返回值落在合理 unix 秒区间（约 2024–2100）。**无 timezone**（0.3.0 pin 的 `system-clock` 只有 `now` + `resolution`）。
 
 ```powershell
 wasm-tools parse fixtures/wasi/system_now.wat -o fixtures/wasi/system_now.wasm
+wasm-tools validate --features=component-model fixtures/wasi/system_now.wasm
 ```
 
 ## `wasi:clocks` — `monotonic-clock.resolution`
@@ -135,12 +134,10 @@ wasm-tools parse fixtures/wasi/monotonic_resolution.wat -o fixtures/wasi/monoton
 
 ## `wasi:clocks` — `system-clock.resolution`
 
-Guest export: `run: func() -> u64`（duration 纳秒）
-Host: `wasi:clocks/system-clock@0.3.0#resolution`（host 返回 `1`；钉 `@0.3.0`）
+Guest export: `run: func() -> u64`（`instant.nanoseconds`，要求 `seconds == 0`）  
+Host: `wasi:clocks/system-clock@0.3.0#resolution`（`{seconds: 0, nanoseconds: 1}`；钉 `@0.3.0`）
 
-**过渡签名：** `func() -> u64` 纳秒。官方 WIT 可能是 datetime record；本仓与 `system-clock.now` 的过渡 `u64` 对齐。timezone 另切片。
-
-成功：返回 `1`。
+成功：返回 `1`。无 timezone。
 
 ```powershell
 wasm-tools parse fixtures/wasi/system_resolution.wat -o fixtures/wasi/system_resolution.wasm
