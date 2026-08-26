@@ -20,7 +20,7 @@ W1–W8 landed **package-name smokes** (and official **cli/clocks** shapes). The
 | Goal | Official 0.3.0 target (this repo’s pin) | W1–W8 now | Short knives (auto order) |
 |------|------------------------------------------|-----------|---------------------------|
 | **G-fs-shape** | `get-directories` → `list<tuple<descriptor, string>>`; `write-via-stream(data: stream<u8>, offset: filesize) -> future<result<_, error-code>>`; `read-via-stream(offset: filesize) -> tuple<stream<u8>, future<result<_, error-code>>>` | **Smoke** list length 1 + r/w `offset` (smoke uses `0`) | — |
-| **G-fs-open** | Preopen is a **directory**; `[method]descriptor.open-at` relative path; sandbox `..` / absolute / NUL → `access` | join helper exists; guest **cannot** pass a path | **P1-FS3** then **P1-FS4** |
+| **G-fs-open** | Preopen is a **directory**; `[method]descriptor.open-at` relative path; sandbox `..` / absolute / NUL → `access` | directory preopen + `open-at` happy path; guest `..` not yet asserted | **P1-FS4** |
 | **G-sock-shape** | `create-tcp-socket(ip-address-family) -> result<tcp-socket, error-code>`; `connect: async func(ip-socket-address) -> result<_, error-code>` (loopback still OK); data plane stays stream-plus-future | create takes `()`; connect takes `()` and hard-codes `127.0.0.1` | **P1-SK1** then **P1-SK2** |
 | **G-http-shape** | Guest export `handle: async func(request) -> result<response, error-code>` | `handle: async func(own<request>) -> own<response>` | **P1-HT1** |
 
@@ -38,7 +38,7 @@ Order is **P1-FS1 → P1-FS2 → P1-FS3 → P1-FS4 → P1-SK1 → P1-SK2 → P1-
 |----|------|-----------------------------------------------------------|-----|
 | **P1-FS1** | G-fs-shape | *(landed — fixture no longer has `gap: get-directories not list tuple`)* | `get-directories` → `list<tuple<own<descriptor>, string>>` (length 1). Guest uses index 0. Native + `WasiFilesystemPreopenInstrumentedTest` still 4-byte `P3FS` |
 | **P1-FS2** | G-fs-shape | *(landed — fixture no longer has `gap: read/write no filesize offset`)* | `write-via-stream` / `read-via-stream` take `offset: u64`; smoke uses `0` |
-| **P1-FS3** | G-fs-open | same file still `gap: no open-at` | Preopen is the sandbox **directory**; `[method]descriptor.open-at` happy path `"p3fs.txt"`; smoke writes/reads the **opened** child, not the dir. Path join stays `filesystem_sandbox_join` |
+| **P1-FS3** | G-fs-open | *(landed — fixture no longer has `gap: no open-at`)* | Preopen is the sandbox **directory**; `[method]descriptor.open-at` happy path `"p3fs.txt"`; smoke writes/reads the **opened** child |
 | **P1-FS4** | G-fs-open | same file still `gap: open-at access not guest-visible` | Guest `open-at("..")` (or equivalent) yields `error-code.access`. Keep the happy-path instrument; add native assert |
 | **P1-SK1** | G-sock-shape | `fixtures/wasi/sockets_tcp.wat` still `gap: create-tcp-socket no address-family` | `create-tcp-socket: func(ip-address-family) -> result<tcp-socket, error-code>` (ok + `ipv4` in the smoke) |
 | **P1-SK2** | G-sock-shape | same file still `gap: connect no ip-socket-address` | `connect: async func(ip-socket-address) -> result<_, error-code>`; guest passes loopback (host may ignore port and keep the echo pair). Still INTERNET + helper-thread connect |
@@ -76,6 +76,6 @@ Do **not** put these on `Next:`. Record here only.
 |---------|--------|
 | CM stream/future, `wasi:random`, `wasi:clocks` instant | **Smoke** ≈ official for the landed functions |
 | `wasi:cli` stdout/stderr/stdin/run | **Smoke** ≈ official signatures; **Defer** G-err / G-cmd |
-| `wasi:filesystem` | **Smoke** G-fs-shape (list preopen + r/w offset); **Goal** G-fs-open |
+| `wasi:filesystem` | **Smoke** G-fs-shape + directory preopen/`open-at` happy path; **Goal** G-fs-open access (P1-FS4) |
 | `wasi:sockets` | **Smoke** loopback echo; **Goal** G-sock-shape |
 | `wasi:http` | **Smoke** in-process 200; **Goal** G-http-shape |
