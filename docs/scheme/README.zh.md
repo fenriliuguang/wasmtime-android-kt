@@ -16,5 +16,6 @@ P0 已关闭。现行队列：[`../agent/wasi-p3.zh.md`](../agent/wasi-p3.zh.md)
 | [`wasi-p3-surface.md`](wasi-p3-surface.md) | 已批准 WASI 0.3 |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | 引擎钉死 |
 | [`../mapping/gap-webgpu-wit-androidx.zh.md`](../mapping/gap-webgpu-wit-androidx.zh.md) | WIT ↔ androidx 空洞 |
+| [`../mapping/gap-wasi-p3-wit.zh.md`](../mapping/gap-wasi-p3-wit.zh.md) | P1 WASI 0.3.0 官方形状差距 |
 | [`../archive/p0-wasi-webgpu.zh.md`](../archive/p0-wasi-webgpu.zh.md) | P0 收口 |
 | [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Vendor：Host Kotlin；Dawn 用 androidx.webgpu |

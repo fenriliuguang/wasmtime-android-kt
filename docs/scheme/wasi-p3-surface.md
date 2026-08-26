@@ -2,7 +2,7 @@
 
 **English** | [中文](wasi-p3-surface.zh.md)
 
-Companion to [`long-term-plan.md`](long-term-plan.md) **P1**. Playbook: [`../agent/wasi-p3.md`](../agent/wasi-p3.md). Next cut: `.\scripts\wasi-p3-remaining.ps1`.
+Companion to [`long-term-plan.md`](long-term-plan.md) **P1**. Playbook: [`../agent/wasi-p3.md`](../agent/wasi-p3.md). Official-shape gap (post W1–W8): [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Next cut: `.\scripts\wasi-p3-remaining.ps1`.
 
 Spec: [WASI 0.3.0](https://github.com/WebAssembly/WASI/releases/tag/v0.3.0). **This page is the scheduling surface, not a wasi-testsuite promise** (NG-4).
 
@@ -14,16 +14,16 @@ WASI 0.3 moved async into the Component Model (`async func`, `future<T>`, `strea
 
 ## Now vs P1 lanes
 
-| Area | Landed | P1 remaining (W1–W8) |
-|------|--------|----------------------|
+| Area | Landed | P1 remaining |
+|------|--------|--------------|
 | CM primitives | async import, oneshot future, 4-byte stream read/write, **W1 multi-chunk + 2-byte/poll backpressure** | — |
 | `wasi:random` | u64 + bytes (cap 4096) | none |
 | `wasi:clocks` | monotonic now/wait/resolution; **official** system `instant` `{s64,u32}` (no timezone in 0.3.0 pin) | — |
-| `wasi:cli` stdio | stdout/stderr official `future<result<_, error-code>>`; stdin official `tuple<stream, future<result>>` | — |
-| `wasi:cli/command` | official `wasi:cli/run@0.3.0#run` empty `result` (stdio already official; not a full world) | — |
-| `wasi:filesystem` | preopen + read/write smoke (`own<descriptor>` subset; Android cache sandbox) | — |
-| `wasi:sockets` | TCP loopback echo (`create-tcp-socket` + async `connect`; INTERNET) | — |
-| `wasi:http` | incoming-handler in-process ABI (status 200; no `wasmtime-wasi`) | — |
+| `wasi:cli` stdio | stdout/stderr official `future<result<_, error-code>>`; stdin official `tuple<stream, future<result>>` | **Defer** G-err (`unknown` only) |
+| `wasi:cli/command` | official `wasi:cli/run@0.3.0#run` empty `result` (stdio already official; not a full world) | **Defer** G-cmd |
+| `wasi:filesystem` | preopen + read/write smoke (`own<descriptor>` subset; Android cache sandbox) | **G-fs-shape** P1-FS1–FS2; **G-fs-open** P1-FS3–FS4 |
+| `wasi:sockets` | TCP loopback echo (`create-tcp-socket` + async `connect`; INTERNET) | **G-sock-shape** P1-SK1–SK2 |
+| `wasi:http` | incoming-handler in-process ABI (status 200; no `wasmtime-wasi`) | **G-http-shape** P1-HT1 |
 | `wasmtime-wasi` crate | not a dependency | named-only; size + thread review first |
 
 Every remaining lane needs a **device instrument**. Details and file whitelist: the playbook.

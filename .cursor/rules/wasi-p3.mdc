@@ -9,6 +9,8 @@ For 下一刀 / P1 / WASI 0.3 / clocks instant / stream multi-chunk / cli result
 
 P0 `wasi:webgpu` (guest-pipeline, F1–F9, G1–G9, WG-6) is **closed**. Do not start another Dawn consume or leftover-descriptor PR. Gap only: `docs/mapping/gap-webgpu-wit-androidx.md`.
 
+P1 W1–W8 smokes landed. Official-shape follow-ups: `docs/mapping/gap-wasi-p3-wit.md` (P1-FS1…P1-HT1). Do not re-cut W1–W8.
+
 - Next PR: `.\scripts\wasi-p3-remaining.ps1` or `python3 ./scripts/wasi-p3-remaining.py` (one printed Next: only).
 - Do not add `wasmtime-wasi` without a size + Android thread note. Grep `wasi:clocks` / `wasi:cli` in `cm.rs`, then Read ~80 lines.
 - One lane per PR. Every lane has a device instrument. Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.

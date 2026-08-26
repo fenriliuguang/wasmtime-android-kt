@@ -4,6 +4,8 @@
 ;; address (always 127.0.0.1); write/read via streams (cli shapes).
 ;; No UDP / listen / ip-name-lookup.
 ;; Guest: create → connect → write "P3SK" → read echo → nbytes 4.
+;; gap: create-tcp-socket no address-family
+;; gap: connect no ip-socket-address
 (component
   (import "wasi:sockets/tcp@0.3.0" (instance $tcp
     (export "tcp-socket" (type $tcp-socket (sub resource)))

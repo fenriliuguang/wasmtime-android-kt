@@ -26,6 +26,7 @@ P0 `wasi:webgpu` is **closed**. Current queue: [`../agent/wasi-p3.md`](../agent/
 | [`vcs-workflow.md`](vcs-workflow.md) | Short-lived branches + PR |
 | [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Vendor: Host Kotlin in-tree; Dawn via androidx.webgpu |
 | [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md) | P0 WIT ↔ androidx holes |
+| [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md) | P1 WASI 0.3.0 official-shape gap |
 | [`../mapping/threading-android.md`](../mapping/threading-android.md) | Thread contract |
 | [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md) | P0 timeline / problems |
 | [`../build.md`](../build.md) | How to build |

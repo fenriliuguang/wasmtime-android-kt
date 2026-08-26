@@ -4,6 +4,10 @@
 ;; write-via-stream takes stream<u8> (cli stdout shape); read-via-stream returns
 ;; tuple<stream<u8>, future<result<_, error-code>>> (cli stdin shape).
 ;; Guest: get-directories → write "P3FS" → read back → nbytes 4.
+;; gap: get-directories not list tuple
+;; gap: read/write no filesize offset
+;; gap: no open-at
+;; gap: open-at access not guest-visible
 (component
   (import "wasi:filesystem/types@0.3.0" (instance $types
     (export "descriptor" (type $descriptor (sub resource)))

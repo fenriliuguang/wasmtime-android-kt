@@ -4,6 +4,7 @@
 ;; own<response> (not result / outparam / body). Not a listening HTTP server.
 ;; Guest: construct request → handle → status-code 200.
 ;; Root `run: async func() -> u32` harness returns 200 for callRunConcurrent.
+;; gap: handle not result<response>
 (component
   (import "wasi:http/types@0.3.0" (instance $types
     (export "request" (type $request (sub resource)))
