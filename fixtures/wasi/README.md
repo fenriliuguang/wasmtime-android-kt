@@ -174,3 +174,17 @@ Host: `wasi:filesystem/preopens@0.3.0#get-directories` → `own<descriptor>`；`
 wasm-tools parse fixtures/wasi/filesystem_preopen.wat -o fixtures/wasi/filesystem_preopen.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/filesystem_preopen.wasm
 ```
+
+## `wasi:sockets` — TCP loopback echo（Android 子集）
+
+Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
+Host: `wasi:sockets/tcp-create-socket@0.3.0#create-tcp-socket`；`[method]tcp-socket.connect`（钉 `@0.3.0`）
+
+官方包名如上。本切片子集：create 无 `ip-address-family`；`connect` 为 `async func()`（固定 `127.0.0.1`）；write/read 走 stream（对齐 cli）。无 UDP / listen / name-lookup。仅 `127.0.0.1`。Android 需要 **INTERNET**（含 loopback）；阻塞 IO 在 helper 线程，见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §6。
+
+成功：guest `run` 经 `run_concurrent` 返回 `4`。
+
+```powershell
+wasm-tools parse fixtures/wasi/sockets_tcp.wat -o fixtures/wasi/sockets_tcp.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tcp.wasm
+```

@@ -378,6 +378,39 @@ fn filesystem_sandbox_join(rel: &str) -> Result<std::path::PathBuf, FsErrorCode>
     Ok(filesystem_sandbox_root().join(p))
 }
 
+/// Host `resource tcp-socket` for the W7 loopback smoke.
+struct TcpSocket {
+    client: Option<std::net::TcpStream>,
+    server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
+}
+
+/// Bind `127.0.0.1:0`, spawn an echo accept thread, return the client stream.
+/// Loopback only — not WAN. Blocking IO stays off the CM executor.
+fn tcp_loopback_pair() -> std::io::Result<(
+    std::net::TcpStream,
+    std::thread::JoinHandle<std::io::Result<()>>,
+)> {
+    use std::io::{Read, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::time::Duration;
+
+    let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))?;
+    let addr = listener.local_addr()?;
+    let server = std::thread::spawn(move || -> std::io::Result<()> {
+        let (mut sock, _) = listener.accept()?;
+        sock.set_read_timeout(Some(Duration::from_secs(2)))?;
+        sock.set_write_timeout(Some(Duration::from_secs(2)))?;
+        let mut buf = Vec::new();
+        sock.read_to_end(&mut buf)?;
+        sock.write_all(&buf)?;
+        Ok(())
+    });
+    let client = TcpStream::connect_timeout(&addr, Duration::from_secs(2))?;
+    client.set_read_timeout(Some(Duration::from_secs(2)))?;
+    client.set_write_timeout(Some(Duration::from_secs(2)))?;
+    Ok((client, server))
+}
+
 /// P3-PRIM-5 / W1: collect guest `stream.write` bytes; complete oneshot on drop.
 /// `max_per_poll` caps items taken per `poll_consume` (backpressure). Use
 /// `usize::MAX` for the original 4-byte `take` / cli stdio path.
@@ -842,6 +875,146 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         .map_err(|e| wasmtime::Error::msg(format!("sandbox create: {e}")))?;
                 }
                 let resource = store.data_mut().table.push(FsDescriptor { path })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:sockets Android loopback subset (W7).
+    // Official packages: wasi:sockets/tcp@0.3.0 + tcp-create-socket@0.3.0.
+    // Subset: create-tcp-socket takes no address-family; connect is async with
+    // no address (always 127.0.0.1); write/read via streams (cli shapes).
+    // No UDP, no listen, no ip-name-lookup. INTERNET + helper-thread: threading-android.md.
+    {
+        let mut tcp = linker
+            .instance("wasi:sockets/tcp@0.3.0")
+            .map_err(|e| e.to_string())?;
+        tcp.resource(
+            "tcp-socket",
+            ResourceType::host::<TcpSocket>(),
+            |mut store, rep| {
+                let resource = Resource::<TcpSocket>::new_own(rep);
+                store.data_mut().table.delete(resource)?;
+                Ok(())
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        tcp.func_wrap_concurrent(
+            "[method]tcp-socket.connect",
+            |accessor, (sock,): (Resource<TcpSocket>,)| {
+                Box::pin(async move {
+                    accessor.with(|mut access| -> wasmtime::Result<()> {
+                        access.data_mut().table.get(&sock)?;
+                        Ok(())
+                    })?;
+                    let (done_tx, done_rx) = oneshot::channel::<
+                        std::io::Result<(
+                            std::net::TcpStream,
+                            std::thread::JoinHandle<std::io::Result<()>>,
+                        )>,
+                    >();
+                    std::thread::spawn(move || {
+                        let _ = done_tx.send(tcp_loopback_pair());
+                    });
+                    let (client, server) = done_rx
+                        .await
+                        .map_err(|_| wasmtime::Error::msg("connect canceled"))?
+                        .map_err(|e| wasmtime::Error::msg(format!("loopback connect: {e}")))?;
+                    accessor.with(|mut access| -> wasmtime::Result<()> {
+                        let entry = access.data_mut().table.get_mut(&sock)?;
+                        entry.client = Some(client);
+                        entry.server = Some(server);
+                        Ok(())
+                    })?;
+                    Ok(())
+                })
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        tcp.func_wrap(
+            "[method]tcp-socket.write-via-stream",
+            |mut store, (sock, reader): (Resource<TcpSocket>, StreamReader<u8>)| {
+                let client = store
+                    .data_mut()
+                    .table
+                    .get(&sock)?
+                    .client
+                    .as_ref()
+                    .ok_or_else(|| wasmtime::Error::msg("tcp-socket not connected"))?
+                    .try_clone()?;
+                let (tx, rx) = oneshot::channel::<u32>();
+                let buf = Arc::new(Mutex::new(Vec::new()));
+                reader.pipe(
+                    &mut store,
+                    CollectConsumer {
+                        buf: buf.clone(),
+                        done: Some(tx),
+                        max_per_poll: usize::MAX,
+                    },
+                )?;
+                let fut = FutureReader::new(&mut store, async move {
+                    let _n = rx.await.unwrap_or(0);
+                    let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
+                    use std::io::Write;
+                    let mut client = client;
+                    match client.write_all(&bytes).and_then(|_| {
+                        client.shutdown(std::net::Shutdown::Write)
+                    }) {
+                        Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(())),
+                        Err(_) => Ok(Err(CliErrorCode::Unknown)),
+                    }
+                })?;
+                Ok((fut,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        tcp.func_wrap(
+            "[method]tcp-socket.read-via-stream",
+            |mut store, (sock,): (Resource<TcpSocket>,)| {
+                use std::io::Read;
+                let entry = store.data_mut().table.get_mut(&sock)?;
+                let mut client = entry
+                    .client
+                    .as_ref()
+                    .ok_or_else(|| wasmtime::Error::msg("tcp-socket not connected"))?
+                    .try_clone()?;
+                let mut incoming = Vec::new();
+                client
+                    .read_to_end(&mut incoming)
+                    .map_err(|e| wasmtime::Error::msg(format!("loopback read: {e}")))?;
+                if let Some(h) = entry.server.take() {
+                    let _ = h.join();
+                }
+                let reader = StreamReader::new(&mut store, incoming)?;
+                let fut = FutureReader::new(&mut store, async move {
+                    Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(()))
+                })?;
+                Ok(((reader, fut),))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    {
+        let mut create = linker
+            .instance("wasi:sockets/tcp-create-socket@0.3.0")
+            .map_err(|e| e.to_string())?;
+        create
+            .resource(
+                "tcp-socket",
+                ResourceType::host::<TcpSocket>(),
+                |mut store, rep| {
+                    let resource = Resource::<TcpSocket>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        create
+            .func_wrap("create-tcp-socket", |mut store, ()| {
+                let resource = store.data_mut().table.push(TcpSocket {
+                    client: None,
+                    server: None,
+                })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
