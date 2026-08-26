@@ -411,6 +411,13 @@ fn tcp_loopback_pair() -> std::io::Result<(
     Ok((client, server))
 }
 
+/// Host `resource request` / `response` for the W8 incoming-handler smoke.
+struct HttpRequest;
+
+struct HttpResponse {
+    status: u16,
+}
+
 /// P3-PRIM-5 / W1: collect guest `stream.write` bytes; complete oneshot on drop.
 /// `max_per_poll` caps items taken per `poll_consume` (backpressure). Use
 /// `usize::MAX` for the original 4-byte `take` / cli stdio path.
@@ -1017,6 +1024,59 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 })?;
                 Ok((resource,))
             })
+            .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:http incoming-handler subset (W8).
+    // Official packages: wasi:http/types@0.3.0 + guest export incoming-handler@0.3.0.
+    // Subset: constructors + status-code; handle is guest-exported
+    // async func(own<request>) -> own<response> (not result / outparam / body).
+    // In-process ABI smoke (not a listening HTTP server). No wasmtime-wasi.
+    {
+        let mut types = linker
+            .instance("wasi:http/types@0.3.0")
+            .map_err(|e| e.to_string())?;
+        types
+            .resource(
+                "request",
+                ResourceType::host::<HttpRequest>(),
+                |mut store, rep| {
+                    let resource = Resource::<HttpRequest>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .resource(
+                "response",
+                ResourceType::host::<HttpResponse>(),
+                |mut store, rep| {
+                    let resource = Resource::<HttpResponse>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap("[constructor]request", |mut store, ()| {
+                let resource = store.data_mut().table.push(HttpRequest)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap("[constructor]response", |mut store, ()| {
+                let resource = store.data_mut().table.push(HttpResponse { status: 200 })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]response.status-code",
+                |mut store, (resp,): (Resource<HttpResponse>,)| {
+                    Ok((store.data_mut().table.get(&resp)?.status,))
+                },
+            )
             .map_err(|e| e.to_string())?;
     }
 

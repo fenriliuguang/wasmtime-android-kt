@@ -188,3 +188,17 @@ Host: `wasi:sockets/tcp-create-socket@0.3.0#create-tcp-socket`；`[method]tcp-so
 wasm-tools parse fixtures/wasi/sockets_tcp.wat -o fixtures/wasi/sockets_tcp.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tcp.wasm
 ```
+
+## `wasi:http` — incoming-handler（进程内 ABI 子集）
+
+Guest export: 根 `run: async func() -> u32`（200）；官方 `wasi:http/incoming-handler@0.3.0#handle: async func(own<request>) -> own<response>`  
+Host: `wasi:http/types@0.3.0` constructors + `status-code`（钉 `@0.3.0`）
+
+官方包名如上。本切片子集：无 body / fields / `result` / outparam。**不是**监听 HTTP 服务器。未加 `wasmtime-wasi`（体积 + Android 线程，见 changelog）。线程契约见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §7。
+
+成功：根 `run` 经 `run_concurrent` 返回 `200`；官方 `handle` 返回的 response `status-code` 为 `200`。
+
+```powershell
+wasm-tools parse fixtures/wasi/http_handler.wat -o fixtures/wasi/http_handler.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_handler.wasm
+```
