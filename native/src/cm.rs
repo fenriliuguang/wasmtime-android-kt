@@ -439,6 +439,24 @@ enum SockErrorCode {
     Unknown,
 }
 
+/// WASI 0.3.0 `ipv4-socket-address` (P1-SK2). Host loopback ignores port.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct Ipv4SocketAddress {
+    port: u16,
+    address: (u8, u8, u8, u8),
+}
+
+/// WASI 0.3.0 `ip-socket-address` subset (`ipv4` only in this smoke).
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum IpSocketAddress {
+    #[component(name = "ipv4")]
+    Ipv4(Ipv4SocketAddress),
+}
+
 /// Bind `127.0.0.1:0`, spawn an echo accept thread, return the client stream.
 /// Loopback only — not WAN. Blocking IO stays off the CM executor.
 fn tcp_loopback_pair() -> std::io::Result<(
@@ -956,10 +974,11 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:sockets Android loopback subset (W7 + P1-SK1).
+    // WASI 0.3: wasi:sockets Android loopback subset (W7 + P1-SK1 + P1-SK2).
     // Official packages: wasi:sockets/tcp@0.3.0 + tcp-create-socket@0.3.0.
-    // create-tcp-socket(ip-address-family) -> result; connect is async with no
-    // address (always 127.0.0.1); write/read via streams (cli shapes).
+    // create-tcp-socket(ip-address-family) -> result; connect is async
+    // ip-socket-address -> result (host ignores port, always 127.0.0.1);
+    // write/read via streams (cli shapes).
     // No UDP, no listen, no ip-name-lookup. INTERNET + helper-thread: threading-android.md.
     {
         let mut tcp = linker
@@ -977,7 +996,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
         tcp.func_wrap_concurrent(
             "[method]tcp-socket.connect",
-            |accessor, (sock,): (Resource<TcpSocket>,)| {
+            |accessor, (sock, _addr): (Resource<TcpSocket>, IpSocketAddress)| {
                 Box::pin(async move {
                     accessor.with(|mut access| -> wasmtime::Result<()> {
                         access.data_mut().table.get(&sock)?;
@@ -1002,7 +1021,7 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                         entry.server = Some(server);
                         Ok(())
                     })?;
-                    Ok(())
+                    Ok((Ok::<(), SockErrorCode>(()),))
                 })
             },
         )
