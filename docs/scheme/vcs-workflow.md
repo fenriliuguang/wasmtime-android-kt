@@ -99,7 +99,7 @@ After merging the PR that lands this checklist: enable **Require status checks โ
 | Action | Decision |
 |--------|----------|
 | Create standing `feature/stream`, `feature/webgpu`, `feature/clocks` | **Do not** |
-| Landed slices / next cut | **Do not append lists here.** Live: [Project](https://github.com/users/fenriliuguang/projects/1); playbook: [`../agent/wasi-p3.md`](../agent/wasi-p3.md); spec: [`wasi-p3-surface.md`](wasi-p3-surface.md); shipped behavior: [`changelog/unreleased/`](../../changelog/unreleased/) |
+| Landed slices / next cut | **Do not append lists here.** Live: [Project](https://github.com/users/fenriliuguang/projects/1); playbook: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md); P1 surface (archived): [`../archive/p1-wasi-p3-surface.md`](../archive/p1-wasi-p3-surface.md); shipped behavior: [`changelog/unreleased/`](../../changelog/unreleased/) |
 | Hot files | Still avoid two uncoordinated PRs editing the same `native/` source (especially linker registration); freeze docs/CI hubs per ยง4 |
 
 ## 8. Revisions

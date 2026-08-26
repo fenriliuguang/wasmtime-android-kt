@@ -2,7 +2,7 @@
 
 **English** | [中文](roadmap-wasi-webgpu.zh.md)
 
-Proposal: [WebAssembly/wasi-webgpu](https://github.com/WebAssembly/wasi-webgpu). Pin: `wasi:webgpu@0.3.0-rc.2`. Shape: [`guest-shape.md`](guest-shape.md). **Closed 2026-08-22** — [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Remaining holes: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work is P1: [`../agent/wasi-p3.md`](../agent/wasi-p3.md).
+Proposal: [WebAssembly/wasi-webgpu](https://github.com/WebAssembly/wasi-webgpu). Pin: `wasi:webgpu@0.3.0-rc.2`. Shape: [`guest-shape.md`](guest-shape.md). **Closed 2026-08-22** — [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Remaining holes: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work is P2: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md).
 
 ## Goals (done)
 

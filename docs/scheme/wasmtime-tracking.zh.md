@@ -6,4 +6,6 @@
 
 当前钉死：**47.0.2**（`native/Cargo.toml`）。KPI 是可知、可升级、可回滚，不是追最新 major。
 
+P2 现行手册：[`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)。下一刀：`python3 ./scripts/wasmtime-p2-remaining.py`。本表仍有 `gap: p2 pin eval pending`（英文正文）。P1 遗留形状点名见 [`../mapping/gap-wasi-p3-wit.zh.md`](../mapping/gap-wasi-p3-wit.zh.md)。
+
 major 升级须独立 RFC。细节以英文正文为准。

@@ -2,7 +2,7 @@
 
 [English](p0-wasi-webgpu.md) | **中文**
 
-> **2026-08-22 关闭**（`main` `0ed028b`，PR #253）。不要再开 wasi:webgpu 实现队列。活差距表：[`../mapping/gap-webgpu-wit-androidx.zh.md`](../mapping/gap-webgpu-wit-androidx.zh.md)。现行工作：[`../agent/wasi-p3.zh.md`](../agent/wasi-p3.zh.md)。
+> **2026-08-22 关闭**（`main` `0ed028b`，PR #253）。不要再开 wasi:webgpu 实现队列。活差距表：[`../mapping/gap-webgpu-wit-androidx.zh.md`](../mapping/gap-webgpu-wit-androidx.zh.md)。现行工作：[`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)。P1 收口：[`p1-wasi-p3.zh.md`](p1-wasi-p3.zh.md)。
 
 钉版 `wasi:webgpu@0.3.0-rc.2`。形状门禁仍在 [`../scheme/guest-shape.md`](../scheme/guest-shape.md)。与英文冲突时以英文为准。
 

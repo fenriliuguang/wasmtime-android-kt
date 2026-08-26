@@ -1,17 +1,10 @@
 ---
-description: WASI 0.3 (P1) — official package shapes + device instruments; no full-file cm.rs reads
-alwaysApply: true
+description: CLOSED WASI 0.3 (P1) official-shape queue — redirect to Wasmtime pin (P2)
+alwaysApply: false
 ---
 
-# WASI 0.3 (P1)
+# WASI 0.3 (P1, closed)
 
-For 下一刀 / P1 / WASI 0.3 / clocks instant / stream multi-chunk / cli result / filesystem / sockets / http, read `docs/agent/wasi-p3.md` and follow it.
+W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, and G-dev are **closed**. Do not start another official-shape WASI 0.3 auto PR.
 
-P0 `wasi:webgpu` (guest-pipeline, F1–F9, G1–G9, WG-6) is **closed**. Do not start another Dawn consume or leftover-descriptor PR. Gap only: `docs/mapping/gap-webgpu-wit-androidx.md`.
-
-P1 W1–W8 smokes landed. Official-shape follow-ups: `docs/mapping/gap-wasi-p3-wit.md` (P1-FS1…P1-HT1). Do not re-cut W1–W8.
-
-- Next PR: `.\scripts\wasi-p3-remaining.ps1` or `python3 ./scripts/wasi-p3-remaining.py` (one printed Next: only).
-- Do not add `wasmtime-wasi` without a size + Android thread note. Grep `wasi:clocks` / `wasi:cli` in `cm.rs`, then Read ~80 lines.
-- One lane per PR. Every lane has a device instrument. Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
-- Never file GitHub issues (or Discussions-as-issues) on Wasmtime, WASI, or any other upstream. No `gh issue create`.
+Current queue: read `docs/agent/wasmtime-p2.md`. Next: `.\scripts\wasmtime-p2-remaining.ps1` or `python3 ./scripts/wasmtime-p2-remaining.py`. Historical: `docs/archive/p1-wasi-p3.md`. Named leftovers: `docs/mapping/gap-wasi-p3-wit.md`.

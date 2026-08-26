@@ -1,6 +1,6 @@
 # Agent playbook: guest compute / 3D pipeline marshalling
 
-> **Archived 2026-08-22.** Do not implement from this file. P0 close-out: [`p0-wasi-webgpu.md`](p0-wasi-webgpu.md). Current queue: [`../agent/wasi-p3.md`](../agent/wasi-p3.md).
+> **Archived 2026-08-22.** Do not implement from this file. P0 close-out: [`p0-wasi-webgpu.md`](p0-wasi-webgpu.md). Current queue: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md).
 
 **English** | [中文](webgpu-guest-pipeline.zh.md)
 

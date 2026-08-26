@@ -14,11 +14,11 @@ Status: **experimental**. No compliant wasi:webgpu product claim. No default Mav
 
 | Priority | What |
 |----------|------|
-| **P0** | Canonical `wasi:webgpu@0.3.0-rc.2` guest shape + true CM async ([`guest-shape.md`](docs/scheme/guest-shape.md)) |
-| **P1** | Ratified WASI 0.3 primitives/packages as guests need them |
-| **P2** | Track upstream Wasmtime ([`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)) |
+| **P0** | Canonical `wasi:webgpu@0.3.0-rc.2` guest shape + true CM async — **closed** 2026-08-22 ([`guest-shape.md`](docs/scheme/guest-shape.md)) |
+| **P1** | Ratified WASI 0.3 official package shapes + device instruments — **closed** 2026-08-26 ([`p1-wasi-p3.md`](docs/archive/p1-wasi-p3.md)) |
+| **P2** | **Current:** track upstream Wasmtime ([`wasmtime-p2.md`](docs/agent/wasmtime-p2.md), [`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)) |
 
-Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0 is unchanged.**
+Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0 and P1 are closed.**
 
 ## Quick start
 
@@ -61,7 +61,8 @@ English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)). Chinese siblings 
 | [Long-term plan](docs/scheme/long-term-plan.md) | L0–L5 |
 | [Guest shape](docs/scheme/guest-shape.md) | WIT acceptance rules (S-series) |
 | [wasi:webgpu roadmap](docs/scheme/roadmap-wasi-webgpu.md) | P0 slices |
-| [WASI 0.3 surface](docs/scheme/wasi-p3-surface.md) | Ratified P3 cuts |
+| [WASI 0.3 surface](docs/scheme/wasi-p3-surface.md) | P1 cuts (archived; stub → [`p1-wasi-p3-surface.md`](docs/archive/p1-wasi-p3-surface.md)) |
+| [P2 playbook](docs/agent/wasmtime-p2.md) | Current: Wasmtime pin |
 | [Threading](docs/mapping/threading-android.md) | Android / Dawn / CM pump |
 | [Build](docs/build.md) | NDK / cargo-ndk / Gradle |
 | [Archive](docs/archive/README.md) | Historical dual-product docs — do not implement from these |

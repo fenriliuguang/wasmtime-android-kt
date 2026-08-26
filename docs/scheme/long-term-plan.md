@@ -9,9 +9,9 @@
 
 Build an **Android-first JVM Component runtime** that:
 
-1. Hosts **ratified WASI 0.3** capabilities (current: P1);  
+1. Hosts **ratified WASI 0.3** capabilities (**P1 closed** 2026-08-26);  
 2. Treats **canonical `wasi:webgpu` WIT** as the first proposal world (**P0 closed** 2026-08-22);  
-3. Tracks **upstream Wasmtime** only.
+3. Tracks **upstream Wasmtime** only (**P2 current**).
 
 Remain experimental. No default publish. No compliance claim.
 
@@ -19,11 +19,11 @@ Remain experimental. No default publish. No compliance claim.
 
 ```text
 P0  wasi:webgpu canonical shape + true CM async     CLOSED
-P1  WASI 0.3 ratified primitives / packages + device  current
-P2  Upstream Wasmtime pin + upgrade RFC
+P1  WASI 0.3 ratified primitives / packages + device  CLOSED
+P2  Upstream Wasmtime pin + upgrade RFC               current
 ```
 
-P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). P1 playbook: [`../agent/wasi-p3.md`](../agent/wasi-p3.md). Wording stays “proposal host” for webgpu, not “standard product”.
+P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). P1 close-out: [`../archive/p1-wasi-p3.md`](../archive/p1-wasi-p3.md). P2 playbook: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). Wording stays “proposal host” for webgpu, not “standard product”.
 
 ## 3. Stack L0–L5
 
@@ -45,7 +45,7 @@ L5  Productization RFC (API freeze / publish-or-not)
 | Stage | Looks like |
 |-------|------------|
 | Near | **Done:** English front door; Dawn default bundle; Host Kotlin in `:host-dawn`; P0 webgpu shape |
-| Mid | **Current (P1):** official WASI 0.3 package WIT (not transitional smokes) on device; stream beyond 4-byte smoke; **third party can reproduce and cite**; default test APK includes Dawn |
+| Mid | **Done (P1):** official WASI 0.3 package WIT (Smoke subset) on device. **Current (P2):** Wasmtime pin known / upgradeable / rollback-able; **third party can reproduce and cite**; default test APK includes Dawn |
 | Far | Outsiders describe this repo as Android + Wasmtime + canonical wasi:webgpu without a second ABI story |
 
 ## 4. Principles
@@ -53,7 +53,7 @@ L5  Productization RFC (API freeze / publish-or-not)
 1. Do not **rewrite** Dawn (NG-7). Package/adapt Dawn as the default backend; core AAR omits it ([`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)).  
 2. Official CM async / WASI 0.3 async — no fake async.  
 3. Implementation ≠ compliance claim.  
-4. P3 ratified cuts by [`wasi-p3-surface.md`](wasi-p3-surface.md); only wasi:webgpu is P0 among proposals.  
+4. P3 ratified cuts archived at [`../archive/p1-wasi-p3-surface.md`](../archive/p1-wasi-p3-surface.md); only wasi:webgpu is P0 among proposals.  
 5. Android-first.  
 6. New wasi:webgpu slices must be WIT-isomorphic ([`guest-shape.md`](guest-shape.md)).  
 7. English is canonical.
@@ -66,9 +66,9 @@ L5  Productization RFC (API freeze / publish-or-not)
 | [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md) | Citability / L4 |
 | [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md) | Dawn default bundle; SPI; `request-adapter` `none` |
 | [`guest-shape.md`](guest-shape.md) | Shape gates (P0 closed) |
-| [`../agent/wasi-p3.md`](../agent/wasi-p3.md) | P1 WASI 0.3 playbook |
+| [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | P2 Wasmtime pin playbook |
 | [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 (closed) |
-| [`wasi-p3-surface.md`](wasi-p3-surface.md) | P3 cuts |
+| [`../archive/p1-wasi-p3-surface.md`](../archive/p1-wasi-p3-surface.md) | P1 WASI 0.3 cuts (archived) |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | Engine |
 | [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Vendor path: Host Kotlin in-tree; Dawn via androidx.webgpu |
 
@@ -76,4 +76,5 @@ L5  Productization RFC (API freeze / publish-or-not)
 
 - 2026-08-16: Canonical WIT (archived RFC).  
 - 2026-08-17: Ecosystem citability; remove dual-product L4; English front door; pluggable GPU / Dawn default bundle.  
-- 2026-08-22: P0 closed; P1 WASI 0.3 is the living queue.
+- 2026-08-22: P0 closed; P1 WASI 0.3 is the living queue.  
+- 2026-08-26: P1 closed; P2 Wasmtime pin is the living queue. Named P1 leftovers stay in [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md).
