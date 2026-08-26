@@ -1,21 +1,31 @@
 ;; WASI 0.3 package smoke: wasi:clocks/system-clock@0.3.0#now
-;; Transitional: now: func() -> u64 unix seconds (not official instant {s64,u32} record).
-;; Guest exports run echoing the host wall-clock seconds.
+;; Official instant record {seconds: s64, nanoseconds: u32}.
+;; Canon lower stores the record in memory (two scalars > max flat results).
+;; Guest `run` returns the seconds field as u64 (unix wall-clock).
+;; No timezone in the 0.3.0 pin (system-clock exports now + resolution only).
 (component
   (import "wasi:clocks/system-clock@0.3.0" (instance $clock
-    (export "now" (func (result u64)))
+    (type $instant-def (record (field "seconds" s64) (field "nanoseconds" u32)))
+    (export "instant" (type $instant (eq $instant-def)))
+    (export "now" (func (result $instant)))
   ))
   (alias export $clock "now" (func $now))
 
+  (core module $libc (memory (export "mem") 1))
+  (core instance $libc (instantiate $libc))
+
   (core module $m
-    (import "" "now" (func $now (result i64)))
+    (import "" "mem" (memory 1))
+    (import "" "now" (func $now (param i32)))
     (func (export "run") (result i64)
-      call $now
+      (call $now (i32.const 0))
+      (i64.load (i32.const 0))
     )
   )
-  (core func $now_lower (canon lower (func $now)))
+  (core func $now_lower (canon lower (func $now) (memory $libc "mem")))
   (core instance $i (instantiate $m
     (with "" (instance
+      (export "mem" (memory $libc "mem"))
       (export "now" (func $now_lower))
     ))
   ))
