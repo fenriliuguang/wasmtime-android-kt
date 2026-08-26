@@ -12,7 +12,7 @@ P1 leftover WIT shapes (G-err, G-cmd, G-fs-full, G-sock-rest, G-http-body, G-htt
 
 A third party can read §2 / §3 of the tracking table and know: pin, last-checked date, upstream latest at check, and the next allowed upgrade path (patch vs RFC). Not a `wasmtime-wasi` crate. Not a WASI 0.3 re-cut. Not Maven Central.
 
-Current pin: **47.0.2** (`native/Cargo.toml`). Dependabot ignores **major**.
+Current pin: **47.0.4** (`native/Cargo.toml`). Dependabot ignores **major**.
 
 ## Select the cut
 
@@ -44,10 +44,10 @@ Keep true `async` wraps (`func_wrap_concurrent` + yield) for WIT `async func`. `
 
 | PR | Sentinel (remaining drops the lane when this leaves the tracking table) | DoD |
 |----|------------------------------------------------------------------------|-----|
-| **P2-EVAL** | `docs/scheme/wasmtime-tracking.md` still has `gap: p2 pin eval pending` | Refresh §2 / §3: last-checked date, pin (still 47.0.2 unless this PR **is** a patch), upstream latest stable at check. Changelog fragment. Do **not** open a major bump. If a **patch** is justified, land it in the **same** PR (Cargo + lockfile + existing WASI smokes) **or** leave a new `gap: p2 patch pending` needle and stop. Remove `gap: p2 pin eval pending`. |
-| **P2-PATCH** | tracking table has `gap: p2 patch pending` | `47.0.2` → `47.0.x` per §4.1: Cargo.toml + lockfile; `cargo check --locked --lib`; existing `wasi_*` native smokes that already run on CI; changelog; update tracking §2 / §3 and `tech-stack.md` if the pin string changes. Remove the needle. |
+| **P2-EVAL** | `docs/scheme/wasmtime-tracking.md` still has `gap: p2 pin eval pending` | Refresh §2 / §3: last-checked date, pin (still 47.0.4 unless this PR **is** a patch), upstream latest stable at check. Changelog fragment. Do **not** open a major bump. If a **patch** is justified, land it in the **same** PR (Cargo + lockfile + existing WASI smokes) **or** leave a new `gap: p2 patch pending` needle and stop. Remove `gap: p2 pin eval pending`. |
+| **P2-PATCH** | tracking table has `gap: p2 patch pending` | `47.0.4` → `47.0.x` per §4.1: Cargo.toml + lockfile; `cargo check --locked --lib`; existing `wasi_*` native smokes that already run on CI; changelog; update tracking §2 / §3 and `tech-stack.md` if the pin string changes. Remove the needle. |
 
-This close-out PR **adds** the P2-EVAL sentinel. It does **not** evaluate crates.io or bump the crate.
+P2-EVAL landed **2026-08-26**: pin **47.0.4**; crates.io latest stable at check was 48.0.1. Do **not** auto-cut major.
 
 ## Named-only (never `Next:`)
 

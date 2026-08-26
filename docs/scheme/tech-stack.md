@@ -6,7 +6,7 @@
 
 | Item | Choice |
 |------|--------|
-| Crate | Official `wasmtime` **47.x** (currently `47.0.2`) |
+| Crate | Official `wasmtime` **47.x** (currently `47.0.4`) |
 | Features | `component-model` + `component-model-async` + required `async` |
 | Forbidden | wasmtime4j native / `dlopen` of a 4j `.so` |
 | Tracking | [`wasmtime-tracking.md`](wasmtime-tracking.md) |
