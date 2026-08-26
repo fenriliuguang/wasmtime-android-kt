@@ -25,6 +25,17 @@ enum SockErrorCode {
     Unknown,
 }
 
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum IpAddressFamily {
+    #[component(name = "ipv4")]
+    Ipv4,
+    #[component(name = "ipv6")]
+    Ipv6,
+}
+
 struct TcpSocket {
     client: Option<TcpStream>,
     server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
@@ -202,13 +213,19 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                 Ok(())
             },
         )?;
-        create.func_wrap("create-tcp-socket", |mut store, ()| {
-            let resource = store.data_mut().table.push(TcpSocket {
-                client: None,
-                server: None,
-            })?;
-            Ok((resource,))
-        })?;
+        create.func_wrap(
+            "create-tcp-socket",
+            |mut store, (family,): (IpAddressFamily,)| match family {
+                IpAddressFamily::Ipv4 => {
+                    let resource = store.data_mut().table.push(TcpSocket {
+                        client: None,
+                        server: None,
+                    })?;
+                    Ok((Ok(resource),))
+                }
+                IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::Unknown),)),
+            },
+        )?;
     }
     Ok(())
 }

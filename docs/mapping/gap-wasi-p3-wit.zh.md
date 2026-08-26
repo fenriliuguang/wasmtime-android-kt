@@ -12,7 +12,7 @@ W1–W8 已合入 **包名 smoke**，不是完整 0.3.0 guest 链接。完成目
 |------|----------------|
 | G-fs-shape | **Smoke**（P1-FS1 list + P1-FS2 offset） |
 | G-fs-open | **Smoke**（P1-FS3 `open-at` + P1-FS4 `..` → `access`） |
-| G-sock-shape | P1-SK1 `create-tcp-socket(family) -> result` → P1-SK2 `connect(addr) -> result` |
+| G-sock-shape | P1-SK1 **已合入** family+result；P1-SK2 `connect(addr) -> result` |
 | G-http-shape | P1-HT1 `handle -> result<response, error-code>` |
 
 ## 延期（官方 0.3.0，不进 Next）

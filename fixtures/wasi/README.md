@@ -180,7 +180,7 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/filesystem
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
 Host: `wasi:sockets/tcp-create-socket@0.3.0#create-tcp-socket`；`[method]tcp-socket.connect`（钉 `@0.3.0`）
 
-官方包名如上。本切片子集：create 无 `ip-address-family`；`connect` 为 `async func()`（固定 `127.0.0.1`）；write/read 走 stream（对齐 cli）。无 UDP / listen / name-lookup。仅 `127.0.0.1`。Android 需要 **INTERNET**（含 loopback）；阻塞 IO 在 helper 线程，见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §6。官方形状短刀（G-sock-shape）：[`docs/mapping/gap-wasi-p3-wit.md`](../../docs/mapping/gap-wasi-p3-wit.md) P1-SK1–SK2。
+官方包名如上。本切片：`create-tcp-socket(ip-address-family) -> result`（smoke `ipv4`）；`connect` 为 `async func()`（固定 `127.0.0.1`）；write/read 走 stream。无 UDP / listen / name-lookup。仅 `127.0.0.1`。Android 需要 **INTERNET**（含 loopback）；阻塞 IO 在 helper 线程，见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §6。剩余官方形状（G-sock-shape connect）：[`docs/mapping/gap-wasi-p3-wit.md`](../../docs/mapping/gap-wasi-p3-wit.md) P1-SK2。
 
 成功：guest `run` 经 `run_concurrent` 返回 `4`。
 
