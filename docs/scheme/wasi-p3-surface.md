@@ -20,7 +20,7 @@ WASI 0.3 moved async into the Component Model (`async func`, `future<T>`, `strea
 | `wasi:random` | u64 + bytes (cap 4096) | none |
 | `wasi:clocks` | monotonic now/wait/resolution; **official** system `instant` `{s64,u32}` (no timezone in 0.3.0 pin) | — |
 | `wasi:cli` stdio | stdout/stderr official `future<result<_, error-code>>`; stdin official `tuple<stream, future<result>>` | — |
-| `wasi:cli/command` | **transitional** `run -> u32` | W5 official result (still not a full world) |
+| `wasi:cli/command` | official `wasi:cli/run@0.3.0#run` empty `result` (stdio already official; not a full world) | — |
 | `wasi:filesystem` | — | W6 Android sandbox smoke |
 | `wasi:sockets` | — | W7 Android subset |
 | `wasi:http` | — | W8 Android subset |
