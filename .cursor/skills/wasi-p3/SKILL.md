@@ -14,7 +14,7 @@ description: >-
 Read and follow [`docs/agent/wasi-p3.md`](docs/agent/wasi-p3.md) before exploring.
 
 1. Run `.\scripts\wasi-p3-remaining.ps1` (or `python3 ./scripts/wasi-p3-remaining.py`) unless the user named one lane. Do **only** the printed **Next:** PR.
-2. Order: W1 stream multi-chunk → W2 clocks official instant → W3 cli stdout/stderr result → W4 stdin tuple → W5 command official run → W6 filesystem sandbox → W7 sockets → W8 http.
+2. Order: W1–W8 smokes (landed) then official-shape gap P1-FS1 → P1-FS2 → P1-FS3 → P1-FS4 → P1-SK1 → P1-SK2 → P1-HT1. Table: [`docs/mapping/gap-wasi-p3-wit.md`](docs/mapping/gap-wasi-p3-wit.md).
 3. One lane per PR. Do **not** re-cut wasi:webgpu G1–G9 / F1–F9 / guest-pipeline / WG-6. Never file GitHub issues on Wasmtime, WASI, or any other upstream.
 4. Do not add `wasmtime-wasi` without a size + Android thread note in that PR’s changelog. Windowed Read of `cm.rs` (~80 lines after Grep). Copy the existing package instance + fixture + instrument.
 5. Every lane adds or extends a `smoke-app` instrument. Keep true CM async. No `wasi:io@0.2` pollable path.

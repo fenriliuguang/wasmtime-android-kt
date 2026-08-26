@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Next WASI 0.3 (P1) PR. Same output as wasi-p3-remaining.ps1."""
+"""Next WASI 0.3 (P1) PR. Same output as wasi-p3-remaining.ps1.
+
+W1–W8 smokes are closed (fixture exists, no remaining needle). After W8 the
+script prints the first official-shape gap knife (P1-FS1 … P1-HT1). Table:
+docs/mapping/gap-wasi-p3-wit.md. When those are empty, prints Next: none plus
+Named-only leftovers. Do not auto-cut Defer/Out rows.
+"""
 from __future__ import annotations
 
 import argparse
@@ -74,6 +80,63 @@ LANES = (
         None,
         None,
     ),
+    # After W8: official-shape gap knives. Table: docs/mapping/gap-wasi-p3-wit.md
+    (
+        "P1-FS1",
+        "fs-preopen-list",
+        "wasi:filesystem get-directories list<tuple<descriptor, string>>",
+        WASI / "filesystem_preopen.wat",
+        "gap: get-directories not list tuple",
+        None,
+    ),
+    (
+        "P1-FS2",
+        "fs-rw-offset",
+        "wasi:filesystem read/write-via-stream filesize offset",
+        WASI / "filesystem_preopen.wat",
+        "gap: read/write no filesize offset",
+        None,
+    ),
+    (
+        "P1-FS3",
+        "fs-open-at",
+        "wasi:filesystem directory preopen + open-at",
+        WASI / "filesystem_preopen.wat",
+        "gap: no open-at",
+        None,
+    ),
+    (
+        "P1-FS4",
+        "fs-open-at-access",
+        "wasi:filesystem open-at .. -> access",
+        WASI / "filesystem_preopen.wat",
+        "gap: open-at access not guest-visible",
+        None,
+    ),
+    (
+        "P1-SK1",
+        "sockets-create-family",
+        "wasi:sockets create-tcp-socket address-family result",
+        WASI / "sockets_tcp.wat",
+        "gap: create-tcp-socket no address-family",
+        None,
+    ),
+    (
+        "P1-SK2",
+        "sockets-connect-addr",
+        "wasi:sockets connect ip-socket-address result",
+        WASI / "sockets_tcp.wat",
+        "gap: connect no ip-socket-address",
+        None,
+    ),
+    (
+        "P1-HT1",
+        "http-handle-result",
+        "wasi:http incoming-handler handle result<response>",
+        WASI / "http_handler.wat",
+        "gap: handle not result<response>",
+        None,
+    ),
 )
 
 
@@ -100,8 +163,11 @@ def main() -> None:
         lane_id, title, method = leftover[0]
         print(f"Next: {lane_id} {title}")
         print(f"  {method}")
+        if lane_id.startswith("P1-"):
+            print("Gap: docs/mapping/gap-wasi-p3-wit.md")
     else:
-        print("Next: (W1–W8 empty)")
+        print("Next: (W1–W8 empty; official-shape gap empty)")
+        print("Gap: docs/mapping/gap-wasi-p3-wit.md")
         print(
             "Named-only: WASI 0.2 polyfill, full wasi-testsuite, "
             "wasmtime-wasi crate — do not auto-cut; never file upstream issues."

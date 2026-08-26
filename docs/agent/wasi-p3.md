@@ -22,7 +22,7 @@ If the user named a lane, keep **one** family. Otherwise:
 
 No `pwsh`: `python3 ./scripts/wasi-p3-remaining.py` (same flags: `--all`).
 
-Do the printed **Next:** line. Default order **W1 → W8**.
+Do the printed **Next:** line. W1–W8 smokes are landed. Remaining auto order: **P1-FS1 → P1-FS2 → P1-FS3 → P1-FS4 → P1-SK1 → P1-SK2 → P1-HT1** ([`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md)).
 
 ## Hard bans
 
@@ -52,6 +52,18 @@ Do the printed **Next:** line. Default order **W1 → W8**.
 | W7 | missing `fixtures/wasi/sockets_tcp.wat` | `wasi:sockets` Android subset: loopback or documented permission; true async; device instrument. Changelog must mention INTERNET + thread policy |
 | W8 | missing `fixtures/wasi/http_handler.wat` | `wasi:http` Android subset: one `incoming-handler` / proxy smoke on device. May stay loopback. Evaluate `wasmtime-wasi` only in that PR’s fragment |
 
+W1–W8 smokes are **landed**. Do **not** re-cut them. Remaining auto knives are the official-shape gap ([`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md)):
+
+| PR | Sentinel | DoD (summary; full table on the gap page) |
+|----|----------|-------------------------------------------|
+| P1-FS1 | `filesystem_preopen.wat` still `gap: get-directories not list tuple` | `get-directories` → `list<tuple<descriptor, string>>` |
+| P1-FS2 | same file still `gap: read/write no filesize offset` | r/w-via-stream take `offset: filesize` |
+| P1-FS3 | same file still `gap: no open-at` | directory preopen + `open-at` happy path |
+| P1-FS4 | same file still `gap: open-at access not guest-visible` | guest `..` → `access` |
+| P1-SK1 | `sockets_tcp.wat` still `gap: create-tcp-socket no address-family` | create takes `ip-address-family` → `result` |
+| P1-SK2 | same file still `gap: connect no ip-socket-address` | `connect: async func(ip-socket-address) -> result` |
+| P1-HT1 | `http_handler.wat` still `gap: handle not result<response>` | `handle -> result<response, error-code>` |
+
 Copy: existing `native/src/cm.rs` instance block for that package + `native/tests/wasi_*.rs` + `fixtures/wasi/` or `fixtures/p3/` + the matching `smoke-app/…/Wasi*InstrumentedTest.kt`. Do not add a second linker stack.
 
 ## Named-only (never `Next:`)
@@ -72,6 +84,7 @@ Copy: existing `native/src/cm.rs` instance block for that package + `native/test
 - `smoke-app/src/androidTest/java/…/Wasi*InstrumentedTest.kt` or `Stream*InstrumentedTest.kt` — **required**
 - `runtime-api/` / `runtime-jni/` — only if the Kotlin Store/pump API must grow
 - `docs/mapping/threading-android.md` — when the pump or FS/socket thread policy changes
+- `docs/mapping/gap-wasi-p3-wit.md` — that knife’s **one row** (Goal → Smoke)
 - `docs/scheme/wasi-p3-surface.md` — that package’s **one row**
 - `changelog/unreleased/<yyyy-mm-dd>-wasi-<slug>.md` (three bullets)
 
@@ -95,4 +108,4 @@ Cloud images often have no device — still **add** the instrument; do not fail 
 
 PR title: `feat(wasi): L2 <package> <family>` (W1: `feat(wasi): L1 stream multi-chunk`). Label `enhancement`.
 
-User prompt that works: “follow `docs/agent/wasi-p3.md`” or name the lane (`W2 clocks instant`, `W6 filesystem`).
+User prompt that works: “follow `docs/agent/wasi-p3.md`” or name the lane (`P1-FS1`, `G-fs-shape`). Docs-only gap table: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md).

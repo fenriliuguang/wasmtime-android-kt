@@ -75,7 +75,7 @@ Constraints:
 | Toolchain / ABI pins | `docs/build.md`, `scheme/tech-stack.md`, `changelog/unreleased/` fragment |
 | Public API / error types | `scheme/api-stability.md`, `mapping/errors.md`, fragment |
 | GPU host | [`blocked-gpu-host.md`](blocked-gpu-host.md) — vendor Host Kotlin; Dawn via `androidx.webgpu` |
-| WASI / webgpu scope | [`scheme/wasi-p3-surface.md`](scheme/wasi-p3-surface.md), [`agent/wasi-p3.md`](agent/wasi-p3.md); P0 closed: [`archive/p0-wasi-webgpu.md`](archive/p0-wasi-webgpu.md) |
+| WASI / webgpu scope | [`scheme/wasi-p3-surface.md`](scheme/wasi-p3-surface.md), [`agent/wasi-p3.md`](agent/wasi-p3.md); P0 closed: [`archive/p0-wasi-webgpu.md`](archive/p0-wasi-webgpu.md); P1 shape gap: [`mapping/gap-wasi-p3-wit.md`](mapping/gap-wasi-p3-wit.md) |
 
 ## 5. PR summary
 
@@ -95,5 +95,6 @@ Full rules: [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md).
 - [`mapping/artifacts.md`](mapping/artifacts.md)  
 - [`agent/wasi-p3.md`](agent/wasi-p3.md) — P1 WASI 0.3  
 - [`mapping/gap-webgpu-wit-androidx.md`](mapping/gap-webgpu-wit-androidx.md) — P0 WIT ↔ androidx holes  
+- [`mapping/gap-wasi-p3-wit.md`](mapping/gap-wasi-p3-wit.md) — P1 WASI 0.3.0 official-shape gap  
 - [`archive/p0-wasi-webgpu.md`](archive/p0-wasi-webgpu.md) — P0 close-out  
 - [`../archive/README.md`](archive/README.md) — historical M0–M5 / P0 playbooks  
