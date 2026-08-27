@@ -180,7 +180,12 @@ interface WasiWebGpuHost : AutoCloseable {
     /**
      * P010-GFXL: guest `wasi-gfx` `[method]context.present`.
      * Presents the pending swapchain texture from [canvasContextGetCurrentTexture].
-     * Idempotent if [queueSubmit] already presented.
+     * Dawn [queueSubmit] does **not** block GpuThread on the current submit
+     * (that stacked on vsync and dropped beats). The next
+     * [canvasContextGetCurrentTexture] waits the previous canvas GPU fence
+     * before acquire so work overlaps vsync. Older frames are [tryDrop]ped
+     * after GPU done and 3 newer presents. Idempotent if [queueSubmit]
+     * already presented.
      */
     fun canvasContextPresent(context: Int)
 
@@ -727,10 +732,10 @@ interface WasiWebGpuHost : AutoCloseable {
     /**
      * Drop per-frame encoder / pass / command-buffer orphans.
      *
-     * Swapchain View↔Texture pairs are [tryDrop]ped by AbiCm on present / next acquire
-     * (`frameTextureByView`). This must **not** sweep Guest-owned Texture/TextureView
-     * (e.g. cube depth + albedo) that live across frames. Call after [surfacePresent]
-     * (or on frame abort).
+     * Swapchain View↔Texture pairs are [tryDrop]ped on present / next acquire
+     * (Dawn `pendingCanvasPresent`, AbiCm `frameTextureByView` / canvas texture set).
+     * This must **not** sweep Guest-owned Texture/TextureView (e.g. cube depth + albedo)
+     * that live across frames. Call after [surfacePresent] / canvas present (or on frame abort).
      */
     fun releaseFrameResources()
 

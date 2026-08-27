@@ -217,6 +217,11 @@ pub struct GfxOnFrameGate {
 
 struct GfxOnFrameInner {
     pending: bool,
+    /// Guest has consumed a beat and not yet started the next wait.
+    /// Choreographer posts in this window are dropped so the next
+    /// `on-frame` read waits a *fresh* vsync (rAF phase lock). Taking a
+    /// beat that arrived mid-frame caused present-present-gap hitching.
+    in_frame: bool,
     closed: bool,
     dropped: u32,
     consumed: u32,
@@ -233,6 +238,7 @@ impl GfxOnFrameGate {
         Arc::new(Self {
             inner: Mutex::new(GfxOnFrameInner {
                 pending: false,
+                in_frame: false,
                 closed: false,
                 dropped: 0,
                 consumed: 0,
@@ -245,13 +251,13 @@ impl GfxOnFrameGate {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// Fill the 1-slot. Drop this beat if the previous event is unconsumed.
+    /// Fill the 1-slot. Drop if unconsumed **or** guest is still in a frame.
     pub fn post(&self) {
         let mut g = self.lock();
         if g.closed {
             return;
         }
-        if g.pending {
+        if g.pending || g.in_frame {
             g.dropped = g.dropped.saturating_add(1);
             return;
         }
@@ -270,9 +276,11 @@ impl GfxOnFrameGate {
     /// return `Pending` (guest WAT traps on stream.read BLOCKED).
     pub fn wait_take(&self, finish: bool) -> GfxOnFrameTake {
         let mut g = self.lock();
+        g.in_frame = false;
         loop {
             if g.pending {
                 g.pending = false;
+                g.in_frame = true;
                 g.consumed = g.consumed.saturating_add(1);
                 return GfxOnFrameTake::Item;
             }
@@ -289,6 +297,7 @@ impl GfxOnFrameGate {
     /// Zero-length readiness: wait without consuming the slot.
     pub fn wait_ready(&self, finish: bool) -> GfxOnFrameTake {
         let mut g = self.lock();
+        g.in_frame = false;
         loop {
             if g.pending {
                 return GfxOnFrameTake::Item;

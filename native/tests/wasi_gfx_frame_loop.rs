@@ -246,6 +246,7 @@ struct GfxOnFrameGate {
 
 struct GfxOnFrameInner {
     pending: bool,
+    in_frame: bool,
     closed: bool,
     dropped: u32,
     consumed: u32,
@@ -262,6 +263,7 @@ impl GfxOnFrameGate {
         Arc::new(Self {
             inner: Mutex::new(GfxOnFrameInner {
                 pending: false,
+                in_frame: false,
                 closed: false,
                 dropped: 0,
                 consumed: 0,
@@ -279,7 +281,7 @@ impl GfxOnFrameGate {
         if g.closed {
             return;
         }
-        if g.pending {
+        if g.pending || g.in_frame {
             g.dropped = g.dropped.saturating_add(1);
             DROPPED_BEATS.store(g.dropped, Ordering::SeqCst);
             return;
@@ -296,9 +298,11 @@ impl GfxOnFrameGate {
 
     fn wait_take(&self, finish: bool) -> GfxOnFrameTake {
         let mut g = self.lock();
+        g.in_frame = false;
         loop {
             if g.pending {
                 g.pending = false;
+                g.in_frame = true;
                 g.consumed = g.consumed.saturating_add(1);
                 return GfxOnFrameTake::Item;
             }
@@ -314,6 +318,7 @@ impl GfxOnFrameGate {
 
     fn wait_ready(&self, finish: bool) -> GfxOnFrameTake {
         let mut g = self.lock();
+        g.in_frame = false;
         loop {
             if g.pending {
                 return GfxOnFrameTake::Item;
@@ -390,11 +395,8 @@ fn start_vsync(gate: Arc<GfxOnFrameGate>) -> wasmtime::Result<()> {
             gate.post();
             gate.post();
             let deadline = Instant::now() + Duration::from_secs(5);
-            while gate.consumed() < 1 && Instant::now() < deadline {
-                thread::sleep(Duration::from_millis(2));
-            }
-            gate.post();
             while gate.consumed() < 2 && Instant::now() < deadline {
+                gate.post();
                 thread::sleep(Duration::from_millis(2));
             }
             gate.close();

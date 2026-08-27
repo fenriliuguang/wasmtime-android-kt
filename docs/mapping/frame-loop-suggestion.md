@@ -125,7 +125,7 @@ world windowed-webgpu {
 
 `run` must be **async** so reading `on-frame` can yield. Official CLI `run` result landed as P1 W5 (`result`); a demo world may still keep a tiny export.
 
-Host `on-frame` (P010-GFXH) returns a CM `stream<frame-event>`. **P010-GFXV:** UI Choreographer posts vsync into a 1-slot gate; `poll_produce` writes on **GpuThread**; unconsumed beats drop; `surfaceDestroyed` closes the stream. Pin `on-frame` is a sync `func` (not `async func`); this repo does not enable Wasmtime stackful CM async. Product `surface-webgpu` `context.present` is P010-GFXL.
+Host `on-frame` (P010-GFXH) returns a CM `stream<frame-event>`. **P010-GFXV:** UI Choreographer posts vsync into a 1-slot gate; `poll_produce` writes on **GpuThread**; unconsumed beats drop; `surfaceDestroyed` closes the stream. Pin `on-frame` is a sync `func` (not `async func`); this repo does not enable Wasmtime stackful CM async. Product `surface-webgpu` `context.present` is P010-GFXL. Cube hitch (device): [`gfx-hitch-checklist.md`](gfx-hitch-checklist.md).
 
 ## 4. MoonBit guest (illustrative)
 

@@ -64,4 +64,17 @@ Cpu host (`CpuWasiWebGpuHost`) is a stand-in: VectorAdd shader-text match only. 
 | Second Dawn renderer | **Out** (NG-7) |
 | `wasmtime-wasi` as the WebGPU host | **Out** — GPU is `:host-dawn` |
 
+## 5. Android facts (not a cut queue)
+
+Recorded on Vivo V2458A (Android 16, `arm64-v8a`, Mali-G925-Immortalis MC12) with the out-of-tree rotating-cube demo (continuous `on-frame`, not the 500ms GFXV instrument).
+
+| Observation | Host fact |
+|-------------|-----------|
+| Cube rotation **hitches**, hitch rate **rises**, then GpuThread **SIGSEGV** (`fault addr 0x20`) in `nativeCallRunConcurrent` after ~10–13s | Product `gpu-canvas-context.get-current-texture` inserted a new `HandleTable` `GPUTexture` every frame. `queue.submit` / `context.present` presented but **did not `tryDrop`/close** that texture (Track A `surfaceGetCurrentTextureView` already recycled View↔Texture). Dawn never returned the BLAST image; Mali stalled then crashed. Closing the image in the same `present()` or on the next acquire UAFd Mali (`0x20` / `0x1f8`). A CPU-frame keep-last-N ring without a GPU fence still crashed (~45s) once hitching let the CPU run ahead of BLAST. Blocking GpuThread on the **current** `onSubmittedWorkDone` stacked on vsync and dropped beats. Fix: next `get-current-texture` waits the **previous** canvas fence before acquire (GPU overlaps vsync); `tryDrop` after GPU done and **3** newer frames. Guest-owned textures are not swept. |
+| Cube spins **faster just after launch**, then hitches | Pin `frame-event` is `{ nothing: bool }` (no rAF timestamp). Guest used `angle += const` per beat; V2458A Choreographer is 120 Hz. A host ~60 Hz cap hid the fast start but left hitching (every-other-vsync jitter). Do not cap `on-frame`. Guest delta is `wasi:clocks/monotonic-clock#now` (same role as rAF `t - last`). |
+| `CompositeAlphaMode::Opaque` rejected for this window | Guest should leave canvas `alpha-mode` unset (host picks a capability). Not an androidx hole in §2. |
+| `create-texture` `depth24plus` observed as `RGBA8Unorm` on this path | Guest may skip depth; mapping hole vs pin, not a P0 re-cut. |
+| GFXV instrument did not catch this | `CLOSE_AFTER_VSYNC_MS = 500`. Leak needs seconds of present. Cpu recycle: `WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest`. |
+| Cube **still hitches** after recycle / no 60 Hz cap / clocks dt / in-frame vsync drop | Living checklist: [`gfx-hitch-checklist.md`](gfx-hitch-checklist.md). Strongest remaining: GPU wait on acquire (H1), 60/120 oscillation (H2), per-upload `allocateDirect` (H4), blocking `getCurrentTexture` under `gpuLock` (H21). |
+
 When androidx grows a hole’s ctor argument: copy the existing Kotlin field into Dawn in that pin-bump PR, and update this table. Do not reopen G1–G9 or F1–F9 as queues.
