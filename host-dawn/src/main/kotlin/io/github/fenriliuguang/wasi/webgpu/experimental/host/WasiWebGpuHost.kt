@@ -172,10 +172,17 @@ interface WasiWebGpuHost : AutoCloseable {
     /**
      * Guest `[method]gpu-canvas-context.get-current-texture`.
      * [context] `0` (unconfigured fixture) allocates a 1×1 texture.
-     * With a bound native window, returns the swapchain texture and the host
-     * clears + presents (WIT has no `present`).
+     * With a bound native window, returns the swapchain texture. Present is
+     * [queueSubmit] (WG-6) and/or [canvasContextPresent] (P010-GFXL).
      */
     fun canvasContextGetCurrentTexture(context: Int): GpuHandle
+
+    /**
+     * P010-GFXL: guest `wasi-gfx` `[method]context.present`.
+     * Presents the pending swapchain texture from [canvasContextGetCurrentTexture].
+     * Idempotent if [queueSubmit] already presented.
+     */
+    fun canvasContextPresent(context: Int)
 
     /**
      * Guest `[method]gpu-canvas-context.get-configuration` option discriminant.

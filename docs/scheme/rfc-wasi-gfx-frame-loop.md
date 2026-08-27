@@ -50,6 +50,6 @@ Thread rules stay [`../mapping/threading-android.md`](../mapping/threading-andro
 
 1. Pin + vendor WIT under `third_party/` (one tag) — **P010-GFXP** (`v0.2.0`) landed.  
 2. Host `surface` + `on-frame` stream on GpuThread — **P010-GFXH** landed.  
-3. Product guest path (not fixture constructors).  
-4. Device instrument: multi-frame present (WG-6 one-shot stays).  
+3. Product guest path (not fixture constructors) — **P010-GFXL** landed (`get-device` bootstrap stays fixture).  
+4. Device instrument: multi-frame present (WG-6 one-shot stays) — **P010-GFXL** landed.  
 5. Auto: [`product-010.md`](product-010.md) **P010-GFXP → GFXH → GFXL**.

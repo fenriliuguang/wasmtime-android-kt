@@ -6,7 +6,7 @@
 
 This page records host/guest sketches for the **accepted** `0.1.0` gfx present loop. It does **not** add a lane to [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). It does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). **NG-9 still forbids promoting gfx to P0**; the product gate is the gfx RFC, not this file.
 
-Living engineering queue is P2 Wasmtime pin. On-screen today is one-shot WG-6 (`WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md). WIT pin is **P010-GFXP** (`v0.2.0`); host `on-frame` is P010-GFXH; present loop is P010-GFXL (gfx RFC §5).
+Living engineering queue is P2 Wasmtime pin. On-screen today is one-shot WG-6 (`WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`) plus P010-GFXL multi-frame `WasiGfxFrameLoopInstrumentedTest`. Thread rules: [`threading-android.md`](threading-android.md). WIT pin is **P010-GFXP** (`v0.2.0`); host `on-frame` is P010-GFXH; present loop is P010-GFXL (gfx RFC §5).
 
 Upstream sketches below follow [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) tag **`v0.2.0`** (`wasi-gfx:surface@0.2.0` + `surface-webgpu` importing `wasi:webgpu@0.3.0-rc.2`). Vendored [`../../third_party/wasi-gfx/v0.2.0/wit/surface.wit`](../../third_party/wasi-gfx/v0.2.0/wit/surface.wit). Names may move; do not pick a second tag without a changelog.
 
@@ -125,7 +125,7 @@ world windowed-webgpu {
 
 `run` must be **async** so reading `on-frame` can yield. Official CLI `run` result landed as P1 W5 (`result`); a demo world may still keep a tiny export.
 
-Host `on-frame` (P010-GFXH) returns a CM `stream<frame-event>`; vsync payload is produced on a helper thread named `GpuThread`. Pin `on-frame` is a sync `func` (not `async func`); this repo does not enable Wasmtime stackful CM async. Present / `surface-webgpu` is P010-GFXL.
+Host `on-frame` (P010-GFXH) returns a CM `stream<frame-event>`; vsync payload is produced on a helper thread named `GpuThread`. Pin `on-frame` is a sync `func` (not `async func`); this repo does not enable Wasmtime stackful CM async. Product `surface-webgpu` `context.present` is P010-GFXL (two pre-buffered frames; not vsync-paced).
 
 ## 4. MoonBit guest (illustrative)
 
@@ -259,4 +259,4 @@ The gfx RFC accepted the **pull `on-frame` stream** shape. This page stays sketc
 | Dawn latch on the hot path | Per-frame `mapAsync` must not `CountDownLatch` on the pump |
 | Guest toolchain | MoonBit (or Rust) CM async + generated gfx/webgpu bindings |
 
-Until then: keep one-shot WG-6; do not treat this file as `wasmtime-p2-remaining`. Implementation: `product-010-remaining.py` P010-GFXL (GFXP/H landed).
+Until then: keep one-shot WG-6; do not treat this file as `wasmtime-p2-remaining`. Implementation: `product-010-remaining.py` P010-CLAIM (GFXP/H/L landed).

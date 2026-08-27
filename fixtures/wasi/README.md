@@ -263,11 +263,23 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_out.w
 Guest export: `run: async func() -> u32`（构造 surface → `on-frame` → `stream.read` 一条 `frame-event` → 返回 1）  
 Host: `wasi-gfx:surface/surface@0.2.0` constructor + `[method]surface.on-frame`（钉 tag `v0.2.0`）
 
-Guest **拉** stream。Host 在名为 `GpuThread` 的 helper 线程上产生 vsync 载荷，再交给 `StreamReader`。钉里 `on-frame` 是同步 `func`（不是 `async func`）；本刀未开 Wasmtime stackful CM async。无 JS callback。上屏循环见 P010-GFXL。
+Guest **拉** stream。Host 在名为 `GpuThread` 的 helper 线程上产生 vsync 载荷，再交给 `StreamReader`。钉里 `on-frame` 是同步 `func`（不是 `async func`）；本刀未开 Wasmtime stackful CM async。无 JS callback。上屏循环见下节 `gfx_frame_loop`（P010-GFXL）。
 
 成功：guest `run` 返回 `1` **且** 事件在名为 `GpuThread` 的线程上产生。
 
 ```powershell
 wasm-tools parse fixtures/wasi/gfx_on_frame.wat -o fixtures/wasi/gfx_on_frame.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_on_frame.wasm
+```
+
+## `wasi-gfx` — product frame loop（P010-GFXL）
+
+Guest export: `run: async func() -> u32`（surface + `surface-webgpu` context → configure → `on-frame` 循环：`get-current-texture` → `queue.submit` → `context.present` → 返回帧数 2）  
+Host: `wasi-gfx:surface/surface@0.2.0` + `wasi-gfx:surface/surface-webgpu@0.2.0`（钉 tag `v0.2.0`）
+
+GPU 起步仍用 fixture `get-device`（P010-FIX）。`get-queue` / `get-command-buffer` 为产品 leftover。两帧事件在 `GpuThread` 上预缓冲（无 stackful）。无 JS callback。WG-6 单帧回归保留。设备仪器：`WasiGfxFrameLoopInstrumentedTest`。
+
+```powershell
+wasm-tools parse fixtures/wasi/gfx_frame_loop.wat -o fixtures/wasi/gfx_frame_loop.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_frame_loop.wasm
 ```

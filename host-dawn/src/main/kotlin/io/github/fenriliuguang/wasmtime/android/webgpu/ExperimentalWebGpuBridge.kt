@@ -3084,6 +3084,10 @@ object ExperimentalWebGpuBridge {
                 override fun canvasContextGetCurrentTextureDescribed(context: Int): Int =
                     bindings.canvasContextGetCurrentTexture(context)
 
+                override fun canvasContextPresentDescribed(context: Int) {
+                    bindings.canvasContextPresent(context)
+                }
+
                 override fun canvasContextHasConfigurationDescribed(context: Int): Int =
                     bindings.canvasContextHasConfiguration(context)
 
@@ -4375,6 +4379,10 @@ object ExperimentalWebGpuBridge {
 
                 override fun canvasContextGetCurrentTextureDescribed(context: Int): Int =
                     bindings.canvasContextGetCurrentTexture(context)
+
+                override fun canvasContextPresentDescribed(context: Int) {
+                    bindings.canvasContextPresent(context)
+                }
 
                 override fun canvasContextHasConfigurationDescribed(context: Int): Int =
                     bindings.canvasContextHasConfiguration(context)

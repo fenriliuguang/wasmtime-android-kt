@@ -937,6 +937,12 @@ class DawnWasiWebGpuHost private constructor(
         )
     }
 
+    override fun canvasContextPresent(context: Int) {
+        synchronized(gpuLock) {
+            presentPendingCanvasFrameLocked()
+        }
+    }
+
     /** Caller must hold [gpuLock]. Present once after [queueSubmit]. */
     private fun presentPendingCanvasFrameLocked() {
         val pending = pendingCanvasPresent ?: return

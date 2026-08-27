@@ -72,9 +72,9 @@ Path policy:
 
 `wasi:http` this cut is an **in-process** `incoming-handler` ABI smoke (guest `handle` → status 200) plus **body `stream<u8>`** (`consume-body` / `response.new`) and **outbound** `wasi:http/client@0.3.0#send` (HTTP/1.1 GET on the wire). `send` runs on a **helper thread** (same class as TCP connect). Android needs **INTERNET**; smoke-app allows cleartext for the local instrument. No TLS crate this lane (https → `unknown`). Do not add `wasmtime-wasi`.
 
-## 8. wasi-gfx `on-frame` (P010-GFXH)
+## 8. wasi-gfx `on-frame` / present (P010-GFXH / P010-GFXL)
 
-Product `wasi-gfx:surface@0.2.0` `[method]surface.on-frame` returns a CM `stream<frame-event>`. Guest **pulls**. The vsync **payload** is produced on a helper thread named **`GpuThread`** (same name as the Dawn thread). Pin `on-frame` is a sync `func`, not `async func`; this slice does not enable Wasmtime stackful CM async. Do not JS-style `start(callback)`. Present / `surface-webgpu` / multi-frame on-screen is **P010-GFXL**. Do not add `wasmtime-wasi`.
+Product `wasi-gfx:surface@0.2.0` `[method]surface.on-frame` returns a CM `stream<frame-event>`. Guest **pulls**. The vsync **payload** is produced on a helper thread named **`GpuThread`** (same name as the Dawn thread). Pin `on-frame` is a sync `func`, not `async func`; this repo does not enable Wasmtime stackful CM async (events are pre-buffered). Do not JS-style `start(callback)`. Product `surface-webgpu` `context.present` presents the pending swapchain texture (idempotent with WG-6 auto-present on `queue.submit`). Multi-frame instrument: `WasiGfxFrameLoopInstrumentedTest`. Do not add `wasmtime-wasi`.
 
 ## 9. Acceptance hints
 

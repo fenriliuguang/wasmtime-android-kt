@@ -16,6 +16,7 @@
 12. **P010-HCTOR landed:** product `Linker.create` omits `[constructor]request` / `[constructor]response`. Host supplies `request` when calling `handle`. Test linker keeps the constructors.
 13. **P010-GFXP landed:** guest gfx pin is `wasi-gfx:surface@0.2.0` (tag `v0.2.0` under `third_party/wasi-gfx/`). Host `on-frame` is P010-GFXH.
 14. **P010-GFXH landed:** product `wasi-gfx:surface` constructor + `on-frame` CM stream. Vsync payload is produced on a helper thread named `GpuThread`. Guest pulls; no JS callback. Present loop is P010-GFXL.
+15. **P010-GFXL landed:** product guest loops `on-frame` → `get-current-texture` → submit → `context.present` (two frames). `surface-webgpu` is hosted. GPU bootstrap still uses fixture `get-device`. WG-6 one-shot stays.
 
 ## `0.x` rules
 

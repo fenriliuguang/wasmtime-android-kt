@@ -840,6 +840,10 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         )
     }
 
+    override fun canvasContextPresent(context: Int) {
+        // CPU host has no swapchain; gfx present is a successful no-op.
+    }
+
     override fun canvasContextHasConfiguration(context: Int): Int {
         if (context == 0) return 0
         val state = handles.get<CanvasContext>(GpuHandle(context), ResourceKind.CanvasContext)
