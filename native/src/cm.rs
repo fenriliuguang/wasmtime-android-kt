@@ -417,9 +417,14 @@ fn fs_open_child(
         .map_err(|_| FsErrorCode::Unknown)
 }
 
-/// Host `resource tcp-socket` for the W7 loopback smoke.
+/// Host `resource tcp-socket` for the W7 loopback smoke + P010 outbound dial.
 struct TcpSocket {
     client: Option<std::net::TcpStream>,
+    server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
+}
+
+struct TcpConnected {
+    client: std::net::TcpStream,
     server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
@@ -445,7 +450,8 @@ enum SockErrorCode {
     Unknown,
 }
 
-/// WASI 0.3.0 `ipv4-socket-address` (P1-SK2). Host loopback ignores port.
+/// WASI 0.3.0 `ipv4-socket-address` (P1-SK2 / P010-TCP).
+/// Loopback: host still ignores port (W7 echo pair). Non-loopback: host dials.
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(record)]
 #[allow(dead_code)]
@@ -488,6 +494,34 @@ fn tcp_loopback_pair() -> std::io::Result<(
     client.set_read_timeout(Some(Duration::from_secs(2)))?;
     client.set_write_timeout(Some(Duration::from_secs(2)))?;
     Ok((client, server))
+}
+
+/// Guest `connect(ip-socket-address)`: loopback keeps the W7 echo pair;
+/// non-loopback **dials that IPv4:port** (P010-TCP). No listen / UDP.
+fn tcp_connect_guest(addr: IpSocketAddress) -> std::io::Result<TcpConnected> {
+    use std::net::{Ipv4Addr, SocketAddr, TcpStream};
+    use std::time::Duration;
+
+    match addr {
+        IpSocketAddress::Ipv4(a) => {
+            let ip = Ipv4Addr::new(a.address.0, a.address.1, a.address.2, a.address.3);
+            if ip.is_loopback() {
+                let (client, server) = tcp_loopback_pair()?;
+                return Ok(TcpConnected {
+                    client,
+                    server: Some(server),
+                });
+            }
+            let sock_addr = SocketAddr::from((ip, a.port));
+            let client = TcpStream::connect_timeout(&sock_addr, Duration::from_secs(2))?;
+            client.set_read_timeout(Some(Duration::from_secs(2)))?;
+            client.set_write_timeout(Some(Duration::from_secs(2)))?;
+            Ok(TcpConnected {
+                client,
+                server: None,
+            })
+        }
+    }
 }
 
 /// Host `resource request` / `response` for the W8 incoming-handler smoke.
@@ -984,11 +1018,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:sockets Android loopback subset (W7 + P1-SK1 + P1-SK2).
+    // WASI 0.3: wasi:sockets Android subset (W7 + P1-SK1 + P1-SK2 + P010-TCP).
     // Official packages: wasi:sockets/tcp@0.3.0 + tcp-create-socket@0.3.0.
     // create-tcp-socket(ip-address-family) -> result; connect is async
-    // ip-socket-address -> result (host ignores port, always 127.0.0.1);
-    // write/read via streams (cli shapes).
+    // ip-socket-address -> result. Loopback: host ignores port (echo pair).
+    // Non-loopback: host dials that IPv4:port. write/read via streams (cli shapes).
     // No UDP, no listen, no ip-name-lookup. INTERNET + helper-thread: threading-android.md.
     {
         let mut tcp = linker
@@ -1006,29 +1040,28 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
         .map_err(|e| e.to_string())?;
         tcp.func_wrap_concurrent(
             "[method]tcp-socket.connect",
-            |accessor, (sock, _addr): (Resource<TcpSocket>, IpSocketAddress)| {
+            |accessor, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
                 Box::pin(async move {
                     accessor.with(|mut access| -> wasmtime::Result<()> {
                         access.data_mut().table.get(&sock)?;
                         Ok(())
                     })?;
-                    let (done_tx, done_rx) = oneshot::channel::<
-                        std::io::Result<(
-                            std::net::TcpStream,
-                            std::thread::JoinHandle<std::io::Result<()>>,
-                        )>,
-                    >();
+                    let (done_tx, done_rx) =
+                        oneshot::channel::<std::io::Result<TcpConnected>>();
                     std::thread::spawn(move || {
-                        let _ = done_tx.send(tcp_loopback_pair());
+                        let _ = done_tx.send(tcp_connect_guest(addr));
                     });
-                    let (client, server) = done_rx
+                    let connected = match done_rx
                         .await
                         .map_err(|_| wasmtime::Error::msg("connect canceled"))?
-                        .map_err(|e| wasmtime::Error::msg(format!("loopback connect: {e}")))?;
+                    {
+                        Ok(c) => c,
+                        Err(_) => return Ok((Err(SockErrorCode::Unknown),)),
+                    };
                     accessor.with(|mut access| -> wasmtime::Result<()> {
                         let entry = access.data_mut().table.get_mut(&sock)?;
-                        entry.client = Some(client);
-                        entry.server = Some(server);
+                        entry.client = Some(connected.client);
+                        entry.server = connected.server;
                         Ok(())
                     })?;
                     Ok((Ok::<(), SockErrorCode>(()),))

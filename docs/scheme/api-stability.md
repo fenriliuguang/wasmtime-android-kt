@@ -10,6 +10,7 @@
 6. **P010-DISC landed:** dual-track attach — `Store.setWebGpuBackend` is the stable contract; `Store.createWithDiscoveredBackend` is default-bundle ServiceLoader convenience (`Store.create` still defaults to no discover).
 7. **P010-FIX landed:** product `Linker.create` omits fixture constructors `get-gpu` / `get-device` / `get-gpu-error` / `get-device-lost-info`. Instruments use `Linker.createWithFixtureConstructors`.
 8. **P010-CLIERR landed:** product cli `error-code` includes `io` / `illegal-byte-sequence` / `pipe`; stdout/stderr NUL write is guest-visible `illegal-byte-sequence`.
+9. **P010-TCP landed:** product `tcp-socket.connect` dials guest non-loopback IPv4; no listen / UDP by default.
 
 ## `0.x` rules
 

@@ -66,7 +66,7 @@ Path policy:
 
 ## 6. WASI 0.3 sockets (W7)
 
-`wasi:sockets` this cut is **loopback TCP only** (`127.0.0.1`). Android still needs the **INTERNET** permission for any `TcpStream` / `TcpListener`, including loopback (`smoke-app` manifest). Blocking accept / connect / read / write run on a **helper thread**; the CM import is `func_wrap_concurrent` + oneshot (same class as `monotonic-clock.wait-for`). Do not bind sockets or sleep on the ART main thread. No WAN, no UDP.
+`wasi:sockets` this cut is **outbound TCP**: guest `connect(ip-socket-address)` to a non-loopback IPv4, host **dials that address**. Loopback (`127.0.0.1`) still uses the W7 echo pair (port ignored). **No listen / UDP** by default (sandbox). Android needs the **INTERNET** permission for any `TcpStream` (`smoke-app` manifest). Blocking connect / read / write run on a **helper thread**; the CM import is `func_wrap_concurrent` + oneshot (same class as `monotonic-clock.wait-for`). Do not bind product sockets or sleep on the ART main thread.
 
 ## 7. WASI 0.3 http (W8)
 

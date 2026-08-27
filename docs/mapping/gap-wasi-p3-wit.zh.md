@@ -21,6 +21,6 @@ L5 §7 点名的行（出站 TCP、HTTP body stream + 出站、产品面拿掉 G
 
 ## 点名优化（不进 P2 Next）
 
-G-cmd command world；G-fs-full stat/目录流；G-sock-rest 的 listen/UDP/DNS。G-dev 已录。点名：wasi-testsuite、`wasmtime-wasi` crate。
+G-cmd command world；G-fs-full stat/目录流；G-sock-rest 的 listen/UDP/DNS（非回环出站已 P010-TCP）。G-dev 已录。点名：wasi-testsuite、`wasmtime-wasi` crate。
 
 L5 §7 行（出站 TCP、HTTP body/出站、G-http-ctor、产品路径 cli 错误）走 **`product-010-remaining.py`**，不是本表的「永不自动」。
