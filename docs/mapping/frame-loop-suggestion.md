@@ -259,4 +259,4 @@ The gfx RFC accepted the **pull `on-frame` stream** shape. This page stays sketc
 | Dawn latch on the hot path | Per-frame `mapAsync` must not `CountDownLatch` on the pump |
 | Guest toolchain | MoonBit (or Rust) CM async + generated gfx/webgpu bindings |
 
-Until then: keep one-shot WG-6; do not treat this file as the next `wasmtime-p2-remaining` line.
+Until then: keep one-shot WG-6; do not treat this file as `wasmtime-p2-remaining`. Implementation: `product-010-remaining.py` P010-GFXP/H/L.

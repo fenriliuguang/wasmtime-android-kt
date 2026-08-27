@@ -1,5 +1,5 @@
 ---
-description: CLOSED wasi:webgpu leftover descriptor F1–F9 — redirect to Wasmtime pin (P2)
+description: CLOSED wasi:webgpu leftover descriptor F1–F9 — redirect to 0.1.0 product gates
 alwaysApply: false
 ---
 
@@ -7,4 +7,4 @@ alwaysApply: false
 
 F1–F9, handle-0, and full `required-features` are **closed**. Do not start another leftover-descriptor JNI PR.
 
-Current queue: read `docs/agent/wasmtime-p2.md`. Historical: `docs/archive/webgpu-guest-semantics.md`.
+Current queue: read `docs/agent/product-010.md`. Historical: `docs/archive/webgpu-guest-semantics.md`.

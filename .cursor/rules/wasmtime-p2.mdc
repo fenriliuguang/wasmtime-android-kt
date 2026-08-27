@@ -1,15 +1,16 @@
 ---
-description: Wasmtime pin (P2) — knowable / upgradeable / rollback-able; no P0/P1 re-cuts
-alwaysApply: true
+description: Wasmtime pin (P2) — named queue; living auto cut is 0.1.0 product gates
+alwaysApply: false
 ---
 
 # Wasmtime pin (P2)
 
-For 下一刀 / P2 / Wasmtime pin / wasmtime tracking / upgrade RFC, read `docs/agent/wasmtime-p2.md` and follow it.
+For P2 / Wasmtime pin / wasmtime tracking / upgrade RFC (user named those), read `docs/agent/wasmtime-p2.md` and follow it.
 
-P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, G-dev, or wasi:webgpu G1–G9 / F1–F9 / guest-pipeline / WG-6. Named P1 leftovers: `docs/mapping/gap-wasi-p3-wit.md` (not auto).
+Living auto queue is **`0.1.0`**: read `docs/agent/product-010.md`. Next: `.\scripts\product-010-remaining.ps1` or `python3 ./scripts/product-010-remaining.py`.
 
-- Next PR: `.\scripts\wasmtime-p2-remaining.ps1` or `python3 ./scripts/wasmtime-p2-remaining.py` (one printed Next: only).
+P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not re-cut those knives.
+
+- P2 Next: `.\scripts\wasmtime-p2-remaining.ps1` or `python3 ./scripts/wasmtime-p2-remaining.py` (only when the user named P2).
 - Do not add `wasmtime-wasi` without a size + Android thread note. Major (47 → 48+) needs a short RFC. No wasmtime4j.
-- One lane per PR. Hub freeze on pin PRs: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md`.
 - Never file GitHub issues (or Discussions-as-issues) on Wasmtime, WASI, or any other upstream. No `gh issue create`.

@@ -5,7 +5,7 @@
 
 > Companion to [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8.  
 > Shape notes (not this RFC’s DoD): [`../mapping/frame-loop-suggestion.md`](../mapping/frame-loop-suggestion.md).  
-> Does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). Does **not** make gfx a new **P0**. Does **not** add a `wasmtime-p2-remaining` lane.
+> Does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). Does **not** make gfx a new **P0**. Auto lanes: [`product-010.md`](product-010.md) **P010-GFXP / GFXH / GFXL** (not `wasmtime-p2-remaining`).
 
 ## 1. Decision
 
@@ -52,4 +52,4 @@ Thread rules stay [`../mapping/threading-android.md`](../mapping/threading-andro
 2. Host `surface` + `on-frame` stream on GpuThread.  
 3. Product guest path (not fixture constructors).  
 4. Device instrument: multi-frame present (WG-6 one-shot stays).  
-5. Playbook / remaining script **only if** a named `0.1.0` queue is opened later — not P2.
+5. Auto: [`product-010.md`](product-010.md) **P010-GFXP → GFXH → GFXL**.

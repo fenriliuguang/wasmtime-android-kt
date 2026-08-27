@@ -7,11 +7,13 @@ Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 
 ## Now
 
-P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 is **closed**. Current engineering queue: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) (P2 Wasmtime pin). **L5 productization is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
+P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 is **closed**. Current queue: [`../agent/product-010.md`](../agent/product-010.md) (`0.1.0` product gates). P2 Wasmtime pin is **named**. **L5 is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
 
 | Doc | Role |
 |-----|------|
-| [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | **P2 playbook** |
+| [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` playbook** |
+| [`product-010.md`](product-010.md) | `0.1.0` remaining needles |
+| [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | P2 playbook (named) |
 | [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md) | **Accepted:** citable host; drop old L4 |
 | [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md) | **Accepted:** Dawn default bundle; core without Dawn; `request-adapter` `none` |
 | [`rfc-l5-productization.md`](rfc-l5-productization.md) | **Accepted:** class B; perpetual `0.x`; Central at `0.1.0` |

@@ -3,11 +3,13 @@
 [English](README.md) | **中文**
 
 只列现行文档。史实见 [`../archive/README.md`](../archive/README.md)。  
-P0 与 P1 已关闭。现行工程队列：[`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)。**L5 已接受。** 与英文冲突时以英文为准。
+P0 与 P1 已关闭。现行队列：[`../agent/product-010.md`](../agent/product-010.md)（`0.1.0`）。**L5 已接受。** 与英文冲突时以英文为准。
 
 | 文档 | 角色 |
 |------|------|
-| [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | **P2 手册** |
+| [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` 手册** |
+| [`product-010.zh.md`](product-010.zh.md) | `0.1.0` remaining 针 |
+| [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | P2 手册（点名） |
 | [`rfc-ecosystem-contribution.zh.md`](rfc-ecosystem-contribution.zh.md) | **Accepted：** 可引用 Host |
 | [`rfc-pluggable-gpu-backend.zh.md`](rfc-pluggable-gpu-backend.zh.md) | **Accepted：** 默认 Dawn bundle |
 | [`rfc-l5-productization.zh.md`](rfc-l5-productization.zh.md) | **Accepted：** 产品类 B；长期 0.x；0.1.0 才 Central |

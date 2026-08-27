@@ -4,6 +4,7 @@
 
 > Current. Amended 2026-08-17 by [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md) and [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md).  
 > Amended 2026-08-26 by [`rfc-l5-productization.md`](rfc-l5-productization.md) (perpetual `0.x`; Central at `0.1.0` gates) and [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md).  
+> Amended 2026-08-27: living auto queue [`../agent/product-010.md`](../agent/product-010.md).  
 > WIT rules: [`guest-shape.md`](guest-shape.md). History: [`../archive/README.md`](../archive/README.md).
 
 ## 1. One sentence
@@ -12,7 +13,7 @@ Build an **Android-first JVM Component runtime** that:
 
 1. Hosts **ratified WASI 0.3** capabilities as a **product subset** (**P1 Smoke closed** 2026-08-26; `0.1.0` gate in L5);  
 2. Treats **canonical `wasi:webgpu` WIT** as the first proposal world (**P0 closed** 2026-08-22);  
-3. Tracks **upstream Wasmtime** only (**P2 current**).
+3. Tracks **upstream Wasmtime** only (**P2 named**; living cut is **`0.1.0`**).
 
 **Product class B** (app runtime). Perpetual **`0.x.y`** until upstream WASI/webgpu/gfx 1.0 and stable `androidx.webgpu` ([`rfc-l5-productization.md`](rfc-l5-productization.md)). No Central before `0.1.0` gates. No CTS claim.
 
@@ -21,10 +22,11 @@ Build an **Android-first JVM Component runtime** that:
 ```text
 P0  wasi:webgpu canonical shape + true CM async     CLOSED
 P1  WASI 0.3 ratified primitives / packages + device  CLOSED
-P2  Upstream Wasmtime pin + upgrade RFC               current
+P2  Upstream Wasmtime pin + upgrade RFC               named
+0.1.0  L5 product subset + gfx loop                     current
 ```
 
-P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). P1 close-out: [`../archive/p1-wasi-p3.md`](../archive/p1-wasi-p3.md). P2 playbook: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). L5: [`rfc-l5-productization.md`](rfc-l5-productization.md). Wording: proposal host for webgpu until `0.1.0` claims “most of the pin,” still **not** CTS.
+P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). P1 close-out: [`../archive/p1-wasi-p3.md`](../archive/p1-wasi-p3.md). Living playbook: [`../agent/product-010.md`](../agent/product-010.md). P2 (named): [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). L5: [`rfc-l5-productization.md`](rfc-l5-productization.md). Wording: proposal host for webgpu until `0.1.0` claims “most of the pin,” still **not** CTS.
 
 ## 3. Stack L0–L5
 
@@ -39,7 +41,7 @@ L5  Productization — perpetual `0.x`; Central at `0.1.0` gates ([`rfc-l5-produ
 
 **Dropped:** swapping an external demo’s default runtime as a numbered goal.
 
-**Hard order:** L3 (P0) is not replaced by L4. L4 is documentation and citability, not a weaker WIT gate. L5 policy is **accepted**; implementation is follow-up, **not** `wasmtime-p2-remaining` `Next:`.
+**Hard order:** L3 (P0) is not replaced by L4. L4 is documentation and citability, not a weaker WIT gate. L5 policy is **accepted**; implementation is [`../agent/product-010.md`](../agent/product-010.md) (`product-010-remaining`).
 
 ### Success
 
@@ -69,6 +71,8 @@ L5  Productization — perpetual `0.x`; Central at `0.1.0` gates ([`rfc-l5-produ
 | [`guest-shape.md`](guest-shape.md) | Shape gates (P0 closed) |
 | [`rfc-l5-productization.md`](rfc-l5-productization.md) | L5: 0.x product class B; `0.1.0` gates; no Central before |
 | [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md) | `0.1.0` gfx present loop (not P0) |
+| [`../agent/product-010.md`](../agent/product-010.md) | Living `0.1.0` playbook / remaining |
+| [`product-010.md`](product-010.md) | `0.1.0` needles |
 | [`roadmap-wasi-webgpu.md`](roadmap-wasi-webgpu.md) | P0 (closed) |
 | [`../archive/p1-wasi-p3-surface.md`](../archive/p1-wasi-p3-surface.md) | P1 WASI 0.3 cuts (archived) |
 | [`wasmtime-tracking.md`](wasmtime-tracking.md) | Engine |
@@ -80,4 +84,5 @@ L5  Productization — perpetual `0.x`; Central at `0.1.0` gates ([`rfc-l5-produ
 - 2026-08-17: Ecosystem citability; remove dual-product L4; English front door; pluggable GPU / Dawn default bundle.  
 - 2026-08-22: P0 closed; P1 WASI 0.3 is the living queue.  
 - 2026-08-26: P1 closed; P2 Wasmtime pin is the living engineering queue. Named P1 leftovers stay in [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md).  
-- 2026-08-26: L5 accepted — product class B, perpetual `0.x`, Central only at `0.1.0` gates; gfx frame loop is a separate RFC.
+- 2026-08-26: L5 accepted — product class B, perpetual `0.x`, Central only at `0.1.0` gates; gfx frame loop is a separate RFC.  
+- 2026-08-27: Living auto queue is `0.1.0` ([`../agent/product-010.md`](../agent/product-010.md)); P2 Wasmtime pin is named-only.

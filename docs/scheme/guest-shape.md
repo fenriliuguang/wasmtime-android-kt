@@ -2,7 +2,7 @@
 
 **English** | [中文](guest-shape.zh.md)
 
-Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (vendored [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). **P0 is closed** ([`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md)). Holes vs androidx: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md).
+Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (vendored [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). **P0 is closed** ([`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md)). Holes vs androidx: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work: [`../agent/product-010.md`](../agent/product-010.md).
 
 ## 1. A method is shape-complete iff
 

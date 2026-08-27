@@ -103,7 +103,7 @@ Until then: perpetual `0.x.y`.
 
 **Not** `0.1.0` gates: full `wasi:cli/command` world (G-cmd), G-fs-full, wasi-testsuite, enabling `wasmtime-wasi` (still needs size + Android thread review).
 
-P1 leftover table ([`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md)) stays **not** `wasmtime-p2-remaining` `Next:`. Rows that this §7 names become the **`0.1.0` backlog**, not an auto P1 re-queue.
+P1 leftover table ([`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md)) stays **not** `wasmtime-p2-remaining` `Next:`. Rows that this §7 names are **auto** on [`product-010.md`](product-010.md), not a P1 re-queue.
 
 ## 8. Public API (before `0.1.0`)
 
@@ -138,11 +138,9 @@ Each `0.x` release notes: ABI tested (`arm64-v8a` official; `x86_64` emulator be
 - AAR `NOTICE`: Apache-2.0 (this repo), Wasmtime LLVM-exception, vendored host Kotlin MIT, androidx.webgpu/Dawn. No experimental mvp coordinates in the POM.
 - Default sandbox (documented promise, not a formal proof): FS = app-private only (`..`/absolute/NUL → `access`); TCP = outbound with INTERNET from `0.1.0` (no listen by default); HTTP outbound uses the product handler + Android system trust; GPU none vs Dawn as above.
 
-## 13. Follow-up (not this PR)
+## 13. Follow-up
 
-- Implementation playbook for the `0.1.0` backlog (http body, outbound TCP, errors, ctor removal, gfx).
-- Code: sink `ExperimentalHostCallbacks`; dual-track `Store` factory if the default discover flag stays false.
-- Publishing CI (Central + Packages) **when** §7 is done — not before.
+Playbook / remaining: [`../agent/product-010.md`](../agent/product-010.md) (`python3 ./scripts/product-010-remaining.py`). Code lanes (SPI, dual-track factory, fixtures, IO, gfx, claim, publish) are that queue — not this RFC PR.
 
 ## 14. Non-goals this RFC does not lift
 

@@ -27,7 +27,7 @@ First proposal world: canonical [`wasi:webgpu`](https://github.com/WebAssembly/w
 
 ## Goal stack
 
-See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 (L3 wasi:webgpu shape) is **closed**. P1 (WASI 0.3) is **closed**. Current engineering queue is P2 (Wasmtime pin). L4 is citable host. **L5 is accepted** (0.x product subset; Central at `0.1.0`).
+See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 (L3 wasi:webgpu shape) is **closed**. P1 (WASI 0.3) is **closed**. Current queue is **`0.1.0`** ([`../agent/product-010.md`](../agent/product-010.md)). P2 Wasmtime pin is **named**. L4 is citable host. **L5 is accepted** (0.x product subset; Central at `0.1.0`).
 
 ## Claims
 

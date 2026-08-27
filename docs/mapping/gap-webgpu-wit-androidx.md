@@ -2,7 +2,7 @@
 
 **English** | [中文](gap-webgpu-wit-androidx.zh.md)
 
-Living map for the **closed** P0 host. Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Current work: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md).
+Living map for the **closed** P0 host. Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Current work: [`../agent/product-010.md`](../agent/product-010.md).
 
 **Degree**
 
@@ -60,7 +60,7 @@ Cpu host (`CpuWasiWebGpuHost`) is a stand-in: VectorAdd shader-text match only. 
 | Item | Tag |
 |------|-----|
 | WebGPU CTS / “compliant wasi:webgpu” | **Out** (NG-5) |
-| Product `surface-*` / wasi-gfx | **Out** (NG-9) |
+| Product `surface-*` / wasi-gfx as a **P0** re-queue | **Out** (NG-9). Minimal present loop is **`0.1.0`**: [`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md) |
 | Second Dawn renderer | **Out** (NG-7) |
 | `wasmtime-wasi` as the WebGPU host | **Out** — GPU is `:host-dawn` |
 

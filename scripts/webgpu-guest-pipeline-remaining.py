@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-"""Closed guest-pipeline queue. Redirects to wasmtime-p2-remaining.py."""
+"""Closed guest-pipeline queue. Redirects to product-010-remaining.py."""
 from __future__ import annotations
 
 import argparse
+import subprocess
+import sys
+from pathlib import Path
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("-All", "--all", action="store_true")
     args = ap.parse_args()
-    print("Playbook closed: docs/archive/webgpu-guest-pipeline.md")
-    print("Use: python ./scripts/wasmtime-p2-remaining.py")
-    print("Playbook: docs/agent/wasmtime-p2.md")
-    print("Next: (P1–P5 empty; P0 closed)")
+    print("Playbook closed: docs/archive/webgpu-guest-pipeline.md", flush=True)
+    print("Use: python ./scripts/product-010-remaining.py", flush=True)
+    script = Path(__file__).with_name("product-010-remaining.py")
+    cmd = [sys.executable, str(script)]
     if args.all:
-        print()
-        print("=== (none) ===")
+        cmd.append("--all")
+    subprocess.check_call(cmd)
 
 
 if __name__ == "__main__":

@@ -18,3 +18,4 @@
 - `0.1.0` 前把 `ExperimentalHostCallbacks` **移出** `runtime` 公共 SPI。
 - Fixture **仅测试**。
 - 帧循环单开 RFC，作为 0.1 门禁，**不是**重开 P0。
+- 自动序：[`../agent/product-010.md`](../agent/product-010.md) / `product-010-remaining.py`。
