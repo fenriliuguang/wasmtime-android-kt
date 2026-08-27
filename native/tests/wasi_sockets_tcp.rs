@@ -1,10 +1,11 @@
-//! WASI 0.3: wasi:sockets TCP loopback echo smoke (Android subset).
+//! WASI 0.3: wasi:sockets TCP loopback echo + P010 outbound (non-loopback dial).
 
 use std::io::{Read, Write};
-use std::net::{Shutdown, TcpListener, TcpStream};
+use std::net::{Ipv4Addr, Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
+use std::thread;
 use std::time::Duration;
 
 use futures::channel::oneshot;
@@ -54,7 +55,12 @@ enum IpSocketAddress {
 
 struct TcpSocket {
     client: Option<TcpStream>,
-    server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
+    server: Option<thread::JoinHandle<std::io::Result<()>>>,
+}
+
+struct TcpConnected {
+    client: TcpStream,
+    server: Option<thread::JoinHandle<std::io::Result<()>>>,
 }
 
 struct TestHost {
@@ -102,11 +108,10 @@ impl StreamConsumer<TestHost> for CollectConsumer {
     }
 }
 
-fn tcp_loopback_pair() -> std::io::Result<(TcpStream, std::thread::JoinHandle<std::io::Result<()>>)>
-{
-    let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))?;
+fn tcp_loopback_pair() -> std::io::Result<(TcpStream, thread::JoinHandle<std::io::Result<()>>)> {
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))?;
     let addr = listener.local_addr()?;
-    let server = std::thread::spawn(move || -> std::io::Result<()> {
+    let server = thread::spawn(move || -> std::io::Result<()> {
         let (mut sock, _) = listener.accept()?;
         sock.set_read_timeout(Some(Duration::from_secs(2)))?;
         sock.set_write_timeout(Some(Duration::from_secs(2)))?;
@@ -119,6 +124,98 @@ fn tcp_loopback_pair() -> std::io::Result<(TcpStream, std::thread::JoinHandle<st
     client.set_read_timeout(Some(Duration::from_secs(2)))?;
     client.set_write_timeout(Some(Duration::from_secs(2)))?;
     Ok((client, server))
+}
+
+/// Match product `cm.rs`: loopback echo pair; non-loopback dials guest address.
+fn tcp_connect_guest(addr: IpSocketAddress) -> std::io::Result<TcpConnected> {
+    match addr {
+        IpSocketAddress::Ipv4(a) => {
+            let ip = Ipv4Addr::new(a.address.0, a.address.1, a.address.2, a.address.3);
+            if ip.is_loopback() {
+                let (client, server) = tcp_loopback_pair()?;
+                return Ok(TcpConnected {
+                    client,
+                    server: Some(server),
+                });
+            }
+            let sock_addr = SocketAddr::from((ip, a.port));
+            let client = TcpStream::connect_timeout(&sock_addr, Duration::from_secs(2))?;
+            client.set_read_timeout(Some(Duration::from_secs(2)))?;
+            client.set_write_timeout(Some(Duration::from_secs(2)))?;
+            Ok(TcpConnected {
+                client,
+                server: None,
+            })
+        }
+    }
+}
+
+fn first_non_loopback_ipv4() -> Ipv4Addr {
+    let sock = std::net::UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)).expect("udp bind");
+    sock.connect((Ipv4Addr::new(1, 1, 1, 1), 80))
+        .expect("udp connect for local ip");
+    match sock.local_addr().expect("local_addr") {
+        SocketAddr::V4(a) if !a.ip().is_loopback() && !a.ip().is_unspecified() => *a.ip(),
+        other => panic!("need non-loopback ipv4, got {other}"),
+    }
+}
+
+fn spawn_echo_on(
+    ip: Ipv4Addr,
+) -> std::io::Result<(
+    u16,
+    Arc<Mutex<Vec<u8>>>,
+    thread::JoinHandle<std::io::Result<()>>,
+)> {
+    let listener = TcpListener::bind((ip, 0))?;
+    listener.set_nonblocking(true)?;
+    let port = listener.local_addr()?.port();
+    let received = Arc::new(Mutex::new(Vec::new()));
+    let received_thread = received.clone();
+    let server = thread::spawn(move || -> std::io::Result<()> {
+        let start = std::time::Instant::now();
+        let (mut sock, _) = loop {
+            match listener.accept() {
+                Ok(pair) => break pair,
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    if start.elapsed() > Duration::from_secs(2) {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "echo accept timeout",
+                        ));
+                    }
+                    thread::sleep(Duration::from_millis(10));
+                }
+                Err(e) => return Err(e),
+            }
+        };
+        sock.set_nonblocking(false)?;
+        sock.set_read_timeout(Some(Duration::from_secs(2)))?;
+        sock.set_write_timeout(Some(Duration::from_secs(2)))?;
+        let mut buf = Vec::new();
+        sock.read_to_end(&mut buf)?;
+        *received_thread.lock().unwrap() = buf.clone();
+        sock.write_all(&buf)?;
+        Ok(())
+    });
+    Ok((port, received, server))
+}
+
+const P3IP: &[u8; 4] = b"P3IP";
+
+fn patch_outbound_peer(wasm: &mut [u8], ip: Ipv4Addr, port: u16) {
+    let idx = wasm
+        .windows(4)
+        .position(|w| w == P3IP)
+        .expect("P3IP marker in sockets_tcp_out.wasm");
+    assert!(idx + 10 <= wasm.len(), "truncated P3IP record");
+    let oct = ip.octets();
+    wasm[idx + 4] = (port & 0xff) as u8;
+    wasm[idx + 5] = (port >> 8) as u8;
+    wasm[idx + 6] = oct[0];
+    wasm[idx + 7] = oct[1];
+    wasm[idx + 8] = oct[2];
+    wasm[idx + 9] = oct[3];
 }
 
 fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
@@ -135,26 +232,27 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
         )?;
         tcp.func_wrap_concurrent(
             "[method]tcp-socket.connect",
-            |accessor, (sock, _addr): (Resource<TcpSocket>, IpSocketAddress)| {
+            |accessor, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
                 Box::pin(async move {
                     accessor.with(|mut access| -> wasmtime::Result<()> {
                         access.data_mut().table.get(&sock)?;
                         Ok(())
                     })?;
-                    let (done_tx, done_rx) = oneshot::channel::<
-                        std::io::Result<(TcpStream, std::thread::JoinHandle<std::io::Result<()>>)>,
-                    >();
-                    std::thread::spawn(move || {
-                        let _ = done_tx.send(tcp_loopback_pair());
+                    let (done_tx, done_rx) = oneshot::channel::<std::io::Result<TcpConnected>>();
+                    thread::spawn(move || {
+                        let _ = done_tx.send(tcp_connect_guest(addr));
                     });
-                    let (client, server) = done_rx
+                    let connected = match done_rx
                         .await
                         .map_err(|_| wasmtime::Error::msg("connect canceled"))?
-                        .map_err(|e| wasmtime::Error::msg(format!("loopback connect: {e}")))?;
+                    {
+                        Ok(c) => c,
+                        Err(_) => return Ok((Err(SockErrorCode::Unknown),)),
+                    };
                     accessor.with(|mut access| -> wasmtime::Result<()> {
                         let entry = access.data_mut().table.get_mut(&sock)?;
-                        entry.client = Some(client);
-                        entry.server = Some(server);
+                        entry.client = Some(connected.client);
+                        entry.server = connected.server;
                         Ok(())
                     })?;
                     Ok((Ok::<(), SockErrorCode>(()),))
@@ -290,5 +388,69 @@ fn wasi_sockets_tcp_loopback_smoke() -> wasmtime::Result<()> {
             .await?
     })?;
     assert_eq!(v, PAYLOAD.len() as u32);
+    Ok(())
+}
+
+#[test]
+fn tcp_dial_non_loopback_hits_bound_peer() {
+    let ip = first_non_loopback_ipv4();
+    assert!(!ip.is_loopback());
+    let (port, received, server) = spawn_echo_on(ip).expect("echo bind");
+    let mut client =
+        TcpStream::connect_timeout(&SocketAddr::from((ip, port)), Duration::from_secs(2))
+            .expect("dial");
+    client.write_all(PAYLOAD).unwrap();
+    client.shutdown(Shutdown::Write).unwrap();
+    let mut incoming = Vec::new();
+    client.read_to_end(&mut incoming).unwrap();
+    server.join().unwrap().unwrap();
+    assert_eq!(incoming, PAYLOAD);
+    assert_eq!(*received.lock().unwrap(), PAYLOAD);
+}
+
+#[test]
+fn wasi_sockets_tcp_outbound_smoke() -> wasmtime::Result<()> {
+    let ip = first_non_loopback_ipv4();
+    assert!(!ip.is_loopback());
+    let (port, received, server) = spawn_echo_on(ip).expect("echo bind");
+
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let mut bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/wasi/sockets_tcp_out.wasm"
+    ))?;
+    patch_outbound_peer(&mut bytes, ip, port);
+    let component = Component::new(&engine, bytes)?;
+
+    let mut linker = Linker::new(&engine);
+    register(&mut linker)?;
+
+    let mut store = Store::new(
+        &engine,
+        TestHost {
+            table: ResourceTable::new(),
+        },
+    );
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let v = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })?;
+    server.join().unwrap().unwrap();
+    assert_eq!(v, PAYLOAD.len() as u32);
+    assert_eq!(
+        *received.lock().unwrap(),
+        PAYLOAD,
+        "host must dial guest address (echo server saw no payload if ignore-port pair)"
+    );
     Ok(())
 }

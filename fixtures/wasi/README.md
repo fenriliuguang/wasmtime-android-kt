@@ -191,6 +191,20 @@ wasm-tools parse fixtures/wasi/sockets_tcp.wat -o fixtures/wasi/sockets_tcp.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tcp.wasm
 ```
 
+## `wasi:sockets` — TCP outbound（非回环拨号）
+
+Guest export: `run: async func() -> u32`（写 `P3SK`，经 **host 真拨** 的 peer echo 读回，返回 4）  
+Host: 同上 `connect`；guest 地址在 mem `P3IP` 记录（port + ipv4），测试在 instantiate 前打补丁。
+
+**P010-TCP：** 非回环 IPv4 时 host **dial 该地址**（不是 ignore-port + echo pair）。回环仍走 W7 echo pair。无 UDP / listen。沙箱：出站 + INTERNET；默认不 listen。
+
+成功：guest `run` 返回 `4` **且** 测试侧 echo 服务器收到 `P3SK`。
+
+```powershell
+wasm-tools parse fixtures/wasi/sockets_tcp_out.wat -o fixtures/wasi/sockets_tcp_out.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tcp_out.wasm
+```
+
 ## `wasi:http` — incoming-handler（进程内 ABI 子集）
 
 Guest export: 根 `run: async func() -> u32`（200）；官方 `wasi:http/incoming-handler@0.3.0#handle: async func(own<request>) -> result<own<response>, error-code>`  
