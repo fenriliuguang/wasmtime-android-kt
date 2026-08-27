@@ -4,7 +4,7 @@
 ;; Host produces "IN\n". Guest: read-via-stream → stream.read → future.read (ok) → nbytes.
 (component
   (import "wasi:cli/stdin@0.3.0" (instance $stdin
-    (type $error-code-def (enum "unknown"))
+    (type $error-code-def (enum "unknown" "io" "illegal-byte-sequence" "pipe"))
     (export "error-code" (type $error-code (eq $error-code-def)))
     (type $read-result (result (error $error-code)))
     (type $st (stream u8))

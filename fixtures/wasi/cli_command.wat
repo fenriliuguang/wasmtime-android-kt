@@ -6,7 +6,7 @@
 ;; Not a full command world (no fs/sockets/environment/exit/terminal).
 (component
   (import "wasi:cli/stdout@0.3.0" (instance $stdout
-    (type $error-code-def (enum "unknown"))
+    (type $error-code-def (enum "unknown" "io" "illegal-byte-sequence" "pipe"))
     (export "error-code" (type $error-code (eq $error-code-def)))
     (type $write-result (result (error $error-code)))
     (type $st (stream u8))

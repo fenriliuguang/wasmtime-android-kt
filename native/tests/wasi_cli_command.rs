@@ -20,6 +20,12 @@ use wasmtime::{Config, Engine, Store, StoreContextMut};
 enum CliErrorCode {
     #[component(name = "unknown")]
     Unknown,
+    #[component(name = "io")]
+    Io,
+    #[component(name = "illegal-byte-sequence")]
+    IllegalByteSequence,
+    #[component(name = "pipe")]
+    Pipe,
 }
 
 struct CollectConsumer {

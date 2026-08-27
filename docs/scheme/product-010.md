@@ -17,7 +17,7 @@ Remaining: `python3 ./scripts/product-010-remaining.py`. A lane drops when its *
 | P010-SPI | landed 2026-08-27 |
 | P010-DISC | landed 2026-08-27 |
 | P010-FIX | landed 2026-08-27 |
-| P010-CLIERR | gap: p010 cli-err pending |
+| P010-CLIERR | landed 2026-08-27 |
 | P010-TCP | gap: p010 tcp pending |
 | P010-HBODY | gap: p010 http-body pending |
 | P010-HOUT | gap: p010 http-out pending |
