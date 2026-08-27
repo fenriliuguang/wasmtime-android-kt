@@ -33,6 +33,8 @@ object NativeBridge {
     @JvmStatic external fun nativeStoreSetHostAdd(store: Long, callback: HostU32U32ToU32)
     @JvmStatic
     external fun nativeStoreSetExperimentalHost(store: Long, callback: ExperimentalHostCallbacks)
+    @JvmStatic external fun nativeStorePostGfxVsync(store: Long)
+    @JvmStatic external fun nativeStoreCloseGfxOnFrame(store: Long)
 
     @JvmStatic external fun nativeComponentCompile(engine: Long, bytes: ByteArray): Long
     @JvmStatic external fun nativeComponentClose(handle: Long)

@@ -1,26 +1,29 @@
-//! P010-GFXB: product guest `get-gpu` → `request-adapter` → `request-device`
-//! then `on-frame` loop → get-current-texture → submit → present.
-//! Two `frame-event`s produced on a helper thread named `GpuThread`.
-//! No JS-style callback. Device multi-frame is the smoke-app instrument.
+//! P010-GFXV: product guest `get-gpu` → `request-adapter` → `request-device`
+//! then vsync-paced `on-frame` loop → get-current-texture → submit → present.
+//! Helper thread named `GpuThread` posts 1-slot beats (drop unconsumed); close
+//! the stream so `run` unblocks. No JS-style callback. Not two events at construct.
 
 use futures::channel::oneshot;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Condvar, Mutex};
+use std::task::{Context, Poll};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use wasmtime::component::{
-    flags, Component, ComponentType, Lift, Linker, Lower, Resource, ResourceTable, ResourceType,
-    StreamReader,
+    flags, Component, ComponentType, Destination, Lift, Linker, Lower, Resource, ResourceTable,
+    ResourceType, StreamProducer, StreamReader, StreamResult,
 };
-use wasmtime::{Config, Engine, Store};
+use wasmtime::{Config, Engine, Store, StoreContextMut};
 
 #[path = "wasi_webgpu_method/texture_format.rs"]
 mod texture_format;
 use texture_format::GpuTextureFormat;
 
 static WROTE_ON_GPU_THREAD: AtomicBool = AtomicBool::new(false);
+static PENDING_AT_ON_FRAME: AtomicBool = AtomicBool::new(true);
+static DROPPED_BEATS: AtomicU32 = AtomicU32::new(0);
 
 struct GfxSurface;
 struct GfxWebGpuContext;
@@ -233,10 +236,150 @@ struct GpuCanvasConfiguration {
 
 struct TestHost {
     table: ResourceTable,
+    gate: Arc<GfxOnFrameGate>,
 }
 
-fn gfx_on_frame_events(n: usize) -> wasmtime::Result<Vec<GfxFrameEvent>> {
-    let (tx, rx) = mpsc::sync_channel(n.max(1));
+struct GfxOnFrameGate {
+    inner: Mutex<GfxOnFrameInner>,
+    cv: Condvar,
+}
+
+struct GfxOnFrameInner {
+    pending: bool,
+    closed: bool,
+    dropped: u32,
+    consumed: u32,
+}
+
+enum GfxOnFrameTake {
+    Item,
+    Eof,
+    Cancelled,
+}
+
+impl GfxOnFrameGate {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
+            inner: Mutex::new(GfxOnFrameInner {
+                pending: false,
+                closed: false,
+                dropped: 0,
+                consumed: 0,
+            }),
+            cv: Condvar::new(),
+        })
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, GfxOnFrameInner> {
+        self.inner.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn post(&self) {
+        let mut g = self.lock();
+        if g.closed {
+            return;
+        }
+        if g.pending {
+            g.dropped = g.dropped.saturating_add(1);
+            DROPPED_BEATS.store(g.dropped, Ordering::SeqCst);
+            return;
+        }
+        g.pending = true;
+        self.cv.notify_one();
+    }
+
+    fn close(&self) {
+        let mut g = self.lock();
+        g.closed = true;
+        self.cv.notify_all();
+    }
+
+    fn wait_take(&self, finish: bool) -> GfxOnFrameTake {
+        let mut g = self.lock();
+        loop {
+            if g.pending {
+                g.pending = false;
+                g.consumed = g.consumed.saturating_add(1);
+                return GfxOnFrameTake::Item;
+            }
+            if g.closed {
+                return GfxOnFrameTake::Eof;
+            }
+            if finish {
+                return GfxOnFrameTake::Cancelled;
+            }
+            g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+        }
+    }
+
+    fn wait_ready(&self, finish: bool) -> GfxOnFrameTake {
+        let mut g = self.lock();
+        loop {
+            if g.pending {
+                return GfxOnFrameTake::Item;
+            }
+            if g.closed {
+                return GfxOnFrameTake::Eof;
+            }
+            if finish {
+                return GfxOnFrameTake::Cancelled;
+            }
+            g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+        }
+    }
+
+    fn has_pending(&self) -> bool {
+        self.lock().pending
+    }
+
+    fn is_closed(&self) -> bool {
+        self.lock().closed
+    }
+
+    fn consumed(&self) -> u32 {
+        self.lock().consumed
+    }
+}
+
+struct GfxOnFrameProducer {
+    gate: Arc<GfxOnFrameGate>,
+}
+
+impl StreamProducer<TestHost> for GfxOnFrameProducer {
+    type Item = GfxFrameEvent;
+    type Buffer = Option<GfxFrameEvent>;
+
+    fn poll_produce<'a>(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        mut store: StoreContextMut<'a, TestHost>,
+        mut destination: Destination<'a, Self::Item, Self::Buffer>,
+        finish: bool,
+    ) -> Poll<wasmtime::Result<StreamResult>> {
+        let _ = cx;
+        if destination.remaining(&mut store) == Some(0) {
+            return Poll::Ready(Ok(match self.gate.wait_ready(finish) {
+                GfxOnFrameTake::Item => StreamResult::Completed,
+                GfxOnFrameTake::Eof => StreamResult::Dropped,
+                GfxOnFrameTake::Cancelled => StreamResult::Cancelled,
+            }));
+        }
+        match self.gate.wait_take(finish) {
+            GfxOnFrameTake::Item => {
+                destination.set_buffer(Some(GfxFrameEvent { nothing: true }));
+                if self.gate.is_closed() {
+                    Poll::Ready(Ok(StreamResult::Dropped))
+                } else {
+                    Poll::Ready(Ok(StreamResult::Completed))
+                }
+            }
+            GfxOnFrameTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
+            GfxOnFrameTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),
+        }
+    }
+}
+
+fn start_vsync(gate: Arc<GfxOnFrameGate>) -> wasmtime::Result<()> {
     thread::Builder::new()
         .name("GpuThread".into())
         .spawn(move || {
@@ -244,19 +387,20 @@ fn gfx_on_frame_events(n: usize) -> wasmtime::Result<Vec<GfxFrameEvent>> {
                 thread::current().name() == Some("GpuThread"),
                 Ordering::SeqCst,
             );
-            for _ in 0..n {
-                let _ = tx.send(GfxFrameEvent { nothing: true });
+            gate.post();
+            gate.post();
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while gate.consumed() < 1 && Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(2));
             }
+            gate.post();
+            while gate.consumed() < 2 && Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(2));
+            }
+            gate.close();
         })
         .map_err(|e| wasmtime::Error::msg(format!("GpuThread: {e}")))?;
-    let mut out = Vec::with_capacity(n);
-    for _ in 0..n {
-        out.push(
-            rx.recv_timeout(Duration::from_secs(1))
-                .map_err(|e| wasmtime::Error::msg(format!("GpuThread: {e}")))?,
-        );
-    }
-    Ok(out)
+    Ok(())
 }
 
 fn register(
@@ -404,8 +548,10 @@ fn register(
         "[method]surface.on-frame",
         |mut store, (this,): (Resource<GfxSurface>,)| {
             store.data_mut().table.get(&this)?;
-            let evs = gfx_on_frame_events(2)?;
-            let reader = StreamReader::new(&mut store, evs)?;
+            let gate = store.data().gate.clone();
+            PENDING_AT_ON_FRAME.store(gate.has_pending(), Ordering::SeqCst);
+            start_vsync(gate.clone())?;
+            let reader = StreamReader::new(&mut store, GfxOnFrameProducer { gate })?;
             Ok((reader,))
         },
     )?;
@@ -459,8 +605,10 @@ fn register(
 }
 
 #[test]
-fn wasi_gfx_frame_loop_two_presents() -> wasmtime::Result<()> {
+fn wasi_gfx_frame_loop_vsync_paced() -> wasmtime::Result<()> {
     WROTE_ON_GPU_THREAD.store(false, Ordering::SeqCst);
+    PENDING_AT_ON_FRAME.store(true, Ordering::SeqCst);
+    DROPPED_BEATS.store(0, Ordering::SeqCst);
     let configured = Arc::new(AtomicBool::new(false));
     let textures = Arc::new(AtomicU32::new(0));
     let submits = Arc::new(AtomicU32::new(0));
@@ -486,6 +634,7 @@ fn wasi_gfx_frame_loop_two_presents() -> wasmtime::Result<()> {
         &engine,
         TestHost {
             table: ResourceTable::new(),
+            gate: GfxOnFrameGate::new(),
         },
     );
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
@@ -499,14 +648,28 @@ fn wasi_gfx_frame_loop_two_presents() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 2, "guest must loop two on-frame events");
+    assert!(
+        v >= 2,
+        "guest must loop at least two vsync-paced on-frame events, got {v}"
+    );
     assert!(configured.load(Ordering::SeqCst), "context.configure");
-    assert_eq!(textures.load(Ordering::SeqCst), 2, "get-current-texture ×2");
-    assert_eq!(submits.load(Ordering::SeqCst), 2, "queue.submit ×2");
-    assert_eq!(presents.load(Ordering::SeqCst), 2, "context.present ×2");
+    assert!(
+        textures.load(Ordering::SeqCst) >= 2,
+        "get-current-texture ×≥2"
+    );
+    assert!(submits.load(Ordering::SeqCst) >= 2, "queue.submit ×≥2");
+    assert!(presents.load(Ordering::SeqCst) >= 2, "context.present ×≥2");
     assert!(
         WROTE_ON_GPU_THREAD.load(Ordering::SeqCst),
-        "frame-events must be produced on a thread named GpuThread"
+        "frame-events must be posted on a thread named GpuThread"
+    );
+    assert!(
+        !PENDING_AT_ON_FRAME.load(Ordering::SeqCst),
+        "on-frame must not pre-buffer events at construct"
+    );
+    assert!(
+        DROPPED_BEATS.load(Ordering::SeqCst) >= 1,
+        "unconsumed vsync beats must be dropped"
     );
     Ok(())
 }
