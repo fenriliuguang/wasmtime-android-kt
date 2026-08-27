@@ -524,11 +524,24 @@ fn tcp_connect_guest(addr: IpSocketAddress) -> std::io::Result<TcpConnected> {
     }
 }
 
-/// Host `resource request` / `response` for the W8 incoming-handler smoke.
-struct HttpRequest;
+/// Host `resource request` / `response` for the W8 incoming-handler smoke + P010 body.
+struct HttpRequest {
+    body: Vec<u8>,
+}
 
 struct HttpResponse {
     status: u16,
+    body: Arc<Mutex<Vec<u8>>>,
+}
+
+/// WASI 0.3.0 http `error-code` subset (`unknown` only).
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum HttpErrorCode {
+    #[component(name = "unknown")]
+    Unknown,
 }
 
 /// P3-PRIM-5 / W1: collect guest `stream.write` bytes; complete oneshot on drop.
@@ -1163,11 +1176,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:http incoming-handler subset (W8 + P1-HT1).
+    // WASI 0.3: wasi:http incoming-handler subset (W8 + P1-HT1 + P010-HBODY).
     // Official packages: wasi:http/types@0.3.0 + guest export incoming-handler@0.3.0.
     // Subset: constructors + status-code; handle is guest-exported
-    // async func(own<request>) -> result<own<response>, error-code> (ok path;
-    // not outparam / body). In-process ABI smoke (not a listening HTTP server).
+    // async func(own<request>) -> result<own<response>, error-code> (ok path).
+    // Body: [static]request.consume-body / [static]response.consume-body →
+    // tuple<stream<u8>, future<result>> (no trailers / res-future param);
+    // [static]response.new(contents: stream<u8>) → tuple<response, future>
+    // (no headers). In-process ABI smoke (not a listening HTTP server).
     // No wasmtime-wasi.
     {
         let mut types = linker
@@ -1197,13 +1213,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
         types
             .func_wrap("[constructor]request", |mut store, ()| {
-                let resource = store.data_mut().table.push(HttpRequest)?;
+                let resource = store.data_mut().table.push(HttpRequest {
+                    body: b"HBOD".to_vec(),
+                })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
         types
             .func_wrap("[constructor]response", |mut store, ()| {
-                let resource = store.data_mut().table.push(HttpResponse { status: 200 })?;
+                let resource = store.data_mut().table.push(HttpResponse {
+                    status: 200,
+                    body: Arc::new(Mutex::new(Vec::new())),
+                })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -1212,6 +1233,59 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]response.status-code",
                 |mut store, (resp,): (Resource<HttpResponse>,)| {
                     Ok((store.data_mut().table.get(&resp)?.status,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[static]request.consume-body",
+                |mut store, (this,): (Resource<HttpRequest>,)| {
+                    let req = store.data_mut().table.delete(this)?;
+                    let reader = StreamReader::new(&mut store, req.body)?;
+                    let fut = FutureReader::new(&mut store, async move {
+                        Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
+                    })?;
+                    Ok(((reader, fut),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[static]response.new",
+                |mut store, (reader,): (StreamReader<u8>,)| {
+                    let buf = Arc::new(Mutex::new(Vec::new()));
+                    let (tx, rx) = oneshot::channel::<u32>();
+                    reader.pipe(
+                        &mut store,
+                        CollectConsumer {
+                            buf: buf.clone(),
+                            done: Some(tx),
+                            max_per_poll: usize::MAX,
+                        },
+                    )?;
+                    let resource = store.data_mut().table.push(HttpResponse {
+                        status: 200,
+                        body: buf,
+                    })?;
+                    let fut = FutureReader::new(&mut store, async move {
+                        let _n = rx.await.unwrap_or(0);
+                        Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
+                    })?;
+                    Ok(((resource, fut),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[static]response.consume-body",
+                |mut store, (this,): (Resource<HttpResponse>,)| {
+                    let resp = store.data_mut().table.delete(this)?;
+                    let bytes = resp.body.lock().map(|b| b.clone()).unwrap_or_default();
+                    let reader = StreamReader::new(&mut store, bytes)?;
+                    let fut = FutureReader::new(&mut store, async move {
+                        Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
+                    })?;
+                    Ok(((reader, fut),))
                 },
             )
             .map_err(|e| e.to_string())?;

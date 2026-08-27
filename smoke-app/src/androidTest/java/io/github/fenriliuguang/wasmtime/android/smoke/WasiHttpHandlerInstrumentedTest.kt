@@ -11,9 +11,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * WASI 0.3: `wasi:http/incoming-handler@0.3.0#handle` via guest async `run`.
+ * WASI 0.3: `wasi:http` incoming-handler + P010 body `stream<u8>`.
  * `handle` is `async func(own<request>) -> result<own<response>, error-code>` (ok).
- * In-process ABI (not a listening HTTP server). Returns status 200.
+ * In-process ABI (not a listening HTTP server). Body: consume-body / response.new.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiHttpHandlerInstrumentedTest {
@@ -32,6 +32,28 @@ class WasiHttpHandlerInstrumentedTest {
                     Store.create(engine).use { store ->
                         linker.instantiate(store, component).use { instance ->
                             assertEquals(200, instance.callRunConcurrent(store))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun bodyStreamEchoReturnsByteCount() {
+        val bytes =
+            InstrumentationRegistry.getInstrumentation()
+                .context
+                .assets
+                .open("wasi/http_body.wasm")
+                .use { it.readBytes() }
+
+        Engine.create().use { engine ->
+            Component.compile(engine, bytes).use { component ->
+                Linker.create(engine).use { linker ->
+                    Store.create(engine).use { store ->
+                        linker.instantiate(store, component).use { instance ->
+                            assertEquals(4, instance.callRunConcurrent(store))
                         }
                     }
                 }
