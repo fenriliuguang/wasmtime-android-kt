@@ -56,7 +56,8 @@ fn new_store(engine: &Engine) -> Store<TestHost> {
 }
 
 #[test]
-fn wasi_webgpu_method_supported_limits_max_compute_workgroup_storage_size_smoke() -> wasmtime::Result<()> {
+fn wasi_webgpu_method_supported_limits_max_compute_workgroup_storage_size_smoke(
+) -> wasmtime::Result<()> {
     let mut config = Config::new();
     config.wasm_component_model(true);
     config.wasm_component_model_async(true);
@@ -87,7 +88,8 @@ fn wasi_webgpu_method_supported_limits_max_compute_workgroup_storage_size_smoke(
 }
 
 #[test]
-fn wasi_webgpu_method_supported_limits_max_compute_workgroup_storage_size_call_async() -> wasmtime::Result<()> {
+fn wasi_webgpu_method_supported_limits_max_compute_workgroup_storage_size_call_async(
+) -> wasmtime::Result<()> {
     let mut config = Config::new();
     config.wasm_component_model(true);
     config.wasm_component_model_async(true);

@@ -35,9 +35,8 @@ fn m2_async_get_smoke() -> wasmtime::Result<()> {
     let v = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
-                let func = accessor.with(|mut access| {
-                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
-                })?;
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
                 let (value,) = func.call_concurrent(accessor, ()).await?;
                 Ok(value)
             })
@@ -59,9 +58,9 @@ fn m2_async_get_simple_concurrent() -> wasmtime::Result<()> {
     ))?;
     let component = Component::new(&engine, bytes)?;
     let mut linker: Linker<()> = Linker::new(&engine);
-    linker.root().func_wrap_concurrent("get", |_accessor, ()| {
-        Box::pin(async move { Ok((42u32,)) })
-    })?;
+    linker
+        .root()
+        .func_wrap_concurrent("get", |_accessor, ()| Box::pin(async move { Ok((42u32,)) }))?;
     let mut store = Store::new(&engine, ());
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
 

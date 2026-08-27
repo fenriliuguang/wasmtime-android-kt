@@ -32,11 +32,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
     webgpu.func_wrap(
         "[method]gpu-render-bundle.label",
         move |mut caller, (render_bundle,): (Resource<GpuRenderBundle>,)| {
-            caller
-                .data_mut()
-                .table
-                .get(&render_bundle)
-                .map(|_| ())?;
+            caller.data_mut().table.get(&render_bundle).map(|_| ())?;
             called.store(true, Ordering::SeqCst);
             Ok((String::new(),))
         },

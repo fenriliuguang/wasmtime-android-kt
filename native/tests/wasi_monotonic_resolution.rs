@@ -17,9 +17,7 @@ fn wasi_monotonic_clock_resolution_smoke() -> wasmtime::Result<()> {
     let mut linker = Linker::new(&engine);
     linker
         .instance("wasi:clocks/monotonic-clock@0.3.0")?
-        .func_wrap("resolution", |_store, ()| {
-            Ok((1u64,))
-        })?;
+        .func_wrap("resolution", |_store, ()| Ok((1u64,)))?;
 
     let mut store = Store::new(&engine, ());
     let instance = linker.instantiate(&mut store, &component)?;

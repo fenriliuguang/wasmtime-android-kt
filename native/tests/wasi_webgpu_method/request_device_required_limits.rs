@@ -117,7 +117,9 @@ struct TestHost {
     added: HashMap<u32, (String, Option<u64>)>,
 }
 
-fn register_method_request_device_required_limits(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
+fn register_method_request_device_required_limits(
+    linker: &mut Linker<TestHost>,
+) -> wasmtime::Result<()> {
     let mut webgpu = linker.instance("wasi:webgpu/webgpu@0.3.0-rc.2")?;
     webgpu.resource(
         "gpu-adapter",

@@ -21,4 +21,4 @@ blend / cull / MSAA / view-formats / xr / default-queue / write-mask / stencil /
 
 `get-*` 是测试构造器。experimental 扁平面冻结。不宣称 CTS；不上 wasi-gfx；GPU 不走 `wasmtime-wasi`。
 
-真机现象（V2458A / Mali：连续 present 抽搐升高后 GpuThread SIGSEGV；开局转得过快；**仍抖**）记在英文 §5。完整排查表：[`gfx-hitch-checklist.zh.md`](gfx-hitch-checklist.zh.md)（H1 acquire 前等 GPU、H2 60/120 振荡、H4 每帧 `allocateDirect`、H21 锁内阻塞 acquire 仍 Open）。产品 canvas：下一帧 `get-current-texture` 在 acquire 前等上一帧 GPU。`on-frame` **不锁 60Hz**；pin `frame-event` 无时间戳，运动 delta 用 `monotonic-clock.now`。Guest 自有纹理不扫。
+真机现象（V2458A / Mali：连续 present 抽搐升高后 GpuThread SIGSEGV；开局转得过快；**仍抖**）记在英文 §5。完整排查表：[`gfx-hitch-checklist.zh.md`](gfx-hitch-checklist.zh.md)。本分支：acquire 不再等上一帧 GPU；poller 上 retire；`writeBuffer` 加锁+复用 buffer。`on-frame` **不锁 60Hz**；pin `frame-event` 无时间戳，运动 delta 用 `monotonic-clock.now`。Guest 自有纹理不扫。

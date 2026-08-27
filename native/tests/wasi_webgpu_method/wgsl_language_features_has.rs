@@ -21,15 +21,11 @@ struct TestHost {
 
 fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime::Result<()> {
     let mut webgpu = linker.instance("wasi:webgpu/webgpu@0.3.0-rc.2")?;
-    webgpu.resource(
-        "gpu",
-        ResourceType::host::<Gpu>(),
-        |mut store, rep| {
-            let resource = Resource::<Gpu>::new_own(rep);
-            store.data_mut().table.delete(resource)?;
-            Ok(())
-        },
-    )?;
+    webgpu.resource("gpu", ResourceType::host::<Gpu>(), |mut store, rep| {
+        let resource = Resource::<Gpu>::new_own(rep);
+        store.data_mut().table.delete(resource)?;
+        Ok(())
+    })?;
     webgpu.resource(
         "wgsl-language-features",
         ResourceType::host::<WgslLanguageFeatures>(),

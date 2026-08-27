@@ -46,12 +46,10 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |accessor, (shader,): (Resource<GpuShaderModule>,)| {
             let called = called.clone();
             Box::pin(async move {
-                accessor
-                    .with(|mut access| access.data_mut().table.get(&shader).map(|_| ()))?;
+                accessor.with(|mut access| access.data_mut().table.get(&shader).map(|_| ()))?;
                 called.store(true, Ordering::SeqCst);
-                let resource = accessor.with(|mut access| {
-                    access.data_mut().table.push(GpuCompilationInfo)
-                })?;
+                let resource =
+                    accessor.with(|mut access| access.data_mut().table.push(GpuCompilationInfo))?;
                 Ok((resource,))
             })
         },

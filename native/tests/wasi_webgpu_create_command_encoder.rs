@@ -94,6 +94,9 @@ fn wasi_webgpu_create_command_encoder_call_async() -> wasmtime::Result<()> {
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 17, "guest run must return stub encoder rep via call_async");
+    assert_eq!(
+        v, 17,
+        "guest run must return stub encoder rep via call_async"
+    );
     Ok(())
 }

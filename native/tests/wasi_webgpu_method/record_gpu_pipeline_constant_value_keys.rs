@@ -25,10 +25,16 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
             Ok(())
         },
     )?;
-    webgpu.func_wrap("[constructor]record-gpu-pipeline-constant-value", |mut store, ()| {
-        let resource = store.data_mut().table.push(RecordGpuPipelineConstantValue)?;
-        Ok((resource,))
-    })?;
+    webgpu.func_wrap(
+        "[constructor]record-gpu-pipeline-constant-value",
+        |mut store, ()| {
+            let resource = store
+                .data_mut()
+                .table
+                .push(RecordGpuPipelineConstantValue)?;
+            Ok((resource,))
+        },
+    )?;
     webgpu.func_wrap(
         "[method]record-gpu-pipeline-constant-value.keys",
         move |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {

@@ -45,7 +45,9 @@ struct TestHost {
     table: ResourceTable,
 }
 
-fn register_method_request_adapter_feature_level(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
+fn register_method_request_adapter_feature_level(
+    linker: &mut Linker<TestHost>,
+) -> wasmtime::Result<()> {
     let mut webgpu = linker.instance("wasi:webgpu/webgpu@0.3.0-rc.2")?;
     webgpu.resource("gpu", ResourceType::host::<Gpu>(), |mut store, rep| {
         let resource = Resource::<Gpu>::new_own(rep);

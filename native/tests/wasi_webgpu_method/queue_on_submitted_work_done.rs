@@ -34,8 +34,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |accessor, (queue,): (Resource<GpuQueue>,)| {
             let called = called.clone();
             Box::pin(async move {
-                accessor
-                    .with(|mut access| access.data_mut().table.get(&queue).map(|_| ()))?;
+                accessor.with(|mut access| access.data_mut().table.get(&queue).map(|_| ()))?;
                 called.store(true, Ordering::SeqCst);
                 Ok(())
             })

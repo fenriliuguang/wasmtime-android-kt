@@ -182,10 +182,10 @@ interface WasiWebGpuHost : AutoCloseable {
      * Presents the pending swapchain texture from [canvasContextGetCurrentTexture].
      * Dawn [queueSubmit] does **not** block GpuThread on the current submit
      * (that stacked on vsync and dropped beats). The next
-     * [canvasContextGetCurrentTexture] waits the previous canvas GPU fence
-     * before acquire so work overlaps vsync. Older frames are [tryDrop]ped
-     * after GPU done and 3 newer presents. Idempotent if [queueSubmit]
-     * already presented.
+     * [canvasContextGetCurrentTexture] does **not** wait the previous GPU
+     * fence (that delayed present vs scanout). Older frames are [tryDrop]ped
+     * on the event poller after GPU done and 3 newer presents. Idempotent if
+     * [queueSubmit] already presented.
      */
     fun canvasContextPresent(context: Int)
 

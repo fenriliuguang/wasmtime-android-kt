@@ -46,9 +46,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         let resource = store
             .data_mut()
             .table
-            .push(GpuCompilationMessage {
-                shader_module: 0,
-            })?;
+            .push(GpuCompilationMessage { shader_module: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(

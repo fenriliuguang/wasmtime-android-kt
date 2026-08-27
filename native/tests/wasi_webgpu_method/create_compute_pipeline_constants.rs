@@ -125,16 +125,20 @@ fn register_method_create_compute_pipeline_constants(
         let resource = store.data_mut().table.push(GpuShaderModule { rep: 0 })?;
         Ok((resource,))
     })?;
-    webgpu.func_wrap("[constructor]record-gpu-pipeline-constant-value", |mut store, ()| {
-        let resource = store
-            .data_mut()
-            .table
-            .push(RecordGpuPipelineConstantValue)?;
-        Ok((resource,))
-    })?;
+    webgpu.func_wrap(
+        "[constructor]record-gpu-pipeline-constant-value",
+        |mut store, ()| {
+            let resource = store
+                .data_mut()
+                .table
+                .push(RecordGpuPipelineConstantValue)?;
+            Ok((resource,))
+        },
+    )?;
     webgpu.func_wrap(
         "[method]record-gpu-pipeline-constant-value.add",
-        |mut caller, (record, key, value): (Resource<RecordGpuPipelineConstantValue>, String, f64)| {
+        |mut caller,
+         (record, key, value): (Resource<RecordGpuPipelineConstantValue>, String, f64)| {
             caller.data_mut().table.get(&record).map(|_| ())?;
             caller.data_mut().added.insert(record.rep(), (key, value));
             Ok(())

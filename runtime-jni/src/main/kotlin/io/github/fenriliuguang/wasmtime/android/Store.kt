@@ -74,16 +74,17 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
 
     /**
      * Post one Choreographer vsync beat into `wasi-gfx` `surface.on-frame`.
-     * 1-slot: drops the beat if the previous event is still unconsumed.
-     * Display rate is not capped here: pin `frame-event` has no timestamp
-     * ([frameTimeNanos] is accepted for call-site alignment with `doFrame`
-     * but is not a rAF delta). Guest motion delta is `wasi:clocks`
-     * `monotonic-clock.now`. The CM stream write runs on GpuThread.
+     * 1-slot while waiting; drops beats while guest is still in a frame.
+     * Consumes every Choreographer beat (1:1). A stall latches to the current
+     * generation so queued vsyncs become one present, not a burst.
+     * [frameTimeNanos] measures period; pin `frame-event` still has no
+     * timestamp. Guest motion delta is `wasi:clocks` `monotonic-clock.now`
+     * (vsync instant of this beat while in-frame).
      */
     @JvmOverloads
-    fun postGfxVsync(@Suppress("UNUSED_PARAMETER") frameTimeNanos: Long = 0L) {
+    fun postGfxVsync(frameTimeNanos: Long = 0L) {
         require(handle != 0L) { "store closed" }
-        NativeBridge.nativeStorePostGfxVsync(handle)
+        NativeBridge.nativeStorePostGfxVsync(handle, frameTimeNanos)
     }
 
     /**
