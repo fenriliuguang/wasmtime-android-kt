@@ -54,8 +54,10 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
 
     /**
      * Attach a [WebGpuBackend] (explicit, preferred). Replaces any previous
-     * experimental host callbacks. The backend must implement the internal
-     * JNI attach (`GpuBackends.dawn()` / `cpu()`).
+     * experimental host callbacks **and** any ServiceLoader attach. Always
+     * wins over [discoverWebGpuBackend] / [createWithDiscoveredBackend].
+     * The backend must implement the internal JNI attach
+     * (`GpuBackends.dawn()` / `cpu()`).
      */
     fun setWebGpuBackend(backend: WebGpuBackend) {
         require(handle != 0L) { "store closed" }
@@ -87,6 +89,9 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
         private val logger = Logger.getLogger(Store::class.java.name)
 
         /**
+         * Product default: **no** ServiceLoader. Apps that want the default
+         * `android-webgpu` bundle convenience use [createWithDiscoveredBackend].
+         *
          * @param discoverWebGpuBackend if true and no explicit backend is set,
          *   load [WebGpuBackendFactory] via [ServiceLoader]. Zero factories →
          *   unwired (`request-adapter` `none`). Several: prefer `id == "dawn"`.
@@ -101,42 +106,62 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
             return store
         }
 
+        /**
+         * Default-bundle convenience: ServiceLoader [WebGpuBackendFactory]
+         * (prefer `id == "dawn"`). Zero factories leave the store unwired
+         * (`request-adapter` **`none`**). [setWebGpuBackend] always wins over
+         * this path (call it after create, or skip this factory).
+         */
+        @JvmStatic
+        fun createWithDiscoveredBackend(engine: Engine): Store =
+            create(engine, discoverWebGpuBackend = true)
+
         private fun kindFor(id: String): WebGpuBackendKind =
             when (id) {
                 "dawn" -> WebGpuBackendKind.Dawn
                 "none" -> WebGpuBackendKind.None
                 else -> WebGpuBackendKind.Custom(id)
             }
+
+        /**
+         * Pick among ServiceLoader factories. Empty → `null` (unwired /
+         * `request-adapter` none). Several: prefer `id == "dawn"`.
+         */
+        internal fun pickDiscoveredBackend(factories: List<WebGpuBackendFactory>): WebGpuBackend? {
+            if (factories.isEmpty()) {
+                return null
+            }
+            if (factories.size == 1) {
+                return factories[0].create()
+            }
+            val created = factories.map { it.create() }
+            val dawn = created.firstOrNull { it.id == "dawn" }
+            if (dawn != null) {
+                created.filter { it !== dawn }.forEach { runCatching { it.close() } }
+                return dawn
+            }
+            logger.warning(
+                "Multiple WebGpuBackendFactory entries (${created.map { it.id }}); using ${created[0].id}",
+            )
+            created.drop(1).forEach { runCatching { it.close() } }
+            return created[0]
+        }
     }
 
     /**
-     * ServiceLoader attach. No-op when no factory is on the classpath.
-     * Does not instantiate Dawn unless a factory is present.
+     * ServiceLoader attach. No-op when a backend is already attached
+     * ([setWebGpuBackend] always wins) or when no factory is on the classpath
+     * (unwired `request-adapter` `none`). Does not instantiate Dawn unless a
+     * factory is present.
      */
     fun discoverWebGpuBackend() {
         require(handle != 0L) { "store closed" }
-        val factories = ServiceLoader.load(WebGpuBackendFactory::class.java).toList()
-        if (factories.isEmpty()) {
+        if (attachedBackend != null) {
             return
         }
-        val factory =
-            if (factories.size == 1) {
-                factories[0]
-            } else {
-                val created = factories.map { it.create() }
-                val dawn = created.firstOrNull { it.id == "dawn" }
-                if (dawn != null) {
-                    created.filter { it !== dawn }.forEach { runCatching { it.close() } }
-                    setWebGpuBackend(dawn)
-                    return
-                }
-                logger.warning(
-                    "Multiple WebGpuBackendFactory entries (${created.map { it.id }}); using ${created[0].id}",
-                )
-                created.drop(1).forEach { runCatching { it.close() } }
-                setWebGpuBackend(created[0])
-                return
-            }
-        setWebGpuBackend(factory.create())
+        val picked =
+            pickDiscoveredBackend(ServiceLoader.load(WebGpuBackendFactory::class.java).toList())
+                ?: return
+        setWebGpuBackend(picked)
     }
 }

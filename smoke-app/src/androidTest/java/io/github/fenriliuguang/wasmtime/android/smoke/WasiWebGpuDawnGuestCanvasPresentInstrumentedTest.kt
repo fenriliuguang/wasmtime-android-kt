@@ -30,6 +30,10 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * WG-6: guest records a render pass on `gpu-canvas-context.get-current-texture`,
  * then host presents after `queue.submit` (not host-only clear, not create-texture 1×1).
+ *
+ * P010-DISC: product-path instrument still uses **explicit** attach
+ * ([ExperimentalWebGpuBridge.attachDawnGuestCanvasPresent] after
+ * [Store.create], not [Store.createWithDiscoveredBackend]).
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuDawnGuestCanvasPresentInstrumentedTest {
