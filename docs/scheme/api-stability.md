@@ -12,6 +12,7 @@
 8. **P010-CLIERR landed:** product cli `error-code` includes `io` / `illegal-byte-sequence` / `pipe`; stdout/stderr NUL write is guest-visible `illegal-byte-sequence`.
 9. **P010-TCP landed:** product `tcp-socket.connect` dials guest non-loopback IPv4; no listen / UDP by default.
 10. **P010-HBODY landed:** product http types expose body `stream<u8>` (`consume-body` / `response.new`); still in-process, not wire.
+11. **P010-HOUT landed:** product `wasi:http/client#send` does HTTP/1.1 GET on the wire; https / extra TLS crate not this cut.
 
 ## `0.x` rules
 

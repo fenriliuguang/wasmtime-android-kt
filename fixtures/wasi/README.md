@@ -224,11 +224,25 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_handl
 Guest export: `run: async func() -> u32`（读请求 body `HBOD`，经 `response.new` 写回，再 `consume-body` 读回，返回 4）  
 Host: `wasi:http/types@0.3.0` `[static]request.consume-body` / `[static]response.new` / `[static]response.consume-body`（钉 `@0.3.0`）
 
-官方 `consume-body` 还带 `res` future 与 `option<trailers>`；官方 `new` 还带 headers。本刀子集：`tuple<stream<u8>, future<result<_, error-code>>>`，无 trailers / headers / 出站 send。仍进程内。
+官方 `consume-body` 还带 `res` future 与 `option<trailers>`；官方 `new` 还带 headers。本刀子集：`tuple<stream<u8>, future<result<_, error-code>>>`，无 trailers / headers。出站 send 见下节。
 
 成功：guest `run` 返回 `4`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/http_body.wat -o fixtures/wasi/http_body.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_body.wasm
+```
+
+## `wasi:http` — outbound `client.send`（P010-HOUT）
+
+Guest export: `run: async func() -> u32`（`set-authority` → `send` GET → status 200 → `consume-body` `HOUT` → 返回 4）  
+Host: `wasi:http/client@0.3.0#send`（钉 `@0.3.0`；0.3 对 outgoing-handler 的等价物）
+
+Guest authority 在 mem `P3HA` 记录（len + `host:port`），测试 instantiate 前打补丁。Host **真拨** 该地址发 HTTP/1.1 GET（helper 线程），不是进程内 200。无 TLS crate；https → `unknown`。
+
+成功：guest `run` 返回 `4` **且** 测试侧 HTTP 服务器收到 `GET /`。
+
+```powershell
+wasm-tools parse fixtures/wasi/http_out.wat -o fixtures/wasi/http_out.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_out.wasm
 ```

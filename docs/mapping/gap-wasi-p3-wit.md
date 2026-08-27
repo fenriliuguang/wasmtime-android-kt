@@ -58,7 +58,7 @@ Do **not** put G-cmd / G-fs-full / listen / UDP on `product-010-remaining` `Next
 | **G-cmd** | `wasi:cli/command` imports environment / exit / terminal-* and the fs/sockets worlds | W5 is run+stdio only by design |
 | **G-fs-full** | `stat`, `read-directory` stream, append, sync, dates, full error-code, `other(option)` | Beyond open+r/w; likely `wasmtime-wasi` sized |
 | **G-sock-rest** | `listen` → `stream<tcp-socket>`; UDP; `ip-name-lookup`; non-loopback; sockets `types` merge | listen/UDP/DNS **named-only**. Non-loopback outbound **landed** (P010-TCP) |
-| **G-http-body** | request/response method, path, headers, **body `stream<u8>`**, trailers; `outgoing-handler` / `send`; `wasi:http/service` world; wire/loopback server | **Smoke** body `stream<u8>` (P010-HBODY: consume-body + `response.new`). **P010-HOUT** still auto. Full `service` world / trailers / method-path-headers still named |
+| **G-http-body** | request/response method, path, headers, **body `stream<u8>`**, trailers; `outgoing-handler` / `send`; `wasi:http/service` world; wire/loopback server | **Smoke** body `stream<u8>` (P010-HBODY) + outbound `client.send` HTTP/1.1 (P010-HOUT). Full `service` world / trailers / method-path-headers still named |
 | **G-http-ctor** | Drop `[constructor]request` / `[constructor]response` from the **product** types surface (host supplies `request` when calling `handle`) | **P010-HCTOR** auto |
 | **G-cli-error** | cli `error-code` as `io` / `illegal-byte-sequence` / `pipe` (0.3 `wasi:cli/types`) | **Smoke** — product stdout/stderr NUL → `illegal-byte-sequence`. Enum includes `unknown`/`io`/`pipe`. Full dump still **G-err** |
 
@@ -79,5 +79,5 @@ Do **not** put G-cmd / G-fs-full / listen / UDP on `product-010-remaining` `Next
 | `wasi:cli` stdout/stderr/stdin/run | **Smoke** ≈ official signatures + one guest-visible err (`illegal-byte-sequence`); **Named** G-err full dump / G-cmd |
 | `wasi:filesystem` | **Smoke** G-fs-shape + G-fs-open (list, offset, directory `open-at`, `..` → `access`) |
 | `wasi:sockets` | **Smoke** loopback echo + create family/result + connect `ip-socket-address` + outbound non-loopback dial (P010-TCP) |
-| `wasi:http` | **Smoke** in-process 200 + `handle -> result<response, error-code>` + body `stream<u8>` (P010-HBODY) |
+| `wasi:http` | **Smoke** in-process 200 + `handle -> result<response, error-code>` + body `stream<u8>` (P010-HBODY) + outbound `client.send` HTTP/1.1 (P010-HOUT) |
 | Device (G-dev) | **Smoke** — 10 W1–W8 / P1-* instruments on V2458A arm64 Android 16 (2026-08-26). Cloud still has no device |
