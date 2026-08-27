@@ -16,7 +16,7 @@
 | Does this repo provide a Dawn-backed host? | **Yes.** The in-tree **test runtime** and the **default product artifact** include Dawn. |
 | Must every consumer ship Dawn? | **No.** Core runtime AAR has **no** Dawn `.so`. Apps may omit the Dawn module and supply a spec-shaped host, or run with no GPU backend. |
 | How does a guest see “no backend / no adapter”? | **`request-adapter` returns `none`** — same as WebGPU `GPU.requestAdapter()` → `null`. Not a missing import, not “resource not found”, not a trap. |
-| Publish (L5)? | **Three** coordinates (`runtime` / `host-dawn` / **`android-webgpu` default**). Central only after **`0.1.0` gates**. |
+| Publish (L5)? | **Three consumer** coordinates (`runtime` / `host-dawn` / **`android-webgpu` default**). P010-PUB: `0.1.0` + [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). |
 | “Dynamic backend” means? | **Dual track (L5):** explicit `setWebGpuBackend` is the stable contract; ServiceLoader is default-bundle convenience. Not Play Feature Delivery, not downloading `.so` at runtime. |
 
 ## 2. Why not one AAR

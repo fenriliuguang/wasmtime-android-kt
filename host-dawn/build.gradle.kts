@@ -1,6 +1,13 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.mavenPublish)
 }
+
+extra["wasmtime.publishedArtifactId"] = "host-dawn"
+extra["wasmtime.publishedName"] = "Wasmtime Android Dawn host"
+extra["wasmtime.publishedDescription"] =
+    "Dawn/androidx.webgpu backend for wasmtime-android-kt. Prefer android-webgpu unless BYO runtime."
+apply(from = rootProject.file("gradle/wasmtime-publish.gradle"))
 
 android {
     namespace = "io.github.fenriliuguang.wasmtime.android.host.dawn"

@@ -1,6 +1,13 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.mavenPublish)
 }
+
+extra["wasmtime.publishedArtifactId"] = "runtime-jni"
+extra["wasmtime.publishedName"] = "Wasmtime Android runtime JNI"
+extra["wasmtime.publishedDescription"] =
+    "JNI loader for wasmtime-android-kt. Transitive of runtime; do not depend on this GAV directly."
+apply(from = rootProject.file("gradle/wasmtime-publish.gradle"))
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11

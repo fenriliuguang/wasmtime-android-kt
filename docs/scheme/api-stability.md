@@ -4,7 +4,7 @@
 
 1. Stay on **`0.x.y`** until upstream 1.0 gates in [`rfc-l5-productization.md`](rfc-l5-productization.md) §6 (three.js-style: **break in MINOR**). This-repo **1.0.0** is not a calendar target.  
 2. SemVer 2.0 shape: `MAJOR.MINOR.PATCH[-prerelease]`.  
-3. Current local coordinate: `0.1.0-experimental` (`gradle.properties` → `wasmtime.android.version`). **No Central / Packages until `0.1.0` product gates.**  
+3. Current coordinate: `0.1.0` (`gradle.properties` → `wasmtime.android.version`). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) (GitHub Packages + Maven Central, same GAV). Do not press when secrets or arm64 jniLibs are missing.  
 4. No CTS / compliant wasi:webgpu claim ([`non-goals.md`](non-goals.md) NG-5).  
 5. **P010-SPI landed:** `ExperimentalHostCallbacks` is **not** `runtime-api` public SPI (lives in `:runtime-jni` `internal`). Attach with `Store.setWebGpuBackend`; no `WebGpuBackend.hostCallbacks()`.
 6. **P010-DISC landed:** dual-track attach — `Store.setWebGpuBackend` is the stable contract; `Store.createWithDiscoveredBackend` is default-bundle ServiceLoader convenience (`Store.create` still defaults to no discover).
@@ -18,6 +18,7 @@
 14. **P010-GFXH landed:** product `wasi-gfx:surface` constructor + `on-frame` CM stream. Vsync payload is produced on a helper thread named `GpuThread`. Guest pulls; no JS callback. Present loop is P010-GFXL.
 15. **P010-GFXL landed:** product guest loops `on-frame` → `get-current-texture` → submit → `context.present` (two frames). `surface-webgpu` is hosted. GPU bootstrap still uses fixture `get-device`. WG-6 one-shot stays.
 16. **P010-CLAIM landed:** release-notes claim table [`claim-010.md`](claim-010.md) — all 224 pin `[method]` names instantiate; androidx holes listed; WASI subset vs named-only. **Not** CTS.
+17. **P010-PUB landed:** version `0.1.0`; consumer GAV `android-webgpu` / `runtime` / `host-dawn`. `runtime-api` / `runtime-jni` are Maven transitives only.
 
 ## `0.x` rules
 
@@ -30,4 +31,4 @@ Breaking public Kotlin/JNI/error semantics: at least `0.MINOR+1.0` **and** a cha
 | `ExperimentalWebGpuBridge` / leftover flat imports | Most unstable |
 | Guest fixtures / instruments | Not library API |
 
-Guest product pin: `wasi:webgpu@0.3.0-rc.2`. Gfx pin: `wasi-gfx:surface@0.2.0`. Public GPU SPI lives in `runtime-api` (`WebGpuBackend`). Unpublished host Maven coordinates are listed in [`../blocked-gpu-host.md`](../blocked-gpu-host.md) (`:host-dawn` only) and must be named in the changelog when bumped.
+Guest product pin: `wasi:webgpu@0.3.0-rc.2`. Gfx pin: `wasi-gfx:surface@0.2.0`. Public GPU SPI lives in `runtime-api` (`WebGpuBackend`). Product Maven coordinates are in [`rfc-l5-productization.md`](rfc-l5-productization.md) §4 (`:host-dawn` / `:android-webgpu` / `runtime`). Dawn pin bumps must be named in the changelog.

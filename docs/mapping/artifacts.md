@@ -69,6 +69,7 @@ After success the script:
 
 ## Non-goals
 
-- No Maven upload / no public binary release announcement  
-- Do not commit `.so`  
+- AAR ships `android/jniLibs/<abi>/libwasmtime_android_kt.so` (arm64-v8a required; x86_64 emulator in 0.x)
+- Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) — same GAV on GitHub Packages + Maven Central
+- Do not commit `.so`
 - No `armeabi-v7a` / `x86` unless a dedicated RFC  

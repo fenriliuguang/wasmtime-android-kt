@@ -1,6 +1,13 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.mavenPublish)
 }
+
+extra["wasmtime.publishedArtifactId"] = "runtime"
+extra["wasmtime.publishedName"] = "Wasmtime Android runtime"
+extra["wasmtime.publishedDescription"] =
+    "Android AAR with Wasmtime JNI, Component Model SPI, and libwasmtime_android_kt.so (no Dawn)."
+apply(from = rootProject.file("gradle/wasmtime-publish.gradle"))
 
 android {
     namespace = "io.github.fenriliuguang.wasmtime.android"

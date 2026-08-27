@@ -1,0 +1,93 @@
+# Manual publish to GitHub Packages and Maven Central (same GAV).
+# Required check name stays "CI" in ci.yml — this workflow is not a Ruleset gate.
+#
+# Do not run on push/PR. Do not press if arm64 jniLibs or Central secrets are missing
+# (skip with exit 0). Never publish :smoke-app.
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      destination:
+        description: Where to upload (Central skipped automatically when secrets are absent)
+        type: choice
+        options:
+          - github-packages
+          - maven-central
+          - both
+        default: github-packages
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Publish or skip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          SIGNING_IN_MEMORY_KEY: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+          SIGNING_IN_MEMORY_KEY_PASSWORD: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          SO="android/jniLibs/arm64-v8a/libwasmtime_android_kt.so"
+          if [ ! -f "$SO" ]; then
+            echo "skip: missing $SO (build with scripts/build-native-android.ps1)"
+            exit 0
+          fi
+
+          DEST="${{ inputs.destination }}"
+          publish_github=0
+          publish_central=0
+          case "$DEST" in
+            github-packages) publish_github=1 ;;
+            maven-central) publish_central=1 ;;
+            both) publish_github=1; publish_central=1 ;;
+            *) echo "unknown destination: $DEST"; exit 1 ;;
+          esac
+
+          if [ "$publish_github" -eq 1 ]; then
+            export ORG_GRADLE_PROJECT_githubPackagesUsername="${GITHUB_ACTOR}"
+            export ORG_GRADLE_PROJECT_githubPackagesPassword="${GITHUB_TOKEN}"
+            ./gradlew publishAllPublicationsToGithubPackagesRepository --no-configuration-cache
+          fi
+
+          if [ "$publish_central" -eq 1 ]; then
+            if [ -z "${MAVEN_CENTRAL_USERNAME:-}" ] || [ -z "${MAVEN_CENTRAL_PASSWORD:-}" ] || [ -z "${SIGNING_IN_MEMORY_KEY:-}" ]; then
+              echo "skip: Maven Central secrets missing (MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD / SIGNING_IN_MEMORY_KEY)"
+            else
+              export ORG_GRADLE_PROJECT_mavenCentralUsername="${MAVEN_CENTRAL_USERNAME}"
+              export ORG_GRADLE_PROJECT_mavenCentralPassword="${MAVEN_CENTRAL_PASSWORD}"
+              export ORG_GRADLE_PROJECT_signingInMemoryKey="${SIGNING_IN_MEMORY_KEY}"
+              export ORG_GRADLE_PROJECT_signingInMemoryKeyPassword="${SIGNING_IN_MEMORY_KEY_PASSWORD:-}"
+              ./gradlew publishToMavenCentral -PmavenCentralPublishing=true -PsignAllPublications=true --no-configuration-cache
+            fi
+          fi

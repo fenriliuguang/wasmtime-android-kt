@@ -26,7 +26,7 @@ Remaining: `python3 ./scripts/product-010-remaining.py`. A lane drops when its *
 | P010-GFXH | landed 2026-08-27 |
 | P010-GFXL | landed 2026-08-27 |
 | P010-CLAIM | landed 2026-08-27 |
-| P010-PUB | gap: p010 publish pending |
+| P010-PUB | landed 2026-08-27 |
 
 ## Named-only (never `Next:`)
 

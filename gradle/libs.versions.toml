@@ -22,3 +22,5 @@ androidx-webgpu = { group = "androidx.webgpu", name = "webgpu", version.ref = "w
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+# 0.35.x: Kotlin 2.1 + Gradle 9. 0.36+ needs Kotlin 2.2.
+mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.35.0" }

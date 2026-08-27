@@ -10,7 +10,7 @@
 - 本仓**提供** Dawn 接线；**测试运行 / 默认产品坐标**包含 Dawn 构件。  
 - 核心 AAR **不含** Dawn `.so`。使用者可只依赖 runtime，自带符合 SPI 的 Host，或不接 GPU。  
 - Guest 无 GPU：`gpu.request-adapter` → **`none`**（对标 WebGPU `null`），不是 trap，也不是「找不到资源」。  
-- 日后上包管理器（**L5：等到 `0.1.0` 门禁**）：**runtime** / **host-dawn** / 默认 bundle **`android-webgpu`**。  
+- 日后上包管理器（**L5 / P010-PUB：坐标 `0.1.0`**）：**runtime** / **host-dawn** / 默认 bundle **`android-webgpu`**。发布 workflow：`.github/workflows/publish.yml`。  
 - 「动态」= **双轨**：`setWebGpuBackend` 为稳定合同；ServiceLoader 为默认 bundle 便利。不是运行时下载 `.so`。
 
 ## 模块
