@@ -11,7 +11,7 @@
 
 - 引擎：只钉官方 `wasmtime`（现 47.x patch）；**只**真 CM async。
 - WASI：**产品子集**，不是 testsuite。「全量 0.3」= 0.1 门禁表，不是 NG-4。
-- `0.1.0`：大部分钉版 `wasi:webgpu` WIT + 业务所需 IO/网络 + [gfx 帧循环 RFC](rfc-wasi-gfx-frame-loop.md)。Dawn/androidx 无槽位列为已知限制。不宣称 CTS。
+- `0.1.0`：大部分钉版 `wasi:webgpu` WIT + 业务所需 IO/网络 + [gfx 帧循环 RFC](rfc-wasi-gfx-frame-loop.md)（产品 adapter/device **P010-GFXB** + vsync **P010-GFXV**；两帧预缓冲不够）+ **P010-DEMO**（入口 README 链接仓外 demo：打包 guest wasm → 本安卓运行时 → 上屏；引入即视为存在，不把 demo 做进本仓）+ 宣称表一行真机。Dawn/androidx 无槽位列为已知限制。不宣称 CTS。
 - **不做 `0.0.x-preview` Central。** P010-PUB（2026-08-27）落地 [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) 与坐标 `0.1.0`；secrets / arm64 `.so` 缺失时不要强发。
 - groupId：`io.github.fenriliuguang.wasmtime.android`。三坐标：`runtime` / `host-dawn` / **`android-webgpu`（0.x 默认）**。AAR 带 `.so`；也可自编译；Dawn 走 androidx 传递依赖。
 - GPU：**双轨** — `setWebGpuBackend` 为稳定合同；ServiceLoader 为默认 bundle 便利。R8 consumer rules 随 AAR。

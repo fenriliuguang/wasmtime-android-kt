@@ -27,7 +27,7 @@ First proposal world: canonical [`wasi:webgpu`](https://github.com/WebAssembly/w
 
 ## Goal stack
 
-See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 (L3 wasi:webgpu shape) is **closed**. P1 (WASI 0.3) is **closed**. **`0.1.0` product queue is empty** after P010-PUB ([`../agent/product-010.md`](../agent/product-010.md)). P2 Wasmtime pin is **named**. L4 is citable host. **L5 is accepted** (0.x product subset; coordinates `0.1.0`).
+See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 (L3 wasi:webgpu shape) is **closed**. P1 (WASI 0.3) is **closed**. **`0.1.0` remaining** is the complete gfx frame loop (**P010-GFXB** → **P010-GFXV**) then **P010-DEMO** (README out-of-tree demo + named device row) ([`../agent/product-010.md`](../agent/product-010.md)). P2 Wasmtime pin is **named**. L4 is citable host. **L5 is accepted** (0.x product subset; coordinates `0.1.0`).
 
 ## Claims
 

@@ -81,6 +81,24 @@ LANES = (
         "gap: p010 gfx-loop pending",
     ),
     (
+        "P010-GFXB",
+        "gfx-product-adapter-device",
+        "frame loop uses product request-adapter/request-device (no get-device)",
+        "gap: p010 gfx-boot pending",
+    ),
+    (
+        "P010-GFXV",
+        "gfx-vsync-on-frame",
+        "Choreographer vsync writes on-frame; drop unconsumed beats",
+        "gap: p010 gfx-vsync pending",
+    ),
+    (
+        "P010-DEMO",
+        "device-and-out-of-tree-demo",
+        "named device on-screen row + README link to out-of-tree wasm demo",
+        "gap: p010 demo pending",
+    ),
+    (
         "P010-CLAIM",
         "010-claim-table",
         "release-notes claim table (most-of-pin; not CTS)",
@@ -89,7 +107,7 @@ LANES = (
     (
         "P010-PUB",
         "publish-010",
-        "Central + Packages CI; version 0.1.0 (last lane)",
+        "Central + Packages CI; version 0.1.0",
         "gap: p010 publish pending",
     ),
 )

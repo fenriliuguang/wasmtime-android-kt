@@ -19,9 +19,9 @@
 | **P0** | 钉版 `wasi:webgpu@0.3.0-rc.2` Guest 形状 + 真 CM async — **2026-08-22 关闭** |
 | **P1** | 已批准 WASI 0.3 官方形状 + 真机仪器 — **2026-08-26 关闭**（[`p1-wasi-p3.zh.md`](docs/archive/p1-wasi-p3.zh.md)） |
 | **P2** | Wasmtime 钉 — **点名**（[`wasmtime-p2.md`](docs/agent/wasmtime-p2.md)） |
-| **L5 / 0.1.0** | 产品子集 + gfx 循环 + **`0.1.0` 坐标 / 发布 workflow**（[`product-010.md`](docs/agent/product-010.md)） |
+| **L5 / 0.1.0** | 产品子集 + **完整** gfx 循环 + 仓外 demo（剩余 **P010-GFXB** / **P010-GFXV** / **P010-DEMO**）（[`product-010.md`](docs/agent/product-010.md)） |
 
-成功标准：[`rfc-ecosystem-contribution.zh.md`](docs/scheme/rfc-ecosystem-contribution.zh.md) — 可复现、可引用；**禁止**向上游开 GitHub issue。GPU 接线：[`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。**P0 与 P1 已关闭。** **`0.1.0` 产品队列在 P010-PUB 后为空。** P2 Wasmtime 钉为点名。
+成功标准：[`rfc-ecosystem-contribution.zh.md`](docs/scheme/rfc-ecosystem-contribution.zh.md) — 可复现、可引用；**禁止**向上游开 GitHub issue。GPU 接线：[`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。**P0 与 P1 已关闭。** **`0.1.0` 剩余：** 完整 gfx 帧循环（**P010-GFXB** → **P010-GFXV**）然后 **P010-DEMO**（入口 README 链仓外 wasm→运行时→上屏 demo；引入即视为存在）。P2 Wasmtime 钉为点名。
 
 ## 快速开始
 

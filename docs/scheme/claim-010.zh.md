@@ -6,7 +6,7 @@ L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8 的发布说
 
 ## 一句话
 
-第三方可以依赖：钉住的 **`wasi:webgpu@0.3.0-rc.2` 绝大多数 `[method]` 能 instantiate**、webgpu 应用需要的 **WASI 0.3 IO/网络子集**、以及最小 **`wasi-gfx` 上屏循环**。androidx 空洞与 named-only WASI 剩项公开列出，不当静默丢字段。
+第三方可以依赖：钉住的 **`wasi:webgpu@0.3.0-rc.2` 绝大多数 `[method]` 能 instantiate**、webgpu 应用需要的 **WASI 0.3 IO/网络子集**、以及 **完整 `wasi-gfx` 上屏循环**（产品 adapter/device + vsync）。在 **P010-GFXB** / **P010-GFXV** 前，循环只是两帧预缓冲 + fixture `get-device`。在 **P010-DEMO** 前：本表无真机行，入口 README 无仓外 demo 链接（引入链接即视为存在，不把 demo 做进本仓）。androidx 空洞与 named-only WASI 剩项公开列出，不当静默丢字段。
 
 ## `wasi:webgpu`
 
@@ -21,6 +21,6 @@ L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8 的发布说
 | filesystem | 预开目录 + `open-at` + 读写；`..` → `access` | G-fs-full |
 | sockets | 出站 TCP 拨非回环 IPv4 | listen / UDP / DNS |
 | http | body `stream<u8>` + 线上 GET；产品无 request/response 构造器 | service 世界、TLS |
-| gfx | `surface@0.2.0` + `on-frame` + present 循环 | 完整桌面 gfx |
+| gfx | `surface@0.2.0` + 两帧预缓冲 present；**完整循环待 P010-GFXB / P010-GFXV**；最后 **P010-DEMO**（README 仓外 demo + 真机行） | 完整桌面 gfx |
 
 不宣称 `wasmtime-wasi`、不宣称本仓 1.0。发布 workflow 已落地（P010-PUB）；secrets 缺失时不要强发 Central。
