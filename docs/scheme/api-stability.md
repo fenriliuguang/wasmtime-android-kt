@@ -14,7 +14,8 @@
 10. **P010-HBODY landed:** product http types expose body `stream<u8>` (`consume-body` / `response.new`); still in-process, not wire.
 11. **P010-HOUT landed:** product `wasi:http/client#send` does HTTP/1.1 GET on the wire; https / extra TLS crate not this cut.
 12. **P010-HCTOR landed:** product `Linker.create` omits `[constructor]request` / `[constructor]response`. Host supplies `request` when calling `handle`. Test linker keeps the constructors.
-13. **P010-GFXP landed:** guest gfx pin is `wasi-gfx:surface@0.2.0` (tag `v0.2.0` under `third_party/wasi-gfx/`). No host loop yet.
+13. **P010-GFXP landed:** guest gfx pin is `wasi-gfx:surface@0.2.0` (tag `v0.2.0` under `third_party/wasi-gfx/`). Host `on-frame` is P010-GFXH.
+14. **P010-GFXH landed:** product `wasi-gfx:surface` constructor + `on-frame` CM stream. Vsync payload is produced on a helper thread named `GpuThread`. Guest pulls; no JS callback. Present loop is P010-GFXL.
 
 ## `0.x` rules
 

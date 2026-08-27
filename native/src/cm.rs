@@ -535,6 +535,36 @@ struct HttpResponse {
     body: Arc<Mutex<Vec<u8>>>,
 }
 
+/// P010-GFXH: host `wasi-gfx:surface` (pin `v0.2.0`).
+struct GfxSurface;
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GfxSurfaceCreateDesc {
+    height: Option<u32>,
+    width: Option<u32>,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GfxFrameEvent {
+    nothing: bool,
+}
+
+/// Vsync payload for `on-frame` is produced on a helper thread named GpuThread
+/// (pin `on-frame` is a sync `func`, not `async func`; no stackful CM async).
+fn gfx_on_frame_event() -> wasmtime::Result<GfxFrameEvent> {
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
+    std::thread::Builder::new()
+        .name("GpuThread".into())
+        .spawn(move || {
+            let _ = tx.send(GfxFrameEvent { nothing: true });
+        })
+        .map_err(|e| wasmtime::Error::msg(format!("GpuThread: {e}")))?;
+    rx.recv_timeout(std::time::Duration::from_secs(1))
+        .map_err(|e| wasmtime::Error::msg(format!("GpuThread: {e}")))
+}
+
 /// WASI 0.3.0 http `error-code` subset (`unknown` only).
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
@@ -1419,6 +1449,46 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             Err(_) => Ok((Err(HttpErrorCode::Unknown),)),
                         }
                     })
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    // P010-GFXH: wasi-gfx:surface@0.2.0 — constructor + on-frame CM stream.
+    // Guest pulls; host writes one frame-event from a helper thread named GpuThread.
+    // No JS-style callback. No surface-webgpu / present loop (P010-GFXL).
+    {
+        let mut surface = linker
+            .instance("wasi-gfx:surface/surface@0.2.0")
+            .map_err(|e| e.to_string())?;
+        surface
+            .resource(
+                "surface",
+                ResourceType::host::<GfxSurface>(),
+                |mut store, rep| {
+                    let resource = Resource::<GfxSurface>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[constructor]surface",
+                |mut store, (_desc,): (GfxSurfaceCreateDesc,)| {
+                    let resource = store.data_mut().table.push(GfxSurface)?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[method]surface.on-frame",
+                |mut store, (this,): (Resource<GfxSurface>,)| {
+                    store.data_mut().table.get(&this)?;
+                    let ev = gfx_on_frame_event()?;
+                    let reader = StreamReader::new(&mut store, vec![ev])?;
+                    Ok((reader,))
                 },
             )
             .map_err(|e| e.to_string())?;
