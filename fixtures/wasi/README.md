@@ -38,13 +38,15 @@ wasm-tools parse fixtures/wasi/monotonic_now.wat -o fixtures/wasi/monotonic_now.
 Guest export: `run: func() -> u32`（ok 后返回写入字节数 4）  
 Host: `wasi:cli/stdout@0.3.0#write-via-stream`（`CollectConsumer` 管道；钉 `@0.3.0`）
 
-官方签名：`func(data: stream<u8>) -> future<result<_, error-code>>`（ok 路径；`error-code` 本刀仅 `unknown` 变体）。
+官方签名：`func(data: stream<u8>) -> future<result<_, error-code>>`。ok 路径 guest 写 `OUT\n` 后 `run` 返回 `4`。**P010-CLIERR：** NUL 字节 → `error-code.illegal-byte-sequence`（`cli_stdout_err`；枚举含 `unknown`/`io`/`illegal-byte-sequence`/`pipe`）。
 
-成功：guest 写入 `OUT\n`（4 字节）且 future 为 ok 后 `run` 返回 `4`。
+成功：ok 路径返回 `4`；err 路径 guest 见到 `illegal-byte-sequence` 后 `run` 返回 `1`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/cli_stdout.wat -o fixtures/wasi/cli_stdout.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdout.wasm
+wasm-tools parse fixtures/wasi/cli_stdout_err.wat -o fixtures/wasi/cli_stdout_err.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdout_err.wasm
 ```
 
 ## `wasi:cli` — `stderr.write-via-stream`
@@ -52,7 +54,7 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdout
 Guest export: `run: func() -> u32`（ok 后返回写入字节数 4）  
 Host: `wasi:cli/stderr@0.3.0#write-via-stream`（与 stdout 共用管道；钉 `@0.3.0`）
 
-官方签名：`func(data: stream<u8>) -> future<result<_, error-code>>`（ok 路径；`error-code` 本刀仅 `unknown` 变体）。
+官方签名：`func(data: stream<u8>) -> future<result<_, error-code>>`（ok 路径；`error-code` 含 `unknown`/`io`/`illegal-byte-sequence`/`pipe`，NUL → `illegal-byte-sequence`）。
 
 成功：guest 写入 `ERR\n`（4 字节）且 future 为 ok 后 `run` 返回 `4`。
 

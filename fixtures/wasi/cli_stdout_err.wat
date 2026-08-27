@@ -1,9 +1,9 @@
-;; WASI 0.3 package smoke: wasi:cli/stderr@0.3.0#write-via-stream
-;; Official: stream<u8> -> future<result<_, error-code>> (ok path).
-;; Guest: stream.new → write-via-stream(readable) → write "ERR\n" → drop-writable
-;;        → future.read (ok) → return 4.
+;; WASI 0.3: wasi:cli/stdout@0.3.0#write-via-stream err path (P010-CLIERR).
+;; Official: stream<u8> -> future<result<_, error-code>>.
+;; Guest writes a NUL byte; host returns error-code.illegal-byte-sequence.
+;; Harness: run returns 1 after matching disc=err + payload=illegal-byte-sequence.
 (component
-  (import "wasi:cli/stderr@0.3.0" (instance $stderr
+  (import "wasi:cli/stdout@0.3.0" (instance $stdout
     (type $error-code-def (enum "unknown" "io" "illegal-byte-sequence" "pipe"))
     (export "error-code" (type $error-code (eq $error-code-def)))
     (type $write-result (result (error $error-code)))
@@ -11,15 +11,15 @@
     (type $ft (future $write-result))
     (export "write-via-stream" (func (param "data" $st) (result $ft)))
   ))
-  (alias export $stderr "write-via-stream" (func $write-via-stream))
-  (alias export $stderr "error-code" (type $error-code))
+  (alias export $stdout "write-via-stream" (func $write-via-stream))
+  (alias export $stdout "error-code" (type $error-code))
   (type $write-result (result (error $error-code)))
   (type $st (stream u8))
   (type $ft (future $write-result))
 
   (core module $libc
     (memory (export "mem") 1)
-    (data (i32.const 16) "ERR\n")
+    (data (i32.const 16) "\00")
   )
   (core instance $libc (instantiate $libc))
 
@@ -45,20 +45,24 @@
 
       (local.set $fut (call $write-via-stream (local.get $r)))
 
-      (local.set $status (call $stream.write (local.get $w) (i32.const 16) (i32.const 4)))
+      (local.set $status (call $stream.write (local.get $w) (i32.const 16) (i32.const 1)))
       (if (i32.eq (local.get $status) (i32.const -1))
         (then unreachable))
 
       (call $stream.drop-writable (local.get $w))
 
-      (local.set $status (call $future.read (local.get $fut) (i32.const 0)))
+      ;; future.read writes packed result<_, error-code> at mem[32]: disc (1=err), payload at 33.
+      (local.set $status (call $future.read (local.get $fut) (i32.const 32)))
       (if (i32.eq (local.get $status) (i32.const -1))
         (then unreachable))
       (call $future.drop-readable (local.get $fut))
-      (if (i32.ne (i32.load8_u (i32.const 0)) (i32.const 0))
+      ;; result<_, error-code> is packed: disc u8 + payload u8 (not 4-byte aligned).
+      (if (i32.ne (i32.load8_u (i32.const 32)) (i32.const 1))
+        (then unreachable))
+      (if (i32.ne (i32.load8_u (i32.const 33)) (i32.const 2))
         (then unreachable))
 
-      i32.const 4
+      i32.const 1
     )
   )
 

@@ -330,7 +330,7 @@ struct SystemClockInstant {
     nanoseconds: u32,
 }
 
-/// WASI 0.3.0 `wasi:cli` `error-code` (ok path only; `unknown` is the sole variant).
+/// WASI 0.3.0 `wasi:cli` `error-code` (G-cli-error subset; not the full dump).
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
@@ -338,6 +338,12 @@ struct SystemClockInstant {
 enum CliErrorCode {
     #[component(name = "unknown")]
     Unknown,
+    #[component(name = "io")]
+    Io,
+    #[component(name = "illegal-byte-sequence")]
+    IllegalByteSequence,
+    #[component(name = "pipe")]
+    Pipe,
 }
 
 /// WASI 0.3.0 `wasi:filesystem` `error-code` subset (`unknown`, `access`).
@@ -789,9 +795,13 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 Ok(n) => n,
                 Err(_) => 0,
             };
-            Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(()))
+            let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
+            if bytes.iter().any(|&b| b == 0) {
+                Ok::<_, wasmtime::Error>(Err(CliErrorCode::IllegalByteSequence))
+            } else {
+                Ok(Ok(()))
+            }
         })?;
-        let _ = buf;
         Ok(fut)
     }
 
@@ -821,7 +831,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
         .map_err(|e| e.to_string())?;
 
     // WASI 0.3: wasi:cli/stdout@0.3.0 — official write-via-stream →
-    // future<result<_, error-code>> (ok path).
+    // future<result<_, error-code>> (ok; NUL bytes → illegal-byte-sequence).
     linker
         .instance("wasi:cli/stdout@0.3.0")
         .map_err(|e| e.to_string())?
@@ -1055,8 +1065,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     match client.write_all(&bytes).and_then(|_| {
                         client.shutdown(std::net::Shutdown::Write)
                     }) {
-                        Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(())),
-                        Err(_) => Ok(Err(CliErrorCode::Unknown)),
+                        Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(())),
+                        Err(_) => Ok(Err(SockErrorCode::Unknown)),
                     }
                 })?;
                 Ok((fut,))
@@ -1082,7 +1092,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 }
                 let reader = StreamReader::new(&mut store, incoming)?;
                 let fut = FutureReader::new(&mut store, async move {
-                    Ok::<_, wasmtime::Error>(Ok::<(), CliErrorCode>(()))
+                    Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(()))
                 })?;
                 Ok(((reader, fut),))
             },

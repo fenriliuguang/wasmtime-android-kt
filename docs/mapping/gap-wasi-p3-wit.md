@@ -60,7 +60,7 @@ Do **not** put G-cmd / G-fs-full / listen / UDP on `product-010-remaining` `Next
 | **G-sock-rest** | `listen` → `stream<tcp-socket>`; UDP; `ip-name-lookup`; non-loopback; sockets `types` merge | listen/UDP/DNS **named-only**. Non-loopback outbound is **P010-TCP** |
 | **G-http-body** | request/response method, path, headers, **body `stream<u8>`**, trailers; `outgoing-handler` / `send`; `wasi:http/service` world; wire/loopback server | **P010-HBODY / HOUT** auto. Full `service` world / trailers still named |
 | **G-http-ctor** | Drop `[constructor]request` / `[constructor]response` from the **product** types surface (host supplies `request` when calling `handle`) | **P010-HCTOR** auto |
-| **G-cli-error** | cli `error-code` as `io` / `illegal-byte-sequence` / `pipe` (0.3 `wasi:cli/types`) | **P010-CLIERR** as needed on product stdio/`run`; full enum dump named |
+| **G-cli-error** | cli `error-code` as `io` / `illegal-byte-sequence` / `pipe` (0.3 `wasi:cli/types`) | **Smoke** — product stdout/stderr NUL → `illegal-byte-sequence`. Enum includes `unknown`/`io`/`pipe`. Full dump still **G-err** |
 
 ## 4. Out of scope
 
@@ -76,7 +76,7 @@ Do **not** put G-cmd / G-fs-full / listen / UDP on `product-010-remaining` `Next
 | Package | Degree |
 |---------|--------|
 | CM stream/future, `wasi:random`, `wasi:clocks` instant | **Smoke** ≈ official for the landed functions |
-| `wasi:cli` stdout/stderr/stdin/run | **Smoke** ≈ official signatures; **Named** G-err / G-cmd |
+| `wasi:cli` stdout/stderr/stdin/run | **Smoke** ≈ official signatures + one guest-visible err (`illegal-byte-sequence`); **Named** G-err full dump / G-cmd |
 | `wasi:filesystem` | **Smoke** G-fs-shape + G-fs-open (list, offset, directory `open-at`, `..` → `access`) |
 | `wasi:sockets` | **Smoke** loopback echo + create family/result + connect `ip-socket-address` |
 | `wasi:http` | **Smoke** in-process 200 + `handle -> result<response, error-code>` |

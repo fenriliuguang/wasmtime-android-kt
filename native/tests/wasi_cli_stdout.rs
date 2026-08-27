@@ -20,6 +20,12 @@ const PAYLOAD: &[u8] = b"OUT\n";
 enum CliErrorCode {
     #[component(name = "unknown")]
     Unknown,
+    #[component(name = "io")]
+    Io,
+    #[component(name = "illegal-byte-sequence")]
+    IllegalByteSequence,
+    #[component(name = "pipe")]
+    Pipe,
 }
 
 struct CollectConsumer {
@@ -106,5 +112,57 @@ fn wasi_cli_stdout_write_via_stream_smoke() -> wasmtime::Result<()> {
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (n,) = pollster::block_on(func.call_async(&mut store, ()))?;
     assert_eq!(n, PAYLOAD.len() as u32);
+    Ok(())
+}
+
+#[test]
+fn wasi_cli_stdout_write_via_stream_nul_is_illegal_byte_sequence() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/wasi/cli_stdout_err.wasm"
+    ))?;
+    let component = Component::new(&engine, bytes)?;
+
+    let mut linker = Linker::new(&engine);
+    linker.instance("wasi:cli/stdout@0.3.0")?.func_wrap(
+        "write-via-stream",
+        |mut store: StoreContextMut<()>, (reader,): (StreamReader<u8>,)| {
+            let (tx, rx) = oneshot::channel::<u32>();
+            let buf = Arc::new(Mutex::new(Vec::new()));
+            reader.pipe(
+                &mut store,
+                CollectConsumer {
+                    buf: buf.clone(),
+                    done: Some(tx),
+                },
+            )?;
+            let fut = FutureReader::new(&mut store, async move {
+                let _n = match rx.await {
+                    Ok(n) => n,
+                    Err(_) => 0,
+                };
+                let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
+                if bytes.iter().any(|&b| b == 0) {
+                    Ok::<_, wasmtime::Error>(Err(CliErrorCode::IllegalByteSequence))
+                } else {
+                    Ok(Ok(()))
+                }
+            })?;
+            Ok((fut,))
+        },
+    )?;
+
+    let mut store = Store::new(&engine, ());
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
+    let (n,) = pollster::block_on(func.call_async(&mut store, ()))?;
+    assert_eq!(
+        n, 1,
+        "guest must see error-code.illegal-byte-sequence and return 1"
+    );
     Ok(())
 }
