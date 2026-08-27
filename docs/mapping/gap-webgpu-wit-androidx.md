@@ -2,7 +2,7 @@
 
 **English** | [中文](gap-webgpu-wit-androidx.zh.md)
 
-Living map for the **closed** P0 host. Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Current work: [`../agent/product-010.md`](../agent/product-010.md).
+Living map for the **closed** P0 host. Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Current work: [`../agent/product-010.md`](../agent/product-010.md). Product claim (not CTS): [`../scheme/claim-010.md`](../scheme/claim-010.md).
 
 **Degree**
 
@@ -19,7 +19,7 @@ Living map for the **closed** P0 host. Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../th
 
 | Axis | Degree |
 |------|--------|
-| `[method]` names vs pin | **Shape** — ~225 resource methods wrapped in `native/src/cm.rs` |
+| `[method]` names vs pin | **Shape** — all 224 pin resource methods registered in `native/src/cm.rs` (see [`../scheme/claim-010.md`](../scheme/claim-010.md)) |
 | S1–S5 (`queue`, `request-adapter` `option`, `request-device` `result`, `create-buffer`, `submit` list) | **Shape** + **Dawn** on the product path |
 | Leftover optional descriptors (F1–F9) | **Shape** into Kotlin records; Dawn copy where the AAR allows |
 | G1–G9 consume + WG-6 guest-drawn compute / 3D / canvas present | **Dawn** (see holes below) |

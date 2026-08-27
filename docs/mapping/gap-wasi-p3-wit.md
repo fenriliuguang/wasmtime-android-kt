@@ -2,7 +2,7 @@
 
 **English** | [中文](gap-wasi-p3-wit.zh.md)
 
-**P1 is closed** (2026-08-26). Close-out: [`../archive/p1-wasi-p3.md`](../archive/p1-wasi-p3.md). Current work: [`../agent/product-010.md`](../agent/product-010.md). Surface snapshot: [`../archive/p1-wasi-p3-surface.md`](../archive/p1-wasi-p3-surface.md).
+**P1 is closed** (2026-08-26). Close-out: [`../archive/p1-wasi-p3.md`](../archive/p1-wasi-p3.md). Current work: [`../agent/product-010.md`](../agent/product-010.md). Surface snapshot: [`../archive/p1-wasi-p3-surface.md`](../archive/p1-wasi-p3-surface.md). Product subset vs named-only: [`../scheme/claim-010.md`](../scheme/claim-010.md).
 
 This page keeps **P1 leftover official 0.3.0 shapes**. Do **not** re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, or G-dev. They are **not** `wasmtime-p2-remaining.py` `Next:`.
 
