@@ -1238,7 +1238,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
     // tuple<stream<u8>, future<result>> (no trailers / res-future param);
     // [static]response.new(contents: stream<u8>) → tuple<response, future>
     // (no headers). Outbound: set-authority + client.send HTTP/1.1 GET on the
-    // wire (helper thread). No TLS crate / https → unknown. No wasmtime-wasi.
+    // wire (helper thread). Product linker omits [constructor]request/response
+    // (P010-HCTOR; test linker keeps them). No TLS crate / https → unknown.
     {
         let mut types = linker
             .instance("wasi:http/types@0.3.0")
@@ -1265,24 +1266,28 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 },
             )
             .map_err(|e| e.to_string())?;
-        types
-            .func_wrap("[constructor]request", |mut store, ()| {
-                let resource = store.data_mut().table.push(HttpRequest {
-                    body: b"HBOD".to_vec(),
-                    authority: String::new(),
-                })?;
-                Ok((resource,))
-            })
-            .map_err(|e| e.to_string())?;
-        types
-            .func_wrap("[constructor]response", |mut store, ()| {
-                let resource = store.data_mut().table.push(HttpResponse {
-                    status: 200,
-                    body: Arc::new(Mutex::new(Vec::new())),
-                })?;
-                Ok((resource,))
-            })
-            .map_err(|e| e.to_string())?;
+        // P010-HCTOR: product linker omits [constructor]request / [constructor]response.
+        // Host supplies request when calling handle. Test linker keeps the ctors.
+        if fixture_ctors {
+            types
+                .func_wrap("[constructor]request", |mut store, ()| {
+                    let resource = store.data_mut().table.push(HttpRequest {
+                        body: b"HBOD".to_vec(),
+                        authority: String::new(),
+                    })?;
+                    Ok((resource,))
+                })
+                .map_err(|e| e.to_string())?;
+            types
+                .func_wrap("[constructor]response", |mut store, ()| {
+                    let resource = store.data_mut().table.push(HttpResponse {
+                        status: 200,
+                        body: Arc::new(Mutex::new(Vec::new())),
+                    })?;
+                    Ok((resource,))
+                })
+                .map_err(|e| e.to_string())?;
+        }
         types
             .func_wrap(
                 "[method]response.status-code",

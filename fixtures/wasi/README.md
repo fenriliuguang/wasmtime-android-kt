@@ -210,13 +210,24 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tc
 Guest export: 根 `run: async func() -> u32`（200）；官方 `wasi:http/incoming-handler@0.3.0#handle: async func(own<request>) -> result<own<response>, error-code>`  
 Host: `wasi:http/types@0.3.0` constructors + `status-code`（钉 `@0.3.0`）
 
-官方包名如上。本切片子集：handle 官方 `result`（ok 路径）；**P010-HBODY** 另见下节 body `stream<u8>`。无 fields / outparam。**不是**监听 HTTP 服务器。未加 `wasmtime-wasi`（体积 + Android 线程，见 changelog）。线程契约见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §7。G-http-shape **已完成**。
+官方包名如上。本切片子集：handle 官方 `result`（ok 路径）；**P010-HBODY** 另见下节 body `stream<u8>`。无 fields / outparam。**不是**监听 HTTP 服务器。未加 `wasmtime-wasi`（体积 + Android 线程，见 changelog）。线程契约见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §7。G-http-shape **已完成**。**P010-HCTOR：** 本夹具仍 import `[constructor]request`/`response`，只挂测试 linker（`Linker.createWithFixtureConstructors`）。产品路径见下节 `http_handle`。
 
 成功：根 `run` 经 `run_concurrent` 返回 `200`；官方 `handle` 返回的 response `status-code` 为 `200`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/http_handler.wat -o fixtures/wasi/http_handler.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_handler.wasm
+```
+
+## `wasi:http` — product handle without constructors（P010-HCTOR）
+
+Guest export: 根 `run: async func() -> u32`（200）；官方 `handle` 不 import `[constructor]request`/`response`。Guest 用 `[static]response.new` 造空 body 的 200 response。Host 调 `handle` 时 `table.push` request。
+
+成功：产品 linker instantiate 本夹具；根 `run` 返回 `200`；host 提供 request 后 `handle` 的 response `status-code` 为 `200`。import 构造器的 `http_handler.wasm` 在产品 linker 上 instantiate 失败。
+
+```powershell
+wasm-tools parse fixtures/wasi/http_handle.wat -o fixtures/wasi/http_handle.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_handle.wasm
 ```
 
 ## `wasi:http` — body `stream<u8>`（P010-HBODY）

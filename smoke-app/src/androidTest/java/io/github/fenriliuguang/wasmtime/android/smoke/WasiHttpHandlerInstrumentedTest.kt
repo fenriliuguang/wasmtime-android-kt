@@ -19,8 +19,9 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 
 /**
- * WASI 0.3: `wasi:http` incoming-handler, body `stream<u8>`, and P010 outbound `client.send`.
- * In-process ABI plus wire HTTP/1.1 GET (local non-loopback). Requires `INTERNET`.
+ * WASI 0.3: `wasi:http` incoming-handler, body `stream<u8>`, outbound `client.send`,
+ * and P010-HCTOR product linker (no `[constructor]request`/`response`).
+ * Fixture-ctor guests use [Linker.createWithFixtureConstructors]. Requires `INTERNET`.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiHttpHandlerInstrumentedTest {
@@ -31,6 +32,28 @@ class WasiHttpHandlerInstrumentedTest {
                 .context
                 .assets
                 .open("wasi/http_handler.wasm")
+                .use { it.readBytes() }
+
+        Engine.create().use { engine ->
+            Component.compile(engine, bytes).use { component ->
+                Linker.createWithFixtureConstructors(engine).use { linker ->
+                    Store.create(engine).use { store ->
+                        linker.instantiate(store, component).use { instance ->
+                            assertEquals(200, instance.callRunConcurrent(store))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun productIncomingHandlerRunReturns200() {
+        val bytes =
+            InstrumentationRegistry.getInstrumentation()
+                .context
+                .assets
+                .open("wasi/http_handle.wasm")
                 .use { it.readBytes() }
 
         Engine.create().use { engine ->
@@ -57,7 +80,7 @@ class WasiHttpHandlerInstrumentedTest {
 
         Engine.create().use { engine ->
             Component.compile(engine, bytes).use { component ->
-                Linker.create(engine).use { linker ->
+                Linker.createWithFixtureConstructors(engine).use { linker ->
                     Store.create(engine).use { store ->
                         linker.instantiate(store, component).use { instance ->
                             assertEquals(4, instance.callRunConcurrent(store))
@@ -121,7 +144,7 @@ class WasiHttpHandlerInstrumentedTest {
         try {
             Engine.create().use { engine ->
                 Component.compile(engine, patched).use { component ->
-                    Linker.create(engine).use { linker ->
+                    Linker.createWithFixtureConstructors(engine).use { linker ->
                         Store.create(engine).use { store ->
                             linker.instantiate(store, component).use { instance ->
                                 assertEquals(4, instance.callRunConcurrent(store))
