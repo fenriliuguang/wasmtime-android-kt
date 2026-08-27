@@ -7,7 +7,8 @@ import io.github.fenriliuguang.wasmtime.android.api.WebGpuBackendFactory
 
 /**
  * Documented factory so R8 cannot strip Dawn when apps use
- * `store.setWebGpuBackend(GpuBackends.dawn())` instead of ServiceLoader.
+ * `store.setWebGpuBackend(GpuBackends.dawn())` instead of ServiceLoader
+ * (`Store.createWithDiscoveredBackend`). Explicit attach always wins.
  */
 object GpuBackends {
     const val DAWN_ID: String = "dawn"
