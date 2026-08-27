@@ -1,0 +1,13 @@
+Vendored from https://github.com/wasi-gfx/wasi-gfx
+Tag: v0.2.0
+Commit: 24615bbdf06f5a55ea6506db4596ed24072d3a6e
+Annotated tag: 54dfc12d8894778018150828cbc164ea18784a27
+Date: 2026-07-02
+Files: packages/surface/wit/surface.wit, packages/surface/wit/surface-webgpu.wit
+(copied as wit/surface.wit, wit/surface-webgpu.wit)
+
+Upstream tree at this tag has no LICENSE file. Do not assume SPDX.
+Did not vendor packages/frame-buffer (not this pin).
+
+Refresh only when docs/scheme/rfc-wasi-gfx-frame-loop.md changes the pin.
+Agents must not WebFetch or clone this package while the pin is unchanged.

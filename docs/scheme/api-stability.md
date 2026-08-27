@@ -14,6 +14,7 @@
 10. **P010-HBODY landed:** product http types expose body `stream<u8>` (`consume-body` / `response.new`); still in-process, not wire.
 11. **P010-HOUT landed:** product `wasi:http/client#send` does HTTP/1.1 GET on the wire; https / extra TLS crate not this cut.
 12. **P010-HCTOR landed:** product `Linker.create` omits `[constructor]request` / `[constructor]response`. Host supplies `request` when calling `handle`. Test linker keeps the constructors.
+13. **P010-GFXP landed:** guest gfx pin is `wasi-gfx:surface@0.2.0` (tag `v0.2.0` under `third_party/wasi-gfx/`). No host loop yet.
 
 ## `0.x` rules
 
@@ -26,4 +27,4 @@ Breaking public Kotlin/JNI/error semantics: at least `0.MINOR+1.0` **and** a cha
 | `ExperimentalWebGpuBridge` / leftover flat imports | Most unstable |
 | Guest fixtures / instruments | Not library API |
 
-Guest product pin: `wasi:webgpu@0.3.0-rc.2`. Public GPU SPI lives in `runtime-api` (`WebGpuBackend`). Unpublished host Maven coordinates are listed in [`../blocked-gpu-host.md`](../blocked-gpu-host.md) (`:host-dawn` only) and must be named in the changelog when bumped.
+Guest product pin: `wasi:webgpu@0.3.0-rc.2`. Gfx pin: `wasi-gfx:surface@0.2.0`. Public GPU SPI lives in `runtime-api` (`WebGpuBackend`). Unpublished host Maven coordinates are listed in [`../blocked-gpu-host.md`](../blocked-gpu-host.md) (`:host-dawn` only) and must be named in the changelog when bumped.
