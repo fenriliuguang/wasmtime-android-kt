@@ -535,8 +535,13 @@ struct HttpResponse {
     body: Arc<Mutex<Vec<u8>>>,
 }
 
-/// P010-GFXH: host `wasi-gfx:surface` (pin `v0.2.0`).
+/// P010-GFXH/L: host `wasi-gfx:surface` (pin `v0.2.0`).
 struct GfxSurface;
+
+/// P010-GFXL: `wasi-gfx:surface/surface-webgpu` `context` (reuses canvas JNI).
+struct GfxWebGpuContext {
+    canvas_rep: u32,
+}
 
 #[derive(Clone, Debug, ComponentType, Lift, Lower)]
 #[component(record)]
@@ -551,18 +556,32 @@ struct GfxFrameEvent {
     nothing: bool,
 }
 
+/// P010-GFXL: two events so a guest loop can present more than one frame.
+/// Pin `on-frame` is a sync `func`; no stackful CM async — payload is produced
+/// on GpuThread then materialized as a ready `StreamReader`.
+const GFX_FRAME_EVENTS: usize = 2;
+
 /// Vsync payload for `on-frame` is produced on a helper thread named GpuThread
 /// (pin `on-frame` is a sync `func`, not `async func`; no stackful CM async).
-fn gfx_on_frame_event() -> wasmtime::Result<GfxFrameEvent> {
-    let (tx, rx) = std::sync::mpsc::sync_channel(1);
+fn gfx_on_frame_events(n: usize) -> wasmtime::Result<Vec<GfxFrameEvent>> {
+    let n = n.max(1);
+    let (tx, rx) = std::sync::mpsc::sync_channel(n);
     std::thread::Builder::new()
         .name("GpuThread".into())
         .spawn(move || {
-            let _ = tx.send(GfxFrameEvent { nothing: true });
+            for _ in 0..n {
+                let _ = tx.send(GfxFrameEvent { nothing: true });
+            }
         })
         .map_err(|e| wasmtime::Error::msg(format!("GpuThread: {e}")))?;
-    rx.recv_timeout(std::time::Duration::from_secs(1))
-        .map_err(|e| wasmtime::Error::msg(format!("GpuThread: {e}")))
+    let mut out = Vec::with_capacity(n);
+    for _ in 0..n {
+        out.push(
+            rx.recv_timeout(std::time::Duration::from_secs(1))
+                .map_err(|e| wasmtime::Error::msg(format!("GpuThread: {e}")))?,
+        );
+    }
+    Ok(out)
 }
 
 /// WASI 0.3.0 http `error-code` subset (`unknown` only).
@@ -1454,9 +1473,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
     }
 
-    // P010-GFXH: wasi-gfx:surface@0.2.0 — constructor + on-frame CM stream.
-    // Guest pulls; host writes one frame-event from a helper thread named GpuThread.
-    // No JS-style callback. No surface-webgpu / present loop (P010-GFXL).
+    // P010-GFXH/L: wasi-gfx:surface@0.2.0 — constructor + on-frame CM stream.
+    // Guest pulls; host writes frame-events from a helper thread named GpuThread.
+    // No JS-style callback. P010-GFXL adds surface-webgpu + present.
     {
         let mut surface = linker
             .instance("wasi-gfx:surface/surface@0.2.0")
@@ -1486,12 +1505,131 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]surface.on-frame",
                 |mut store, (this,): (Resource<GfxSurface>,)| {
                     store.data_mut().table.get(&this)?;
-                    let ev = gfx_on_frame_event()?;
-                    let reader = StreamReader::new(&mut store, vec![ev])?;
+                    let evs = gfx_on_frame_events(GFX_FRAME_EVENTS)?;
+                    let reader = StreamReader::new(&mut store, evs)?;
                     Ok((reader,))
                 },
             )
             .map_err(|e| e.to_string())?;
+    }
+    {
+        let mut sw = linker
+            .instance("wasi-gfx:surface/surface-webgpu@0.2.0")
+            .map_err(|e| e.to_string())?;
+        sw.resource(
+            "context",
+            ResourceType::host::<GfxWebGpuContext>(),
+            |mut store, rep| {
+                let resource = Resource::<GfxWebGpuContext>::new_own(rep);
+                store.data_mut().table.delete(resource)?;
+                Ok(())
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        sw.func_wrap(
+            "[constructor]context",
+            |mut store, (surf,): (Resource<GfxSurface>,)| {
+                store.data_mut().table.get(&surf)?;
+                let resource = store
+                    .data_mut()
+                    .table
+                    .push(GfxWebGpuContext { canvas_rep: 0 })?;
+                Ok((resource,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        sw.func_wrap(
+            "[method]context.configure",
+            |mut caller, (ctx, config): (Resource<GfxWebGpuContext>, GpuCanvasConfiguration)| {
+                let ctx_rep = caller.data_mut().table.get(&ctx)?.canvas_rep;
+                let device_rep = caller.data_mut().table.get(&config.device)?.rep;
+                let format = config.format.to_dawn_u32();
+                let usage = config.usage.map(|u| u.to_webgpu_u32()).unwrap_or(0);
+                let view_formats: Vec<i32> = config
+                    .view_formats
+                    .as_ref()
+                    .map(|fmts| fmts.iter().map(|f| (*f as i32) + 1).collect())
+                    .unwrap_or_default();
+                let color_space = config.color_space.map(|c| c as i32).unwrap_or(-1);
+                let tone_mapping = config
+                    .tone_mapping
+                    .and_then(|tm| tm.mode)
+                    .map(|m| m as i32)
+                    .unwrap_or(-1);
+                let alpha_mode = config.alpha_mode.map(|a| a as i32).unwrap_or(-1);
+                let Some(cb) = caller.data().experimental_host_cb.clone() else {
+                    caller.data_mut().table.get_mut(&ctx)?.canvas_rep = 1;
+                    return Ok(());
+                };
+                let l2_device = if device_rep == 0 {
+                    let adapter_rep =
+                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                    jvm::exp_adapter_request_device(&cb, adapter_rep)
+                        .map_err(wasmtime::Error::msg)?
+                } else {
+                    device_rep
+                };
+                let handle = jvm::exp_canvas_context_configure_described(
+                    &cb,
+                    ctx_rep,
+                    l2_device,
+                    format,
+                    usage,
+                    view_formats,
+                    color_space,
+                    tone_mapping,
+                    alpha_mode,
+                )
+                .map_err(wasmtime::Error::msg)?;
+                if handle == 0 {
+                    return Err(wasmtime::Error::msg(
+                        "gfx context.configure returned 0",
+                    ));
+                }
+                caller.data_mut().table.get_mut(&ctx)?.canvas_rep = handle;
+                Ok(())
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        sw.func_wrap(
+            "[method]context.get-current-texture",
+            |mut caller, (ctx,): (Resource<GfxWebGpuContext>,)| {
+                let ctx_rep = caller.data_mut().table.get(&ctx)?.canvas_rep;
+                let Some(cb) = caller.data().experimental_host_cb.clone() else {
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuTexture { rep: 0 })?;
+                    return Ok((resource,));
+                };
+                let texture_rep =
+                    jvm::exp_canvas_context_get_current_texture_described(&cb, ctx_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                if texture_rep == 0 {
+                    return Err(wasmtime::Error::msg(
+                        "gfx context.get-current-texture returned 0",
+                    ));
+                }
+                let resource = caller
+                    .data_mut()
+                    .table
+                    .push(GpuTexture { rep: texture_rep })?;
+                Ok((resource,))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        sw.func_wrap(
+            "[method]context.present",
+            |mut caller, (ctx,): (Resource<GfxWebGpuContext>,)| {
+                let ctx_rep = caller.data_mut().table.get(&ctx)?.canvas_rep;
+                if let Some(cb) = caller.data().experimental_host_cb.clone() {
+                    jvm::exp_canvas_context_present_described(&cb, ctx_rep)
+                        .map_err(wasmtime::Error::msg)?;
+                }
+                Ok(())
+            },
+        )
+        .map_err(|e| e.to_string())?;
     }
 
     // M3/M4: Track A experimental CM host (flat u32 reps) → L2 via Kotlin callbacks.

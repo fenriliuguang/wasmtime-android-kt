@@ -542,6 +542,10 @@ class AbiCmHostBindings(
     fun canvasContextGetCurrentTexture(context: Int): Int =
         host.canvasContextGetCurrentTexture(context).raw
 
+    fun canvasContextPresent(context: Int) {
+        host.canvasContextPresent(context)
+    }
+
     fun canvasContextHasConfiguration(context: Int): Int =
         host.canvasContextHasConfiguration(context)
 

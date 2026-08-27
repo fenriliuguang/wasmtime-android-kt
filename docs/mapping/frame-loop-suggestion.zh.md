@@ -6,7 +6,7 @@
 
 本页记录 **已接受** 的 `0.1.0` gfx 连续上屏草图。**不**加入 [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)。**不**重开 P0。**NG-9 仍禁止把 gfx 升为 P0**；产品门禁是 [gfx RFC](../scheme/rfc-wasi-gfx-frame-loop.md)，不是本页。
 
-现行工程队列是 P2 Wasmtime 钉。今日上屏是单帧 WG-6。线程：[`threading-android.md`](threading-android.md)。WIT 钉已 P010-GFXP（`v0.2.0`）；host `on-frame` 已 P010-GFXH；上屏循环是 P010-GFXL。
+现行工程队列是 P2 Wasmtime 钉。今日上屏是单帧 WG-6 以及 P010-GFXL 多帧 `WasiGfxFrameLoopInstrumentedTest`。线程：[`threading-android.md`](threading-android.md)。WIT 钉已 P010-GFXP（`v0.2.0`）；host `on-frame` 已 P010-GFXH；上屏循环已 P010-GFXL。
 
 上游草图对齐 [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) 标签 **`v0.2.0`**（`wasi-gfx:surface@0.2.0` + `surface-webgpu` 引用 `wasi:webgpu@0.3.0-rc.2`）。已 vendor：[`../../third_party/wasi-gfx/v0.2.0/wit/surface.wit`](../../third_party/wasi-gfx/v0.2.0/wit/surface.wit)。
 
@@ -50,7 +50,7 @@ world windowed-webgpu {
 }
 ```
 
-`run` 必须 **async**。Host `on-frame`（P010-GFXH）返回 CM `stream<frame-event>`；vsync 载荷在名为 `GpuThread` 的 helper 线程上产生。钉里 `on-frame` 是同步 `func`（不是 `async func`）；本仓未开 Wasmtime stackful CM async。present / `surface-webgpu` 是 P010-GFXL。
+`run` 必须 **async**。Host `on-frame`（P010-GFXH）返回 CM `stream<frame-event>`；vsync 载荷在名为 `GpuThread` 的 helper 线程上产生。钉里 `on-frame` 是同步 `func`（不是 `async func`）；本仓未开 Wasmtime stackful CM async。present / `surface-webgpu` 已 P010-GFXL（两帧预缓冲，非 vsync 节拍）。
 
 ## 4. MoonBit guest（示意）
 
@@ -151,4 +151,4 @@ GpuThread 上一次 `callRunConcurrent`：**阻塞到 guest `run` 返回**。循
 
 ## 6. 若将来升格 RFC 仍缺什么
 
-Host `on-frame` 已 P010-GFXH。仍缺：`on-frame` 背压（与已合入的 P1 W1 相关，但 W1 不是本循环）；可取消的 `run`；多帧 swapchain / present（P010-GFXL）；每帧不要在泵上 latch；MoonBit/Rust 绑定。实现走 `product-010-remaining.py` 的 P010-GFXL。不要把本页当成 P2 `Next:`。
+Host `on-frame` 已 P010-GFXH。产品 `surface-webgpu` present 循环已 P010-GFXL（两帧预缓冲）。仍缺：`on-frame` 背压 / stackful；可取消的 `run`；vsync 节拍多帧；MoonBit/Rust 绑定。实现走 `product-010-remaining.py` 的 P010-CLAIM。不要把本页当成 P2 `Next:`。

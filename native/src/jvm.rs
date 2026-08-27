@@ -1008,6 +1008,19 @@ pub fn exp_canvas_context_get_current_texture_described(
     )
 }
 
+/// P010-GFXL: Guest `wasi-gfx` `[method]context.present`.
+pub fn exp_canvas_context_present_described(
+    cb: &GlobalRef,
+    context: u32,
+) -> Result<(), String> {
+    call_void(
+        cb,
+        "canvasContextPresentDescribed",
+        "(I)V",
+        vec![HostArg::Int(context as i32)],
+    )
+}
+
 /// L2: `1` if canvas-context has a stored configuration, else `0`.
 pub fn exp_canvas_context_has_configuration_described(
     cb: &GlobalRef,

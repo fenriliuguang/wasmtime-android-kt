@@ -89,6 +89,15 @@ interface ExperimentalHostCallbacks {
     fun canvasContextGetCurrentTextureDescribed(context: Int): Int =
         unsupported("canvasContextGetCurrentTextureDescribed")
 
+    /**
+     * P010-GFXL: Guest `wasi-gfx:surface/surface-webgpu` `[method]context.present`.
+     * Presents the pending swapchain texture from get-current-texture.
+     * Idempotent if queue.submit already presented.
+     */
+    fun canvasContextPresentDescribed(context: Int) {
+        unsupported("canvasContextPresentDescribed")
+    }
+
     /** L2: Guest `[method]gpu-canvas-context.get-configuration` option discriminant (`0`/`1`). */
     fun canvasContextHasConfigurationDescribed(context: Int): Int =
         unsupported("canvasContextHasConfigurationDescribed")
