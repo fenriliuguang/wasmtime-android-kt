@@ -38,7 +38,7 @@ Leftover WIT: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). 
 | `wasi:filesystem` | Preopen directory + `open-at` + read/write; `..` / absolute / NUL → `access` | `stat` / dir stream / append / dates (**G-fs-full**) |
 | `wasi:sockets` | Outbound TCP `connect(ip-socket-address)` dials guest non-loopback IPv4 | listen, UDP, DNS (**G-sock-rest**) |
 | `wasi:http` | Body `stream<u8>`; outbound `client#send` HTTP/1.1 GET; product linker omits `[constructor]request` / `[constructor]response` | `service` world, trailers, TLS crate / https |
-| `wasi-gfx` | `surface@0.2.0` + `on-frame` stream + `surface-webgpu` present (GFXL: two pre-buffered frames). **Complete loop pending:** product adapter/device (**P010-GFXB**) + vsync (**P010-GFXV**). Last auto cut **P010-DEMO** (README out-of-tree demo + this table’s device row) | Full desktop gfx / multi-window (DG-6) |
+| `wasi-gfx` | `surface@0.2.0` + `on-frame` stream + `surface-webgpu` present. **P010-GFXB** product adapter/device. GFXL two pre-buffered frames. **Vsync pending P010-GFXV**. Last auto cut **P010-DEMO** (README out-of-tree demo + this table’s device row) | Full desktop gfx / multi-window (DG-6) |
 
 Sandbox (documented promise, not a proof): FS = app-private; TCP = outbound + INTERNET, no listen by default; HTTP = system trust, no bundled CA this cut.
 
