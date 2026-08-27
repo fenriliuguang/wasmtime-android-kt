@@ -28,12 +28,13 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * P010-GFXL: product gfx guest loops `on-frame` → `get-current-texture` →
+ * P010-GFXB: product gfx guest chains pin `get-gpu` → `gpu.request-adapter` →
+ * `gpu-adapter.request-device`, then loops `on-frame` → `get-current-texture` →
  * `queue.submit` → `context.present` twice on a bound window.
  * WG-6 one-shot `gpu-canvas-context` present stays a regression.
  *
- * GPU bootstrap still uses fixture `get-device` ([Linker.createWithFixtureConstructors]).
- * Explicit Dawn attach (P010-DISC). Cloud has no device.
+ * Product [Linker.create] (no fixture `get-device`). Explicit Dawn attach
+ * (P010-DISC). Cloud has no device.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiGfxFrameLoopInstrumentedTest {
@@ -57,7 +58,7 @@ class WasiGfxFrameLoopInstrumentedTest {
                             .use { it.readBytes() }
                     Engine.create().use { engine ->
                         Component.compile(engine, bytes).use { component ->
-                            Linker.createWithFixtureConstructors(engine).use { linker ->
+                            Linker.create(engine).use { linker ->
                                 Store.create(engine).use { store ->
                                     ExperimentalWebGpuBridge.attachDawnGuestCanvasPresent(store, host)
                                     linker.instantiate(store, component).use { instance ->

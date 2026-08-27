@@ -22,11 +22,11 @@ class Linker private constructor(internal var handle: Long) : AutoCloseable {
 
     companion object {
         /**
-         * Product linker. Does **not** export fixture constructors `get-gpu`,
-         * `get-device`, `get-gpu-error`, `get-device-lost-info`, or HTTP
+         * Product linker. Does **not** export fixture constructors `get-device`,
+         * `get-gpu-error`, `get-device-lost-info`, or HTTP
          * `[constructor]request` / `[constructor]response`.
-         * `[method]gpu.request-adapter` stays. Instruments that import those
-         * constructors use [createWithFixtureConstructors].
+         * Pin `get-gpu` and `[method]gpu.request-adapter` stay. Instruments that
+         * import remaining fixtures use [createWithFixtureConstructors].
          */
         fun create(engine: Engine): Linker {
             require(engine.handle != 0L) { "engine closed" }
@@ -35,7 +35,7 @@ class Linker private constructor(internal var handle: Long) : AutoCloseable {
 
         /**
          * Test-only linker: same as [create] plus fixture constructors
-         * (`get-gpu`, `get-device`, `get-gpu-error`, `get-device-lost-info`,
+         * (`get-device`, `get-gpu-error`, `get-device-lost-info`,
          * `[constructor]request`, `[constructor]response`).
          * Not product API.
          */

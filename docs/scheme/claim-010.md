@@ -8,7 +8,7 @@ Release-notes-shaped **product subset** for L5 [`rfc-l5-productization.md`](rfc-
 
 ## 1. One-line claim
 
-A third party can depend on this host for **most of pinned `wasi:webgpu@0.3.0-rc.2`** (guest `[method]` names instantiate) plus the **WASI 0.3 IO/network subset webgpu apps need** and a **complete `wasi-gfx` present loop** (product adapter/device + vsync `on-frame`). Until **P010-GFXB** / **P010-GFXV**, the loop is only two pre-buffered frames with fixture `get-device`. Until **P010-DEMO**, there is no named device-verified row here and no README **Demo** link to an out-of-tree wasm→runtime→present app. Androidx holes and named-only WASI leftovers are listed, not silent.
+A third party can depend on this host for **most of pinned `wasi:webgpu@0.3.0-rc.2`** (guest `[method]` names instantiate) plus the **WASI 0.3 IO/network subset webgpu apps need** and a **complete `wasi-gfx` present loop** (product adapter/device + vsync `on-frame`). Until **P010-GFXV**, vsync is not the cadence (two pre-buffered frames). Until **P010-DEMO**, there is no named device-verified row here and no README **Demo** link to an out-of-tree wasm→runtime→present app. Androidx holes and named-only WASI leftovers are listed, not silent.
 
 ## 2. `wasi:webgpu` (pin `0.3.0-rc.2`)
 
@@ -17,12 +17,12 @@ Pin: [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_pa
 | Claim | Degree | Notes |
 |-------|--------|-------|
 | Pin resource `[method]` names (224 in WIT) | **Instantiate** | All 224 reconstructed `[method]resource.name` strings are registered in `native/src/cm.rs`. A guest that imports them links. Not CTS. |
-| `gpu.request-adapter` / `gpu-adapter.request-device` | **Dawn** on attached backend; **`none` / err** if unwired | Product `Linker.create` omits fixture `get-gpu` / `get-device`. Unwired store → adapter **`none`**, not a trap. |
+| `gpu.request-adapter` / `gpu-adapter.request-device` | **Dawn** on attached backend; **`none` / err** if unwired | Product `Linker.create` exports pin `get-gpu`. Fixture `get-device` omitted. Unwired store → adapter **`none`**, not a trap. P010-GFXB: frame-loop guest uses this chain. |
 | Compute submit / guest-drawn 3D / one-shot canvas | **Dawn** | WG-6 instruments stay as regressions. |
-| Continuous on-screen loop | **Incomplete** | P010-GFXL: two pre-buffered frames. **P010-GFXB**: product `request-adapter` / `request-device`. **P010-GFXV**: Choreographer vsync. [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md). |
+| Continuous on-screen loop | **Incomplete** | P010-GFXB landed: product `request-adapter` / `request-device`. P010-GFXL: two pre-buffered frames. **P010-GFXV**: Choreographer vsync. [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md). |
 | Out-of-tree demo + device-verified | **Incomplete** | **P010-DEMO**: root README **Demo** section links **one** repo that packs guest wasm → this Android runtime (`android-webgpu` or source composite) → present. Linking is existence; do not vendor. Plus one **named** row in §6 (ABI + Android version + GFXV instrument or that demo). |
 | androidx.webgpu `1.0.0-alpha05` missing ctor slots | **Record** (not Dawn) | Only: shader `compilation-hints`; canvas `color-space`; canvas `tone-mapping`. See gap table §2. |
-| Fixture `get-*` constructors | **Not product** | `get-gpu` / `get-device` / `get-gpu-error` / `get-device-lost-info` stay on `Linker.createWithFixtureConstructors`. |
+| Fixture `get-*` constructors | **Not product** | `get-device` / `get-gpu-error` / `get-device-lost-info` stay on `Linker.createWithFixtureConstructors`. Pin `get-gpu` is product (WIT). |
 | `experimental:webgpu-cm` flat `u32` names | **Not pin product** | Frozen dual-register; do not extend. |
 
 “Instantiate” ≠ every field reaches Dawn. Record leftovers keep the guest value in Kotlin and drop it at the AAR ctor.
@@ -38,7 +38,7 @@ Leftover WIT: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). 
 | `wasi:filesystem` | Preopen directory + `open-at` + read/write; `..` / absolute / NUL → `access` | `stat` / dir stream / append / dates (**G-fs-full**) |
 | `wasi:sockets` | Outbound TCP `connect(ip-socket-address)` dials guest non-loopback IPv4 | listen, UDP, DNS (**G-sock-rest**) |
 | `wasi:http` | Body `stream<u8>`; outbound `client#send` HTTP/1.1 GET; product linker omits `[constructor]request` / `[constructor]response` | `service` world, trailers, TLS crate / https |
-| `wasi-gfx` | `surface@0.2.0` + `on-frame` stream + `surface-webgpu` present (GFXL: two pre-buffered frames). **Complete loop pending:** product adapter/device (**P010-GFXB**) + vsync (**P010-GFXV**). Last auto cut **P010-DEMO** (README out-of-tree demo + this table’s device row) | Full desktop gfx / multi-window (DG-6) |
+| `wasi-gfx` | `surface@0.2.0` + `on-frame` stream + `surface-webgpu` present. **P010-GFXB** product adapter/device. GFXL two pre-buffered frames. **Vsync pending P010-GFXV**. Last auto cut **P010-DEMO** (README out-of-tree demo + this table’s device row) | Full desktop gfx / multi-window (DG-6) |
 
 Sandbox (documented promise, not a proof): FS = app-private; TCP = outbound + INTERNET, no listen by default; HTTP = system trust, no bundled CA this cut.
 

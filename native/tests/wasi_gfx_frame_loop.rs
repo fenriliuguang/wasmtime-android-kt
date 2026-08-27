@@ -1,7 +1,9 @@
-//! P010-GFXL: product guest `on-frame` loop → get-current-texture → submit →
-//! present. Two `frame-event`s produced on a helper thread named `GpuThread`.
+//! P010-GFXB: product guest `get-gpu` → `request-adapter` → `request-device`
+//! then `on-frame` loop → get-current-texture → submit → present.
+//! Two `frame-event`s produced on a helper thread named `GpuThread`.
 //! No JS-style callback. Device multi-frame is the smoke-app instrument.
 
+use futures::channel::oneshot;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -22,10 +24,126 @@ static WROTE_ON_GPU_THREAD: AtomicBool = AtomicBool::new(false);
 
 struct GfxSurface;
 struct GfxWebGpuContext;
+struct Gpu;
+struct GpuAdapter;
 struct GpuDevice;
 struct GpuTexture;
 struct GpuQueue;
 struct GpuCommandBuffer;
+struct RecordOptionGpuSize64;
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum GpuPowerPreference {
+    #[component(name = "low-power")]
+    LowPower,
+    #[component(name = "high-performance")]
+    HighPerformance,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GpuRequestAdapterOptions {
+    #[component(name = "feature-level")]
+    feature_level: Option<String>,
+    #[component(name = "power-preference")]
+    power_preference: Option<GpuPowerPreference>,
+    #[component(name = "force-fallback-adapter")]
+    force_fallback_adapter: Option<bool>,
+    #[component(name = "xr-compatible")]
+    xr_compatible: Option<bool>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum GpuFeatureName {
+    #[component(name = "core-features-and-limits")]
+    CoreFeaturesAndLimits,
+    #[component(name = "depth-clip-control")]
+    DepthClipControl,
+    #[component(name = "depth32float-stencil8")]
+    Depth32floatStencil8,
+    #[component(name = "texture-compression-bc")]
+    TextureCompressionBc,
+    #[component(name = "texture-compression-bc-sliced3d")]
+    TextureCompressionBcSliced3d,
+    #[component(name = "texture-compression-etc2")]
+    TextureCompressionEtc2,
+    #[component(name = "texture-compression-astc")]
+    TextureCompressionAstc,
+    #[component(name = "texture-compression-astc-sliced3d")]
+    TextureCompressionAstcSliced3d,
+    #[component(name = "timestamp-query")]
+    TimestampQuery,
+    #[component(name = "indirect-first-instance")]
+    IndirectFirstInstance,
+    #[component(name = "shader-f16")]
+    ShaderF16,
+    #[component(name = "rg11b10ufloat-renderable")]
+    Rg11b10ufloatRenderable,
+    #[component(name = "bgra8unorm-storage")]
+    Bgra8unormStorage,
+    #[component(name = "float32-filterable")]
+    Float32Filterable,
+    #[component(name = "float32-blendable")]
+    Float32Blendable,
+    #[component(name = "clip-distances")]
+    ClipDistances,
+    #[component(name = "dual-source-blending")]
+    DualSourceBlending,
+    #[component(name = "subgroups")]
+    Subgroups,
+    #[component(name = "texture-formats-tier1")]
+    TextureFormatsTier1,
+    #[component(name = "texture-formats-tier2")]
+    TextureFormatsTier2,
+    #[component(name = "primitive-index")]
+    PrimitiveIndex,
+    #[component(name = "texture-component-swizzle")]
+    TextureComponentSwizzle,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct GpuQueueDescriptor {
+    label: Option<String>,
+}
+
+#[derive(Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct GpuDeviceDescriptor {
+    #[component(name = "required-features")]
+    required_features: Option<Vec<GpuFeatureName>>,
+    #[component(name = "required-limits")]
+    required_limits: Option<Resource<RecordOptionGpuSize64>>,
+    #[component(name = "default-queue")]
+    default_queue: Option<GpuQueueDescriptor>,
+    label: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum RequestDeviceErrorKind {
+    #[component(name = "type-error")]
+    TypeError,
+    #[component(name = "operation-error")]
+    OperationError,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct RequestDeviceError {
+    kind: RequestDeviceErrorKind,
+    message: String,
+}
 
 #[derive(Clone, Debug, ComponentType, Lift, Lower)]
 #[component(record)]
@@ -149,6 +267,29 @@ fn register(
     presents: Arc<AtomicU32>,
 ) -> wasmtime::Result<()> {
     let mut webgpu = linker.instance("wasi:webgpu/webgpu@0.3.0-rc.2")?;
+    webgpu.resource("gpu", ResourceType::host::<Gpu>(), |mut store, rep| {
+        let resource = Resource::<Gpu>::new_own(rep);
+        store.data_mut().table.delete(resource)?;
+        Ok(())
+    })?;
+    webgpu.resource(
+        "gpu-adapter",
+        ResourceType::host::<GpuAdapter>(),
+        |mut store, rep| {
+            let resource = Resource::<GpuAdapter>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
+    webgpu.resource(
+        "record-option-gpu-size64",
+        ResourceType::host::<RecordOptionGpuSize64>(),
+        |mut store, rep| {
+            let resource = Resource::<RecordOptionGpuSize64>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     webgpu.resource(
         "gpu-device",
         ResourceType::host::<GpuDevice>(),
@@ -185,10 +326,42 @@ fn register(
             Ok(())
         },
     )?;
-    webgpu.func_wrap("get-device", |mut store, ()| {
-        let resource = store.data_mut().table.push(GpuDevice)?;
+    webgpu.func_wrap("get-gpu", |mut store, ()| {
+        let resource = store.data_mut().table.push(Gpu)?;
         Ok((resource,))
     })?;
+    webgpu.func_wrap_concurrent(
+        "[method]gpu.request-adapter",
+        |accessor, (gpu, _options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
+            Box::pin(async move {
+                accessor.with(|mut access| access.data_mut().table.get(&gpu).map(|_| ()))?;
+                let (tx, rx) = oneshot::channel::<()>();
+                std::thread::spawn(move || {
+                    let _ = tx.send(());
+                });
+                let _ = rx.await;
+                let resource =
+                    accessor.with(|mut access| access.data_mut().table.push(GpuAdapter))?;
+                Ok((Some(resource),))
+            })
+        },
+    )?;
+    webgpu.func_wrap_concurrent(
+        "[method]gpu-adapter.request-device",
+        |accessor, (adapter, _descriptor): (Resource<GpuAdapter>, Option<GpuDeviceDescriptor>)| {
+            Box::pin(async move {
+                accessor.with(|mut access| access.data_mut().table.get(&adapter).map(|_| ()))?;
+                let (tx, rx) = oneshot::channel::<()>();
+                std::thread::spawn(move || {
+                    let _ = tx.send(());
+                });
+                let _ = rx.await;
+                let resource =
+                    accessor.with(|mut access| access.data_mut().table.push(GpuDevice))?;
+                Ok((Ok::<_, RequestDeviceError>(resource),))
+            })
+        },
+    )?;
     webgpu.func_wrap("get-queue", |mut store, ()| {
         let resource = store.data_mut().table.push(GpuQueue)?;
         Ok((resource,))

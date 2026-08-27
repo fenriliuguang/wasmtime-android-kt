@@ -1,8 +1,9 @@
-;; P010-GFXL: product guest on-frame loop (2 frames).
+;; P010-GFXB: product guest on-frame loop (2 frames).
+;; GPU bootstrap: pin get-gpu → [method]gpu.request-adapter →
+;; [method]gpu-adapter.request-device (no fixture get-device).
 ;; surface ctor → surface-webgpu context → configure → on-frame stream →
 ;; each event: get-current-texture → queue.submit → context.present.
-;; GPU bootstrap still uses fixture get-device (P010-FIX). get-queue /
-;; get-command-buffer are existing product leftovers (rep 0). Returns 2.
+;; get-queue / get-command-buffer remain product leftovers (rep 0). Returns 2.
 ;; No JS callback. No stackful CM async (events pre-buffered on GpuThread).
 (component
   (import "wasi:webgpu/webgpu@0.3.0-rc.2" (instance $webgpu
@@ -23,8 +24,61 @@
     (export "gpu-texture" (type $gpu-texture (sub resource)))
     (export "gpu-queue" (type $gpu-queue (sub resource)))
     (export "gpu-command-buffer" (type $gpu-command-buffer (sub resource)))
+    (export "gpu" (type $gpu (sub resource)))
+    (type $own-gpu (own $gpu))
+    (export "get-gpu" (func (result $own-gpu)))
+    (export "gpu-adapter" (type $gpu-adapter (sub resource)))
+    (type $pp (enum "low-power" "high-performance"))
+    (export "gpu-power-preference" (type (eq $pp)))
+    (type $opt-str (option string))
+    (type $opt-pp (option 22))
+    (type $opt-bool (option bool))
+    (type $opts-def (record
+      (field "feature-level" $opt-str)
+      (field "power-preference" $opt-pp)
+      (field "force-fallback-adapter" $opt-bool)
+      (field "xr-compatible" $opt-bool)
+    ))
+    (export "gpu-request-adapter-options" (type (eq $opts-def)))
+    (type $borrow-gpu (borrow $gpu))
+    (type $opt-opts (option 27))
+    (type $own-adapter (own $gpu-adapter))
+    (type $opt-adapter (option $own-adapter))
+    (type $request-adapter-ty (func async
+      (param "self" $borrow-gpu)
+      (param "options" $opt-opts)
+      (result $opt-adapter)))
+    (export "[method]gpu.request-adapter" (func (type $request-adapter-ty)))
     (type $own-device (own $gpu-device))
-    (export "get-device" (func (result $own-device)))
+    (type $gfn (enum "core-features-and-limits" "depth-clip-control" "depth32float-stencil8" "texture-compression-bc" "texture-compression-bc-sliced3d" "texture-compression-etc2" "texture-compression-astc" "texture-compression-astc-sliced3d" "timestamp-query" "indirect-first-instance" "shader-f16" "rg11b10ufloat-renderable" "bgra8unorm-storage" "float32-filterable" "float32-blendable" "clip-distances" "dual-source-blending" "subgroups" "texture-formats-tier1" "texture-formats-tier2" "primitive-index" "texture-component-swizzle"))
+    (export "gpu-feature-name" (type (eq $gfn)))
+    (export "record-option-gpu-size64" (type $limits-map (sub resource)))
+    (type $gqd-def (record (field "label" $opt-str)))
+    (export "gpu-queue-descriptor" (type (eq $gqd-def)))
+    (type $list-gfn (list 35))
+    (type $opt-list-gfn (option $list-gfn))
+    (type $own-limits (own $limits-map))
+    (type $opt-limits (option $own-limits))
+    (type $opt-gqd (option 38))
+    (type $gdd-def (record
+      (field "required-features" $opt-list-gfn)
+      (field "required-limits" $opt-limits)
+      (field "default-queue" $opt-gqd)
+      (field "label" $opt-str)
+    ))
+    (export "gpu-device-descriptor" (type (eq $gdd-def)))
+    (type $rdek-def (variant (case "type-error") (case "operation-error")))
+    (export "request-device-error-kind" (type (eq $rdek-def)))
+    (type $rde-def (record (field "kind" 47) (field "message" string)))
+    (export "request-device-error" (type (eq $rde-def)))
+    (type $borrow-adapter (borrow $gpu-adapter))
+    (type $opt-gdd (option 45))
+    (type $result-device (result $own-device (error 49)))
+    (type $request-device-ty (func async
+      (param "self" $borrow-adapter)
+      (param "descriptor" $opt-gdd)
+      (result $result-device)))
+    (export "[method]gpu-adapter.request-device" (func (type $request-device-ty)))
     (type $own-queue (own $gpu-queue))
     (export "get-queue" (func (result $own-queue)))
     (type $own-cb (own $gpu-command-buffer))
@@ -95,10 +149,13 @@
     (export "[method]context.present"
       (func (param "self" $borrow-ctx)))
   ))
-  (alias export $webgpu "get-device" (func $get-device))
+  (alias export $webgpu "get-gpu" (func $get-gpu))
+  (alias export $webgpu "[method]gpu.request-adapter" (func $request-adapter))
+  (alias export $webgpu "[method]gpu-adapter.request-device" (func $request-device))
   (alias export $webgpu "get-queue" (func $get-queue))
   (alias export $webgpu "get-command-buffer" (func $get-command-buffer))
   (alias export $webgpu "[method]gpu-queue.submit" (func $submit))
+  (alias export $webgpu "gpu-adapter" (type $gpu-adapter))
   (alias export $webgpu "gpu-queue" (type $gpu-queue))
   (alias export $webgpu "gpu-command-buffer" (type $gpu-command-buffer))
   (alias export $surf "[constructor]surface" (func $ctor-surf))
@@ -129,17 +186,26 @@
       (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)))
     (import "" "get-tex" (func $get-tex (param i32) (result i32)))
     (import "" "present" (func $present (param i32)))
-    (import "" "get-device" (func $get-device (result i32)))
+    (import "" "get-gpu" (func $get-gpu (result i32)))
+    (import "" "request-adapter"
+      (func $request-adapter
+        (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)))
+    (import "" "request-device"
+      (func $request-device
+        (param i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)))
     (import "" "get-queue" (func $get-queue (result i32)))
     (import "" "get-command-buffer" (func $get-command-buffer (result i32)))
     (import "" "submit" (func $submit (param i32 i32 i32)))
     (import "" "drop-queue" (func $drop-queue (param i32)))
     (import "" "drop-cb" (func $drop-cb (param i32)))
     (import "" "drop-tex" (func $drop-tex (param i32)))
+    (import "" "drop-adapter" (func $drop-adapter (param i32)))
 
     (func (export "run") (result i32)
       (local $surf i32)
       (local $ctx i32)
+      (local $gpu i32)
+      (local $adapter i32)
       (local $device i32)
       (local $stream i32)
       (local $status i32)
@@ -148,11 +214,37 @@
       (local $tex i32)
       (local $queue i32)
       (local $cb i32)
+      (local $tag i32)
 
       (local.set $surf (call $ctor-surf
         (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
       (local.set $ctx (call $ctor-ctx (local.get $surf)))
-      (local.set $device (call $get-device))
+      (local.set $gpu (call $get-gpu))
+      (call $request-adapter
+        (local.get $gpu)
+        (i32.const 0)
+        (i32.const 0) (i32.const 0) (i32.const 0)
+        (i32.const 0) (i32.const 0)
+        (i32.const 0) (i32.const 0)
+        (i32.const 0) (i32.const 0)
+        (i32.const 96))
+      (local.set $tag (i32.load (i32.const 96)))
+      (if (i32.eqz (local.get $tag))
+        (then unreachable))
+      (local.set $adapter (i32.load (i32.const 100)))
+      (call $request-device
+        (local.get $adapter)
+        (i32.const 0)
+        (i32.const 0) (i32.const 0) (i32.const 0)
+        (i32.const 0) (i32.const 0)
+        (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)
+        (i32.const 0) (i32.const 0) (i32.const 0)
+        (i32.const 112))
+      (local.set $tag (i32.load (i32.const 112)))
+      (if (local.get $tag)
+        (then unreachable))
+      (local.set $device (i32.load (i32.const 116)))
+      (call $drop-adapter (local.get $adapter))
       (call $configure
         (local.get $ctx)
         (local.get $device)
@@ -200,7 +292,15 @@
       (realloc (func $builtins "realloc"))))
   (core func $get_tex_lower (canon lower (func $get-tex)))
   (core func $present_lower (canon lower (func $present)))
-  (core func $gd_lower (canon lower (func $get-device)))
+  (core func $gg_lower (canon lower (func $get-gpu)))
+  (core func $ra_lower
+    (canon lower (func $request-adapter)
+      (memory $builtins "mem")
+      (realloc (func $builtins "realloc"))))
+  (core func $rd_lower
+    (canon lower (func $request-device)
+      (memory $builtins "mem")
+      (realloc (func $builtins "realloc"))))
   (core func $gq_lower (canon lower (func $get-queue)))
   (core func $gcb_lower (canon lower (func $get-command-buffer)))
   (core func $submit_lower
@@ -210,6 +310,7 @@
   (core func $dq_lower (canon resource.drop $gpu-queue))
   (core func $dcb_lower (canon resource.drop $gpu-command-buffer))
   (core func $dtex_lower (canon resource.drop $gpu-texture))
+  (core func $da_lower (canon resource.drop $gpu-adapter))
 
   (core instance $i (instantiate $m
     (with "" (instance
@@ -222,13 +323,16 @@
       (export "configure" (func $configure_lower))
       (export "get-tex" (func $get_tex_lower))
       (export "present" (func $present_lower))
-      (export "get-device" (func $gd_lower))
+      (export "get-gpu" (func $gg_lower))
+      (export "request-adapter" (func $ra_lower))
+      (export "request-device" (func $rd_lower))
       (export "get-queue" (func $gq_lower))
       (export "get-command-buffer" (func $gcb_lower))
       (export "submit" (func $submit_lower))
       (export "drop-queue" (func $dq_lower))
       (export "drop-cb" (func $dcb_lower))
       (export "drop-tex" (func $dtex_lower))
+      (export "drop-adapter" (func $da_lower))
     ))
   ))
 
