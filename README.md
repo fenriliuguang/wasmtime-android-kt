@@ -17,9 +17,9 @@ Status: **experimental `0.x`**. No compliant wasi:webgpu / CTS claim. Coordinate
 | **P0** | Canonical `wasi:webgpu@0.3.0-rc.2` guest shape + true CM async — **closed** 2026-08-22 ([`guest-shape.md`](docs/scheme/guest-shape.md)) |
 | **P1** | Ratified WASI 0.3 official package shapes + device instruments — **closed** 2026-08-26 ([`p1-wasi-p3.md`](docs/archive/p1-wasi-p3.md)) |
 | **P2** | Wasmtime pin — **named** ([`wasmtime-p2.md`](docs/agent/wasmtime-p2.md), [`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)) |
-| **L5 / 0.1.0** | Product subset + **complete** gfx loop + out-of-tree demo (**P010-GFXB** / **P010-GFXV** / **P010-DEMO** remaining) ([`product-010.md`](docs/agent/product-010.md)) |
+| **L5 / 0.1.0** | Product subset + **complete** gfx loop + out-of-tree demo — **closed** 2026-08-27 ([`product-010.md`](docs/agent/product-010.md)) |
 
-Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0 and P1 are closed.** **`0.1.0` remaining:** complete gfx frame loop (**P010-GFXB** → **P010-GFXV**) then **P010-DEMO** (README links one out-of-tree wasm→runtime→present demo; linking is existence). P2 Wasmtime pin is **named**.
+Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0, P1, and `0.1.0` auto gates are closed.** P2 Wasmtime pin is **named**.
 
 ## Quick start
 
@@ -35,6 +35,10 @@ Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.
 ```
 
 Pinned versions: [`docs/build.md`](docs/build.md) (NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1`).
+
+## Demo
+
+Pack a guest wasm, load it with this Android runtime (`android-webgpu` or a source composite), and present on a Surface: [wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples). Linking that out-of-tree repo is the `0.1.0` demo gate; this repository does **not** vendor the app. `:smoke-app` here is instruments, not that demo.
 
 ## Consume `0.1.0`
 
@@ -82,7 +86,7 @@ English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)). Chinese siblings 
 | [wasi:webgpu roadmap](docs/scheme/roadmap-wasi-webgpu.md) | P0 slices |
 | [WASI 0.3 surface](docs/scheme/wasi-p3-surface.md) | P1 cuts (archived; stub → [`p1-wasi-p3-surface.md`](docs/archive/p1-wasi-p3-surface.md)) |
 | [P2 playbook](docs/agent/wasmtime-p2.md) | Named: Wasmtime pin |
-| [0.1.0 playbook](docs/agent/product-010.md) | L5 product gates (**Next:** complete gfx loop, then out-of-tree demo) |
+| [0.1.0 playbook](docs/agent/product-010.md) | L5 product gates (auto queue empty) |
 | [Threading](docs/mapping/threading-android.md) | Android / Dawn / CM pump |
 | [Build](docs/build.md) | NDK / cargo-ndk / Gradle |
 | [Archive](docs/archive/README.md) | Historical dual-product docs — do not implement from these |
