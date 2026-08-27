@@ -23,7 +23,7 @@ Build an **Android-first JVM Component runtime** that:
 P0  wasi:webgpu canonical shape + true CM async     CLOSED
 P1  WASI 0.3 ratified primitives / packages + device  CLOSED
 P2  Upstream Wasmtime pin + upgrade RFC               named
-0.1.0  L5 product subset + complete gfx loop            current (GFXB → GFXV)
+0.1.0  L5 product subset + complete gfx loop + demo     current (GFXB → GFXV → DEMO)
 ```
 
 P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). P1 close-out: [`../archive/p1-wasi-p3.md`](../archive/p1-wasi-p3.md). Living playbook: [`../agent/product-010.md`](../agent/product-010.md). P2 (named): [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). L5: [`rfc-l5-productization.md`](rfc-l5-productization.md). Wording: proposal host for webgpu until `0.1.0` claims “most of the pin,” still **not** CTS.

@@ -2,11 +2,11 @@
 
 **English** | [中文](frame-loop-suggestion.zh.md)
 
-**Status: shape notes for [`rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md). Remaining auto cuts: [`product-010.md`](../agent/product-010.md) `P010-GFXB` then `P010-GFXV`.**
+**Status: shape notes for [`rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md). Remaining gfx auto cuts: [`product-010.md`](../agent/product-010.md) `P010-GFXB` then `P010-GFXV`. Last `0.1.0` auto cut: `P010-DEMO` (README, not this file).**
 
 This page records host/guest sketches for the **accepted** `0.1.0` gfx present loop. It does **not** add a lane to [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). It does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). **NG-9 still forbids promoting gfx to P0**; the product gate is the gfx RFC, not this file.
 
-Living auto queue is **`0.1.0` complete frame loop**: product adapter/device (**P010-GFXB**) then Choreographer vsync (**P010-GFXV**). On-screen today is one-shot WG-6 plus P010-GFXL two pre-buffered frames (`WasiGfxFrameLoopInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md). WIT pin is **P010-GFXP** (`v0.2.0`); host `on-frame` is P010-GFXH; skeleton present loop is P010-GFXL.
+Living auto queue is **`0.1.0` complete frame loop** then demo: product adapter/device (**P010-GFXB**) then Choreographer vsync (**P010-GFXV**) then **P010-DEMO**. On-screen today is one-shot WG-6 plus P010-GFXL two pre-buffered frames (`WasiGfxFrameLoopInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md). WIT pin is **P010-GFXP** (`v0.2.0`); host `on-frame` is P010-GFXH; skeleton present loop is P010-GFXL.
 
 Upstream sketches below follow [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) tag **`v0.2.0`** (`wasi-gfx:surface@0.2.0` + `surface-webgpu` importing `wasi:webgpu@0.3.0-rc.2`). Vendored [`../../third_party/wasi-gfx/v0.2.0/wit/surface.wit`](../../third_party/wasi-gfx/v0.2.0/wit/surface.wit). Names may move; do not pick a second tag without a changelog.
 
@@ -254,6 +254,7 @@ The gfx RFC accepted the **pull `on-frame` stream** shape. P010-GFXP/H/L landed 
 |-----|------|
 | Product `request-adapter` / `request-device` in the frame-loop guest; `Linker.create` | **P010-GFXB** |
 | Choreographer vsync write + drop unconsumed beats; `surfaceDestroyed` closes the stream | **P010-GFXV** |
+| README **Demo** link to one out-of-tree wasm→runtime→present repo + named device row | **P010-DEMO** (not this file) |
 | Swapchain Lost/Outdated, resize re-`configure` | Named later (`0.x`); not GFXB/GFXV |
 | Dawn latch on the hot path / MoonBit bindings | Named later |
 

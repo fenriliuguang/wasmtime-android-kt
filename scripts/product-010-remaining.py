@@ -93,6 +93,12 @@ LANES = (
         "gap: p010 gfx-vsync pending",
     ),
     (
+        "P010-DEMO",
+        "device-and-out-of-tree-demo",
+        "named device on-screen row + README link to out-of-tree wasm demo",
+        "gap: p010 demo pending",
+    ),
+    (
         "P010-CLAIM",
         "010-claim-table",
         "release-notes claim table (most-of-pin; not CTS)",

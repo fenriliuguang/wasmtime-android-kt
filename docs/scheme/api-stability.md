@@ -16,7 +16,7 @@
 12. **P010-HCTOR landed:** product `Linker.create` omits `[constructor]request` / `[constructor]response`. Host supplies `request` when calling `handle`. Test linker keeps the constructors.
 13. **P010-GFXP landed:** guest gfx pin is `wasi-gfx:surface@0.2.0` (tag `v0.2.0` under `third_party/wasi-gfx/`). Host `on-frame` is P010-GFXH.
 14. **P010-GFXH landed:** product `wasi-gfx:surface` constructor + `on-frame` CM stream. Vsync payload is produced on a helper thread named `GpuThread`. Guest pulls; no JS callback. Present loop is P010-GFXL.
-15. **P010-GFXL landed:** product guest loops `on-frame` → `get-current-texture` → submit → `context.present` (**two pre-buffered frames**). GPU bootstrap still uses fixture `get-device`. Complete loop: **P010-GFXB** then **P010-GFXV**. WG-6 one-shot stays.
+15. **P010-GFXL landed:** product guest loops `on-frame` → `get-current-texture` → submit → `context.present` (**two pre-buffered frames**). GPU bootstrap still uses fixture `get-device`. Complete loop: **P010-GFXB** then **P010-GFXV**. Last auto cut: **P010-DEMO**. WG-6 one-shot stays.
 16. **P010-CLAIM landed:** release-notes claim table [`claim-010.md`](claim-010.md) — all 224 pin `[method]` names instantiate; androidx holes listed; WASI subset vs named-only. **Not** CTS.
 17. **P010-PUB landed:** version `0.1.0`; consumer GAV `android-webgpu` / `runtime` / `host-dawn`. `runtime-api` / `runtime-jni` are Maven transitives only.
 

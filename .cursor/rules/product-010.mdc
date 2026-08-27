@@ -11,5 +11,5 @@ P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not
 
 - Next PR: `.\scripts\product-010-remaining.ps1` or `python3 ./scripts/product-010-remaining.py` (one printed Next: only).
 - Do not add `wasmtime-wasi` without a size + Android thread note. Grep the package string in `cm.rs`, then Read ~80 lines.
-- One lane per PR. Every IO / gfx-loop lane has a device instrument (Cloud has no device: still add it). Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md` except this playbook PR, P010-PUB, and this 0.1.0-gate amendment.
+- One lane per PR. Every IO / gfx-loop lane has a device instrument (Cloud has no device: still add it). Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md` except this playbook / gate-amendment PR, P010-PUB, and **P010-DEMO** (README Demo section only — link an out-of-tree wasm→runtime→present demo; do not vendor it).
 - Never file GitHub issues (or Discussions-as-issues) on Wasmtime, WASI, or any other upstream. No `gh issue create`.
