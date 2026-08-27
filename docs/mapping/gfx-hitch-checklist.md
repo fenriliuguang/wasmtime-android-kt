@@ -29,6 +29,8 @@ Related: [`gap-webgpu-wit-androidx.md`](gap-webgpu-wit-androidx.md) §5, [`threa
 | C4 | Guest `angle += const` per `on-frame` | **Mitigated** / **Guest** | Cube now uses `wasi:clocks/monotonic-clock#now` (rAF-style dt, 50 ms clamp). Pin `frame-event` is still `{ nothing: bool }`. |
 | C5 | Consume a vsync that arrived mid-frame | **Mitigated** | Native `GfxOnFrameGate`: `post` drops if `pending \|\| in_frame`. Hitch remains → not the only cause. Native test `wasi_gfx_frame_loop_vsync_paced` updated. |
 | C6 | GFXV instrument | **Closed** | `CLOSE_AFTER_VSYNC_MS = 500`; never saw seconds of present. Cpu recycle: `WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest`. |
+| C7 | Per-frame `onSubmittedWorkDone` JNI global-ref leak (androidx.webgpu) | **Mitigated** (crash) | `GPUQueue.onSubmittedWorkDone` leaks a JNI global ref for **both** `callback` and `executor` on every call (never `DeleteGlobalRef`). 2 refs/frame → `global reference table overflow (max=51200)` `SIGABRT` on GpuThread ~3.5 min (25,320 frames). Dump: 25,312 × `ExternalSyntheticLambda4` (1 unique = the shared executor) + 25,308 × `queueSubmit$2` (the per-frame callback). Fencing every 2 frames halves the rate (**verified**: overflow moved 25,320 → ~50,640 frames, 3.5 → 7.0 min @120 Hz). Root fix is an upstream / self-hosted wgpu FFI — this AAR’s `libwebgpu_c_bundled.so` exports only `Java_androidx_webgpu_*`, no `wgpuQueueOnSubmittedWorkDone`. |
+| C8 | H21 race: `processEvents` (locked) vs `getCurrentTexture` (unlocked) → Mali SIGSEGV | **Open** (crash, intermittent) | eventPoller `processEvents` → Dawn `vulkan::driver::QueueSubmit` → `libGLES_mali` null-pointer (`signal 11`, fault `0x0`). Hit once at 90 s; next run reached the C7 overflow at 423 s without it. Re-locking acquire re-blocks the poller (H21). | Investigate only if it recurs. |
 
 ## 2. Remaining causes (check in this order)
 
@@ -74,6 +76,7 @@ Done on device. **Do not** restack DisplayManager / GameState / SurfaceControl v
 ## 4. What this branch already changed
 
 - Product canvas swapchain ring + `onSubmittedWorkDone` (async); **no** GPU wait on next acquire; retire on the event poller after GPU done and **3** newer presents (H1/H26/C2).  
+- `onSubmittedWorkDone` fences every **2** frames (batch) instead of every frame (C7: androidx.webgpu leaks a callback+executor global ref per call).  
 - `getCurrentTexture` without `gpuLock`; acquire ns + interval histogram (`GfxHitch`) (H21/H2).  
 - `queueWriteBuffer` holds `gpuLock` and reuses a direct buffer (H4/H5).  
 - Prefer `PresentMode.Fifo` + `ANativeWindow_setBufferCount(4)` before configure (H9; count 3 = EINVAL, count 4 does not shrink gfxinfo BLAST below 5). Intern one device queue (H25).  

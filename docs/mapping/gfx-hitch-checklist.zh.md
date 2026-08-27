@@ -29,6 +29,8 @@
 | C4 | Guest 每拍 `angle += const` | **Mitigated** / **Guest** | 立方体已用 `wasi:clocks/monotonic-clock#now`（rAF 式 dt，50 ms 钳制）。Pin `frame-event` 仍是 `{ nothing: bool }`。 |
 | C5 | 吞掉帧中途到达的 vsync | **Mitigated** | Native `GfxOnFrameGate`：`pending \|\| in_frame` 时 `post` 丢拍。仍抖 → 不是唯一原因。测试 `wasi_gfx_frame_loop_vsync_paced` 已更新。 |
 | C6 | GFXV 仪器本身 | **Closed** | `CLOSE_AFTER_VSYNC_MS = 500`；从未看到数秒 present。Cpu 回收：`WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest`。 |
+| C7 | 每帧 `onSubmittedWorkDone` JNI 全局引用泄漏（androidx.webgpu） | **Mitigated**（崩溃） | `GPUQueue.onSubmittedWorkDone` 每次调用对 **`callback` 和 `executor` 各**泄漏一个 JNI global ref（从不 `DeleteGlobalRef`）。2 refs/帧 → `global reference table overflow (max=51200)`，GpuThread `SIGABRT`，约 3.5 min（25,320 帧）。Dump：25,312 × `ExternalSyntheticLambda4`（1 unique = 共享 executor）+ 25,308 × `queueSubmit$2`（每帧 callback）。改为每 2 帧 fence 一次，速率减半（**实测**：overflow 由 25,320 → ~50,640 帧，3.5 → 7.0 min @120Hz）。根治靠上游 / 自研 wgpu FFI——本 AAR 的 `libwebgpu_c_bundled.so` 只导出 `Java_androidx_webgpu_*`，无 `wgpuQueueOnSubmittedWorkDone`。 |
+| C8 | H21 竞态：`processEvents`（持锁）vs `getCurrentTexture`（不持锁）→ Mali SIGSEGV | **Open**（崩溃，偶发） | eventPoller `processEvents` → Dawn `vulkan::driver::QueueSubmit` → `libGLES_mali` 空指针（`signal 11`，fault `0x0`）。第一次 90s 触发；第二次 423s 直接到 C7 overflow 未触发。重新持锁 acquire 会再次阻塞 poller（H21）。 | 复现再排查。 |
 
 ## 2. 剩余原因（按此顺序 check）
 
@@ -74,6 +76,7 @@
 ## 4. 本分支已改
 
 - 产品 canvas 交换链环 + 异步 `onSubmittedWorkDone`；**下一 acquire 不再等**上一帧 fence；poller 上 retire，GPU 完成且再过 **3** 帧才 close（H1/H26/C2）。  
+- `onSubmittedWorkDone` 改为**每 2 帧** batch fence 一次（C7：androidx.webgpu 每次调用泄漏 callback+executor 各一个 global ref）。  
 - `getCurrentTexture` 不持 `gpuLock`；acquire ns + 间隔直方图（`GfxHitch`）（H21/H2）。  
 - `queueWriteBuffer` 持 `gpuLock` 并复用 direct buffer（H4/H5）。  
 - Fifo + configure 前 `ANativeWindow_setBufferCount(4)`（H9；3 = EINVAL，4 仍压不到 gfxinfo 5 张以下）。intern 一个 device queue（H25）。  

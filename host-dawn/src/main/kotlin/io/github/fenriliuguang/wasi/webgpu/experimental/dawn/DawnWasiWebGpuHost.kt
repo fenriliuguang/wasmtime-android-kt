@@ -217,6 +217,12 @@ class DawnWasiWebGpuHost private constructor(
      * after [CANVAS_FRAMES_TO_KEEP] newer frames (compositor may still scan).
      */
     private val presentedCanvasRing = ArrayDeque<PendingCanvasPresent>()
+    /**
+     * Presented frames not yet covered by a batch fence (C7). Guarded by [gpuLock].
+     * androidx.webgpu leaks a callback+executor JNI global ref per `onSubmittedWorkDone`
+     * call, so we fence [FENCE_BATCH] frames at once instead of one per frame.
+     */
+    private val pendingFenceFrames = mutableListOf<PendingCanvasPresent>()
     /** Dawn format of the bound-window swapchain; 0 when no windowed canvas is configured. */
     private var canvasSwapchainFormat: Int = 0
     /** Serializes Dawn GPU work with [GPUInstance.processEvents] (Mali SIGSEGV under races). */
@@ -1048,6 +1054,7 @@ class DawnWasiWebGpuHost private constructor(
     /** Caller must hold [gpuLock]. Drop every canvas swapchain texture we still hold. */
     private fun dropAllCanvasFramesLocked() {
         discardUnpresentedCanvasFrameLocked()
+        pendingFenceFrames.clear()
         while (presentedCanvasRing.isNotEmpty()) {
             dropCanvasFrameResourcesLocked(presentedCanvasRing.removeFirst())
         }
@@ -2595,7 +2602,7 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun queueSubmit(queue: GpuHandle, commandBuffers: List<GpuHandle>) {
         val gpuQueue: GPUQueue
-        val presented: PendingCanvasPresent?
+        val toFence: List<PendingCanvasPresent>?
         synchronized(gpuLock) {
             gpuQueue = handles.get<GPUQueue>(queue, ResourceKind.Queue)
             val buffers = commandBuffers.map {
@@ -2605,13 +2612,18 @@ class DawnWasiWebGpuHost private constructor(
             pendingCanvasPresent?.commandBuffers?.addAll(commandBuffers.map { it.raw })
             val before = presentedCanvasRing.size
             presentPendingCanvasFrameLocked()
-            presented = if (presentedCanvasRing.size > before) {
-                presentedCanvasRing.last()
+            if (presentedCanvasRing.size > before) {
+                pendingFenceFrames.add(presentedCanvasRing.last())
+            }
+            // C7: batch several presents into one fence to halve the androidx.webgpu
+            // callback+executor global-ref leak (2 refs per call, never deleted).
+            toFence = if (pendingFenceFrames.size >= FENCE_BATCH) {
+                pendingFenceFrames.toList().also { pendingFenceFrames.clear() }
             } else {
                 null
             }
         }
-        if (presented == null) {
+        if (toFence == null) {
             return
         }
         // Fence only counts down. Close/retire runs on the event poller (H26).
@@ -2619,11 +2631,11 @@ class DawnWasiWebGpuHost private constructor(
             callbackExecutor,
             object : GPURequestCallback<Unit> {
                 override fun onResult(result: Unit) {
-                    presented.gpuDone.countDown()
+                    toFence.forEach { it.gpuDone.countDown() }
                 }
 
                 override fun onError(exception: Exception) {
-                    presented.gpuDone.countDown()
+                    toFence.forEach { it.gpuDone.countDown() }
                 }
             },
         )
@@ -3193,6 +3205,12 @@ class DawnWasiWebGpuHost private constructor(
          * Keep-8 exhausted this AAR’s BLAST pool (acquire blocked 2–4 ms/frame).
          */
         private const val CANVAS_FRAMES_TO_KEEP = 3
+        /**
+         * C7: fence this many presents per `onSubmittedWorkDone`. 2 halves the
+         * androidx.webgpu global-ref leak (2 refs/call) while keeping the ring
+         * peak at keep+1 = 4 < the 5-deep BLAST pool (no acquire block).
+         */
+        private const val FENCE_BATCH = 2
         /** H9: BLAST images. 3 returned EINVAL (below BLAST min). 4 is the floor on V2458A. */
         private const val SWAPCHAIN_BUFFER_COUNT = 4
         private const val TIMEOUT_SEC = 30L
