@@ -8,7 +8,7 @@ P0 与 P1 已关闭。现行队列：[`../agent/product-010.md`](../agent/produc
 | 文档 | 角色 |
 |------|------|
 | [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` 手册** |
-| [`product-010.zh.md`](product-010.zh.md) | `0.1.0` remaining 针 |
+| [`claim-010.zh.md`](claim-010.zh.md) | **`0.1.0` 宣称表**（不是 CTS） |
 | [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | P2 手册（点名） |
 | [`rfc-ecosystem-contribution.zh.md`](rfc-ecosystem-contribution.zh.md) | **Accepted：** 可引用 Host |
 | [`rfc-pluggable-gpu-backend.zh.md`](rfc-pluggable-gpu-backend.zh.md) | **Accepted：** 默认 Dawn bundle |

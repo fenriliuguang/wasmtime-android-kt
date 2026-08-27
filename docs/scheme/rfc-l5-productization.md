@@ -91,6 +91,8 @@ Until then: perpetual `0.x.y`.
 
 `0.x` after 0.1 may grow from community feedback. **`0.1.0` will not ship** until:
 
+Living claim table (not CTS): [`claim-010.md`](claim-010.md).
+
 | Area | `0.1.0` must |
 |------|----------------|
 | CM async / clocks / random / stream | Keep landed functions |
