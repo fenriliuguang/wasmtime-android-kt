@@ -1,4 +1,7 @@
-//! WASI 0.3: wasi:http incoming-handler + body stream + P010 outbound send.
+//! WASI 0.3: wasi:http incoming-handler + body stream + outbound send.
+//! P010-HCTOR: product-shaped linker omits `[constructor]request` /
+//! `[constructor]response`; test wrap keeps them. Host supplies `request`
+//! when calling `handle`.
 
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
@@ -82,6 +85,14 @@ impl StreamConsumer<TestHost> for CollectConsumer {
 }
 
 fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
+    register_http(linker, true)
+}
+
+fn register_product(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
+    register_http(linker, false)
+}
+
+fn register_http(linker: &mut Linker<TestHost>, fixture_ctors: bool) -> wasmtime::Result<()> {
     let mut types = linker.instance("wasi:http/types@0.3.0")?;
     types.resource(
         "request",
@@ -101,20 +112,22 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
             Ok(())
         },
     )?;
-    types.func_wrap("[constructor]request", |mut store, ()| {
-        let resource = store.data_mut().table.push(HttpRequest {
-            body: PAYLOAD.to_vec(),
-            authority: String::new(),
+    if fixture_ctors {
+        types.func_wrap("[constructor]request", |mut store, ()| {
+            let resource = store.data_mut().table.push(HttpRequest {
+                body: PAYLOAD.to_vec(),
+                authority: String::new(),
+            })?;
+            Ok((resource,))
         })?;
-        Ok((resource,))
-    })?;
-    types.func_wrap("[constructor]response", |mut store, ()| {
-        let resource = store.data_mut().table.push(HttpResponse {
-            status: 200,
-            body: Arc::new(Mutex::new(Vec::new())),
+        types.func_wrap("[constructor]response", |mut store, ()| {
+            let resource = store.data_mut().table.push(HttpResponse {
+                status: 200,
+                body: Arc::new(Mutex::new(Vec::new())),
+            })?;
+            Ok((resource,))
         })?;
-        Ok((resource,))
-    })?;
+    }
     types.func_wrap(
         "[method]response.status-code",
         |mut store, (resp,): (Resource<HttpResponse>,)| {
@@ -313,6 +326,94 @@ fn wasi_http_incoming_handler_export() -> wasmtime::Result<()> {
             .await?
     })?;
     assert_eq!(status, 200);
+    Ok(())
+}
+
+#[test]
+fn product_linker_rejects_http_ctors() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    let component = load_component(&engine, "http_handler.wasm")?;
+    let mut linker = Linker::new(&engine);
+    register_product(&mut linker)?;
+    let mut store = new_store(&engine);
+    let err = pollster::block_on(linker.instantiate_async(&mut store, &component))
+        .expect_err("constructor guest must not instantiate on the product-shaped linker");
+    let msg = format!("{err:#}");
+    assert!(
+        msg.contains("[constructor]request")
+            || msg.contains("[constructor]response")
+            || msg.contains("unknown import")
+            || msg.contains("import"),
+        "link error should mention missing HTTP constructor, got: {msg}"
+    );
+    Ok(())
+}
+
+#[test]
+fn product_linker_run_returns_200() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    let component = load_component(&engine, "http_handle.wasm")?;
+    let mut linker = Linker::new(&engine);
+    register_product(&mut linker)?;
+    let mut store = new_store(&engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let v = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })?;
+    assert_eq!(v, 200, "product linker + http_handle run returns 200");
+    Ok(())
+}
+
+#[test]
+fn product_linker_handle_host_supplies_request() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    let component = load_component(&engine, "http_handle.wasm")?;
+    let mut linker = Linker::new(&engine);
+    register_product(&mut linker)?;
+    let mut store = new_store(&engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let status = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u16> {
+                let req = accessor.with(|mut access| {
+                    access.data_mut().table.push(HttpRequest {
+                        body: PAYLOAD.to_vec(),
+                        authority: String::new(),
+                    })
+                })?;
+                let idx = accessor.with(|mut access| {
+                    let inst = instance
+                        .get_export_index(&mut access, None, "wasi:http/incoming-handler@0.3.0")
+                        .ok_or_else(|| {
+                            wasmtime::Error::msg("missing wasi:http/incoming-handler@0.3.0")
+                        })?;
+                    instance
+                        .get_export_index(&mut access, Some(&inst), "handle")
+                        .ok_or_else(|| wasmtime::Error::msg("missing handle"))
+                })?;
+                let func = accessor.with(|mut access| {
+                    instance.get_typed_func::<
+                        (Resource<HttpRequest>,),
+                        (Result<Resource<HttpResponse>, HttpErrorCode>,),
+                    >(&mut access, idx)
+                })?;
+                let (result,) = func.call_concurrent(accessor, (req,)).await?;
+                let resp = result.map_err(|_| wasmtime::Error::msg("handle err"))?;
+                accessor.with(|mut access| Ok(access.data_mut().table.get(&resp)?.status))
+            })
+            .await?
+    })?;
+    assert_eq!(
+        status, 200,
+        "host-supplied request; product handle returns 200"
+    );
     Ok(())
 }
 

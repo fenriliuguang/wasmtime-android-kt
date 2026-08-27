@@ -2,7 +2,7 @@ package io.github.fenriliuguang.wasmtime.android
 
 import io.github.fenriliuguang.wasmtime.android.jni.NativeBridge
 
-/** Component linker. Product [create] omits WebGPU fixture constructors. */
+/** Component linker. Product [create] omits WebGPU/HTTP fixture constructors. */
 class Linker private constructor(internal var handle: Long) : AutoCloseable {
     override fun close() {
         val h = handle
@@ -23,7 +23,8 @@ class Linker private constructor(internal var handle: Long) : AutoCloseable {
     companion object {
         /**
          * Product linker. Does **not** export fixture constructors `get-gpu`,
-         * `get-device`, `get-gpu-error`, `get-device-lost-info`.
+         * `get-device`, `get-gpu-error`, `get-device-lost-info`, or HTTP
+         * `[constructor]request` / `[constructor]response`.
          * `[method]gpu.request-adapter` stays. Instruments that import those
          * constructors use [createWithFixtureConstructors].
          */
@@ -34,7 +35,8 @@ class Linker private constructor(internal var handle: Long) : AutoCloseable {
 
         /**
          * Test-only linker: same as [create] plus fixture constructors
-         * (`get-gpu`, `get-device`, `get-gpu-error`, `get-device-lost-info`).
+         * (`get-gpu`, `get-device`, `get-gpu-error`, `get-device-lost-info`,
+         * `[constructor]request`, `[constructor]response`).
          * Not product API.
          */
         fun createWithFixtureConstructors(engine: Engine): Linker {

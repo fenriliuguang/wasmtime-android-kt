@@ -13,6 +13,7 @@
 9. **P010-TCP landed:** product `tcp-socket.connect` dials guest non-loopback IPv4; no listen / UDP by default.
 10. **P010-HBODY landed:** product http types expose body `stream<u8>` (`consume-body` / `response.new`); still in-process, not wire.
 11. **P010-HOUT landed:** product `wasi:http/client#send` does HTTP/1.1 GET on the wire; https / extra TLS crate not this cut.
+12. **P010-HCTOR landed:** product `Linker.create` omits `[constructor]request` / `[constructor]response`. Host supplies `request` when calling `handle`. Test linker keeps the constructors.
 
 ## `0.x` rules
 
