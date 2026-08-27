@@ -38,6 +38,8 @@ object NativeBridge {
     @JvmStatic external fun nativeComponentClose(handle: Long)
 
     @JvmStatic external fun nativeLinkerNew(engine: Long): Long
+    @JvmStatic
+    external fun nativeLinkerNewWithFixtureConstructors(engine: Long): Long
     @JvmStatic external fun nativeLinkerClose(handle: Long)
 
     @JvmStatic external fun nativeInstantiate(linker: Long, store: Long, component: Long): Long

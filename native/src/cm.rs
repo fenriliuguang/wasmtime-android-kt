@@ -564,7 +564,7 @@ fn l2_supported_limits_handles(
     Ok((cb, l2_adapter, device))
 }
 
-fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
+fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<(), String> {
     linker
         .root()
         .resource(
@@ -1308,7 +1308,8 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
     // `command-encoder-begin-render-pass-clear`, and `render-pass-end` are sync
     // `func_wrap` (same L2 as experimental). W3 also registers WIT `gpu` +
     // `get-gpu` + `[method]gpu.request-adapter` (S2: async
-    // option<own<gpu-adapter>> + option<gpu-request-adapter-options>), `gpu-adapter`
+    // option<own<gpu-adapter>> + option<gpu-request-adapter-options>; P010-FIX: `get-gpu` is
+    // test-linker only), `gpu-adapter`
     // + `get-adapter`
     // + `[method]gpu-adapter.request-device` (S3: async
     // result<own<gpu-device>, request-device-error> + option<gpu-device-descriptor>),
@@ -1388,12 +1389,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
-        webgpu
-            .func_wrap("get-gpu", |mut store, ()| {
-                let resource = store.data_mut().table.push(Gpu)?;
-                Ok((resource,))
-            })
-            .map_err(|e| e.to_string())?;
+        // P010-FIX: `get-gpu` is a fixture constructor, not the product linker.
+        if fixture_ctors {
+            webgpu
+                .func_wrap("get-gpu", |mut store, ()| {
+                    let resource = store.data_mut().table.push(Gpu)?;
+                    Ok((resource,))
+                })
+                .map_err(|e| e.to_string())?;
+        }
         webgpu
             .resource(
                 "gpu-adapter",
@@ -2669,12 +2673,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 },
             )
             .map_err(|e| e.to_string())?;
-        webgpu
-            .func_wrap("get-device", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuDevice { rep: 0 })?;
-                Ok((resource,))
-            })
-            .map_err(|e| e.to_string())?;
+        // P010-FIX: `get-device` is a fixture constructor, not the product linker.
+        if fixture_ctors {
+            webgpu
+                .func_wrap("get-device", |mut store, ()| {
+                    let resource = store.data_mut().table.push(GpuDevice { rep: 0 })?;
+                    Ok((resource,))
+                })
+                .map_err(|e| e.to_string())?;
+        }
         webgpu
             .resource(
                 "gpu-queue",
@@ -2762,12 +2769,15 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 },
             )
             .map_err(|e| e.to_string())?;
-        webgpu
-            .func_wrap("get-gpu-error", |mut store, ()| {
-                let resource = store.data_mut().table.push(GpuError { device: 0 })?;
-                Ok((resource,))
-            })
-            .map_err(|e| e.to_string())?;
+        // P010-FIX: `get-gpu-error` is a fixture constructor, not the product linker.
+        if fixture_ctors {
+            webgpu
+                .func_wrap("get-gpu-error", |mut store, ()| {
+                    let resource = store.data_mut().table.push(GpuError { device: 0 })?;
+                    Ok((resource,))
+                })
+                .map_err(|e| e.to_string())?;
+        }
         webgpu
             .func_wrap(
                 "[method]gpu-error.message",
@@ -3128,15 +3138,18 @@ fn define_host(linker: &mut Linker<HostState>) -> Result<(), String> {
                 },
             )
             .map_err(|e| e.to_string())?;
-        webgpu
-            .func_wrap("get-device-lost-info", |mut store, ()| {
-                let resource = store
-                    .data_mut()
-                    .table
-                    .push(GpuDeviceLostInfo { device: 0 })?;
-                Ok((resource,))
-            })
-            .map_err(|e| e.to_string())?;
+        // P010-FIX: `get-device-lost-info` is a fixture constructor, not the product linker.
+        if fixture_ctors {
+            webgpu
+                .func_wrap("get-device-lost-info", |mut store, ()| {
+                    let resource = store
+                        .data_mut()
+                        .table
+                        .push(GpuDeviceLostInfo { device: 0 })?;
+                    Ok((resource,))
+                })
+                .map_err(|e| e.to_string())?;
+        }
         webgpu
             .func_wrap(
                 "[method]gpu-device-lost-info.reason",
@@ -9580,7 +9593,26 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     }
     let engine = unsafe { from_handle::<Engine>(engine) };
     let mut linker = Linker::<HostState>::new(engine);
-    if let Err(e) = define_host(&mut linker) {
+    if let Err(e) = define_host(&mut linker, false) {
+        throw_link(&mut env, e);
+        return 0;
+    }
+    to_handle(linker)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeLinkerNewWithFixtureConstructors(
+    mut env: JNIEnv,
+    _class: JClass,
+    engine: jlong,
+) -> jlong {
+    if engine == 0 {
+        throw(&mut env, "null engine handle");
+        return 0;
+    }
+    let engine = unsafe { from_handle::<Engine>(engine) };
+    let mut linker = Linker::<HostState>::new(engine);
+    if let Err(e) = define_host(&mut linker, true) {
         throw_link(&mut env, e);
         return 0;
     }
