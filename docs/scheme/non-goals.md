@@ -10,7 +10,7 @@ Hard boundaries until a new RFC.
 | NG-3 | Reimplement a full **Kotlin WebGPU client API** (engine-shaped) |
 | NG-4 | Treat “all WASI 0.3 worlds” or “full wasi-testsuite P3” as the single KPI |
 | NG-5 | Claim a **compliant wasi:webgpu product**, CTS pass, or WASI 1.0 distro. L5 is a **`0.x` product subset**, not this claim |
-| NG-6 | Publish **Maven Central** / GitHub Packages **before `0.1.0` gates** (no `0.0.x-preview` Central). After gates: L5 coordinates |
+| NG-6 | Publish **Maven Central** / GitHub Packages **before `0.1.0` gates** (no `0.0.x-preview` Central). After P010-PUB: L5 coordinates + [`../../.github/workflows/publish.yml`](../../.github/workflows/publish.yml); still no press when secrets are missing |
 | NG-7 | Implement a **second Dawn renderer** in this repo (packaging / adapting one Dawn as `:host-dawn` is allowed; see [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md)) |
 | NG-8 | Treat Latch / sync-compat as **true** CM async / WASI 0.3 async DoD |
 | NG-9 | Promote **wasi-gfx / multi-window** to a **P0** wasi:webgpu re-queue. A **minimal** gfx present loop is a **`0.1.0` product gate** ([`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md)), not P0 |

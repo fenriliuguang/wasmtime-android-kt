@@ -2,7 +2,7 @@
 
 [English](claim-010.md) | **中文**
 
-L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8 的发布说明形 **产品子集**。与英文冲突时以英文为准。**不是**合规宣称（NG-4 / NG-5）。坐标在 **P010-PUB** 前仍是 **`0.1.0-experimental`**。
+L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8 的发布说明形 **产品子集**。与英文冲突时以英文为准。**不是**合规宣称（NG-4 / NG-5）。坐标 **`0.1.0`**。发布 CI：[`.github/workflows/publish.yml`](../../.github/workflows/publish.yml)（secrets / arm64 `.so` 缺失时不要强发）。
 
 ## 一句话
 
@@ -23,4 +23,4 @@ L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8 的发布说
 | http | body `stream<u8>` + 线上 GET；产品无 request/response 构造器 | service 世界、TLS |
 | gfx | `surface@0.2.0` + `on-frame` + present 循环 | 完整桌面 gfx |
 
-不宣称 Central（等 P010-PUB）、不宣称 `wasmtime-wasi`、不宣称本仓 1.0。
+不宣称 `wasmtime-wasi`、不宣称本仓 1.0。发布 workflow 已落地（P010-PUB）；secrets 缺失时不要强发 Central。

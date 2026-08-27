@@ -1,6 +1,13 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.mavenPublish)
 }
+
+extra["wasmtime.publishedArtifactId"] = "android-webgpu"
+extra["wasmtime.publishedName"] = "Wasmtime Android WebGPU bundle"
+extra["wasmtime.publishedDescription"] =
+    "Default 0.x product bundle: runtime + Dawn host. Recommended consumer coordinate."
+apply(from = rootProject.file("gradle/wasmtime-publish.gradle"))
 
 android {
     namespace = "io.github.fenriliuguang.wasmtime.android.webgpu.bundle"

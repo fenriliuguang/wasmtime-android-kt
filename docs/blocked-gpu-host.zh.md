@@ -4,7 +4,7 @@
 
 **已落地（2026-08-17）：** mvp 仓的 **Kotlin Host 映射** 已 vendor 进 `:host-dawn`。Dawn **原生库不进 git**，用已发布的 `androidx.webgpu:webgpu:1.0.0-alpha05`。钉死值在 `gradle/libs.versions.toml` → `webgpu`。
 
-对外仍是 `:host-dawn` / `:android-webgpu` / `WebGpuBackend`。`WasiWebGpuHost` 是实现细节（首拷保留 `…experimental…` 包名）。
+对外仍是 `:host-dawn` / `:android-webgpu` / `WebGpuBackend`。Maven 坐标（`0.1.0`）：`runtime` / `host-dawn` / **`android-webgpu`**。`WasiWebGpuHost` 是实现细节（首拷保留 `…experimental…` 包名）。
 
 ## 树内布局
 

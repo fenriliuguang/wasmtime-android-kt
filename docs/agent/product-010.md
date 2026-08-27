@@ -10,7 +10,7 @@ P2 Wasmtime pin stays a **named** queue ([`wasmtime-p2.md`](wasmtime-p2.md)). It
 
 ## Goal
 
-A third party can depend on the **product subset** (webgpu most-of-pin + IO/network that webgpu apps need + gfx `on-frame` loop) at coordinate **`0.1.0`**. Not wasi-testsuite (NG-4). Not CTS (NG-5). **No Central until this queue’s last lane (P010-PUB).**
+A third party can depend on the **product subset** (webgpu most-of-pin + IO/network that webgpu apps need + gfx `on-frame` loop) at coordinate **`0.1.0`**. Not wasi-testsuite (NG-4). Not CTS (NG-5). **P010-PUB** lands publishing CI; do not press Central/Packages when secrets are missing.
 
 ## Select the cut
 
@@ -30,7 +30,7 @@ Do the printed **Next:** line only.
 - Do **not** add `wasmtime-wasi` as a Cargo dependency unless that PR’s changelog records a size + Android thread review.
 - Do **not** introduce `ai.tegmentum:wasmtime4j` or 4j native as the runtime.
 - Do **not** JS-style `start: func(callback: func(ts: u64) -> bool)` for the frame loop.
-- Do **not** publish Maven Central / GitHub Packages before **P010-PUB**. No `0.0.x-preview`.
+- Do **not** publish Maven Central / GitHub Packages from a feature lane. **P010-PUB** owns `.github/workflows/publish*.yml`. No `0.0.x-preview`.
 - Do **not** edit hub files on a feature lane: root `README.md` / `README.zh.md`, `CHANGELOG.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`. (This playbook PR and **P010-PUB** may touch README plan / publish workflow.)
 - Do **not** crate-`cargo fmt`. rustfmt **only** `.rs` files this slice changed.
 - Do **not** treat Latch / sync-compat as true CM async (NG-8).

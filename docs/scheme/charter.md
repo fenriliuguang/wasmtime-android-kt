@@ -27,8 +27,8 @@ First proposal world: canonical [`wasi:webgpu`](https://github.com/WebAssembly/w
 
 ## Goal stack
 
-See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 (L3 wasi:webgpu shape) is **closed**. P1 (WASI 0.3) is **closed**. Current queue is **`0.1.0`** ([`../agent/product-010.md`](../agent/product-010.md)). P2 Wasmtime pin is **named**. L4 is citable host. **L5 is accepted** (0.x product subset; Central at `0.1.0`).
+See [`long-term-plan.md`](long-term-plan.md): L0–L5. P0 (L3 wasi:webgpu shape) is **closed**. P1 (WASI 0.3) is **closed**. **`0.1.0` product queue is empty** after P010-PUB ([`../agent/product-010.md`](../agent/product-010.md)). P2 Wasmtime pin is **named**. L4 is citable host. **L5 is accepted** (0.x product subset; coordinates `0.1.0`).
 
 ## Claims
 
-Package coordinates stay **`0.x`** until upstream 1.0 gates in L5 §6. **No Maven Central / GitHub Packages until `0.1.0` product gates.** No `0.0.x-preview` Central. No CTS / WASI-1.0 distro marketing.
+Package coordinates stay **`0.x`** until upstream 1.0 gates in L5 §6. **`0.1.0`** publishing CI is [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) (same GAV on Central + GitHub Packages). Do not press when secrets are missing. No `0.0.x-preview` Central. No CTS / WASI-1.0 distro marketing.

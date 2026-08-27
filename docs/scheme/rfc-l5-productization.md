@@ -51,7 +51,7 @@ P0/P1 closed a **Smoke** host that outsiders can cite. Product class B needs coo
 |------|--------|
 | groupId | **`io.github.fenriliuguang.wasmtime.android`** (already in `gradle.properties`) |
 | Versions | **`0.MINOR.PATCH` releases**, not Maven `*-SNAPSHOT` timestamps. GitHub Packages mirrors the same GAV. |
-| First Central | **`0.1.0` only after §7 + gfx RFC gates.** No earlier Central/`0.0.x-preview`. |
+| First Central | **`0.1.0` after §7 + gfx RFC gates.** P010-PUB (2026-08-27): workflow [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml); do not press if secrets or arm64 `.so` are missing. No `0.0.x-preview`. |
 | Natives in AAR | `android/jniLibs/<abi>/libwasmtime_android_kt.so` (arm64-v8a required; x86_64 for emulator in 0.x). |
 | DIY natives | `scripts/build-native-android.ps1` remains documented. |
 | Dawn | `:host-dawn` `api(androidx.webgpu:webgpu)` — do not git Dawn `.so`. |
@@ -65,7 +65,7 @@ P0/P1 closed a **Smoke** host that outsiders can cite. Product class B needs coo
 | `host-dawn` | `:host-dawn` | No |
 | `android-webgpu` | `:android-webgpu` (`api` of both) | **Yes — README recommends only this** |
 
-Do **not** publish `:runtime-api` as a fourth coordinate (`api` of `runtime`). Never publish `:smoke-app`.
+Do **not** advertise `:runtime-api` as a fourth **consumer** coordinate (`api` of `runtime`). `runtime-api` and `runtime-jni` are published only so Maven can resolve `runtime`'s POM. Never publish `:smoke-app`.
 
 `0.x` MINOR may break; PATCH is fix / `wasmtime` 47.x patch. Changelog every time.
 

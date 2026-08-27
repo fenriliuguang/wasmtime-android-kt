@@ -4,7 +4,7 @@
 
 Release-notes-shaped **product subset** for L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8. Playbook: [`../agent/product-010.md`](../agent/product-010.md). Counted 2026-08-27 against pin WIT + `native/src/cm.rs`.
 
-**This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md) NG-4 / NG-5. Coordinate stays **`0.1.0-experimental`** until **P010-PUB**.
+**This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md) NG-4 / NG-5. Coordinate **`0.1.0`**. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) (do not press when secrets / arm64 `.so` are missing).
 
 ## 1. One-line claim
 
@@ -54,6 +54,6 @@ Sandbox (documented promise, not a proof): FS = app-private; TCP = outbound + IN
 | This-repo **1.0.0** / WASI 1.0 distro | Upstream gates in L5 §6 first |
 | `wasmtime-wasi` crate | Size + Android thread review, named-only |
 | JS-style `start(callback)` frame scheduler | gfx RFC |
-| Maven Central / GitHub Packages at this coordinate | **P010-PUB** (last lane). Version still `0.1.0-experimental` |
+| Maven Central / GitHub Packages at this coordinate | **P010-PUB landed.** Workflow + `0.1.0` GAV. First press still needs Portal token, in-memory GPG, and arm64 `libwasmtime_android_kt.so` |
 
 Cloud has **no** device. Device rows (V2458A arm64 Android 16, …) live in instrument history, not this table.

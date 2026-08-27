@@ -4,7 +4,7 @@
 
 **Landed (2026-08-17):** Dawn enters this repo by **vendoring the Kotlin host mapping** into `:host-dawn`. The Dawn **native library** is **not** in git; it is `androidx.webgpu:webgpu:1.0.0-alpha05` (Google Maven). Pin: `gradle/libs.versions.toml` → `webgpu`. Bump with a changelog fragment.
 
-Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
+Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. Maven coordinates (`0.1.0`): `runtime` / `host-dawn` / **`android-webgpu`**. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
 
 ## 1. In-tree layout
 

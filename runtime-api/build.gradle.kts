@@ -1,6 +1,13 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.mavenPublish)
 }
+
+extra["wasmtime.publishedArtifactId"] = "runtime-api"
+extra["wasmtime.publishedName"] = "Wasmtime Android runtime API"
+extra["wasmtime.publishedDescription"] =
+    "Public Kotlin SPI for wasmtime-android-kt. Transitive of runtime; do not depend on this GAV directly."
+apply(from = rootProject.file("gradle/wasmtime-publish.gradle"))
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
