@@ -252,7 +252,7 @@ The gfx RFC accepted the **pull `on-frame` stream** shape. P010-GFXP/H/L landed 
 
 | Gap | Lane |
 |-----|------|
-| Product `request-adapter` / `request-device` in the frame-loop guest; `Linker.create` | **P010-GFXB** |
+| Product `request-adapter` / `request-device` in the frame-loop guest; `Linker.create` | **P010-GFXB** landed |
 | Choreographer vsync write + drop unconsumed beats; `surfaceDestroyed` closes the stream | **P010-GFXV** |
 | README **Demo** link to one out-of-tree wasm→runtime→present repo + named device row | **P010-DEMO** (not this file) |
 | Swapchain Lost/Outdated, resize re-`configure` | Named later (`0.x`); not GFXB/GFXV |

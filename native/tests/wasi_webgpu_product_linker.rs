@@ -1,6 +1,6 @@
-//! P010-FIX: product-shaped linker omits fixture constructors (`get-gpu`,
-//! `get-device`, `get-gpu-error`, `get-device-lost-info`). `[method]gpu.request-adapter`
-//! still registers. Instruments / native tests keep a test-only wrap of those ctors.
+//! P010-FIX / P010-GFXB: product-shaped linker omits fixture constructors
+//! (`get-device`, `get-gpu-error`, `get-device-lost-info`). Pin WIT `get-gpu`
+//! and `[method]gpu.request-adapter` stay on the product linker.
 
 use futures::channel::oneshot;
 use wasmtime::component::{
@@ -45,7 +45,10 @@ struct TestHost {
     table: ResourceTable,
 }
 
-fn register_webgpu(linker: &mut Linker<TestHost>, fixture_get_gpu: bool) -> wasmtime::Result<()> {
+fn register_webgpu(
+    linker: &mut Linker<TestHost>,
+    fixture_get_device: bool,
+) -> wasmtime::Result<()> {
     let mut webgpu = linker.instance("wasi:webgpu/webgpu@0.3.0-rc.2")?;
     webgpu.resource("gpu", ResourceType::host::<Gpu>(), |mut store, rep| {
         let resource = Resource::<Gpu>::new_own(rep);
@@ -61,12 +64,10 @@ fn register_webgpu(linker: &mut Linker<TestHost>, fixture_get_gpu: bool) -> wasm
             Ok(())
         },
     )?;
-    if fixture_get_gpu {
-        webgpu.func_wrap("get-gpu", |mut store, ()| {
-            let resource = store.data_mut().table.push(Gpu)?;
-            Ok((resource,))
-        })?;
-    }
+    webgpu.func_wrap("get-gpu", |mut store, ()| {
+        let resource = store.data_mut().table.push(Gpu)?;
+        Ok((resource,))
+    })?;
     webgpu.func_wrap_concurrent(
         "[method]gpu.request-adapter",
         |accessor, (gpu, _options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
@@ -81,6 +82,21 @@ fn register_webgpu(linker: &mut Linker<TestHost>, fixture_get_gpu: bool) -> wasm
             })
         },
     )?;
+    if fixture_get_device {
+        webgpu.resource(
+            "gpu-device",
+            ResourceType::host::<Gpu>(),
+            |mut store, rep| {
+                let resource = Resource::<Gpu>::new_own(rep);
+                store.data_mut().table.delete(resource)?;
+                Ok(())
+            },
+        )?;
+        webgpu.func_wrap("get-device", |mut store, ()| {
+            let resource = store.data_mut().table.push(Gpu)?;
+            Ok((resource,))
+        })?;
+    }
     Ok(())
 }
 
@@ -101,8 +117,16 @@ fn new_store(engine: &Engine) -> Store<TestHost> {
     )
 }
 
+fn load_method_device_queue(engine: &Engine) -> wasmtime::Result<Component> {
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/w1/webgpu_method_device_queue.wasm"
+    ))?;
+    Ok(Component::new(engine, bytes)?)
+}
+
 #[test]
-fn product_linker_rejects_get_gpu_fixture() -> wasmtime::Result<()> {
+fn product_linker_exports_pin_get_gpu() -> wasmtime::Result<()> {
     let mut config = Config::new();
     config.wasm_component_model(true);
     config.wasm_component_model_async(true);
@@ -113,12 +137,39 @@ fn product_linker_rejects_get_gpu_fixture() -> wasmtime::Result<()> {
     register_webgpu(&mut linker, false)?;
 
     let mut store = new_store(&engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let v = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })?;
+    assert_eq!(v, 1, "product linker pin get-gpu chains request-adapter");
+    Ok(())
+}
+
+#[test]
+fn product_linker_rejects_get_device_fixture() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let component = load_method_device_queue(&engine)?;
+
+    let mut linker: Linker<TestHost> = Linker::new(&engine);
+    register_webgpu(&mut linker, false)?;
+
+    let mut store = new_store(&engine);
     let err = pollster::block_on(linker.instantiate_async(&mut store, &component))
-        .expect_err("get-gpu guest must not instantiate on the product-shaped linker");
+        .expect_err("get-device guest must not instantiate on the product-shaped linker");
     let msg = format!("{err:#}");
     assert!(
-        msg.contains("get-gpu") || msg.contains("unknown import") || msg.contains("import"),
-        "link error should mention missing get-gpu, got: {msg}"
+        msg.contains("get-device") || msg.contains("unknown import") || msg.contains("import"),
+        "link error should mention missing get-device, got: {msg}"
     );
     Ok(())
 }
@@ -132,7 +183,7 @@ fn test_linker_still_chains_request_adapter() -> wasmtime::Result<()> {
     let component = load_method_request_adapter(&engine)?;
 
     let mut linker: Linker<TestHost> = Linker::new(&engine);
-    register_webgpu(&mut linker, true)?;
+    register_webgpu(&mut linker, false)?;
 
     let mut store = new_store(&engine);
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
@@ -148,7 +199,7 @@ fn test_linker_still_chains_request_adapter() -> wasmtime::Result<()> {
     })?;
     assert_eq!(
         v, 1,
-        "test linker + get-gpu still chains [method]gpu.request-adapter"
+        "product linker + pin get-gpu chains [method]gpu.request-adapter"
     );
     Ok(())
 }

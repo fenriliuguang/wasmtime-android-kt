@@ -25,7 +25,7 @@ Remaining: `python3 ./scripts/product-010-remaining.py`. A lane drops when its *
 | P010-GFXP | landed 2026-08-27 |
 | P010-GFXH | landed 2026-08-27 |
 | P010-GFXL | landed 2026-08-27 (skeleton: two pre-buffered frames) |
-| P010-GFXB | gap: p010 gfx-boot pending |
+| P010-GFXB | landed 2026-08-27 (product request-adapter/request-device) |
 | P010-GFXV | gap: p010 gfx-vsync pending |
 | P010-DEMO | gap: p010 demo pending |
 | P010-CLAIM | landed 2026-08-27 |

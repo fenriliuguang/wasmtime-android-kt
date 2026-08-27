@@ -272,12 +272,12 @@ wasm-tools parse fixtures/wasi/gfx_on_frame.wat -o fixtures/wasi/gfx_on_frame.wa
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_on_frame.wasm
 ```
 
-## `wasi-gfx` — product frame loop（P010-GFXL）
+## `wasi-gfx` — product frame loop（P010-GFXL / P010-GFXB）
 
-Guest export: `run: async func() -> u32`（surface + `surface-webgpu` context → configure → `on-frame` 循环：`get-current-texture` → `queue.submit` → `context.present` → 返回帧数 2）  
+Guest export: `run: async func() -> u32`（pin `get-gpu` → `request-adapter` → `request-device` → surface + `surface-webgpu` context → configure → `on-frame` 循环：`get-current-texture` → `queue.submit` → `context.present` → 返回帧数 2）  
 Host: `wasi-gfx:surface/surface@0.2.0` + `wasi-gfx:surface/surface-webgpu@0.2.0`（钉 tag `v0.2.0`）
 
-GPU 起步仍用 fixture `get-device`（P010-FIX）。`get-queue` / `get-command-buffer` 为产品 leftover。两帧事件在 `GpuThread` 上预缓冲（无 stackful）。无 JS callback。WG-6 单帧回归保留。设备仪器：`WasiGfxFrameLoopInstrumentedTest`。
+GPU 起步为产品链（P010-GFXB），不用 fixture `get-device`。`get-queue` / `get-command-buffer` 为产品 leftover。两帧事件在 `GpuThread` 上预缓冲（无 stackful；vsync 是 P010-GFXV）。无 JS callback。WG-6 单帧回归保留。设备仪器：`WasiGfxFrameLoopInstrumentedTest`（`Linker.create`）。
 
 ```powershell
 wasm-tools parse fixtures/wasi/gfx_frame_loop.wat -o fixtures/wasi/gfx_frame_loop.wasm

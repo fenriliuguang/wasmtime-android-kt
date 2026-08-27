@@ -1766,8 +1766,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
     // `command-encoder-begin-render-pass-clear`, and `render-pass-end` are sync
     // `func_wrap` (same L2 as experimental). W3 also registers WIT `gpu` +
     // `get-gpu` + `[method]gpu.request-adapter` (S2: async
-    // option<own<gpu-adapter>> + option<gpu-request-adapter-options>; P010-FIX: `get-gpu` is
-    // test-linker only), `gpu-adapter`
+    // option<own<gpu-adapter>> + option<gpu-request-adapter-options>; P010-GFXB:
+    // pin WIT `get-gpu: func() -> gpu` is on the product linker), `gpu-adapter`
     // + `get-adapter`
     // + `[method]gpu-adapter.request-device` (S3: async
     // result<own<gpu-device>, request-device-error> + option<gpu-device-descriptor>),
@@ -1847,15 +1847,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
-        // P010-FIX: `get-gpu` is a fixture constructor, not the product linker.
-        if fixture_ctors {
-            webgpu
-                .func_wrap("get-gpu", |mut store, ()| {
-                    let resource = store.data_mut().table.push(Gpu)?;
-                    Ok((resource,))
-                })
-                .map_err(|e| e.to_string())?;
-        }
+        // P010-GFXB: pin WIT `get-gpu: func() -> gpu` is the product entry to
+        // `[method]gpu.request-adapter`. `get-device` stays fixture-only.
+        webgpu
+            .func_wrap("get-gpu", |mut store, ()| {
+                let resource = store.data_mut().table.push(Gpu)?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
         webgpu
             .resource(
                 "gpu-adapter",
