@@ -10,7 +10,7 @@ P2 Wasmtime pin stays a **named** queue ([`wasmtime-p2.md`](wasmtime-p2.md)). It
 
 ## Goal
 
-A third party can depend on the **product subset** (webgpu most-of-pin + IO/network that webgpu apps need + gfx `on-frame` loop) at coordinate **`0.1.0`**. Not wasi-testsuite (NG-4). Not CTS (NG-5). **P010-PUB** lands publishing CI; do not press Central/Packages when secrets are missing.
+A third party can depend on the **product subset** (webgpu most-of-pin + IO/network that webgpu apps need + **complete** gfx `on-frame` loop) at coordinate **`0.1.0`**. Complete loop = product `request-adapter` / `request-device` **and** Choreographer vsync into `on-frame`. Two pre-buffered frames (P010-GFXL) is **not** enough. Not wasi-testsuite (NG-4). Not CTS (NG-5). **P010-PUB** already landed publishing CI; do not press Central/Packages when secrets are missing.
 
 ## Select the cut
 
@@ -31,7 +31,7 @@ Do the printed **Next:** line only.
 - Do **not** introduce `ai.tegmentum:wasmtime4j` or 4j native as the runtime.
 - Do **not** JS-style `start: func(callback: func(ts: u64) -> bool)` for the frame loop.
 - Do **not** publish Maven Central / GitHub Packages from a feature lane. **P010-PUB** owns `.github/workflows/publish*.yml`. No `0.0.x-preview`.
-- Do **not** edit hub files on a feature lane: root `README.md` / `README.zh.md`, `CHANGELOG.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`. (This playbook PR and **P010-PUB** may touch README plan / publish workflow.)
+- Do **not** edit hub files on a feature lane: root `README.md` / `README.zh.md`, `CHANGELOG.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`. (This playbook / gate-amendment PR and **P010-PUB** may touch README plan / publish workflow.)
 - Do **not** crate-`cargo fmt`. rustfmt **only** `.rs` files this slice changed.
 - Do **not** treat Latch / sync-compat as true CM async (NG-8).
 - Do **not** read `native/src/cm.rs` without an offset. Grep the symbol (`ExperimentalHostCallbacks`, `wasi:sockets`, `wasi:http`, `get-gpu`), then Read ~80 lines.
@@ -55,9 +55,11 @@ Copy: L5 §7–§8 and the gfx RFC. Do not rediscover scope from RFCs by rewriti
 | **P010-HCTOR** | `gap: p010 http-ctor pending` | Drop `[constructor]request` / `[constructor]response` from the **product** types surface (G-http-ctor). Host supplies `request` when calling `handle`. Test linker may keep constructors. Device: product-path handle still works. Remove the needle. |
 | **P010-GFXP** | `gap: p010 gfx-pin pending` | Vendor **one dated** `wasi-gfx` WIT under `third_party/` (like `wasi:webgpu@0.3.0-rc.2`). Changelog names the tag. No host loop yet. Do **not** pick a second tag in a later lane without a changelog. Remove the needle. |
 | **P010-GFXH** | `gap: p010 gfx-host pending` | Host `wasi-gfx:surface` + `on-frame` **CM stream** write on **GpuThread**. Guest **pulls**; no JS callback. Thread rules: [`../mapping/threading-android.md`](../mapping/threading-android.md). Native smoke that the stream yields. Remove the needle. |
-| **P010-GFXL** | `gap: p010 gfx-loop pending` | **Product** guest path: async `run` loops `on-frame` → `get-current-texture` → submit → present. Device instrument: **multi-frame** on-screen (WG-6 one-shot stays). Remove the needle. |
+| **P010-GFXL** | `gap: p010 gfx-loop pending` | **Skeleton (landed).** Product guest: async `run` loops `on-frame` → `get-current-texture` → submit → present (two **pre-buffered** frames). Device instrument. **Not** vsync-paced; GPU bootstrap may still use fixture `get-device`. Complete loop is **P010-GFXB** then **P010-GFXV**. Remove the needle. |
+| **P010-GFXB** | `gap: p010 gfx-boot pending` | Frame-loop **guest** chains `gpu.request-adapter` → `gpu-adapter.request-device` (Dawn). Instrument uses **`Linker.create`**, not `createWithFixtureConstructors` / `get-device`. Still may pre-buffer frames. Device: extend `WasiGfxFrameLoopInstrumentedTest` (or sibling). Changelog. Remove the needle. |
+| **P010-GFXV** | `gap: p010 gfx-vsync pending` | **Last auto gfx cut.** Host writes `on-frame` from **Choreographer** vsync posted to **GpuThread** ([`../mapping/frame-loop-suggestion.md`](../mapping/frame-loop-suggestion.md) §2). Drop the beat if the previous event is unconsumed (no unbounded queue). Guest still pulls; no JS callback. Device: multi-frame on-screen **paced by vsync** (not two events at construct). `surfaceDestroyed` closes the stream so `run` unblocks. Remove the needle. |
 | **P010-CLAIM** | `gap: p010 claim pending` | Release-notes-shaped **claim table**: most pinned `wasi:webgpu` `[method]` names instantiate; androidx holes listed ([`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md)); WASI product subset vs named-only. Still **not** CTS. Docs + changelog only. Remove the needle. |
-| **P010-PUB** | `gap: p010 publish pending` | **Last.** Publishing CI (Maven Central + GitHub Packages, same GAV). Version **`0.1.0`** (drop `-experimental`). Do not press publish if secrets are missing — still land the workflow + coordinates. Hub files allowed **this lane only** for publish workflow. Remove the needle. |
+| **P010-PUB** | `gap: p010 publish pending` | Publishing CI (Maven Central + GitHub Packages, same GAV). Version **`0.1.0`** (drop `-experimental`). Do not press publish if secrets are missing — still land the workflow + coordinates. Hub files allowed **this lane** for publish workflow. **Not last:** complete frame loop is GFXB + GFXV. Remove the needle. |
 
 ## Named-only (never `Next:`)
 
@@ -74,7 +76,7 @@ Copy: L5 §7–§8 and the gfx RFC. Do not rediscover scope from RFCs by rewriti
 - `native/src/cm.rs` — this package’s `linker.instance` only (windowed)
 - `native/tests/wasi_*.rs` or `native/tests/webgpu_*.rs` — this family
 - `fixtures/wasi/*` or `fixtures/p3/*` — this fixture only
-- `smoke-app/src/androidTest/java/…/*InstrumentedTest.kt` — **required** for CLIERR / TCP / HTTP / GFXL; SPI / DISC / FIX reuse an existing Dawn product-path class
+- `smoke-app/src/androidTest/java/…/*InstrumentedTest.kt` — **required** for CLIERR / TCP / HTTP / GFXL / GFXB / GFXV; SPI / DISC / FIX reuse an existing Dawn product-path class
 - `runtime-api/` / `runtime-jni/` / `host-dawn/` — SPI / DISC only as the DoD names
 - `docs/scheme/product-010.md` — **remove this lane’s needle**
 - `docs/mapping/gap-wasi-p3-wit.md` — that leftover’s **one row** (Named → Smoke) when a G-* row lands
@@ -102,7 +104,7 @@ Device (required where the table says Device):
 
 Cloud has **no** device. Still **add** the instrument; do not fail the PR solely because this checkout could not run it. State that in the PR.
 
-This playbook PR (docs-only): `python3 ./scripts/product-010-remaining.py` must print **`Next: P010-SPI`**.
+This playbook amendment (docs-only): `python3 ./scripts/product-010-remaining.py` must print **`Next: P010-GFXB`**.
 
 ## PR title
 
@@ -111,9 +113,10 @@ This playbook PR (docs-only): `python3 ./scripts/product-010-remaining.py` must 
 - WASI IO: `feat(wasi): P010 …`
 - Gfx: `feat(gfx): P010 …`
 - Claim / publish: `docs: P010 claim table` / `chore: P010 publish 0.1.0`
+- This amendment: `docs: narrow 0.1.0 gates to complete gfx frame loop`
 
 Label: `documentation` for docs-only; `enhancement` for code.
 
 ## Copy source
 
-[`../scheme/rfc-l5-productization.md`](../scheme/rfc-l5-productization.md) §7–§8, [`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md), leftover names on [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Do not invent extra `0.1.0` gates (G-cmd, testsuite, `wasmtime-wasi`).
+[`../scheme/rfc-l5-productization.md`](../scheme/rfc-l5-productization.md) §7–§8, [`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md), leftover names on [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Do not invent extra `0.1.0` gates beyond **GFXB / GFXV** (G-cmd, testsuite, `wasmtime-wasi`). Complete frame loop is in-scope; full desktop gfx stays DG-6.

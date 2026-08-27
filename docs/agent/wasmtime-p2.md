@@ -59,7 +59,7 @@ P2-EVAL landed **2026-08-26**: pin **47.0.4**; crates.io latest stable at check 
 | Enable `wasmtime-wasi` crate | User named wasmtime-wasi | Size + Android thread review in-repo; still one lane |
 | P1 leftover WASI shapes | User named G-cmd / G-fs-full / listen / UDP (not L5 §7) | Still not auto. L5 §7 rows: [`product-010.md`](product-010.md) |
 | Full wasi-testsuite | User named testsuite | Optional subset only; no compliance claim |
-| Frame-loop / wasi-gfx | — | Auto on [`product-010.md`](product-010.md) (GFXP/H/L); not P2 |
+| Frame-loop / wasi-gfx | — | Auto on [`product-010.md`](product-010.md) (GFXP/H/L/B/V); not P2 |
 
 ## File whitelist (typical P2-EVAL / P2-PATCH)
 

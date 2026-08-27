@@ -16,7 +16,7 @@ Language: English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)).
 | [`docs/scheme/rfc-pluggable-gpu-backend.md`](docs/scheme/rfc-pluggable-gpu-backend.md) | Dawn default bundle; SPI |
 | [`docs/scheme/rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md) | Product class B; `0.x`; `0.1.0` coordinates |
 | [`docs/scheme/rfc-wasi-gfx-frame-loop.md`](docs/scheme/rfc-wasi-gfx-frame-loop.md) | `0.1.0` gfx present loop (not P0) |
-| [`docs/agent/product-010.md`](docs/agent/product-010.md) | `0.1.0` remaining queue (empty after P010-PUB) |
+| [`docs/agent/product-010.md`](docs/agent/product-010.md) | `0.1.0` remaining queue (complete gfx loop: GFXB → GFXV) |
 | [`docs/agent/wasmtime-p2.md`](docs/agent/wasmtime-p2.md) | P2 Wasmtime pin (named) |
 | [`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md) | wasi:webgpu WIT gates |
 | [`docs/agent/wasmtime-p2.md`](docs/agent/wasmtime-p2.md) | P2 Wasmtime pin (named) |

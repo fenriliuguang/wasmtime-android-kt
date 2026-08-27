@@ -101,7 +101,7 @@ Living claim table (not CTS): [`claim-010.md`](claim-010.md).
 | filesystem | Sandbox directory + `open-at` + read/write (today’s Smoke may stand; full `stat`/dir stream **not** required) |
 | sockets | **Outbound TCP** for real app networking (not loopback-only). listen/UDP **not** required |
 | http | **Body `stream<u8>`** and outbound send / outgoing-handler (or equivalent). In-process 200-only is **not** enough. Drop product `[constructor]request`/`response` (G-http-ctor) |
-| gfx | Continuous on-screen loop per [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md) |
+| gfx | Continuous on-screen loop: product `gpu.request-adapter` / `gpu-adapter.request-device` (**P010-GFXB**) **and** Choreographer vsync into `on-frame` (**P010-GFXV**) per [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md). Two pre-buffered frames (P010-GFXL) is **not** the gate. |
 
 **Not** `0.1.0` gates: full `wasi:cli/command` world (G-cmd), G-fs-full, wasi-testsuite, enabling `wasmtime-wasi` (still needs size + Android thread review).
 

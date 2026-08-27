@@ -2,11 +2,11 @@
 
 **English** | [中文](frame-loop-suggestion.zh.md)
 
-**Status: shape notes for [`rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md) — not DoD, not a remaining-script cut.**
+**Status: shape notes for [`rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md). Remaining auto cuts: [`product-010.md`](../agent/product-010.md) `P010-GFXB` then `P010-GFXV`.**
 
 This page records host/guest sketches for the **accepted** `0.1.0` gfx present loop. It does **not** add a lane to [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). It does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). **NG-9 still forbids promoting gfx to P0**; the product gate is the gfx RFC, not this file.
 
-Living engineering queue is P2 Wasmtime pin. On-screen today is one-shot WG-6 (`WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`) plus P010-GFXL multi-frame `WasiGfxFrameLoopInstrumentedTest`. Thread rules: [`threading-android.md`](threading-android.md). WIT pin is **P010-GFXP** (`v0.2.0`); host `on-frame` is P010-GFXH; present loop is P010-GFXL (gfx RFC §5).
+Living auto queue is **`0.1.0` complete frame loop**: product adapter/device (**P010-GFXB**) then Choreographer vsync (**P010-GFXV**). On-screen today is one-shot WG-6 plus P010-GFXL two pre-buffered frames (`WasiGfxFrameLoopInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md). WIT pin is **P010-GFXP** (`v0.2.0`); host `on-frame` is P010-GFXH; skeleton present loop is P010-GFXL.
 
 Upstream sketches below follow [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) tag **`v0.2.0`** (`wasi-gfx:surface@0.2.0` + `surface-webgpu` importing `wasi:webgpu@0.3.0-rc.2`). Vendored [`../../third_party/wasi-gfx/v0.2.0/wit/surface.wit`](../../third_party/wasi-gfx/v0.2.0/wit/surface.wit). Names may move; do not pick a second tag without a changelog.
 
@@ -248,15 +248,13 @@ JNI/stream write must bounce L2 work to the Java caller thread (existing 8MiB `w
 
 ## 6. What the gfx RFC still leaves to an implementation PR
 
-The gfx RFC accepted the **pull `on-frame` stream** shape. This page stays sketches. An implementation PR still needs:
+The gfx RFC accepted the **pull `on-frame` stream** shape. P010-GFXP/H/L landed the skeleton. Remaining **`0.1.0` auto** cuts:
 
-| Gap | Note |
+| Gap | Lane |
 |-----|------|
-| Host `wasi-gfx:surface` | No `surface` import today; WG-6 uses host-owned window + `gpu-canvas-context` |
-| `on-frame` implementation | Needs W1-quality stream backpressure (P1 W1 is the related primitive, not this loop) |
-| Cancellable `run` | `surfaceDestroyed` must end the stream |
-| Swapchain multi-frame | Lost/Outdated, resize re-`configure`, no present-on-drop |
-| Dawn latch on the hot path | Per-frame `mapAsync` must not `CountDownLatch` on the pump |
-| Guest toolchain | MoonBit (or Rust) CM async + generated gfx/webgpu bindings |
+| Product `request-adapter` / `request-device` in the frame-loop guest; `Linker.create` | **P010-GFXB** |
+| Choreographer vsync write + drop unconsumed beats; `surfaceDestroyed` closes the stream | **P010-GFXV** |
+| Swapchain Lost/Outdated, resize re-`configure` | Named later (`0.x`); not GFXB/GFXV |
+| Dawn latch on the hot path / MoonBit bindings | Named later |
 
-Until then: keep one-shot WG-6; do not treat this file as `wasmtime-p2-remaining`. Implementation: `product-010-remaining.py` P010-CLAIM (GFXP/H/L landed).
+Do not treat this file as `wasmtime-p2-remaining`. Do not JS-style `start(callback)`.
