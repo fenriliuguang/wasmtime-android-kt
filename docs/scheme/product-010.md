@@ -14,7 +14,7 @@ Remaining: `python3 ./scripts/product-010-remaining.py`. A lane drops when its *
 
 | Lane | Needle (delete when landed) |
 |------|-----------------------------|
-| P010-SPI | gap: p010 spi pending |
+| P010-SPI | landed 2026-08-27 |
 | P010-DISC | gap: p010 disc pending |
 | P010-FIX | gap: p010 fix pending |
 | P010-CLIERR | gap: p010 cli-err pending |

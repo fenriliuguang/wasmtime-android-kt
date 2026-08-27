@@ -1,6 +1,6 @@
 package io.github.fenriliuguang.wasmtime.android.jni
 
-import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
+import io.github.fenriliuguang.wasmtime.android.internal.ExperimentalHostCallbacks
 import io.github.fenriliuguang.wasmtime.android.api.HostU32U32ToU32
 
 /**

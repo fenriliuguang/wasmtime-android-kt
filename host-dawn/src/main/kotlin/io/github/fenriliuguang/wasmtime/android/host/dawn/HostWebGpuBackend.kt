@@ -40,8 +40,9 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.shaderCompilationHi
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
-import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
 import io.github.fenriliuguang.wasmtime.android.api.WebGpuBackend
+import io.github.fenriliuguang.wasmtime.android.internal.ExperimentalHostCallbacks
+import io.github.fenriliuguang.wasmtime.android.internal.WebGpuBackendHostAttach
 
 /**
  * [WebGpuBackend] wrapping a [WasiWebGpuHost]. SPI types stay in `runtime-api`;
@@ -51,8 +52,8 @@ class HostWebGpuBackend(
     private val host: WasiWebGpuHost,
     override val id: String,
     private val closeHost: Boolean = true,
-) : WebGpuBackend {
-    override fun hostCallbacks(): ExperimentalHostCallbacks = ForwardingHostCallbacks(host)
+) : WebGpuBackend, WebGpuBackendHostAttach {
+    override fun attachExperimentalHost(): ExperimentalHostCallbacks = ForwardingHostCallbacks(host)
 
     override fun close() {
         if (closeHost) {

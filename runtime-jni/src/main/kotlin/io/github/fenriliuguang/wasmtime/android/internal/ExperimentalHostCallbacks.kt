@@ -1,9 +1,10 @@
-package io.github.fenriliuguang.wasmtime.android.api
+package io.github.fenriliuguang.wasmtime.android.internal
 
 /**
  * Flat experimental CM host callbacks for L1 (u32 reps, not WIT resources).
  *
- * Product guests use WIT `[method]` names; this table is the JNI lowering.
+ * **Not product SPI.** Lives in `:runtime-jni` (`internal` package). Product
+ * guests use WIT `[method]` names; apps attach via `Store.setWebGpuBackend`.
  * Unwired `requestAdapter` is handled in native as guest `none` (not a trap).
  * Other methods default-throw so partial attachments stay explicit.
  */

@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package io.github.fenriliuguang.wasmtime.android.webgpu
 
 import io.github.fenriliuguang.wasi.webgpu.experimental.abicm.AbiCmHostBindings
@@ -45,7 +47,7 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.TextureViewDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.WasiWebGpuHost
 import io.github.fenriliuguang.wasmtime.android.Store
-import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
+import io.github.fenriliuguang.wasmtime.android.internal.ExperimentalHostCallbacks
 
 /**
  * Wire an in-tree L2 [WasiWebGpuHost] into L1 store callbacks.

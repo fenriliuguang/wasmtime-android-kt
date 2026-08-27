@@ -1,11 +1,12 @@
 package io.github.fenriliuguang.wasmtime.android
 
-import io.github.fenriliuguang.wasmtime.android.api.ExperimentalHostCallbacks
 import io.github.fenriliuguang.wasmtime.android.api.HostU32Supplier
 import io.github.fenriliuguang.wasmtime.android.api.HostU32U32ToU32
 import io.github.fenriliuguang.wasmtime.android.api.WebGpuBackend
 import io.github.fenriliuguang.wasmtime.android.api.WebGpuBackendFactory
 import io.github.fenriliuguang.wasmtime.android.api.WebGpuBackendKind
+import io.github.fenriliuguang.wasmtime.android.internal.ExperimentalHostCallbacks
+import io.github.fenriliuguang.wasmtime.android.internal.WebGpuBackendHostAttach
 import io.github.fenriliuguang.wasmtime.android.jni.NativeBridge
 import java.util.ServiceLoader
 import java.util.logging.Logger
@@ -28,16 +29,21 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
         NativeBridge.nativeStoreClose(h)
     }
 
-    /** Register Kotlin implementation for root import `add: func(u32,u32)->u32`. */
+    /**
+     * **Not product API.** Instrument / leftover host-import tests only.
+     * Apps use [setWebGpuBackend].
+     */
+    @Deprecated("Not product API. Use setWebGpuBackend.")
     fun setHostAdd(callback: HostU32U32ToU32) {
         require(handle != 0L) { "store closed" }
         NativeBridge.nativeStoreSetHostAdd(handle, callback)
     }
 
     /**
-     * Register Kotlin [ExperimentalHostCallbacks] for leftover flat u32-rep
-     * imports. Prefer [setWebGpuBackend] for product code.
+     * **Not product API.** `:host-dawn` instruments may still attach a partial
+     * experimental table. Apps use [setWebGpuBackend].
      */
+    @Deprecated("Not product API. Use setWebGpuBackend.")
     fun setExperimentalHost(callback: ExperimentalHostCallbacks) {
         require(handle != 0L) { "store closed" }
         NativeBridge.nativeStoreSetExperimentalHost(handle, callback)
@@ -48,20 +54,28 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
 
     /**
      * Attach a [WebGpuBackend] (explicit, preferred). Replaces any previous
-     * experimental host callbacks.
+     * experimental host callbacks. The backend must implement the internal
+     * JNI attach (`GpuBackends.dawn()` / `cpu()`).
      */
     fun setWebGpuBackend(backend: WebGpuBackend) {
         require(handle != 0L) { "store closed" }
+        val attach =
+            backend as? WebGpuBackendHostAttach
+                ?: throw IllegalArgumentException(
+                    "WebGpuBackend must implement WebGpuBackendHostAttach (use GpuBackends.dawn())",
+                )
         attachedBackend?.close()
         attachedBackend = backend
         backendKind = kindFor(backend.id)
-        NativeBridge.nativeStoreSetExperimentalHost(handle, backend.hostCallbacks())
+        NativeBridge.nativeStoreSetExperimentalHost(handle, attach.attachExperimentalHost())
     }
 
     /**
-     * Convenience for M3: only `request-adapter` → `u32` rep.
+     * **Not product API.** Convenience for leftover `request-adapter` → `u32` smokes.
      */
+    @Deprecated("Not product API. Use setWebGpuBackend.")
     fun setRequestAdapter(callback: HostU32Supplier) {
+        @Suppress("DEPRECATION")
         setExperimentalHost(
             object : ExperimentalHostCallbacks {
                 override fun requestAdapter(): Int = callback.invoke()
