@@ -210,11 +210,25 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tc
 Guest export: 根 `run: async func() -> u32`（200）；官方 `wasi:http/incoming-handler@0.3.0#handle: async func(own<request>) -> result<own<response>, error-code>`  
 Host: `wasi:http/types@0.3.0` constructors + `status-code`（钉 `@0.3.0`）
 
-官方包名如上。本切片子集：handle 官方 `result`（ok 路径）；无 body / fields / outparam。**不是**监听 HTTP 服务器。未加 `wasmtime-wasi`（体积 + Android 线程，见 changelog）。线程契约见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §7。G-http-shape **已完成**。
+官方包名如上。本切片子集：handle 官方 `result`（ok 路径）；**P010-HBODY** 另见下节 body `stream<u8>`。无 fields / outparam。**不是**监听 HTTP 服务器。未加 `wasmtime-wasi`（体积 + Android 线程，见 changelog）。线程契约见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §7。G-http-shape **已完成**。
 
 成功：根 `run` 经 `run_concurrent` 返回 `200`；官方 `handle` 返回的 response `status-code` 为 `200`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/http_handler.wat -o fixtures/wasi/http_handler.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_handler.wasm
+```
+
+## `wasi:http` — body `stream<u8>`（P010-HBODY）
+
+Guest export: `run: async func() -> u32`（读请求 body `HBOD`，经 `response.new` 写回，再 `consume-body` 读回，返回 4）  
+Host: `wasi:http/types@0.3.0` `[static]request.consume-body` / `[static]response.new` / `[static]response.consume-body`（钉 `@0.3.0`）
+
+官方 `consume-body` 还带 `res` future 与 `option<trailers>`；官方 `new` 还带 headers。本刀子集：`tuple<stream<u8>, future<result<_, error-code>>>`，无 trailers / headers / 出站 send。仍进程内。
+
+成功：guest `run` 返回 `4`。
+
+```powershell
+wasm-tools parse fixtures/wasi/http_body.wat -o fixtures/wasi/http_body.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_body.wasm
 ```

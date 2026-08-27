@@ -70,7 +70,7 @@ Path policy:
 
 ## 7. WASI 0.3 http (W8)
 
-`wasi:http` this cut is an **in-process** `incoming-handler` ABI smoke (guest `handle` → status 200). It does **not** listen on a port or speak HTTP on the wire, so it does not need INTERNET. `handle` is a true CM `async` guest export (`callRunConcurrent`). Do not add `wasmtime-wasi` for this slice (size + extra host threads on Android). A later wire proxy would reuse the W7 INTERNET + helper-thread policy.
+`wasi:http` this cut is an **in-process** `incoming-handler` ABI smoke (guest `handle` → status 200) plus **body `stream<u8>`** (`consume-body` / `response.new`). It does **not** listen on a port or speak HTTP on the wire, so it does not need INTERNET. `handle` is a true CM `async` guest export (`callRunConcurrent`). Do not add `wasmtime-wasi` for this slice (size + extra host threads on Android). Outbound wire HTTP is **P010-HOUT**.
 
 ## 8. Acceptance hints
 

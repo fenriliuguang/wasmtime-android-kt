@@ -11,6 +11,7 @@
 7. **P010-FIX landed:** product `Linker.create` omits fixture constructors `get-gpu` / `get-device` / `get-gpu-error` / `get-device-lost-info`. Instruments use `Linker.createWithFixtureConstructors`.
 8. **P010-CLIERR landed:** product cli `error-code` includes `io` / `illegal-byte-sequence` / `pipe`; stdout/stderr NUL write is guest-visible `illegal-byte-sequence`.
 9. **P010-TCP landed:** product `tcp-socket.connect` dials guest non-loopback IPv4; no listen / UDP by default.
+10. **P010-HBODY landed:** product http types expose body `stream<u8>` (`consume-body` / `response.new`); still in-process, not wire.
 
 ## `0.x` rules
 
