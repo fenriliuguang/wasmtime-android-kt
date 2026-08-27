@@ -1,5 +1,5 @@
 ---
-description: CLOSED WASI 0.3 (P1) official-shape queue — redirect to Wasmtime pin (P2)
+description: CLOSED WASI 0.3 (P1) official-shape queue — redirect to 0.1.0 product gates
 alwaysApply: false
 ---
 
@@ -7,4 +7,4 @@ alwaysApply: false
 
 W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, and G-dev are **closed**. Do not start another official-shape WASI 0.3 auto PR.
 
-Current queue: read `docs/agent/wasmtime-p2.md`. Next: `.\scripts\wasmtime-p2-remaining.ps1` or `python3 ./scripts/wasmtime-p2-remaining.py`. Historical: `docs/archive/p1-wasi-p3.md`. Named leftovers: `docs/mapping/gap-wasi-p3-wit.md`.
+Current queue: read `docs/agent/product-010.md`. Next: `.\scripts\product-010-remaining.ps1` or `python3 ./scripts/product-010-remaining.py`. Historical: `docs/archive/p1-wasi-p3.md`. `0.1.0` backlog rows: `docs/scheme/product-010.md`.

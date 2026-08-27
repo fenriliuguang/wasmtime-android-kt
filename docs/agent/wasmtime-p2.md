@@ -6,11 +6,13 @@ P0 `wasi:webgpu` is **closed** ([`../archive/p0-wasi-webgpu.md`](../archive/p0-w
 
 This queue keeps the **upstream `wasmtime` pin knowable, upgradeable, and rollback-able**. Tracking table: [`../scheme/wasmtime-tracking.md`](../scheme/wasmtime-tracking.md). KPI is **not** “always on latest major”. One lane, one PR.
 
-P1 leftover WIT shapes (G-err, G-cmd, G-fs-full, G-sock-rest, G-http-body, G-http-ctor, G-cli-error) live in [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md) as **named future optimizations**. They are **not** this script’s `Next:`. Rows that [`rfc-l5-productization.md`](../scheme/rfc-l5-productization.md) §7 names are the **`0.1.0` backlog** — still not auto.
+Living auto queue is **`0.1.0`** ([`product-010.md`](product-010.md)). This playbook is **named-only** (user said P2 / Wasmtime pin).
+
+P1 leftover WIT shapes live in [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). L5 §7 rows are **`product-010-remaining` auto**, not this script.
 
 ## Goal
 
-A third party can read §2 / §3 of the tracking table and know: pin, last-checked date, upstream latest at check, and the next allowed upgrade path (patch vs RFC). Not a `wasmtime-wasi` crate. Not a WASI 0.3 re-cut. Not Maven Central (Central waits for L5 `0.1.0` gates).
+A third party can read §2 / §3 of the tracking table and know: pin, last-checked date, upstream latest at check, and the next allowed upgrade path (patch vs RFC). Not a `wasmtime-wasi` crate. Not a WASI 0.3 re-cut. Not Maven Central (Central waits for **P010-PUB**).
 
 Current pin: **47.0.4** (`native/Cargo.toml`). Dependabot ignores **major**.
 
@@ -55,9 +57,9 @@ P2-EVAL landed **2026-08-26**: pin **47.0.4**; crates.io latest stable at check 
 |------|------|-----|
 | Major upgrade RFC | User named 48+ / major | Short RFC first; dual-ABI before merge; rollback pin in the RFC |
 | Enable `wasmtime-wasi` crate | User named wasmtime-wasi | Size + Android thread review in-repo; still one lane |
-| P1 leftover WASI shapes | User named G-err / G-cmd / G-fs-full / G-sock-rest / G-http-body / G-http-ctor / G-cli-error | Follow archived P1 playbook + [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md); L5 §7 rows are `0.1.0` backlog, not auto |
+| P1 leftover WASI shapes | User named G-cmd / G-fs-full / listen / UDP (not L5 §7) | Still not auto. L5 §7 rows: [`product-010.md`](product-010.md) |
 | Full wasi-testsuite | User named testsuite | Optional subset only; no compliance claim |
-| Frame-loop / wasi-gfx | User named 0.1.0 gfx | RFC accepted: [`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md); still not P2 remaining |
+| Frame-loop / wasi-gfx | — | Auto on [`product-010.md`](product-010.md) (GFXP/H/L); not P2 |
 
 ## File whitelist (typical P2-EVAL / P2-PATCH)
 

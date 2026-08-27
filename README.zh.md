@@ -18,10 +18,10 @@
 |--------|------|
 | **P0** | 钉版 `wasi:webgpu@0.3.0-rc.2` Guest 形状 + 真 CM async — **2026-08-22 关闭** |
 | **P1** | 已批准 WASI 0.3 官方形状 + 真机仪器 — **2026-08-26 关闭**（[`p1-wasi-p3.zh.md`](docs/archive/p1-wasi-p3.zh.md)） |
-| **P2** | **现行工程：** 追踪官方 Wasmtime（[`wasmtime-p2.md`](docs/agent/wasmtime-p2.md)） |
-| **L5** | **已接受：** 产品类 B；长期 0.x；0.1.0 才 Central（[`rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)）。帧循环：[`rfc-wasi-gfx-frame-loop.md`](docs/scheme/rfc-wasi-gfx-frame-loop.md) |
+| **P2** | Wasmtime 钉 — **点名**（[`wasmtime-p2.md`](docs/agent/wasmtime-p2.md)） |
+| **L5 / 0.1.0** | **现行：** 产品子集 + gfx 循环（[`product-010.md`](docs/agent/product-010.md)） |
 
-成功标准：[`rfc-ecosystem-contribution.zh.md`](docs/scheme/rfc-ecosystem-contribution.zh.md) — 可复现、可引用；**禁止**向上游开 GitHub issue。GPU 接线：[`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。**P0 与 P1 已关闭。** 产品政策：L5。
+成功标准：[`rfc-ecosystem-contribution.zh.md`](docs/scheme/rfc-ecosystem-contribution.zh.md) — 可复现、可引用；**禁止**向上游开 GitHub issue。GPU 接线：[`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。**P0 与 P1 已关闭。** 现行队列：**`0.1.0`**。
 
 ## 快速开始
 

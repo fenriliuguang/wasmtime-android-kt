@@ -58,9 +58,9 @@ def main() -> None:
     else:
         print("Next: (P2 pin eval empty; P2 patch empty)")
         print("Tracking: docs/scheme/wasmtime-tracking.md")
+        print("Product queue: python ./scripts/product-010-remaining.py")
         print(
-            "Named-only: major upgrade RFC, wasmtime-wasi crate, "
-            "P1 leftover WASI shapes (docs/mapping/gap-wasi-p3-wit.md) "
+            "Named-only: major upgrade RFC, wasmtime-wasi crate "
             "— do not auto-cut; never file upstream issues."
         )
 

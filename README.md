@@ -16,10 +16,10 @@ Status: **experimental `0.x`**. No compliant wasi:webgpu / CTS claim. **No Maven
 |----------|------|
 | **P0** | Canonical `wasi:webgpu@0.3.0-rc.2` guest shape + true CM async — **closed** 2026-08-22 ([`guest-shape.md`](docs/scheme/guest-shape.md)) |
 | **P1** | Ratified WASI 0.3 official package shapes + device instruments — **closed** 2026-08-26 ([`p1-wasi-p3.md`](docs/archive/p1-wasi-p3.md)) |
-| **P2** | **Current engineering:** track upstream Wasmtime ([`wasmtime-p2.md`](docs/agent/wasmtime-p2.md), [`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)) |
-| **L5** | **Accepted:** product class B; perpetual `0.x`; Central at `0.1.0` ([`rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)). Frame loop: [`rfc-wasi-gfx-frame-loop.md`](docs/scheme/rfc-wasi-gfx-frame-loop.md) |
+| **P2** | Wasmtime pin — **named** ([`wasmtime-p2.md`](docs/agent/wasmtime-p2.md), [`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)) |
+| **L5 / 0.1.0** | **Current:** product subset + gfx loop ([`product-010.md`](docs/agent/product-010.md), [`rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)) |
 
-Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0 and P1 are closed.** Product policy: L5.
+Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0 and P1 are closed.** Living queue: **`0.1.0`**.
 
 ## Quick start
 
@@ -65,7 +65,8 @@ English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)). Chinese siblings 
 | [Guest shape](docs/scheme/guest-shape.md) | WIT acceptance rules (S-series) |
 | [wasi:webgpu roadmap](docs/scheme/roadmap-wasi-webgpu.md) | P0 slices |
 | [WASI 0.3 surface](docs/scheme/wasi-p3-surface.md) | P1 cuts (archived; stub → [`p1-wasi-p3-surface.md`](docs/archive/p1-wasi-p3-surface.md)) |
-| [P2 playbook](docs/agent/wasmtime-p2.md) | Current: Wasmtime pin |
+| [P2 playbook](docs/agent/wasmtime-p2.md) | Named: Wasmtime pin |
+| [0.1.0 playbook](docs/agent/product-010.md) | **Current:** L5 product gates |
 | [Threading](docs/mapping/threading-android.md) | Android / Dawn / CM pump |
 | [Build](docs/build.md) | NDK / cargo-ndk / Gradle |
 | [Archive](docs/archive/README.md) | Historical dual-product docs — do not implement from these |

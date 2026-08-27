@@ -151,4 +151,4 @@ GpuThread 上一次 `callRunConcurrent`：**阻塞到 guest `run` 返回**。循
 
 ## 6. 若将来升格 RFC 仍缺什么
 
-托管 `wasi-gfx:surface`；`on-frame` 背压（与已合入的 P1 W1 相关，但 W1 不是本循环）；可取消的 `run`；多帧 swapchain；每帧不要在泵上 latch；MoonBit/Rust 绑定。在此之前保持单帧 WG-6，不要把本页当成 `wasmtime-p2-remaining` 的 Next。
+托管 `wasi-gfx:surface`；`on-frame` 背压（与已合入的 P1 W1 相关，但 W1 不是本循环）；可取消的 `run`；多帧 swapchain；每帧不要在泵上 latch；MoonBit/Rust 绑定。实现走 `product-010-remaining.py` 的 P010-GFXP/H/L。不要把本页当成 P2 `Next:`。

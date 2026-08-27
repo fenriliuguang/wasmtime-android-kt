@@ -2,10 +2,10 @@
 
 **English** | [中文](wasmtime-tracking.zh.md)
 
-Companion: [`long-term-plan.md`](long-term-plan.md) **P2 (current)** · [`tech-stack.md`](tech-stack.md) · playbook [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md).  
+Companion: [`long-term-plan.md`](long-term-plan.md) **P2 (named)** · [`tech-stack.md`](tech-stack.md) · playbook [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md).  
 Policy: depend only on official `wasmtime` (and explicitly chosen official sibling crates). **No wasmtime4j.**
 
-Next auto cut: `python3 ./scripts/wasmtime-p2-remaining.py`.
+Living auto cut: `python3 ./scripts/product-010-remaining.py`. P2 remaining (named): `python3 ./scripts/wasmtime-p2-remaining.py`.
 
 ## 1. What we track
 
