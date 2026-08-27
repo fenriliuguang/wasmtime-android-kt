@@ -33,7 +33,7 @@ class WasiWebGpuMethodRenderPassSetVertexBufferInstrumentedTest {
         CpuWasiWebGpuHost().use { host ->
             Engine.create().use { engine ->
                 Component.compile(engine, bytes).use { component ->
-                    Linker.create(engine).use { linker ->
+                    Linker.createWithFixtureConstructors(engine).use { linker ->
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachRenderPassSetVertexBuffer(store, host)
                             linker.instantiate(store, component).use { instance ->

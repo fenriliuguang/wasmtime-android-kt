@@ -34,6 +34,9 @@ import java.util.concurrent.atomic.AtomicReference
  * P010-DISC: product-path instrument still uses **explicit** attach
  * ([ExperimentalWebGpuBridge.attachDawnGuestCanvasPresent] after
  * [Store.create], not [Store.createWithDiscoveredBackend]).
+ * P010-FIX: guest wasm still imports fixture constructors, so this
+ * instrument uses [Linker.createWithFixtureConstructors] (not product
+ * [Linker.create]).
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuDawnGuestCanvasPresentInstrumentedTest {
@@ -57,7 +60,7 @@ class WasiWebGpuDawnGuestCanvasPresentInstrumentedTest {
                             .use { it.readBytes() }
                     Engine.create().use { engine ->
                         Component.compile(engine, bytes).use { component ->
-                            Linker.create(engine).use { linker ->
+                            Linker.createWithFixtureConstructors(engine).use { linker ->
                                 Store.create(engine).use { store ->
                                     ExperimentalWebGpuBridge.attachDawnGuestCanvasPresent(store, host)
                                     linker.instantiate(store, component).use { instance ->

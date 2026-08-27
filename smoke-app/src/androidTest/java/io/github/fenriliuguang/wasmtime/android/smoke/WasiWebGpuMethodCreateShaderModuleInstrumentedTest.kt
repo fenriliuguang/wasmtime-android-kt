@@ -34,7 +34,7 @@ class WasiWebGpuMethodCreateShaderModuleInstrumentedTest {
         CpuWasiWebGpuHost().use { host ->
             Engine.create().use { engine ->
                 Component.compile(engine, bytes).use { component ->
-                    Linker.create(engine).use { linker ->
+                    Linker.createWithFixtureConstructors(engine).use { linker ->
                         Store.create(engine).use { store ->
                             ExperimentalWebGpuBridge.attachCreateShaderModule(store, host)
                             linker.instantiate(store, component).use { instance ->
