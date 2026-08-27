@@ -6,7 +6,7 @@
 2. SemVer 2.0 shape: `MAJOR.MINOR.PATCH[-prerelease]`.  
 3. Current local coordinate: `0.1.0-experimental` (`gradle.properties` → `wasmtime.android.version`). **No Central / Packages until `0.1.0` product gates.**  
 4. No CTS / compliant wasi:webgpu claim ([`non-goals.md`](non-goals.md) NG-5).  
-5. Before **`0.1.0`**, move `ExperimentalHostCallbacks` (and the leak via `WebGpuBackend.hostCallbacks()`) **out of `runtime` public SPI** (L5 §8).
+5. **P010-SPI landed:** `ExperimentalHostCallbacks` is **not** `runtime-api` public SPI (lives in `:runtime-jni` `internal`). Attach with `Store.setWebGpuBackend`; no `WebGpuBackend.hostCallbacks()`.
 
 ## `0.x` rules
 

@@ -26,6 +26,7 @@ class SyncCmHostImportInstrumentedTest {
             Component.compile(engine, bytes).use { component ->
                 Linker.create(engine).use { linker ->
                     Store.create(engine).use { store ->
+                        @Suppress("DEPRECATION")
                         store.setHostAdd { a, b -> a + b + 10 }
                         linker.instantiate(store, component).use { instance ->
                             assertEquals(15, instance.callU32U32(store, "run", 2, 3))
