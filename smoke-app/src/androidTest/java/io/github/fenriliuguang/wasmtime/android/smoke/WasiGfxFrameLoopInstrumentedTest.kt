@@ -3,6 +3,7 @@ package io.github.fenriliuguang.wasmtime.android.smoke
 import android.app.Activity
 import android.os.SystemClock
 import android.util.Log
+import android.view.Choreographer
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -18,7 +19,6 @@ import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.webgpu.ExperimentalWebGpuBridge
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,9 +28,10 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * P010-GFXB: product gfx guest chains pin `get-gpu` → `gpu.request-adapter` →
+ * P010-GFXV: product gfx guest chains pin `get-gpu` → `gpu.request-adapter` →
  * `gpu-adapter.request-device`, then loops `on-frame` → `get-current-texture` →
- * `queue.submit` → `context.present` twice on a bound window.
+ * `queue.submit` → `context.present` paced by Choreographer vsync (not two
+ * events at construct). `surfaceDestroyed` closes the stream so `run` unblocks.
  * WG-6 one-shot `gpu-canvas-context` present stays a regression.
  *
  * Product [Linker.create] (no fixture `get-device`). Explicit Dawn attach
@@ -39,8 +40,9 @@ import java.util.concurrent.atomic.AtomicReference
 @RunWith(AndroidJUnit4::class)
 class WasiGfxFrameLoopInstrumentedTest {
     @Test
-    fun guestLoopsTwoPresentsToBoundWindow() {
-        withReadySurface { ctx ->
+    fun guestLoopsVsyncPacedPresentsToBoundWindow() {
+        val storeRef = AtomicReference<Store?>(null)
+        withReadySurface(storeRef) { ctx ->
             runOnGpuThread("GpuThread", timeoutSec = 90) {
                 Log.i(TAG, "GpuThread: create Dawn host")
                 DawnWasiWebGpuHost.create().use { host ->
@@ -62,11 +64,20 @@ class WasiGfxFrameLoopInstrumentedTest {
                                 Store.create(engine).use { store ->
                                     ExperimentalWebGpuBridge.attachDawnGuestCanvasPresent(store, host)
                                     linker.instantiate(store, component).use { instance ->
+                                        startVsyncOnMain(store, storeRef)
+                                        val closer =
+                                            Thread({
+                                                Thread.sleep(CLOSE_AFTER_VSYNC_MS)
+                                                storeRef.get()?.closeGfxOnFrame()
+                                            }, "gfx-on-frame-close")
+                                        closer.start()
                                         val frames = instance.callRunConcurrent(store)
-                                        assertEquals(
-                                            "guest must loop two on-frame get-current-texture/submit/present",
-                                            2,
-                                            frames,
+                                        storeRef.set(null)
+                                        runCatching { store.closeGfxOnFrame() }
+                                        closer.join(1_000)
+                                        assertTrue(
+                                            "guest must loop ≥2 vsync-paced on-frame presents, got $frames",
+                                            frames >= 2,
                                         )
                                     }
                                 }
@@ -79,6 +90,26 @@ class WasiGfxFrameLoopInstrumentedTest {
                 }
             }
         }
+    }
+
+    private fun startVsyncOnMain(store: Store, storeRef: AtomicReference<Store?>) {
+        val started = CountDownLatch(1)
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            storeRef.set(store)
+            Choreographer.getInstance().postFrameCallback(
+                object : Choreographer.FrameCallback {
+                    override fun doFrame(frameTimeNanos: Long) {
+                        val s = storeRef.get() ?: return
+                        s.postGfxVsync()
+                        if (storeRef.get() != null) {
+                            Choreographer.getInstance().postFrameCallback(this)
+                        }
+                    }
+                },
+            )
+            started.countDown()
+        }
+        assertTrue("Choreographer vsync not posted", started.await(5, TimeUnit.SECONDS))
     }
 
     private data class ReadySurface(
@@ -106,7 +137,10 @@ class WasiGfxFrameLoopInstrumentedTest {
         }
     }
 
-    private fun withReadySurface(block: (ReadySurface) -> Unit) {
+    private fun withReadySurface(
+        storeRef: AtomicReference<Store?>,
+        block: (ReadySurface) -> Unit,
+    ) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
 
@@ -157,7 +191,9 @@ class WasiGfxFrameLoopInstrumentedTest {
                         capture(holder.surface, width, height)
                     }
 
-                    override fun surfaceDestroyed(holder: SurfaceHolder) = Unit
+                    override fun surfaceDestroyed(holder: SurfaceHolder) {
+                        storeRef.get()?.closeGfxOnFrame()
+                    }
                 },
             )
         }
@@ -234,6 +270,7 @@ class WasiGfxFrameLoopInstrumentedTest {
 
     companion object {
         private const val TAG = "P010GfxFrameLoop"
+        private const val CLOSE_AFTER_VSYNC_MS = 500L
         private const val SURFACE_RELEASE_SETTLE_MS = 400L
         private const val SURFACE_READY_SETTLE_MS = 300L
         private const val ACTIVITY_TEARDOWN_SETTLE_MS = 500L

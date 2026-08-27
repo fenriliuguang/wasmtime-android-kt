@@ -1,6 +1,8 @@
 //! Store host state: Kotlin callbacks + u32-rep widget / gpu resources.
 
 use jni::objects::GlobalRef;
+use std::collections::HashMap;
+use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use wasmtime::component::ResourceTable;
 
 #[derive(Debug)]
@@ -192,6 +194,8 @@ pub struct HostState {
     pub add_cb: Option<GlobalRef>,
     /// Kotlin [ExperimentalHostCallbacks] for experimental CM host (M3/M4).
     pub experimental_host_cb: Option<GlobalRef>,
+    /// P010-GFXV: 1-slot `on-frame` vsync gate (Choreographer → GpuThread write).
+    pub gfx_on_frame: Arc<GfxOnFrameGate>,
 }
 
 impl Default for HostState {
@@ -200,6 +204,134 @@ impl Default for HostState {
             table: ResourceTable::new(),
             add_cb: None,
             experimental_host_cb: None,
+            gfx_on_frame: GfxOnFrameGate::new(),
         }
     }
+}
+
+/// 1-slot vsync source for `stream<frame-event>`. Unconsumed beats are dropped.
+pub struct GfxOnFrameGate {
+    inner: Mutex<GfxOnFrameInner>,
+    cv: Condvar,
+}
+
+struct GfxOnFrameInner {
+    pending: bool,
+    closed: bool,
+    dropped: u32,
+    consumed: u32,
+}
+
+pub enum GfxOnFrameTake {
+    Item,
+    Eof,
+    Cancelled,
+}
+
+impl GfxOnFrameGate {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            inner: Mutex::new(GfxOnFrameInner {
+                pending: false,
+                closed: false,
+                dropped: 0,
+                consumed: 0,
+            }),
+            cv: Condvar::new(),
+        })
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, GfxOnFrameInner> {
+        self.inner.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Fill the 1-slot. Drop this beat if the previous event is unconsumed.
+    pub fn post(&self) {
+        let mut g = self.lock();
+        if g.closed {
+            return;
+        }
+        if g.pending {
+            g.dropped = g.dropped.saturating_add(1);
+            return;
+        }
+        g.pending = true;
+        self.cv.notify_one();
+    }
+
+    pub fn close(&self) {
+        let mut g = self.lock();
+        g.closed = true;
+        self.cv.notify_all();
+    }
+
+    /// Block until a beat or close. Pin `on-frame` is a sync `func` and this
+    /// repo does not enable stackful CM async, so `poll_produce` must not
+    /// return `Pending` (guest WAT traps on stream.read BLOCKED).
+    pub fn wait_take(&self, finish: bool) -> GfxOnFrameTake {
+        let mut g = self.lock();
+        loop {
+            if g.pending {
+                g.pending = false;
+                g.consumed = g.consumed.saturating_add(1);
+                return GfxOnFrameTake::Item;
+            }
+            if g.closed {
+                return GfxOnFrameTake::Eof;
+            }
+            if finish {
+                return GfxOnFrameTake::Cancelled;
+            }
+            g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+        }
+    }
+
+    /// Zero-length readiness: wait without consuming the slot.
+    pub fn wait_ready(&self, finish: bool) -> GfxOnFrameTake {
+        let mut g = self.lock();
+        loop {
+            if g.pending {
+                return GfxOnFrameTake::Item;
+            }
+            if g.closed {
+                return GfxOnFrameTake::Eof;
+            }
+            if finish {
+                return GfxOnFrameTake::Cancelled;
+            }
+            g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+        }
+    }
+
+    pub fn is_closed(&self) -> bool {
+        self.lock().closed
+    }
+}
+
+static GFX_GATES: OnceLock<Mutex<HashMap<i64, Arc<GfxOnFrameGate>>>> = OnceLock::new();
+
+fn gfx_gates() -> &'static Mutex<HashMap<i64, Arc<GfxOnFrameGate>>> {
+    GFX_GATES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn gfx_on_frame_register(handle: i64, gate: Arc<GfxOnFrameGate>) {
+    gfx_gates()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(handle, gate);
+}
+
+pub fn gfx_on_frame_lookup(handle: i64) -> Option<Arc<GfxOnFrameGate>> {
+    gfx_gates()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&handle)
+        .cloned()
+}
+
+pub fn gfx_on_frame_unregister(handle: i64) -> Option<Arc<GfxOnFrameGate>> {
+    gfx_gates()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(&handle)
 }

@@ -53,6 +53,6 @@ Thread rules stay [`../mapping/threading-android.md`](../mapping/threading-andro
 3. Product guest path skeleton (GFXL) — **landed** (`get-device` bootstrap still fixture; two pre-buffered frames).  
 4. Device instrument: multi-frame present (WG-6 one-shot stays) — **P010-GFXL** landed.  
 5. Product adapter/device bootstrap (no fixture `get-device`) — **P010-GFXB** landed.  
-6. Choreographer vsync into `on-frame` (drop unconsumed beats; close stream on `surfaceDestroyed`) — **P010-GFXV**.  
+6. Choreographer vsync into `on-frame` (drop unconsumed beats; close stream on `surfaceDestroyed`) — **P010-GFXV** landed.  
 7. Out-of-tree demo README link + named device row — **P010-DEMO** (not developed in this repo; linking is existence).  
 8. Auto: [`product-010.md`](product-010.md) **P010-GFXP → GFXH → GFXL → GFXB → GFXV → DEMO**.

@@ -73,6 +73,24 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
     }
 
     /**
+     * Post one Choreographer vsync beat into `wasi-gfx` `surface.on-frame`.
+     * 1-slot: drops the beat if the previous event is still unconsumed.
+     * The CM stream write runs on the driver thread (GpuThread).
+     */
+    fun postGfxVsync() {
+        require(handle != 0L) { "store closed" }
+        NativeBridge.nativeStorePostGfxVsync(handle)
+    }
+
+    /**
+     * Close the `on-frame` stream (`surfaceDestroyed`). Unblocks guest `run`.
+     */
+    fun closeGfxOnFrame() {
+        require(handle != 0L) { "store closed" }
+        NativeBridge.nativeStoreCloseGfxOnFrame(handle)
+    }
+
+    /**
      * **Not product API.** Convenience for leftover `request-adapter` → `u32` smokes.
      */
     @Deprecated("Not product API. Use setWebGpuBackend.")

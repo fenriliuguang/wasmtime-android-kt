@@ -4,7 +4,8 @@ use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_err, throw_link};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
-    Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
+    gfx_on_frame_lookup, gfx_on_frame_register, gfx_on_frame_unregister, GfxOnFrameGate,
+    GfxOnFrameTake, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
     GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout,
     GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder,
     GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
@@ -43,8 +44,8 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use wasmtime::component::{
-    Component, ComponentType, FutureReader, Lift, Linker, Lower, Resource, ResourceType, Source,
-    StreamConsumer, StreamReader, StreamResult,
+    Component, ComponentType, Destination, FutureReader, Lift, Linker, Lower, Resource,
+    ResourceType, Source, StreamConsumer, StreamProducer, StreamReader, StreamResult,
 };
 use wasmtime::{Engine, Store, StoreContextMut};
 
@@ -556,32 +557,46 @@ struct GfxFrameEvent {
     nothing: bool,
 }
 
-/// P010-GFXL: two events so a guest loop can present more than one frame.
-/// Pin `on-frame` is a sync `func`; no stackful CM async — payload is produced
-/// on GpuThread then materialized as a ready `StreamReader`.
-const GFX_FRAME_EVENTS: usize = 2;
+/// P010-GFXV: Choreographer / helper vsync fills a 1-slot gate; `poll_produce`
+/// on the CM driver (GpuThread) writes one `frame-event`. Unconsumed beats drop.
+/// Pin `on-frame` is a sync `func`; no stackful CM async — wait on the gate
+/// instead of `Poll::Pending` (guest WAT traps on stream.read BLOCKED).
+struct GfxOnFrameProducer {
+    gate: Arc<GfxOnFrameGate>,
+}
 
-/// Vsync payload for `on-frame` is produced on a helper thread named GpuThread
-/// (pin `on-frame` is a sync `func`, not `async func`; no stackful CM async).
-fn gfx_on_frame_events(n: usize) -> wasmtime::Result<Vec<GfxFrameEvent>> {
-    let n = n.max(1);
-    let (tx, rx) = std::sync::mpsc::sync_channel(n);
-    std::thread::Builder::new()
-        .name("GpuThread".into())
-        .spawn(move || {
-            for _ in 0..n {
-                let _ = tx.send(GfxFrameEvent { nothing: true });
+impl<D> StreamProducer<D> for GfxOnFrameProducer {
+    type Item = GfxFrameEvent;
+    type Buffer = Option<GfxFrameEvent>;
+
+    fn poll_produce<'a>(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        mut store: StoreContextMut<'a, D>,
+        mut destination: Destination<'a, Self::Item, Self::Buffer>,
+        finish: bool,
+    ) -> Poll<wasmtime::Result<StreamResult>> {
+        let _ = cx;
+        if destination.remaining(&mut store) == Some(0) {
+            return Poll::Ready(Ok(match self.gate.wait_ready(finish) {
+                GfxOnFrameTake::Item => StreamResult::Completed,
+                GfxOnFrameTake::Eof => StreamResult::Dropped,
+                GfxOnFrameTake::Cancelled => StreamResult::Cancelled,
+            }));
+        }
+        match self.gate.wait_take(finish) {
+            GfxOnFrameTake::Item => {
+                destination.set_buffer(Some(GfxFrameEvent { nothing: true }));
+                if self.gate.is_closed() {
+                    Poll::Ready(Ok(StreamResult::Dropped))
+                } else {
+                    Poll::Ready(Ok(StreamResult::Completed))
+                }
             }
-        })
-        .map_err(|e| wasmtime::Error::msg(format!("GpuThread: {e}")))?;
-    let mut out = Vec::with_capacity(n);
-    for _ in 0..n {
-        out.push(
-            rx.recv_timeout(std::time::Duration::from_secs(1))
-                .map_err(|e| wasmtime::Error::msg(format!("GpuThread: {e}")))?,
-        );
+            GfxOnFrameTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
+            GfxOnFrameTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),
+        }
     }
-    Ok(out)
 }
 
 /// WASI 0.3.0 http `error-code` subset (`unknown` only).
@@ -1473,9 +1488,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
     }
 
-    // P010-GFXH/L: wasi-gfx:surface@0.2.0 — constructor + on-frame CM stream.
-    // Guest pulls; host writes frame-events from a helper thread named GpuThread.
-    // No JS-style callback. P010-GFXL adds surface-webgpu + present.
+    // P010-GFXH/V: wasi-gfx:surface@0.2.0 — constructor + on-frame CM stream.
+    // Guest pulls; Choreographer vsync posts a 1-slot gate; poll_produce on the
+    // CM driver (GpuThread) writes. Unconsumed beats drop. No JS-style callback.
     {
         let mut surface = linker
             .instance("wasi-gfx:surface/surface@0.2.0")
@@ -1505,8 +1520,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]surface.on-frame",
                 |mut store, (this,): (Resource<GfxSurface>,)| {
                     store.data_mut().table.get(&this)?;
-                    let evs = gfx_on_frame_events(GFX_FRAME_EVENTS)?;
-                    let reader = StreamReader::new(&mut store, evs)?;
+                    let gate = store.data().gfx_on_frame.clone();
+                    let reader =
+                        StreamReader::new(&mut store, GfxOnFrameProducer { gate })?;
                     Ok((reader,))
                 },
             )
@@ -9937,7 +9953,11 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         return 0;
     }
     let engine = unsafe { from_handle::<Engine>(engine) };
-    to_handle(Store::new(engine, HostState::default()))
+    let store = Store::new(engine, HostState::default());
+    let gate = store.data().gfx_on_frame.clone();
+    let handle = to_handle(store);
+    gfx_on_frame_register(handle, gate);
+    handle
 }
 
 #[no_mangle]
@@ -9946,7 +9966,40 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     _class: JClass,
     handle: jlong,
 ) {
+    if let Some(gate) = gfx_on_frame_unregister(handle) {
+        gate.close();
+    }
     unsafe { drop_handle::<HostStore>(handle) }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStorePostGfxVsync(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    if let Some(gate) = gfx_on_frame_lookup(store) {
+        gate.post();
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreCloseGfxOnFrame(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    if let Some(gate) = gfx_on_frame_lookup(store) {
+        gate.close();
+    }
 }
 
 #[no_mangle]
