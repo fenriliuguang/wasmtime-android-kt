@@ -6,9 +6,9 @@
 
 本页记录 **已接受** 的 `0.1.0` gfx 连续上屏草图。**不**加入 [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)。**不**重开 P0。**NG-9 仍禁止把 gfx 升为 P0**；产品门禁是 [gfx RFC](../scheme/rfc-wasi-gfx-frame-loop.md)，不是本页。
 
-现行工程队列是 P2 Wasmtime 钉。今日上屏是单帧 WG-6。线程：[`threading-android.md`](threading-android.md)。实现 playbook / WIT 钉是后续 PR。
+现行工程队列是 P2 Wasmtime 钉。今日上屏是单帧 WG-6。线程：[`threading-android.md`](threading-android.md)。WIT 钉已 P010-GFXP（`v0.2.0`）；host 循环是 P010-GFXH。
 
-上游草图对齐 [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) `packages/surface`（2026-08：`wasi-gfx:surface@0.2.0` + `surface-webgpu` 引用 `wasi:webgpu@0.3.0-rc.2`）。本仓 **未 vendor** 该树。
+上游草图对齐 [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) 标签 **`v0.2.0`**（`wasi-gfx:surface@0.2.0` + `surface-webgpu` 引用 `wasi:webgpu@0.3.0-rc.2`）。已 vendor：[`../../third_party/wasi-gfx/v0.2.0/wit/surface.wit`](../../third_party/wasi-gfx/v0.2.0/wit/surface.wit)。
 
 ## 1. 不要 JS 式 scheduler 包
 

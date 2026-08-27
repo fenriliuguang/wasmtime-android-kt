@@ -6,9 +6,9 @@
 
 This page records host/guest sketches for the **accepted** `0.1.0` gfx present loop. It does **not** add a lane to [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). It does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). **NG-9 still forbids promoting gfx to P0**; the product gate is the gfx RFC, not this file.
 
-Living engineering queue is P2 Wasmtime pin. On-screen today is one-shot WG-6 (`WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md). Implementation playbook / WIT pin is a later PR (gfx RFC §5).
+Living engineering queue is P2 Wasmtime pin. On-screen today is one-shot WG-6 (`WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`). Thread rules: [`threading-android.md`](threading-android.md). WIT pin is **P010-GFXP** (`v0.2.0`); host loop is P010-GFXH (gfx RFC §5).
 
-Upstream sketches below follow [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) `packages/surface` as of 2026-08 ( `wasi-gfx:surface@0.2.0` + `surface-webgpu` importing `wasi:webgpu@0.3.0-rc.2` ). That tree is **not** vendored here. Names may move.
+Upstream sketches below follow [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) tag **`v0.2.0`** (`wasi-gfx:surface@0.2.0` + `surface-webgpu` importing `wasi:webgpu@0.3.0-rc.2`). Vendored [`../../third_party/wasi-gfx/v0.2.0/wit/surface.wit`](../../third_party/wasi-gfx/v0.2.0/wit/surface.wit). Names may move; do not pick a second tag without a changelog.
 
 ## 1. Why not a JS-style scheduler package
 
@@ -60,7 +60,7 @@ Stop:
 
 ## 3. Suggested WIT (illustrative)
 
-Not in-tree. Align with upstream; fill TODOs in a gfx fork/PR rather than a parallel `wasi:frame-scheduler`.
+Pin is in-tree (`third_party/wasi-gfx/v0.2.0/`). Align with that tag; fill TODOs in a gfx fork/PR rather than a parallel `wasi:frame-scheduler`.
 
 ### 3.1 Tick (`wasi-gfx:surface`)
 
