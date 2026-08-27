@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- W7 wasi:sockets loopback smoke; Android requires INTERNET even for 127.0.0.1. -->
+    <!-- W7 sockets + P010-HOUT HTTP/1.1; Android requires INTERNET (including loopback). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="false"
         android:label="wasmtime-android-kt smoke"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -527,6 +527,7 @@ fn tcp_connect_guest(addr: IpSocketAddress) -> std::io::Result<TcpConnected> {
 /// Host `resource request` / `response` for the W8 incoming-handler smoke + P010 body.
 struct HttpRequest {
     body: Vec<u8>,
+    authority: String,
 }
 
 struct HttpResponse {
@@ -542,6 +543,58 @@ struct HttpResponse {
 enum HttpErrorCode {
     #[component(name = "unknown")]
     Unknown,
+}
+
+/// HTTP/1.1 GET to `authority` (`host:port`). Wire send — not in-process 200.
+/// No TLS crate this lane (size); https is `unknown`. Helper-thread caller.
+fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
+    use std::io::{Read, Write};
+    use std::net::{SocketAddr, TcpStream};
+    use std::time::Duration;
+
+    if authority.is_empty() || authority.contains('/') {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "authority",
+        ));
+    }
+    let (host, port) = authority.rsplit_once(':').ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, "host:port")
+    })?;
+    let ip: std::net::Ipv4Addr = host.parse().map_err(|e| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{e}"))
+    })?;
+    if ip.is_unspecified() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "unspecified",
+        ));
+    }
+    let port: u16 = port.parse().map_err(|e| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{e}"))
+    })?;
+    let addr = SocketAddr::from((ip, port));
+    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(2))?;
+    stream.set_read_timeout(Some(Duration::from_secs(2)))?;
+    stream.set_write_timeout(Some(Duration::from_secs(2)))?;
+    let req = format!("GET / HTTP/1.1\r\nHost: {authority}\r\nConnection: close\r\n\r\n");
+    stream.write_all(req.as_bytes())?;
+    stream.shutdown(std::net::Shutdown::Write)?;
+    let mut buf = Vec::new();
+    stream.read_to_end(&mut buf)?;
+    let split = buf
+        .windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "no header end"))?;
+    let headers = std::str::from_utf8(&buf[..split])
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{e}")))?;
+    let status = headers
+        .split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "status"))?;
+    let body = buf[split + 4..].to_vec();
+    Ok((status, body))
 }
 
 /// P3-PRIM-5 / W1: collect guest `stream.write` bytes; complete oneshot on drop.
@@ -1176,15 +1229,16 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:http incoming-handler subset (W8 + P1-HT1 + P010-HBODY).
-    // Official packages: wasi:http/types@0.3.0 + guest export incoming-handler@0.3.0.
+    // WASI 0.3: wasi:http incoming-handler subset (W8 + P1-HT1 + P010-HBODY + P010-HOUT).
+    // Official packages: wasi:http/types@0.3.0 + guest export incoming-handler@0.3.0
+    // + wasi:http/client@0.3.0#send (0.3 equivalent of outgoing-handler).
     // Subset: constructors + status-code; handle is guest-exported
     // async func(own<request>) -> result<own<response>, error-code> (ok path).
     // Body: [static]request.consume-body / [static]response.consume-body →
     // tuple<stream<u8>, future<result>> (no trailers / res-future param);
     // [static]response.new(contents: stream<u8>) → tuple<response, future>
-    // (no headers). In-process ABI smoke (not a listening HTTP server).
-    // No wasmtime-wasi.
+    // (no headers). Outbound: set-authority + client.send HTTP/1.1 GET on the
+    // wire (helper thread). No TLS crate / https → unknown. No wasmtime-wasi.
     {
         let mut types = linker
             .instance("wasi:http/types@0.3.0")
@@ -1215,6 +1269,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap("[constructor]request", |mut store, ()| {
                 let resource = store.data_mut().table.push(HttpRequest {
                     body: b"HBOD".to_vec(),
+                    authority: String::new(),
                 })?;
                 Ok((resource,))
             })
@@ -1286,6 +1341,79 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
                     })?;
                     Ok(((reader, fut),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]request.set-authority",
+                |mut store, (req, authority): (Resource<HttpRequest>, String)| {
+                    if authority.is_empty() {
+                        return Ok((Err(HttpErrorCode::Unknown),));
+                    }
+                    store.data_mut().table.get_mut(&req)?.authority = authority;
+                    Ok((Ok::<(), HttpErrorCode>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+    {
+        let mut client = linker
+            .instance("wasi:http/client@0.3.0")
+            .map_err(|e| e.to_string())?;
+        client
+            .resource(
+                "request",
+                ResourceType::host::<HttpRequest>(),
+                |mut store, rep| {
+                    let resource = Resource::<HttpRequest>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        client
+            .resource(
+                "response",
+                ResourceType::host::<HttpResponse>(),
+                |mut store, rep| {
+                    let resource = Resource::<HttpResponse>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        client
+            .func_wrap_concurrent(
+                "send",
+                |accessor, (req,): (Resource<HttpRequest>,)| {
+                    Box::pin(async move {
+                        let authority = accessor.with(|mut access| {
+                            Ok::<_, wasmtime::Error>(
+                                access.data_mut().table.delete(req)?.authority,
+                            )
+                        })?;
+                        let (done_tx, done_rx) =
+                            oneshot::channel::<std::io::Result<(u16, Vec<u8>)>>();
+                        std::thread::spawn(move || {
+                            let _ = done_tx.send(http_send_get(&authority));
+                        });
+                        let outcome = done_rx
+                            .await
+                            .map_err(|_| wasmtime::Error::msg("send canceled"))?;
+                        match outcome {
+                            Ok((status, body)) => {
+                                let resource = accessor.with(|mut access| {
+                                    access.data_mut().table.push(HttpResponse {
+                                        status,
+                                        body: Arc::new(Mutex::new(body)),
+                                    })
+                                })?;
+                                Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
+                            }
+                            Err(_) => Ok((Err(HttpErrorCode::Unknown),)),
+                        }
+                    })
                 },
             )
             .map_err(|e| e.to_string())?;
