@@ -94,7 +94,7 @@ Done on device. **Do not** restack DisplayManager / GameState / SurfaceControl v
 
 ## 6. Far causes after H12 (wiring / guest / Wasmtime / compositor)
 
-**Filter.** The ~5 s pop happens while `FullscreenSurface` Choreographer and `GfxHitch` acquire stay ~8.3 ms (`>20ms=0`). Anything that **stalls** `run_concurrent`, GpuThread, MoonBit GC, or a Wasmtime epoch/fuel interrupt would spike `lastDtNs`. Those are **Closed** for this hitch. What remains must either (a) let the app keep presenting while SurfaceFlinger **rewinds stuffed BLAST images**, or (b) be an OEM policy that does not miss app vsync.
+**Filter.** The ~5 s pop happens while `FullscreenSurface` Choreographer and `GfxHitch` acquire stay ~8.3 ms (`>20ms=0`). Anything that **stalls** `run_concurrent`, GpuThread, MoonBit GC, or a Wasmtime epoch/fuel interrupt would spike `lastDtNs`. Those are **Closed** for this hitch. What remains must either (a) let the app keep presenting while SurfaceFlinger **rewinds stuffed BLAST images**, or (b) be an OEM policy that does not miss app vsync. **D24 correction (2026-08-29):** the pure-androidx.webgpu native cube shows the same clean timing but **no ~5 s pop**, so (a)/(b) do not reproduce the hitch alone — it is specific to the Wasmtime/`host-dawn` present path (re-open D2/D3).
 
 Sources: this tree (`native/src/engine.rs`, `native/src/cm.rs` `poll_produce` / `nativeCallRunConcurrent`, `host-dawn` present, out-of-tree `guests/rotating-cube/gen/world/guest/run.mbt`); [AOSP frame pacing](https://source.android.com/docs/core/graphics/frame-pacing) (SF holds until in-phase); [AOSP game loops / buffer stuffing](https://android.googlesource.com/platform/docs/source.android.com/+/master/en/devices/graphics/arch-gameloops.html); [Perfetto FrameTimeline](https://perfetto.dev/docs/data-sources/frametimeline) (`BUFFER_STUFFING`, `PREDICTION_ERROR` “corrects itself periodically”); [Wasmtime interrupting execution](https://docs.wasmtime.dev/examples-interrupting-wasm.html) (epoch/fuel — **not** enabled here). Do **not** file upstream GitHub issues; record Android facts here.
 
@@ -140,7 +140,7 @@ Sources: this tree (`native/src/engine.rs`, `native/src/cm.rs` `poll_produce` / 
 | D21 | VSyncPredictor `PREDICTION_ERROR`, scheduler “corrects periodically” | **Open** / **Trace** | [Perfetto](https://perfetto.dev/docs/data-sources/frametimeline): prediction drift is classified as jank; isolated errors often not felt — **stuffed** queues make a correction look like a 1–2 frame rewind. | Perfetto around a 5 s pop. |
 | D22 | Vivo RMS / `vivo_rms_screen` / adaptive 60·90·120 | **Open** / **Likely** | Device has `vivo_rms_screen`; `mAlwaysRespectAppRequest=false`; forcing SF 120 **increased** hitch frequency. Vivo “Smart Switch” / auto refresh is a known flicker class. | User Settings: lock 120 Hz, disable smart switch. Not a runtime vote. |
 | D23 | Kernel / DisplayModeDirector idle refresh timeout | **Open** (weak) | Cube presents every vsync, so the layer is not idle. Idle timers (often seconds) still appear in vendor SF. | Overlay “show refresh rate”; watch if Hz dips at the pop. |
-| D24 | Native androidx.webgpu cube (no Wasmtime) would hitch the same | **Trace** | Isolates D14–D18 vs D19–D22. Out-of-tree only; do not vendor. | One-shot compare on V2458A if the 5 s pop remains the question. |
+| D24 | Native androidx.webgpu cube (no Wasmtime) would hitch the same | **Closed** — upstream does **not** reproduce it alone | `hosts/native-webgpu` `CubeActivity` (pure androidx.webgpu 1.0.0-alpha05, no Wasmtime, no `host-dawn`) on V2458A: 1:1 present @120 Hz, Choreographer ~8.3 ms (0 `>20ms`), acquire ~8.3 ms (0 `>20ms`, `SuccessOptimal`), display pinned 120 Hz — clean timing **and no ~5 s pop** (eye-checked). Upstream androidx.webgpu / SF / OEM VRR is smooth on its own. | The pop is Wasmtime/`host-dawn`-specific: re-open D2 (CM pump vsync→present latency) and D3 (no present timestamp). |
 
 ### 6.5 Suggested probes (one variable)
 
@@ -148,4 +148,4 @@ Sources: this tree (`native/src/engine.rs`, `native/src/cm.rs` `poll_produce` / 
 2. **Perfetto FrameTimeline** for 20 s: `BUFFER_STUFFING` / `PREDICTION_ERROR` aligned to the pop.  
 3. **Settings lock 120 Hz** (no app vote change).  
 4. **Skip-present every N frames** (guest or host) to drain BLAST — only if timestats shows stuffing.  
-5. **No-Wasmtime native cube** A/B. Stop if it hitch-matches.
+5. **No-Wasmtime native cube** A/B. Stop if it hitch-matches. → **Done** (D24): native cube is smooth (no ~5 s pop) → the hitch is Wasmtime/`host-dawn`-specific, not upstream. Re-open D2/D3.

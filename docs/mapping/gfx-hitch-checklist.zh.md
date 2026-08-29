@@ -94,7 +94,7 @@
 
 ## 6. H12 之后的远因（接线 / guest / Wasmtime / 合成器）
 
-**筛选。** 约 5 s 那一下发生时，`FullscreenSurface` Choreographer 和 `GfxHitch` acquire 仍约 8.3 ms（`>20ms=0`）。凡是会 **卡住** `run_concurrent`、GpuThread、MoonBit GC、或 Wasmtime epoch/fuel 中断的路径，都会在 `lastDtNs` 上冒尖。这些对这次抖动是 **Closed**。剩下的只能是：(a) 应用仍在按时 present，SurfaceFlinger **回退积压的 BLAST 图**；或 (b) 不误 app vsync 的 OEM 策略。
+**筛选。** 约 5 s 那一下发生时，`FullscreenSurface` Choreographer 和 `GfxHitch` acquire 仍约 8.3 ms（`>20ms=0`）。凡是会 **卡住** `run_concurrent`、GpuThread、MoonBit GC、或 Wasmtime epoch/fuel 中断的路径，都会在 `lastDtNs` 上冒尖。这些对这次抖动是 **Closed**。剩下的只能是：(a) 应用仍在按时 present，SurfaceFlinger **回退积压的 BLAST 图**；或 (b) 不误 app vsync 的 OEM 策略。**D24 修正（2026-08-29）：**纯 androidx.webgpu 原生立方体计时同样干净但**无约 5 s 弹出**，因此 (a)/(b) 单独不构成抖动——它是 Wasmtime/`host-dawn` present 路径特有（重开 D2/D3）。
 
 依据：本树（`native/src/engine.rs`、`cm.rs` 的 `poll_produce` / `nativeCallRunConcurrent`、host-dawn present、仓外 `run.mbt`）；[AOSP frame pacing](https://source.android.com/docs/core/graphics/frame-pacing)（SF 等到同相位才 latch）；[AOSP 游戏循环 / buffer stuffing](https://android.googlesource.com/platform/docs/source.android.com/+/master/en/devices/graphics/arch-gameloops.html)；[Perfetto FrameTimeline](https://perfetto.dev/docs/data-sources/frametimeline)（`BUFFER_STUFFING`、`PREDICTION_ERROR`「周期性自校正」）；[Wasmtime 中断执行](https://docs.wasmtime.dev/examples-interrupting-wasm.html)（epoch/fuel — **本 Engine 未开**）。不要给上游提 GitHub issue；Android 事实只记本仓。
 
@@ -140,7 +140,7 @@
 | D21 | VSyncPredictor `PREDICTION_ERROR`，调度器「周期性校正」 | **Open** / **Trace** | [Perfetto](https://perfetto.dev/docs/data-sources/frametimeline)：预测漂移算 jank；孤立误差常常无感——**塞满** 的队列会让一次校正看起来像回退 1–2 帧。 | 对着 5 s 弹出采 Perfetto。 |
 | D22 | Vivo RMS / `vivo_rms_screen` / 自适应 60·90·120 | **Open** / **Likely** | 设备有 `vivo_rms_screen`；`mAlwaysRespectAppRequest=false`；强行 SF 120 **提高** 抖动频率。Vivo「智能切换」是已知闪烁类问题。 | 用户设置：锁 120 Hz、关掉智能切换。不要用 runtime 投票。 |
 | D23 | Kernel / DisplayModeDirector 空闲降刷新超时 | **Open**（弱） | 立方体每拍 present，图层并不空闲。厂商 SF 里仍常见数秒 idle timer。 | 打开「显示刷新率」叠加层，看弹出时 Hz 是否掉。 |
-| D24 | 不含 Wasmtime 的原生 androidx.webgpu 立方体也会同样抖 | **Trace** | 用来隔离 D14–D18 vs D19–D22。只做仓外；不要 vendor。 | 若 5 s 仍是问题，在 V2458A 上做一次 A/B。 |
+| D24 | 不含 Wasmtime 的原生 androidx.webgpu 立方体也会同样抖 | **Closed** — 上游单独**不会**复现 | `hosts/native-webgpu` `CubeActivity`（纯 androidx.webgpu 1.0.0-alpha05，无 Wasmtime、无 `host-dawn`）在 V2458A 上：1:1 出帧 @120 Hz，Choreographer ~8.3 ms（0 `>20ms`），acquire ~8.3 ms（0 `>20ms`，`SuccessOptimal`），显示钉在 120 Hz——计时干净**且无约 5 s 弹出**（肉眼确认）。仅 androidx.webgpu / SF / OEM VRR 本身是流畅的。 | 弹出是 Wasmtime/`host-dawn` 特有：重开 D2（CM 泵 vsync→present 延迟）与 D3（无 present 时间戳）。 |
 
 ### 6.5 建议探针（一次一个变量）
 
@@ -148,4 +148,4 @@
 2. **Perfetto FrameTimeline** 采 20 s：`BUFFER_STUFFING` / `PREDICTION_ERROR` 是否对齐弹出。  
 3. **系统设置锁 120 Hz**（不改 app 投票）。  
 4. **每 N 帧 skip-present**（guest 或 host）抽干 BLAST — 仅当 timestats 显示 stuffing。  
-5. **无 Wasmtime 原生立方体** A/B。若同样抖就停在合成器。
+5. **无 Wasmtime 原生立方体** A/B。若同样抖就停在合成器。 → **已做**（D24）：原生立方体流畅（无约 5 s 弹出）→ 抖动是 Wasmtime/`host-dawn` 特有，不是上游。重开 D2/D3。
