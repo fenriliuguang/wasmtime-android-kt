@@ -6,7 +6,7 @@ P0 `wasi:webgpu` is **closed** ([`../archive/p0-wasi-webgpu.md`](../archive/p0-w
 
 This queue keeps the **upstream `wasmtime` pin knowable, upgradeable, and rollback-able**. Tracking table: [`../scheme/wasmtime-tracking.md`](../scheme/wasmtime-tracking.md). KPI is **not** “always on latest major”. One lane, one PR.
 
-Living auto queue is **`0.1.0`** ([`product-010.md`](product-010.md)). This playbook is **named-only** (user said P2 / Wasmtime pin).
+Living auto queue is **native-dawn** ([`native-dawn.md`](native-dawn.md)). `0.1.0` is empty ([`product-010.md`](product-010.md)). This playbook is **named-only** (user said P2 / Wasmtime pin).
 
 P1 leftover WIT shapes live in [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). L5 §7 rows are **`product-010-remaining` auto**, not this script.
 
@@ -59,7 +59,7 @@ P2-EVAL landed **2026-08-26**: pin **47.0.4**; crates.io latest stable at check 
 | Enable `wasmtime-wasi` crate | User named wasmtime-wasi | Size + Android thread review in-repo; still one lane |
 | P1 leftover WASI shapes | User named G-cmd / G-fs-full / listen / UDP (not L5 §7) | Still not auto. L5 §7 rows: [`product-010.md`](product-010.md) |
 | Full wasi-testsuite | User named testsuite | Optional subset only; no compliance claim |
-| Frame-loop / wasi-gfx | — | Auto on [`product-010.md`](product-010.md) (GFXP/H/L/B/V); not P2 |
+| Frame-loop / wasi-gfx | — | Landed on [`product-010.md`](product-010.md); native present host is [`native-dawn.md`](native-dawn.md); not P2 |
 
 ## File whitelist (typical P2-EVAL / P2-PATCH)
 

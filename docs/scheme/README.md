@@ -7,11 +7,13 @@ Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 
 ## Now
 
-P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 is **closed**. Current queue: [`../agent/product-010.md`](../agent/product-010.md) (`0.1.0` product gates). P2 Wasmtime pin is **named**. **L5 is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
+P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 is **closed**. `0.1.0` gates are **empty**. Current queue: [`../agent/native-dawn.md`](../agent/native-dawn.md) (full-pin Dawn C host). P2 Wasmtime pin is **named**. **L5 is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
 
 | Doc | Role |
 |-----|------|
-| [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` playbook** |
+| [`../agent/native-dawn.md`](../agent/native-dawn.md) | **Living auto:** native Dawn host (full pin) |
+| [`native-dawn.md`](native-dawn.md) | Native-dawn needles |
+| [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` playbook** (empty) |
 | [`claim-010.md`](claim-010.md) | **`0.1.0` claim table** (not CTS) |
 | [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | P2 playbook (named) |
 | [`rfc-ecosystem-contribution.md`](rfc-ecosystem-contribution.md) | **Accepted:** citable host; drop old L4 |
@@ -43,6 +45,6 @@ Slice status: [GitHub Project](https://github.com/users/fenriliuguang/projects/1
 
 1. Canonical `wasi:webgpu` guest shape; no host-fixed `u32` as new-slice acceptance.  
 2. True CM async via upstream Wasmtime — never Latch/`sync-compat` as “true async”.  
-3. Android-first; package/adapt Dawn as the **default backend**, do not rewrite Dawn (NG-7).  
+3. Android-first; package/adapt **one** Dawn as the default backend (JNI leftover or native C), do not rewrite Dawn (NG-7).  
 4. Experimental `0.x`; **no Central before `0.1.0` gates**; no CTS claim.  
 5. English docs are canonical.

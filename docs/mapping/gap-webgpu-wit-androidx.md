@@ -2,7 +2,7 @@
 
 **English** | [中文](gap-webgpu-wit-androidx.zh.md)
 
-Living map for the **closed** P0 host. Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Current work: [`../agent/product-010.md`](../agent/product-010.md). Product claim (not CTS): [`../scheme/claim-010.md`](../scheme/claim-010.md).
+Living map for the **JNI / androidx leftover** (`dawn-jni`). Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Current work: [`../agent/native-dawn.md`](../agent/native-dawn.md) (Dawn C default consume). Use this table as the **mapping spec** when translating `DawnWasiWebGpuHost`. Product claim (not CTS): [`../scheme/claim-010.md`](../scheme/claim-010.md).
 
 **Degree**
 

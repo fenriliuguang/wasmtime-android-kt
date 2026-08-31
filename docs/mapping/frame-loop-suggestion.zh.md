@@ -2,11 +2,11 @@
 
 [English](frame-loop-suggestion.md) | **中文**
 
-**地位：gfx RFC 的形状笔记。** gfx 自动刀剩余：**P010-DEMO**。`0.1.0` 最后一刀 **P010-DEMO**。与英文冲突时以英文为准。
+**地位：gfx RFC 的形状笔记。** `0.1.0` 帧循环已落地。现行 host 消费：[`../agent/native-dawn.md`](../agent/native-dawn.md)。不要改 guest 拉流形状。与英文冲突时以英文为准。
 
 本页记录 **已接受** 的 `0.1.0` gfx 连续上屏草图。**不**加入 [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md)。**不**重开 P0。**NG-9 仍禁止把 gfx 升为 P0**；产品门禁是 [gfx RFC](../scheme/rfc-wasi-gfx-frame-loop.md)，不是本页。
 
-现行自动队列是完整帧循环然后 demo：产品 adapter/device（**P010-GFXB**）然后 Choreographer vsync（**P010-GFXV**，已落地）然后 **P010-DEMO**。今日上屏是单帧 WG-6 以及 vsync 节拍的 `WasiGfxFrameLoopInstrumentedTest`。WIT 钉已 P010-GFXP；host `on-frame` 已 P010-GFXH。
+`0.1.0` 循环已落地。native Dawn present 接到同一 `GfxOnFrameGate`（**ND-SURF**）。今日上屏是单帧 WG-6 以及 vsync 节拍的 `WasiGfxFrameLoopInstrumentedTest`。
 
 上游草图对齐 [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) 标签 **`v0.2.0`**（`wasi-gfx:surface@0.2.0` + `surface-webgpu` 引用 `wasi:webgpu@0.3.0-rc.2`）。已 vendor：[`../../third_party/wasi-gfx/v0.2.0/wit/surface.wit`](../../third_party/wasi-gfx/v0.2.0/wit/surface.wit)。
 

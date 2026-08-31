@@ -1,5 +1,5 @@
 ---
-description: CLOSED wasi:webgpu Dawn consume G1–G9 — redirect to 0.1.0 product gates
+description: CLOSED wasi:webgpu Dawn consume G1–G9 — redirect to native-dawn
 alwaysApply: false
 ---
 
@@ -7,4 +7,4 @@ alwaysApply: false
 
 G1–G9 and named WG-6 leftovers are **closed**. Do not start another blend / view-formats / compilation-hints / xr / default-queue / write-mask / stencil / canvas leftover / auto-layout / guest-drawn compute/3D/present PR.
 
-Current queue: read `docs/agent/product-010.md`. Next: `.\scripts\product-010-remaining.ps1` or `python3 ./scripts/product-010-remaining.py`. Historical: `docs/archive/p0-wasi-webgpu.md`.
+Living auto: read `docs/agent/native-dawn.md`. Next: `python3 ./scripts/native-dawn-remaining.py`. Historical: `docs/archive/p0-wasi-webgpu.md`. Do not re-cut G1–G9.

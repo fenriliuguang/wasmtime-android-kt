@@ -20,4 +20,4 @@ SPI 由本仓 `runtime-api` 拥有，不暴露外仓 `WasiWebGpuHost` 类型。�
 
 解析顺序：显式接线 → ServiceLoader（优先 `id=dawn`）→ 无后端则 `none`。Linker 始终注册 `wasi:webgpu`。
 
-代码落地：`:host-dawn` / `:android-webgpu`；未接线 `request-adapter` → `none`。Host Kotlin 已 vendor；Dawn `.so` 用 `androidx.webgpu`。见 [`../blocked-gpu-host.md`](../blocked-gpu-host.md)。
+代码落地：`:host-dawn` / `:android-webgpu`；未接线 `request-adapter` → `none`。Host Kotlin 已 vendor；今日 Dawn `.so` 仍用 `androidx.webgpu`。现行自动队列 [`../agent/native-dawn.md`](../agent/native-dawn.md) 将默认消费改为 Dawn C（一份 `.so`；androidx 路径留 `dawn-jni`）。见 [`../blocked-gpu-host.md`](../blocked-gpu-host.md)。

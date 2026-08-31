@@ -2,7 +2,7 @@
 
 **English** | [中文](guest-shape.zh.md)
 
-Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (vendored [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). **P0 is closed** ([`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md)). Holes vs androidx: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work: [`../agent/product-010.md`](../agent/product-010.md).
+Canonical guest ABI for this repo. Pin: **`wasi:webgpu@0.3.0-rc.2`** (vendored [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). **P0 shape is closed** ([`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md)). JNI/androidx holes: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md). Current work: [`../agent/native-dawn.md`](../agent/native-dawn.md) (Dawn C consume; same pin).
 
 ## 1. A method is shape-complete iff
 
@@ -20,7 +20,7 @@ Test-only constructors (`get-gpu`, `get-device`) may remain in fixtures. They **
 
 1. Use Wasmtime component types (`Resource<T>`, `Option`, `Result`, lists, records).  
 2. Finite, explicit codecs per slice — no schema-free JSON.  
-3. Backend GPU handles may stay `u32` **reps**; the **guest boundary** is a resource.  
+3. Backend GPU handles may stay `u32` **reps** (JNI L2 or native Dawn C); the **guest boundary** is a resource.  
 4. `result` / `option` follow WIT; do not panic on failure and call it a result.  
 5. **Forbidden:** new slices whose acceptance is host-fixed descriptor + transitional `u32`.
 

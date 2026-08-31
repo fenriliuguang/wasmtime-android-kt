@@ -2,7 +2,7 @@
 
 **English** | [中文](claim-010.zh.md)
 
-Release-notes-shaped **product subset** for L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8. Playbook: [`../agent/product-010.md`](../agent/product-010.md). Counted 2026-08-27 against pin WIT + `native/src/cm.rs`.
+Release-notes-shaped **product subset** for L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8. `0.1.0` playbook: [`../agent/product-010.md`](../agent/product-010.md) (empty). Living consume rewrite: [`../agent/native-dawn.md`](../agent/native-dawn.md). Counted 2026-08-27 against pin WIT + `native/src/cm.rs`.
 
 **This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md) NG-4 / NG-5. Coordinate **`0.1.0`**. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) (do not press when secrets / arm64 `.so` are missing).
 
@@ -16,7 +16,7 @@ Pin: [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_pa
 
 | Claim | Degree | Notes |
 |-------|--------|-------|
-| Pin resource `[method]` names (224 in WIT) | **Instantiate** | All 224 reconstructed `[method]resource.name` strings are registered in `native/src/cm.rs`. A guest that imports them links. Not CTS. |
+| Pin resource `[method]` names (224 in WIT) | **Instantiate** (JNI today) | All 224 reconstructed `[method]resource.name` strings are registered in `native/src/cm.rs`. A guest that imports them links. **ND-REST** upgrades default consume to Dawn C (same names). Not CTS. |
 | `gpu.request-adapter` / `gpu-adapter.request-device` | **Dawn** on attached backend; **`none` / err** if unwired | Product `Linker.create` exports pin `get-gpu`. Fixture `get-device` omitted. Unwired store → adapter **`none`**, not a trap. P010-GFXB: frame-loop guest uses this chain. |
 | Compute submit / guest-drawn 3D / one-shot canvas | **Dawn** | WG-6 instruments stay as regressions. |
 | Continuous on-screen loop | **Host vsync** | P010-GFXB: product `request-adapter` / `request-device`. P010-GFXV: Choreographer vsync into `on-frame` (drop unconsumed; `surfaceDestroyed` closes). Named device row is §6. [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md). |
@@ -25,7 +25,7 @@ Pin: [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_pa
 | Fixture `get-*` constructors | **Not product** | `get-device` / `get-gpu-error` / `get-device-lost-info` stay on `Linker.createWithFixtureConstructors`. Pin `get-gpu` is product (WIT). |
 | `experimental:webgpu-cm` flat `u32` names | **Not pin product** | Frozen dual-register; do not extend. |
 
-“Instantiate” ≠ every field reaches Dawn. Record leftovers keep the guest value in Kotlin and drop it at the AAR ctor.
+“Instantiate” ≠ every field reaches Dawn. Record leftovers keep the guest value in Kotlin (JNI path) and drop it at the AAR ctor. Native C consume (`ND-CLAIM`) must list the same holes vs Dawn C, not silently drop methods. The rotating cube is **demo** evidence, not this table’s consume degree.
 
 ## 3. WASI 0.3 product subset vs named-only
 

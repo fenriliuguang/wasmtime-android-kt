@@ -2,7 +2,7 @@
 
 [English](gap-webgpu-wit-androidx.md) | **中文**
 
-P0 已关闭。钉版 `wasi:webgpu@0.3.0-rc.2`；Dawn AAR `androidx.webgpu:webgpu:1.0.0-alpha05`。本页不是切刀队列。收口：[`../archive/p0-wasi-webgpu.zh.md`](../archive/p0-wasi-webgpu.zh.md)。现行：[`../agent/product-010.md`](../agent/product-010.md)。与英文冲突时以英文为准。
+P0 已关闭。钉版 `wasi:webgpu@0.3.0-rc.2`；Dawn AAR `androidx.webgpu:webgpu:1.0.0-alpha05`。本页不是切刀队列。收口：[`../archive/p0-wasi-webgpu.zh.md`](../archive/p0-wasi-webgpu.zh.md)。现行：[`../agent/native-dawn.md`](../agent/native-dawn.md)（Dawn C；本页是 JNI/`dawn-jni` 映射）。与英文冲突时以英文为准。
 
 ## 覆盖
 
