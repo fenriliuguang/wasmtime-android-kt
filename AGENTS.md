@@ -1,6 +1,6 @@
 # Agent notes
 
-**Living auto queue:** native Dawn host (full `wasi:webgpu` pin via Dawn C) — [`docs/agent/native-dawn.md`](docs/agent/native-dawn.md) (Cursor skill `native-dawn`). Next PR: `.\scripts\native-dawn-remaining.ps1` or `python3 ./scripts/native-dawn-remaining.py`. Cube / out-of-tree demo is evidence only (`ND-DEVICE`), not consume DoD.
+**Living auto queue:** native Dawn host (full `wasi:webgpu` pin via Dawn C) — [`docs/agent/native-dawn.md`](docs/agent/native-dawn.md) (Cursor skill `native-dawn`). Long branch **`cursor/native-dawn-rewrite-1355`**: one lane = one **commit**; **no PR** until `python3 ./scripts/native-dawn-remaining.py` is empty. Cube / out-of-tree demo is evidence only (`ND-DEVICE`), not consume DoD.
 
 **`0.1.0` product gates** are **empty** ([`docs/agent/product-010.md`](docs/agent/product-010.md); skill `product-010` only if the user names `P010-*`).
 

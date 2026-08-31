@@ -9,9 +9,9 @@ For 下一刀 / native-dawn / ND-DISP / Dawn C / bypass androidx JNI / full WebG
 
 P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 official-shape is **closed**. `0.1.0` product gates are **empty**. Do not re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, G-dev, or wasi:webgpu G1–G9 / F1–F9 / guest-pipeline / WG-6 as those queues.
 
-- Next PR: `.\scripts\native-dawn-remaining.ps1` or `python3 ./scripts/native-dawn-remaining.py` (one printed Next: only).
+- Long branch **`cursor/native-dawn-rewrite-1355`**. Next **commit**: `python3 ./scripts/native-dawn-remaining.py` (one printed Next: only). Do **not** open a PR until the queue is empty.
 - Product goal is **full pin consume** on Dawn C (`ND-REST`). The rotating cube is **demo evidence only**.
 - Reuse `cm.rs` lowering, `wasi_webgpu_method`, hitch invariants. Do not reimplement `exp_*` JNI. Grep then Read ~80 lines of `cm.rs`.
 - Do not add `wasmtime-wasi` without a size + Android thread note. One Dawn `.so` (ND-SO same bar). No JS-style frame callbacks.
-- One lane per PR. Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md` except this playbook / gate-amendment PR.
+- One lane per **commit**. One PR to `main` after ND-DEVICE. Hub freeze on lane commits: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md` except this playbook / gate-amendment commit.
 - Never file GitHub issues (or Discussions-as-issues) on Wasmtime, WASI, Dawn, or any other upstream. No `gh issue create`.

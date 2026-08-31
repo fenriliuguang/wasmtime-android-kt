@@ -1,4 +1,4 @@
-# Next native-dawn host PR. Agents: run this instead of grepping cm.rs.
+# Next native-dawn host commit on cursor/native-dawn-rewrite-1355.
 param(
     [switch]$All
 )

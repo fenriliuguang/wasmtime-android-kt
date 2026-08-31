@@ -7,7 +7,7 @@ Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 
 ## Now
 
-P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 is **closed**. `0.1.0` gates are **empty**. Current queue: [`../agent/native-dawn.md`](../agent/native-dawn.md) (full-pin Dawn C host). P2 Wasmtime pin is **named**. **L5 is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
+P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 is **closed**. `0.1.0` gates are **empty**. Current queue: [`../agent/native-dawn.md`](../agent/native-dawn.md) (full-pin Dawn C host) on long branch **`cursor/native-dawn-rewrite-1355`** (one commit per lane; one PR when empty). P2 Wasmtime pin is **named**. **L5 is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
 
 | Doc | Role |
 |-----|------|

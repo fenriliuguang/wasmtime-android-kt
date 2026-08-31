@@ -6,7 +6,7 @@ Living **auto** queue: default `wasi:webgpu` consume via **Dawn C** on the Wasmt
 
 P0 / P1 auto knives stay **closed**. P2 Wasmtime pin is **named**. Do **not** re-cut G1–G9 / F1–F9 / WG-6 as those queues.
 
-Remaining: `python3 ./scripts/native-dawn-remaining.py`. A lane drops when its **`gap: nd … pending`** needle leaves **this file**. Do **not** remove a needle without landing that lane’s DoD.
+Branch: **`cursor/native-dawn-rewrite-1355`**. Remaining: `python3 ./scripts/native-dawn-remaining.py` (next **commit**, not next PR). A lane drops when its **`gap: nd … pending`** needle leaves **this file**. Do **not** remove a needle without landing that lane’s DoD. Open **one** PR to `main` only when this table has no pending needles.
 
 Cube / out-of-tree demo is **not** a consume needle.
 
