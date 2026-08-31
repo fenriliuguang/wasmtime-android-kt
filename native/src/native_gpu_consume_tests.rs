@@ -112,3 +112,59 @@ fn texture_create_view_fixture_on_native_gpu() -> wasmtime::Result<()> {
     assert_eq!(v, 1);
     Ok(())
 }
+
+#[test]
+fn create_bind_group_layout_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_bind_group_layout.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_pipeline_layout_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_pipeline_layout.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_bind_group_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_bind_group.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_compute_pipeline_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_compute_pipeline.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_compute_pipeline_async_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_compute_pipeline_async.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_compute_pipeline_constants_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_compute_pipeline_constants.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_render_pipeline_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_render_pipeline.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_render_pipeline_async_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_render_pipeline_async.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}

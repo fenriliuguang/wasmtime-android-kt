@@ -22,7 +22,7 @@ Cube / out-of-tree demo is **not** a consume needle.
 | ND-HOST | landed 2026-08-31 (`NativeGpu` trait + handle table; no product Kotlin GPU API) |
 | ND-BOOT | landed 2026-08-31 (native request-adapter / request-device / queue + boot info; table-backed) |
 | ND-RES | landed 2026-08-31 (native create-buffer/texture/sampler/shader/view; hints Record) |
-| ND-PIPE | `gap: nd pipe pending` |
+| ND-PIPE | landed 2026-08-31 (native bind-group/layout + compute/render pipelines; async + constants; table-backed) |
 | ND-ENC | `gap: nd enc pending` |
 | ND-QUEUE | `gap: nd queue pending` |
 | ND-REST | `gap: nd rest pending` |

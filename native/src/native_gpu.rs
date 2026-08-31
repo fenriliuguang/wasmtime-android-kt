@@ -261,6 +261,14 @@ pub struct NativeShaderHints {
     pub layouts: Vec<i32>,
 }
 
+/// Pipeline `constants` map copied from WIT `record-gpu-pipeline-constant-value`.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct NativePipelineConstants {
+    pub compute: Vec<(String, f64)>,
+    pub vertex: Vec<(String, f64)>,
+    pub fragment: Vec<(String, f64)>,
+}
+
 impl Default for NativeAdapterInfo {
     fn default() -> Self {
         Self {
@@ -283,6 +291,10 @@ pub struct NativeGpuHost {
     adapter_info: HashMap<u32, NativeAdapterInfo>,
     /// Shader `compilation-hints` Record leftover (Dawn C has no slot).
     shader_hints: HashMap<u32, NativeShaderHints>,
+    /// WIT `record-gpu-pipeline-constant-value` maps keyed by resource `rep`.
+    pipeline_constant_records: HashMap<u32, Vec<(String, f64)>>,
+    /// Constants copied onto compute/render pipelines at create (Dawn slot still 0).
+    pipeline_constants: HashMap<u32, NativePipelineConstants>,
 }
 
 impl Default for NativeGpuHost {
@@ -298,6 +310,8 @@ impl NativeGpuHost {
             interned_queues: HashMap::new(),
             adapter_info: HashMap::new(),
             shader_hints: HashMap::new(),
+            pipeline_constant_records: HashMap::new(),
+            pipeline_constants: HashMap::new(),
         }
     }
 
@@ -311,6 +325,9 @@ impl NativeGpuHost {
             }
             ResourceKind::ShaderModule => {
                 self.shader_hints.remove(&handle.raw());
+            }
+            ResourceKind::ComputePipeline | ResourceKind::RenderPipeline => {
+                self.pipeline_constants.remove(&handle.raw());
             }
             _ => {}
         }
@@ -542,6 +559,224 @@ impl NativeGpuHost {
         );
         Ok(self.table.insert(ResourceKind::TextureView, 0))
     }
+
+    pub fn resolve_shader(&mut self, shader_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if shader_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.create_shader_module(device, "", "", &[], "")
+        } else {
+            let handle = GpuHandle::from_raw(shader_rep)?;
+            self.get(handle, ResourceKind::ShaderModule)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn resolve_bind_group_layout(
+        &mut self,
+        layout_rep: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        if layout_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.create_bind_group_layout(device, &[], &[], &[], &[], &[])
+        } else {
+            let handle = GpuHandle::from_raw(layout_rep)?;
+            self.get(handle, ResourceKind::BindGroupLayout)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn resolve_buffer(&mut self, buffer_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if buffer_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.create_buffer(device, 0, 0, -1, "")
+        } else {
+            let handle = GpuHandle::from_raw(buffer_rep)?;
+            self.get(handle, ResourceKind::Buffer)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn create_bind_group_layout(
+        &mut self,
+        device: GpuHandle,
+        bindings: &[i32],
+        visibilities: &[i32],
+        buffer_types: &[i32],
+        sampler_types: &[i32],
+        texture_sample_types: &[i32],
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        let _ = (
+            bindings,
+            visibilities,
+            buffer_types,
+            sampler_types,
+            texture_sample_types,
+        );
+        Ok(self.table.insert(ResourceKind::BindGroupLayout, 0))
+    }
+
+    pub fn create_pipeline_layout(
+        &mut self,
+        device: GpuHandle,
+        bind_group_layouts: &[i32],
+        label: &str,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        for &raw in bind_group_layouts {
+            if raw > 0 {
+                let h = GpuHandle::from_raw(raw as u32)?;
+                self.get(h, ResourceKind::BindGroupLayout)?;
+            }
+        }
+        let _ = label;
+        Ok(self.table.insert(ResourceKind::PipelineLayout, 0))
+    }
+
+    pub fn create_bind_group(
+        &mut self,
+        device: GpuHandle,
+        layout: GpuHandle,
+        label: &str,
+        bindings: &[i32],
+        kinds: &[i32],
+        handles: &[i32],
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        self.get(layout, ResourceKind::BindGroupLayout)?;
+        let _ = (label, bindings, kinds, handles);
+        Ok(self.table.insert(ResourceKind::BindGroup, 0))
+    }
+
+    fn copy_constant_record(&self, rep: i32) -> Vec<(String, f64)> {
+        if rep <= 0 {
+            return Vec::new();
+        }
+        self.pipeline_constant_records
+            .get(&(rep as u32))
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn pipeline_constant_add(&mut self, handle: u32, key: String, value: f64) {
+        let rec = self.pipeline_constant_records.entry(handle).or_default();
+        if let Some(slot) = rec.iter_mut().find(|(k, _)| *k == key) {
+            slot.1 = value;
+        } else {
+            rec.push((key, value));
+        }
+    }
+
+    pub fn pipeline_constant_get(&self, handle: u32, key: &str) -> Option<f64> {
+        self.pipeline_constant_records
+            .get(&handle)
+            .and_then(|rec| rec.iter().find(|(k, _)| k == key).map(|(_, v)| *v))
+    }
+
+    pub fn pipeline_constant_has(&self, handle: u32, key: &str) -> bool {
+        self.pipeline_constant_get(handle, key).is_some()
+    }
+
+    pub fn pipeline_constant_remove(&mut self, handle: u32, key: &str) {
+        if let Some(rec) = self.pipeline_constant_records.get_mut(&handle) {
+            rec.retain(|(k, _)| k != key);
+        }
+    }
+
+    pub fn pipeline_constant_keys(&self, handle: u32) -> Vec<String> {
+        self.pipeline_constant_records
+            .get(&handle)
+            .map(|rec| rec.iter().map(|(k, _)| k.clone()).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn pipeline_constant_values(&self, handle: u32) -> Vec<f64> {
+        self.pipeline_constant_records
+            .get(&handle)
+            .map(|rec| rec.iter().map(|(_, v)| *v).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn pipeline_constant_entries(&self, handle: u32) -> Vec<(String, f64)> {
+        self.pipeline_constant_records
+            .get(&handle)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn create_compute_pipeline(
+        &mut self,
+        device: GpuHandle,
+        shader_rep: u32,
+        entry_point: &str,
+        layout_rep: i32,
+        label: &str,
+        constants_rep: i32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        let _ = self.resolve_shader(shader_rep)?;
+        if layout_rep > 0 {
+            let h = GpuHandle::from_raw(layout_rep as u32)?;
+            self.get(h, ResourceKind::PipelineLayout)?;
+        }
+        let _ = (entry_point, label);
+        let handle = self.table.insert(ResourceKind::ComputePipeline, 0);
+        self.pipeline_constants.insert(
+            handle.raw(),
+            NativePipelineConstants {
+                compute: self.copy_constant_record(constants_rep),
+                ..NativePipelineConstants::default()
+            },
+        );
+        Ok(handle)
+    }
+
+    pub fn create_render_pipeline(
+        &mut self,
+        device: GpuHandle,
+        vertex_shader: u32,
+        vertex_entry: &str,
+        fragment_shader: i32,
+        fragment_entry: &str,
+        format: i32,
+        layout_rep: i32,
+        label: &str,
+        vertex_constants: i32,
+        fragment_constants: i32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        let _ = self.resolve_shader(vertex_shader)?;
+        if fragment_shader > 0 {
+            let _ = self.resolve_shader(fragment_shader as u32)?;
+        }
+        if layout_rep > 0 {
+            let h = GpuHandle::from_raw(layout_rep as u32)?;
+            self.get(h, ResourceKind::PipelineLayout)?;
+        }
+        let _ = (vertex_entry, fragment_entry, format, label);
+        let handle = self.table.insert(ResourceKind::RenderPipeline, 0);
+        self.pipeline_constants.insert(
+            handle.raw(),
+            NativePipelineConstants {
+                vertex: self.copy_constant_record(vertex_constants),
+                fragment: self.copy_constant_record(fragment_constants),
+                ..NativePipelineConstants::default()
+            },
+        );
+        Ok(handle)
+    }
+
+    pub fn pipeline_constants(
+        &self,
+        pipeline: GpuHandle,
+    ) -> Result<Option<&NativePipelineConstants>, NativeGpuError> {
+        let entry = self
+            .table
+            .get(pipeline, ResourceKind::ComputePipeline)
+            .or_else(|_| self.table.get(pipeline, ResourceKind::RenderPipeline))?;
+        let _ = entry;
+        Ok(self.pipeline_constants.get(&pipeline.raw()))
+    }
 }
 
 impl NativeGpu for NativeGpuHost {
@@ -582,6 +817,8 @@ impl NativeGpu for NativeGpuHost {
         self.interned_queues.clear();
         self.adapter_info.clear();
         self.shader_hints.clear();
+        self.pipeline_constant_records.clear();
+        self.pipeline_constants.clear();
     }
 
     fn request_adapter(&mut self, options: &NativeRequestAdapterOptions<'_>) -> Option<GpuHandle> {
@@ -777,5 +1014,43 @@ mod tests {
             .expect("hints recorded");
         assert_eq!(hints.entries, "l2");
         assert_eq!(hints.layouts, vec![-1]);
+    }
+
+    #[test]
+    fn create_layouts_pipelines_and_constants_no_jni() {
+        let mut gpu = NativeGpuHost::new();
+        let device = gpu.resolve_device(0).expect("boot device");
+        let bgl = gpu
+            .create_bind_group_layout(device, &[0], &[4], &[0], &[-1], &[-1])
+            .expect("bgl");
+        let pl = gpu
+            .create_pipeline_layout(device, &[bgl.raw() as i32], "l2")
+            .expect("pipeline-layout");
+        let bg = gpu
+            .create_bind_group(device, bgl, "l2", &[0], &[0], &[0])
+            .expect("bind-group");
+        gpu.pipeline_constant_add(7, "c".into(), 1.0);
+        assert!(gpu.pipeline_constant_has(7, "c"));
+        assert_eq!(gpu.pipeline_constant_get(7, "c"), Some(1.0));
+        let shader = gpu
+            .create_shader_module(device, "fn main() {}", "", &[], "")
+            .expect("shader");
+        let compute = gpu
+            .create_compute_pipeline(device, shader.raw(), "main", 0, "l2", 7)
+            .expect("compute");
+        let render = gpu
+            .create_render_pipeline(device, shader.raw(), "vs_main", 0, "", 0, 0, "l2", 0, 0)
+            .expect("render");
+        assert_ne!(pl.raw(), GpuHandle::NULL);
+        assert_ne!(bg.raw(), GpuHandle::NULL);
+        let constants = gpu
+            .pipeline_constants(compute)
+            .unwrap()
+            .expect("constants copied");
+        assert_eq!(constants.compute, vec![("c".into(), 1.0)]);
+        assert_eq!(
+            gpu.get(render, ResourceKind::RenderPipeline).unwrap().dawn,
+            0
+        );
     }
 }

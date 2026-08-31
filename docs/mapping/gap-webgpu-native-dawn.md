@@ -16,14 +16,14 @@ Dawn C `u64` slots stay **0** until a later lane dlopens `libwebgpu_dawn.so`. Ta
 | **Pending** | Later native-dawn lane |
 | **JNI** | Still `JniBackend` leftover (product default until ND-DEFAULT) |
 
-## 1. Coverage (updated ND-RES)
+## 1. Coverage (updated ND-PIPE)
 
 | Family | Degree |
 |--------|--------|
 | `gpu.request-adapter` / `gpu-adapter.request-device` / `gpu-device.queue` | **Table** |
 | Adapter info / features / limits needed to boot | **Table** |
 | create-buffer / texture / sampler / shader-module / texture-view | **Table** (shader `compilation-hints` **Record**) |
-| bind-group / layouts / pipelines | **Pending** ND-PIPE |
+| bind-group / layouts / pipelines | **Table** (pipeline constants copied onto the pipeline handle; Dawn C slot 0) |
 | command encoder / passes / draws / copies | **Pending** ND-ENC |
 | queue submit / write-buffer / write-texture / work-done | **Pending** ND-QUEUE |
 | Remaining pin `[method]`s (`wasi_webgpu_method` suite) | **Pending** ND-REST |

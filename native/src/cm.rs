@@ -5241,6 +5241,14 @@ pub(crate) fn define_host(
                 )| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller.data_mut().require_native_gpu()?.pipeline_constant_add(
+                            handle,
+                            key,
+                            value,
+                        );
+                        return Ok(());
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     jvm::exp_record_pipeline_constant_value_add_described(&cb, handle, key, value)
                         .map_err(wasmtime::Error::msg)?;
@@ -5254,6 +5262,13 @@ pub(crate) fn define_host(
                 |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let value = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_get(handle, &key);
+                        return Ok((value,));
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let has = jvm::exp_record_pipeline_constant_value_has_described(
                         &cb,
@@ -5278,6 +5293,13 @@ pub(crate) fn define_host(
                 |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let has = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_has(handle, &key);
+                        return Ok((has,));
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let has =
                         jvm::exp_record_pipeline_constant_value_has_described(&cb, handle, key)
@@ -5292,6 +5314,13 @@ pub(crate) fn define_host(
                 |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_remove(handle, &key);
+                        return Ok(());
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     jvm::exp_record_pipeline_constant_value_remove_described(&cb, handle, key)
                         .map_err(wasmtime::Error::msg)?;
@@ -5305,6 +5334,13 @@ pub(crate) fn define_host(
                 |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let keys = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_keys(handle);
+                        return Ok((keys,));
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let count =
                         jvm::exp_record_pipeline_constant_value_keys_count_described(&cb, handle)
@@ -5328,6 +5364,13 @@ pub(crate) fn define_host(
                 |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let values = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_values(handle);
+                        return Ok((values,));
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let count =
                         jvm::exp_record_pipeline_constant_value_values_count_described(&cb, handle)
@@ -5351,6 +5394,13 @@ pub(crate) fn define_host(
                 |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let entries = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_entries(handle);
+                        return Ok((entries,));
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let count = jvm::exp_record_pipeline_constant_value_entries_count_described(
                         &cb, handle,
@@ -5486,7 +5536,30 @@ pub(crate) fn define_host(
                             },
                         });
                     }
-                    let cb = caller.data().require_webgpu_jni_cb()?;
+                    let cb = if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            gpu.create_bind_group_layout(
+                                device,
+                                &bindings,
+                                &visibilities,
+                                &buffer_types,
+                                &sampler_types,
+                                &texture_sample_types,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuBindGroupLayout { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    } else {
+                        caller.data().require_webgpu_jni_cb()?
+                    };
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -5536,6 +5609,30 @@ pub(crate) fn define_host(
                         }
                     }
                     let label = descriptor.label.clone().unwrap_or_default();
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let mut native_layouts = layouts.clone();
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            for slot in native_layouts.iter_mut() {
+                                if *slot == 0 {
+                                    *slot = gpu
+                                        .resolve_bind_group_layout(0)
+                                        .map_err(native_gpu_error)?
+                                        .raw() as i32;
+                                }
+                            }
+                            gpu.create_pipeline_layout(device, &native_layouts, &label)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuPipelineLayout { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
@@ -5641,24 +5738,10 @@ pub(crate) fn define_host(
                     Resource<GpuDevice>,
                     GpuBindGroupDescriptor,
                 )| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let layout_rep = caller.data_mut().table.get(&descriptor.layout)?.rep;
                     let label = descriptor.label.clone().unwrap_or_default();
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
-                    let l2_layout = if layout_rep == 0 {
-                        jvm::exp_create_bind_group_layout(&cb, l2_device)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        layout_rep
-                    };
                     let mut bindings = Vec::with_capacity(descriptor.entries.len());
                     let mut kinds = Vec::with_capacity(descriptor.entries.len());
                     let mut handles = Vec::with_capacity(descriptor.entries.len());
@@ -5681,19 +5764,64 @@ pub(crate) fn define_host(
                                 (2, caller.data_mut().table.get(view)?.rep)
                             }
                         };
-                        let handle = if raw != 0 {
-                            raw
-                        } else if kind == 0 {
+                        kinds.push(kind);
+                        handles.push(raw as i32);
+                    }
+                    if backend == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            let layout = gpu
+                                .resolve_bind_group_layout(layout_rep)
+                                .map_err(native_gpu_error)?;
+                            for (kind, raw) in kinds.iter().zip(handles.iter_mut()) {
+                                if *kind == 0 && *raw == 0 {
+                                    *raw = gpu.resolve_buffer(0).map_err(native_gpu_error)?.raw()
+                                        as i32;
+                                }
+                            }
+                            gpu.create_bind_group(
+                                device, layout, &label, &bindings, &kinds, &handles,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuBindGroup { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let l2_layout = if layout_rep == 0 {
+                        jvm::exp_create_bind_group_layout(&cb, l2_device)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        layout_rep
+                    };
+                    let mut jni_handles = Vec::with_capacity(handles.len());
+                    for (kind, raw) in kinds.iter().zip(handles.iter()) {
+                        let handle = if *raw != 0 {
+                            *raw as u32
+                        } else if *kind == 0 {
                             jvm::exp_create_buffer(&cb, l2_device)
                                 .map_err(wasmtime::Error::msg)?
                         } else {
-                            raw
+                            *raw as u32
                         };
-                        kinds.push(kind);
-                        handles.push(handle as i32);
+                        jni_handles.push(handle as i32);
                     }
                     let bg_rep = jvm::exp_create_bind_group_described(
-                        &cb, l2_device, l2_layout, label, bindings, kinds, handles,
+                        &cb, l2_device, l2_layout, label, bindings, kinds, jni_handles,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if bg_rep == 0 {
@@ -5961,6 +6089,32 @@ pub(crate) fn define_host(
                     let (primitive, multisample, blend, write_mask, depth_stencil) =
                         pack_render_pipeline_semantics(&descriptor);
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            gpu.create_render_pipeline(
+                                device,
+                                vertex_shader,
+                                &vertex_entry,
+                                fragment_shader,
+                                &fragment_entry,
+                                format,
+                                layout_rep,
+                                &label,
+                                vertex_constants,
+                                fragment_constants,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuRenderPipeline { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
@@ -6030,6 +6184,28 @@ pub(crate) fn define_host(
                     let label = descriptor.label.clone().unwrap_or_default();
                     let constants = pipeline_constant_rep(&descriptor.compute.constants);
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            gpu.create_compute_pipeline(
+                                device,
+                                shader_rep,
+                                &entry_point,
+                                layout_rep,
+                                &label,
+                                constants,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuComputePipeline { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
@@ -6071,7 +6247,7 @@ pub(crate) fn define_host(
                 )| {
                     Box::pin(async move {
                         let (
-                            cb,
+                            backend,
                             device_rep,
                             vertex_shader,
                             vertex_entry,
@@ -6127,9 +6303,9 @@ pub(crate) fn define_host(
                             let (primitive, multisample, blend, write_mask, depth_stencil) =
                                 pack_render_pipeline_semantics(&descriptor);
                             let device_rep = access.data_mut().table.get(&device)?.rep;
-                            let cb = access.data_mut().require_webgpu_jni_cb()?;
+                            let backend = access.data_mut().webgpu_backend();
                             Ok((
-                                cb,
+                                backend,
                                 device_rep,
                                 vertex_shader,
                                 vertex_entry,
@@ -6158,54 +6334,90 @@ pub(crate) fn define_host(
                             let _ = tx.send(());
                         });
                         let _ = rx.await;
-                        let l2_device = if device_rep == 0 {
-                            let adapter_rep =
-                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                            jvm::exp_adapter_request_device(&cb, adapter_rep)
-                                .map_err(wasmtime::Error::msg)?
-                        } else {
-                            device_rep
-                        };
-                        let pipeline_rep = jvm::exp_create_render_pipeline_described(
-                            &cb,
-                            l2_device,
-                            vertex_shader,
-                            vertex_entry,
-                            fragment_shader,
-                            fragment_entry,
-                            format,
-                            layout_rep,
-                            label,
-                            vb_strides,
-                            vb_step_modes,
-                            attr_index,
-                            attr_formats,
-                            attr_offsets,
-                            attr_locations,
-                            vertex_constants,
-                            fragment_constants,
-                            primitive,
-                            multisample,
-                            blend,
-                            write_mask,
-                            depth_stencil,
-                        )
-                        .map_err(wasmtime::Error::msg)?;
-                        if pipeline_rep == 0 {
-                            return Ok((Err(CreatePipelineError {
-                                kind: CreatePipelineErrorKind::GpuPipelineError(
-                                    GpuPipelineErrorReason::Internal,
-                                ),
-                                message: "device-create-render-pipeline returned 0".into(),
-                            }),));
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                let resource =
+                                    accessor.with(|mut access| -> wasmtime::Result<_> {
+                                        let handle = {
+                                            let gpu = access.data_mut().require_native_gpu()?;
+                                            let device = gpu
+                                                .resolve_device(device_rep)
+                                                .map_err(native_gpu_error)?;
+                                            gpu.create_render_pipeline(
+                                                device,
+                                                vertex_shader,
+                                                &vertex_entry,
+                                                fragment_shader,
+                                                &fragment_entry,
+                                                format,
+                                                layout_rep,
+                                                &label,
+                                                vertex_constants,
+                                                fragment_constants,
+                                            )
+                                            .map_err(native_gpu_error)?
+                                        };
+                                        Ok(access.data_mut().table.push(GpuRenderPipeline {
+                                            rep: handle.raw(),
+                                        })?)
+                                    })?;
+                                Ok((Ok(resource),))
+                            }
+                            GpuBackend::JniBackend => {
+                                let cb = accessor.with(|mut access| {
+                                    access.data_mut().require_webgpu_jni_cb()
+                                })?;
+                                let l2_device = if device_rep == 0 {
+                                    let adapter_rep = jvm::exp_request_adapter(&cb)
+                                        .map_err(wasmtime::Error::msg)?;
+                                    jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                        .map_err(wasmtime::Error::msg)?
+                                } else {
+                                    device_rep
+                                };
+                                let pipeline_rep = jvm::exp_create_render_pipeline_described(
+                                    &cb,
+                                    l2_device,
+                                    vertex_shader,
+                                    vertex_entry,
+                                    fragment_shader,
+                                    fragment_entry,
+                                    format,
+                                    layout_rep,
+                                    label,
+                                    vb_strides,
+                                    vb_step_modes,
+                                    attr_index,
+                                    attr_formats,
+                                    attr_offsets,
+                                    attr_locations,
+                                    vertex_constants,
+                                    fragment_constants,
+                                    primitive,
+                                    multisample,
+                                    blend,
+                                    write_mask,
+                                    depth_stencil,
+                                )
+                                .map_err(wasmtime::Error::msg)?;
+                                if pipeline_rep == 0 {
+                                    return Ok((Err(CreatePipelineError {
+                                        kind: CreatePipelineErrorKind::GpuPipelineError(
+                                            GpuPipelineErrorReason::Internal,
+                                        ),
+                                        message: "device-create-render-pipeline returned 0"
+                                            .into(),
+                                    }),));
+                                }
+                                let resource = accessor.with(|mut access| {
+                                    access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuRenderPipeline { rep: pipeline_rep })
+                                })?;
+                                Ok((Ok(resource),))
+                            }
                         }
-                        let resource = accessor.with(|mut access| {
-                            access
-                                .data_mut()
-                                .table
-                                .push(GpuRenderPipeline { rep: pipeline_rep })
-                        })?;
-                        Ok((Ok(resource),))
                     })
                 },
             )
@@ -6218,74 +6430,108 @@ pub(crate) fn define_host(
                     GpuComputePipelineDescriptor,
                 )| {
                     Box::pin(async move {
-                        let (cb, device_rep, shader_rep, entry_point, layout_rep, label, constants) =
-                            accessor.with(|mut access| -> wasmtime::Result<_> {
-                                let shader_rep = access
-                                    .data_mut()
-                                    .table
-                                    .get(&descriptor.compute.module)?
-                                    .rep;
-                                let layout_rep = match &descriptor.layout {
-                                    GpuLayoutMode::Specific(layout) => {
-                                        access.data_mut().table.get(layout)?.rep as i32
-                                    }
-                                    GpuLayoutMode::Auto => 0,
-                                };
-                                let entry_point =
-                                    descriptor.compute.entry_point.clone().unwrap_or_default();
-                                let label = descriptor.label.clone().unwrap_or_default();
-                                let constants =
-                                    pipeline_constant_rep(&descriptor.compute.constants);
-                                let device_rep = access.data_mut().table.get(&device)?.rep;
-                                let cb = access.data_mut().require_webgpu_jni_cb()?;
-                                Ok((
-                                    cb,
-                                    device_rep,
-                                    shader_rep,
-                                    entry_point,
-                                    layout_rep,
-                                    label,
-                                    constants,
-                                ))
-                            })?;
-                        let (tx, rx) = oneshot::channel::<()>();
-                        std::thread::spawn(move || {
-                            let _ = tx.send(());
-                        });
-                        let _ = rx.await;
-                        let l2_device = if device_rep == 0 {
-                            let adapter_rep =
-                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                            jvm::exp_adapter_request_device(&cb, adapter_rep)
-                                .map_err(wasmtime::Error::msg)?
-                        } else {
-                            device_rep
-                        };
-                        let pipeline_rep = jvm::exp_create_compute_pipeline_described(
-                            &cb,
-                            l2_device,
+                        let (
+                            backend,
+                            device_rep,
                             shader_rep,
                             entry_point,
                             layout_rep,
                             label,
                             constants,
-                        )
-                        .map_err(wasmtime::Error::msg)?;
-                        if pipeline_rep == 0 {
-                            return Ok((Err(CreatePipelineError {
-                                kind: CreatePipelineErrorKind::GpuPipelineError(
-                                    GpuPipelineErrorReason::Internal,
-                                ),
-                                message: "device-create-compute-pipeline returned 0".into(),
-                            }),));
-                        }
-                        let resource = accessor.with(|mut access| {
-                            access
-                                .data_mut()
-                                .table
-                                .push(GpuComputePipeline { rep: pipeline_rep })
+                        ) = accessor.with(|mut access| -> wasmtime::Result<_> {
+                            let shader_rep =
+                                access.data_mut().table.get(&descriptor.compute.module)?.rep;
+                            let layout_rep = match &descriptor.layout {
+                                GpuLayoutMode::Specific(layout) => {
+                                    access.data_mut().table.get(layout)?.rep as i32
+                                }
+                                GpuLayoutMode::Auto => 0,
+                            };
+                            let entry_point =
+                                descriptor.compute.entry_point.clone().unwrap_or_default();
+                            let label = descriptor.label.clone().unwrap_or_default();
+                            let constants = pipeline_constant_rep(&descriptor.compute.constants);
+                            let device_rep = access.data_mut().table.get(&device)?.rep;
+                            Ok((
+                                access.data().webgpu_backend(),
+                                device_rep,
+                                shader_rep,
+                                entry_point,
+                                layout_rep,
+                                label,
+                                constants,
+                            ))
                         })?;
-                        Ok((Ok(resource),))
+                        let (tx, rx) = oneshot::channel::<()>();
+                        std::thread::spawn(move || {
+                            let _ = tx.send(());
+                        });
+                        let _ = rx.await;
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                let resource =
+                                    accessor.with(|mut access| -> wasmtime::Result<_> {
+                                        let handle = {
+                                            let gpu = access.data_mut().require_native_gpu()?;
+                                            let device = gpu
+                                                .resolve_device(device_rep)
+                                                .map_err(native_gpu_error)?;
+                                            gpu.create_compute_pipeline(
+                                                device,
+                                                shader_rep,
+                                                &entry_point,
+                                                layout_rep,
+                                                &label,
+                                                constants,
+                                            )
+                                            .map_err(native_gpu_error)?
+                                        };
+                                        Ok(access.data_mut().table.push(GpuComputePipeline {
+                                            rep: handle.raw(),
+                                        })?)
+                                    })?;
+                                Ok((Ok(resource),))
+                            }
+                            GpuBackend::JniBackend => {
+                                let cb = accessor.with(|mut access| {
+                                    access.data_mut().require_webgpu_jni_cb()
+                                })?;
+                                let l2_device = if device_rep == 0 {
+                                    let adapter_rep = jvm::exp_request_adapter(&cb)
+                                        .map_err(wasmtime::Error::msg)?;
+                                    jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                        .map_err(wasmtime::Error::msg)?
+                                } else {
+                                    device_rep
+                                };
+                                let pipeline_rep = jvm::exp_create_compute_pipeline_described(
+                                    &cb,
+                                    l2_device,
+                                    shader_rep,
+                                    entry_point,
+                                    layout_rep,
+                                    label,
+                                    constants,
+                                )
+                                .map_err(wasmtime::Error::msg)?;
+                                if pipeline_rep == 0 {
+                                    return Ok((Err(CreatePipelineError {
+                                        kind: CreatePipelineErrorKind::GpuPipelineError(
+                                            GpuPipelineErrorReason::Internal,
+                                        ),
+                                        message: "device-create-compute-pipeline returned 0"
+                                            .into(),
+                                    }),));
+                                }
+                                let resource = accessor.with(|mut access| {
+                                    access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuComputePipeline { rep: pipeline_rep })
+                                })?;
+                                Ok((Ok(resource),))
+                            }
+                        }
                     })
                 },
             )
