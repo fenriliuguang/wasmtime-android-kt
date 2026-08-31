@@ -254,6 +254,13 @@ pub struct NativeAdapterInfo {
     pub is_fallback_adapter: bool,
 }
 
+/// Shader-module `compilation-hints` leftover. Dawn C has no ctor slot — Record only.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeShaderHints {
+    pub entries: String,
+    pub layouts: Vec<i32>,
+}
+
 impl Default for NativeAdapterInfo {
     fn default() -> Self {
         Self {
@@ -274,6 +281,8 @@ pub struct NativeGpuHost {
     table: HandleTable,
     interned_queues: HashMap<u32, u32>,
     adapter_info: HashMap<u32, NativeAdapterInfo>,
+    /// Shader `compilation-hints` Record leftover (Dawn C has no slot).
+    shader_hints: HashMap<u32, NativeShaderHints>,
 }
 
 impl Default for NativeGpuHost {
@@ -288,6 +297,7 @@ impl NativeGpuHost {
             table: HandleTable::new(),
             interned_queues: HashMap::new(),
             adapter_info: HashMap::new(),
+            shader_hints: HashMap::new(),
         }
     }
 
@@ -298,6 +308,9 @@ impl NativeGpuHost {
             }
             ResourceKind::Device => {
                 self.interned_queues.remove(&handle.raw());
+            }
+            ResourceKind::ShaderModule => {
+                self.shader_hints.remove(&handle.raw());
             }
             _ => {}
         }
@@ -388,6 +401,147 @@ impl NativeGpuHost {
         // Table-backed: no Dawn feature bits until a consume lane dlopens.
         Ok(false)
     }
+
+    pub fn resolve_texture(&mut self, texture_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if texture_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.create_texture(device, 1, 1, 1, 0, 0, 1, 1, 2, &[], "")
+        } else {
+            let handle = GpuHandle::from_raw(texture_rep)?;
+            self.get(handle, ResourceKind::Texture)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn create_buffer(
+        &mut self,
+        device: GpuHandle,
+        size: u64,
+        usage: u32,
+        mapped_at_creation: i32,
+        label: &str,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        let _ = (size, usage, mapped_at_creation, label);
+        Ok(self.table.insert(ResourceKind::Buffer, 0))
+    }
+
+    pub fn create_texture(
+        &mut self,
+        device: GpuHandle,
+        width: u32,
+        height: u32,
+        depth: u32,
+        format: u32,
+        usage: u32,
+        mip: u32,
+        sample: u32,
+        dimension: u32,
+        view_formats: &[i32],
+        label: &str,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        let _ = (
+            width,
+            height,
+            depth,
+            format,
+            usage,
+            mip,
+            sample,
+            dimension,
+            view_formats,
+            label,
+        );
+        Ok(self.table.insert(ResourceKind::Texture, 0))
+    }
+
+    pub fn create_sampler(
+        &mut self,
+        device: GpuHandle,
+        mag_filter: u32,
+        min_filter: u32,
+        address_mode_u: u32,
+        address_mode_v: u32,
+        address_mode_w: u32,
+        mipmap_filter: u32,
+        compare: u32,
+        has_lod_min: i32,
+        lod_min: f32,
+        has_lod_max: i32,
+        lod_max: f32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        let _ = (
+            mag_filter,
+            min_filter,
+            address_mode_u,
+            address_mode_v,
+            address_mode_w,
+            mipmap_filter,
+            compare,
+            has_lod_min,
+            lod_min,
+            has_lod_max,
+            lod_max,
+        );
+        Ok(self.table.insert(ResourceKind::Sampler, 0))
+    }
+
+    pub fn create_shader_module(
+        &mut self,
+        device: GpuHandle,
+        code: &str,
+        label: &str,
+        hint_layouts: &[i32],
+        hint_entries: &str,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        let _ = (code, label);
+        let handle = self.table.insert(ResourceKind::ShaderModule, 0);
+        if !hint_layouts.is_empty() || !hint_entries.is_empty() {
+            self.shader_hints.insert(
+                handle.raw(),
+                NativeShaderHints {
+                    entries: hint_entries.to_string(),
+                    layouts: hint_layouts.to_vec(),
+                },
+            );
+        }
+        Ok(handle)
+    }
+
+    pub fn shader_compilation_hints(
+        &self,
+        shader: GpuHandle,
+    ) -> Result<Option<&NativeShaderHints>, NativeGpuError> {
+        self.get(shader, ResourceKind::ShaderModule)?;
+        Ok(self.shader_hints.get(&shader.raw()))
+    }
+
+    pub fn create_texture_view(
+        &mut self,
+        texture: GpuHandle,
+        dimension: u32,
+        aspect: u32,
+        format: u32,
+        base_mip: i32,
+        mip_count: i32,
+        base_layer: i32,
+        layer_count: i32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(texture, ResourceKind::Texture)?;
+        let _ = (
+            dimension,
+            aspect,
+            format,
+            base_mip,
+            mip_count,
+            base_layer,
+            layer_count,
+        );
+        Ok(self.table.insert(ResourceKind::TextureView, 0))
+    }
 }
 
 impl NativeGpu for NativeGpuHost {
@@ -427,6 +581,7 @@ impl NativeGpu for NativeGpuHost {
         self.table.clear();
         self.interned_queues.clear();
         self.adapter_info.clear();
+        self.shader_hints.clear();
     }
 
     fn request_adapter(&mut self, options: &NativeRequestAdapterOptions<'_>) -> Option<GpuHandle> {
@@ -592,5 +747,35 @@ mod tests {
         let mut table = HandleTable::default();
         let h = table.insert(ResourceKind::Queue, 0);
         assert_ne!(h.raw(), GpuHandle::NULL);
+    }
+
+    #[test]
+    fn create_resources_and_shader_hints_record_no_jni() {
+        let mut gpu = NativeGpuHost::new();
+        let device = gpu.resolve_device(0).expect("boot device");
+        let buf = gpu.create_buffer(device, 4, 0x28, 1, "l2").expect("buffer");
+        let tex = gpu
+            .create_texture(device, 1, 1, 1, 0, 0, 2, 1, 2, &[1], "l2")
+            .expect("texture");
+        let samp = gpu
+            .create_sampler(device, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0.0)
+            .expect("sampler");
+        let shader = gpu
+            .create_shader_module(device, "fn l2() {}", "l2", &[-1], "l2")
+            .expect("shader");
+        let view = gpu
+            .create_texture_view(tex, 0, 0, 0, 0, 1, 0, 1)
+            .expect("view");
+        assert_ne!(buf.raw(), GpuHandle::NULL);
+        assert_ne!(samp.raw(), GpuHandle::NULL);
+        assert_ne!(view.raw(), GpuHandle::NULL);
+        let entry = gpu.get(shader, ResourceKind::ShaderModule).unwrap();
+        assert_eq!(entry.dawn, 0, "compilation-hints stay Record, not Dawn C");
+        let hints = gpu
+            .shader_compilation_hints(shader)
+            .unwrap()
+            .expect("hints recorded");
+        assert_eq!(hints.entries, "l2");
+        assert_eq!(hints.layouts, vec![-1]);
     }
 }

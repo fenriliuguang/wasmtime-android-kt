@@ -16,13 +16,13 @@ Dawn C `u64` slots stay **0** until a later lane dlopens `libwebgpu_dawn.so`. Ta
 | **Pending** | Later native-dawn lane |
 | **JNI** | Still `JniBackend` leftover (product default until ND-DEFAULT) |
 
-## 1. Coverage (this file created ND-BOOT)
+## 1. Coverage (updated ND-RES)
 
 | Family | Degree |
 |--------|--------|
 | `gpu.request-adapter` / `gpu-adapter.request-device` / `gpu-device.queue` | **Table** |
 | Adapter info / features / limits needed to boot | **Table** |
-| create-buffer / texture / sampler / shader-module / texture-view | **Pending** ND-RES |
+| create-buffer / texture / sampler / shader-module / texture-view | **Table** (shader `compilation-hints` **Record**) |
 | bind-group / layouts / pipelines | **Pending** ND-PIPE |
 | command encoder / passes / draws / copies | **Pending** ND-ENC |
 | queue submit / write-buffer / write-texture / work-done | **Pending** ND-QUEUE |
@@ -33,7 +33,7 @@ Dawn C `u64` slots stay **0** until a later lane dlopens `libwebgpu_dawn.so`. Ta
 
 | WIT | NativeGpu | Dawn C |
 |-----|-----------|--------|
-| `gpu-shader-module-descriptor.compilation-hints` | **Record** (ND-RES keeps on the table row) | no `WGPUShaderModuleDescriptor` hints slot |
+| `gpu-shader-module-descriptor.compilation-hints` | **Record** on `NativeGpuHost` (not copied into Dawn C) | no `WGPUShaderModuleDescriptor` hints slot |
 | `gpu-canvas-configuration.color-space` | **Pending** ND-SURF / **Record** if still no slot | no color-space on `WGPUSurfaceConfiguration` at androidx `1.0.0-alpha05` pin |
 | `gpu-canvas-configuration.tone-mapping` | **Pending** ND-SURF / **Record** if still no slot | no tone-mapping slot |
 | All other pin `[method]`s not in §1 Table rows | **Pending** the lane in §1 | C API exists for most; consume when that lane lands |

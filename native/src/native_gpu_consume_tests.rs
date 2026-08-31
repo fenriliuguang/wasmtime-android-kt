@@ -77,3 +77,38 @@ fn adapter_limits_fixture_on_native_gpu() -> wasmtime::Result<()> {
     assert_eq!(v, 1);
     Ok(())
 }
+
+#[test]
+fn create_buffer_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_buffer.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_texture_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_texture.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_sampler_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_sampler.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_shader_module_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_shader_module.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn texture_create_view_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_texture_create_view.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}

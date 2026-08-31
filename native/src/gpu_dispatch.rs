@@ -40,7 +40,7 @@ impl HostState {
     pub fn require_webgpu_jni_cb(&self) -> wasmtime::Result<GlobalRef> {
         match self.webgpu_backend() {
             GpuBackend::NativeGpu => Err(wasmtime::Error::msg(
-                "NativeGpu selected; consume methods land in ND-RES",
+                "NativeGpu selected; consume methods land in ND-PIPE",
             )),
             GpuBackend::JniBackend => self
                 .experimental_host_cb

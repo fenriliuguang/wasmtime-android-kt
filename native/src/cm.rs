@@ -1924,21 +1924,22 @@ pub(crate) fn define_host(
                                         _ => Some(true),
                                     },
                                 };
-                                let resource = accessor.with(|mut access| -> wasmtime::Result<_> {
-                                    let handle = {
-                                        let gpu = access.data_mut().require_native_gpu()?;
-                                        gpu.request_adapter(&native_opts)
-                                    };
-                                    match handle {
-                                        None => Ok(None),
-                                        Some(h) => Ok(Some(
-                                            access
-                                                .data_mut()
-                                                .table
-                                                .push(GpuAdapter { rep: h.raw() })?,
-                                        )),
-                                    }
-                                })?;
+                                let resource =
+                                    accessor.with(|mut access| -> wasmtime::Result<_> {
+                                        let handle = {
+                                            let gpu = access.data_mut().require_native_gpu()?;
+                                            gpu.request_adapter(&native_opts)
+                                        };
+                                        match handle {
+                                            None => Ok(None),
+                                            Some(h) => Ok(Some(
+                                                access
+                                                    .data_mut()
+                                                    .table
+                                                    .push(GpuAdapter { rep: h.raw() })?,
+                                            )),
+                                        }
+                                    })?;
                                 Ok((resource,))
                             }
                             GpuBackend::JniBackend => {
@@ -3819,39 +3820,57 @@ pub(crate) fn define_host(
             .func_wrap(
                 "[method]gpu-device.create-buffer",
                 |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuBufferDescriptor)| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
                     let mapped = match descriptor.mapped_at_creation {
                         None => -1,
                         Some(false) => 0,
                         Some(true) => 1,
                     };
                     let label = descriptor.label.clone().unwrap_or_default();
-                    let buffer_rep = jvm::exp_create_buffer_described(
-                        &cb,
-                        l2_device,
-                        descriptor.size,
-                        descriptor.usage.to_webgpu_u32(),
-                        mapped,
-                        label,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
-                    if buffer_rep == 0 {
-                        return Err(wasmtime::Error::msg("device-create-buffer returned 0"));
+                    let size = descriptor.size;
+                    let usage = descriptor.usage.to_webgpu_u32();
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device =
+                                    gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                                gpu.create_buffer(device, size, usage, mapped, &label)
+                                    .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuBuffer { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let buffer_rep = jvm::exp_create_buffer_described(
+                                &cb, l2_device, size, usage, mapped, label,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if buffer_rep == 0 {
+                                return Err(wasmtime::Error::msg(
+                                    "device-create-buffer returned 0",
+                                ));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuBuffer { rep: buffer_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuBuffer { rep: buffer_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -3870,16 +3889,8 @@ pub(crate) fn define_host(
             .func_wrap(
                 "[method]gpu-device.create-texture",
                 |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuTextureDescriptor)| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
                     let width = descriptor.size.width;
                     let height = descriptor.size.height.unwrap_or(1);
                     let depth = descriptor.size.depth_or_array_layers.unwrap_or(1);
@@ -3897,29 +3908,72 @@ pub(crate) fn define_host(
                         .map(|v| v.iter().map(|f| f.to_dawn_u32() as i32).collect())
                         .unwrap_or_default();
                     let label = descriptor.label.clone().unwrap_or_default();
-                    let texture_rep = jvm::exp_create_texture_described(
-                        &cb,
-                        l2_device,
-                        width,
-                        height,
-                        depth,
-                        descriptor.format.to_dawn_u32(),
-                        descriptor.usage.to_webgpu_u32(),
-                        mip,
-                        sample,
-                        dimension,
-                        view_formats,
-                        label,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
-                    if texture_rep == 0 {
-                        return Err(wasmtime::Error::msg("device-create-texture returned 0"));
+                    let format = descriptor.format.to_dawn_u32();
+                    let usage = descriptor.usage.to_webgpu_u32();
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device =
+                                    gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                                gpu.create_texture(
+                                    device,
+                                    width,
+                                    height,
+                                    depth,
+                                    format,
+                                    usage,
+                                    mip,
+                                    sample,
+                                    dimension,
+                                    &view_formats,
+                                    &label,
+                                )
+                                .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuTexture { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let texture_rep = jvm::exp_create_texture_described(
+                                &cb,
+                                l2_device,
+                                width,
+                                height,
+                                depth,
+                                format,
+                                usage,
+                                mip,
+                                sample,
+                                dimension,
+                                view_formats,
+                                label,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if texture_rep == 0 {
+                                return Err(wasmtime::Error::msg(
+                                    "device-create-texture returned 0",
+                                ));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuTexture { rep: texture_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuTexture { rep: texture_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -4090,17 +4144,8 @@ pub(crate) fn define_host(
                     Resource<GpuTexture>,
                     Option<GpuTextureViewDescriptor>,
                 )| {
+                    let backend = caller.data().webgpu_backend();
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_texture = if texture_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
-                    } else {
-                        texture_rep
-                    };
                     let (dimension, aspect, format, base_mip, mip_count, base_layer, layer_count) =
                         match &descriptor {
                             None => (0, 0, 0, 0, -1, 0, -1),
@@ -4114,26 +4159,64 @@ pub(crate) fn define_host(
                                 d.array_layer_count.map(|v| v as i32).unwrap_or(-1),
                             ),
                         };
-                    let view_rep = jvm::exp_texture_create_view_described(
-                        &cb,
-                        l2_texture,
-                        dimension,
-                        aspect,
-                        format,
-                        base_mip,
-                        mip_count,
-                        base_layer,
-                        layer_count,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
-                    if view_rep == 0 {
-                        return Err(wasmtime::Error::msg("texture-create-view returned 0"));
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let texture =
+                                    gpu.resolve_texture(texture_rep).map_err(native_gpu_error)?;
+                                gpu.create_texture_view(
+                                    texture,
+                                    dimension,
+                                    aspect,
+                                    format,
+                                    base_mip,
+                                    mip_count,
+                                    base_layer,
+                                    layer_count,
+                                )
+                                .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuTextureView { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_texture = if texture_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?;
+                                jvm::exp_create_texture(&cb, device_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                texture_rep
+                            };
+                            let view_rep = jvm::exp_texture_create_view_described(
+                                &cb,
+                                l2_texture,
+                                dimension,
+                                aspect,
+                                format,
+                                base_mip,
+                                mip_count,
+                                base_layer,
+                                layer_count,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if view_rep == 0 {
+                                return Err(wasmtime::Error::msg("texture-create-view returned 0"));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuTextureView { rep: view_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuTextureView { rep: view_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -4752,16 +4835,8 @@ pub(crate) fn define_host(
                     Resource<GpuDevice>,
                     Option<GpuSamplerDescriptor>,
                 )| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
                     let (
                         mag_filter,
                         min_filter,
@@ -4806,30 +4881,73 @@ pub(crate) fn define_host(
                             d.lod_max_clamp.unwrap_or(0.0),
                         ),
                     };
-                    let sampler_rep = jvm::exp_create_sampler_described(
-                        &cb,
-                        l2_device,
-                        mag_filter,
-                        min_filter,
-                        address_mode_u,
-                        address_mode_v,
-                        address_mode_w,
-                        mipmap_filter,
-                        compare,
-                        has_lod_min,
-                        lod_min,
-                        has_lod_max,
-                        lod_max,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
-                    if sampler_rep == 0 {
-                        return Err(wasmtime::Error::msg("device-create-sampler returned 0"));
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device = gpu
+                                    .resolve_device(device_rep)
+                                    .map_err(native_gpu_error)?;
+                                gpu.create_sampler(
+                                    device,
+                                    mag_filter,
+                                    min_filter,
+                                    address_mode_u,
+                                    address_mode_v,
+                                    address_mode_w,
+                                    mipmap_filter,
+                                    compare,
+                                    has_lod_min,
+                                    lod_min,
+                                    has_lod_max,
+                                    lod_max,
+                                )
+                                .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuSampler { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let sampler_rep = jvm::exp_create_sampler_described(
+                                &cb,
+                                l2_device,
+                                mag_filter,
+                                min_filter,
+                                address_mode_u,
+                                address_mode_v,
+                                address_mode_w,
+                                mipmap_filter,
+                                compare,
+                                has_lod_min,
+                                lod_min,
+                                has_lod_max,
+                                lod_max,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if sampler_rep == 0 {
+                                return Err(wasmtime::Error::msg(
+                                    "device-create-sampler returned 0",
+                                ));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuSampler { rep: sampler_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuSampler { rep: sampler_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -4916,6 +5034,7 @@ pub(crate) fn define_host(
                     Resource<GpuDevice>,
                     GpuShaderModuleDescriptor,
                 )| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let code = descriptor.code;
                     let label = descriptor.label.clone().unwrap_or_default();
@@ -4935,34 +5054,59 @@ pub(crate) fn define_host(
                             hint_layouts.push(layout);
                         }
                     }
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
-                    let shader_rep = jvm::exp_create_shader_module_described(
-                        &cb,
-                        l2_device,
-                        code,
-                        label,
-                        hint_layouts,
-                        hint_entries,
-                    )
-                        .map_err(wasmtime::Error::msg)?;
-                    if shader_rep == 0 {
-                        return Err(wasmtime::Error::msg(
-                            "device-create-shader-module returned 0",
-                        ));
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device = gpu
+                                    .resolve_device(device_rep)
+                                    .map_err(native_gpu_error)?;
+                                gpu.create_shader_module(
+                                    device,
+                                    &code,
+                                    &label,
+                                    &hint_layouts,
+                                    &hint_entries,
+                                )
+                                .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuShaderModule { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let shader_rep = jvm::exp_create_shader_module_described(
+                                &cb,
+                                l2_device,
+                                code,
+                                label,
+                                hint_layouts,
+                                hint_entries,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if shader_rep == 0 {
+                                return Err(wasmtime::Error::msg(
+                                    "device-create-shader-module returned 0",
+                                ));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuShaderModule { rep: shader_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuShaderModule { rep: shader_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
