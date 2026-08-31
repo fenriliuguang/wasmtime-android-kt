@@ -1,5 +1,5 @@
 ---
-description: Wasmtime pin (P2) — named queue; living auto cut is 0.1.0 product gates
+description: Wasmtime pin (P2) — named queue; living auto cut is native-dawn
 alwaysApply: false
 ---
 
@@ -7,7 +7,7 @@ alwaysApply: false
 
 For P2 / Wasmtime pin / wasmtime tracking / upgrade RFC (user named those), read `docs/agent/wasmtime-p2.md` and follow it.
 
-Living auto queue is **`0.1.0`**: read `docs/agent/product-010.md`. Next: `.\scripts\product-010-remaining.ps1` or `python3 ./scripts/product-010-remaining.py`.
+Living auto queue is **native-dawn**: read `docs/agent/native-dawn.md`. Next: `python3 ./scripts/native-dawn-remaining.py`.
 
 P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not re-cut those knives.
 

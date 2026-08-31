@@ -4,9 +4,9 @@
 
 P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do **not** re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, G-dev, or wasi:webgpu G1–G9 / F1–F9 / guest-pipeline / WG-6.
 
-This queue lands the **L5 `0.1.0` product subset** ([`../scheme/rfc-l5-productization.md`](../scheme/rfc-l5-productization.md) §7–§8) plus the gfx present loop ([`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md)). Tracking needles: [`../scheme/product-010.md`](../scheme/product-010.md). One lane, one PR.
+This queue landed the **L5 `0.1.0` product subset** ([`../scheme/rfc-l5-productization.md`](../scheme/rfc-l5-productization.md) §7–§8) plus the gfx present loop ([`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md)). Tracking needles: [`../scheme/product-010.md`](../scheme/product-010.md) (**empty**). One lane, one PR.
 
-P2 Wasmtime pin stays a **named** queue ([`wasmtime-p2.md`](wasmtime-p2.md)). It is **not** this script’s `Next:`.
+Living auto queue is **native Dawn host** ([`native-dawn.md`](native-dawn.md)). P2 Wasmtime pin stays **named** ([`wasmtime-p2.md`](wasmtime-p2.md)). Neither is this script’s `Next:` once leftover is empty.
 
 ## Goal
 
@@ -14,7 +14,13 @@ A third party can depend on the **product subset** (webgpu most-of-pin + IO/netw
 
 ## Select the cut
 
-If the user named a lane (`P010-SPI`, `0.1.0`, `下一刀`), keep **one** family. Otherwise:
+If the user named a `P010-*` lane, keep **one** family and use this script. If they said `下一刀` / `0.1.0` and this queue is **empty**, follow [`native-dawn.md`](native-dawn.md):
+
+```powershell
+.\scripts\native-dawn-remaining.ps1
+```
+
+Otherwise:
 
 ```powershell
 .\scripts\product-010-remaining.ps1
@@ -22,7 +28,7 @@ If the user named a lane (`P010-SPI`, `0.1.0`, `下一刀`), keep **one** family
 
 No `pwsh`: `python3 ./scripts/product-010-remaining.py` (same flags: `--all`).
 
-Do the printed **Next:** line only.
+Do the printed **Next:** line only. Empty leftover prints a pointer to `native-dawn-remaining`.
 
 ## Hard bans
 
@@ -105,7 +111,7 @@ Device (required where the table says Device):
 
 Cloud has **no** device. Still **add** the instrument; do not fail the PR solely because this checkout could not run it. State that in the PR.
 
-This playbook amendment (docs-only): `python3 ./scripts/product-010-remaining.py` must print **`Next: P010-GFXB`**.
+This playbook amendment (docs-only): `python3 ./scripts/product-010-remaining.py` must print **`Next: (0.1.0 product queue empty)`** and point at `native-dawn-remaining`. `python3 ./scripts/native-dawn-remaining.py` must print **`Next: ND-DISP`**.
 
 ## PR title
 
@@ -121,4 +127,4 @@ Label: `documentation` for docs-only; `enhancement` for code.
 
 ## Copy source
 
-[`../scheme/rfc-l5-productization.md`](../scheme/rfc-l5-productization.md) §7–§8, [`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md), leftover names on [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Do not invent extra `0.1.0` gates beyond **GFXB / GFXV / DEMO** (G-cmd, testsuite, `wasmtime-wasi`). Complete frame loop + out-of-tree demo link + named device row are in-scope; full desktop gfx stays DG-6. Do not vendor the demo into this repo.
+[`../scheme/rfc-l5-productization.md`](../scheme/rfc-l5-productization.md) §7–§8, [`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md), leftover names on [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Do not invent extra `0.1.0` gates. Default GPU consume after `0.1.0` is [`native-dawn.md`](native-dawn.md) (full pin via Dawn C). Full desktop gfx stays DG-6. Do not vendor the demo into this repo.

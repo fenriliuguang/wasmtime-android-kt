@@ -1,5 +1,5 @@
 ---
-description: CLOSED wasi:webgpu guest-pipeline P1–P5 — redirect to 0.1.0 product gates
+description: CLOSED wasi:webgpu guest-pipeline P1–P5 — redirect to native-dawn
 alwaysApply: false
 ---
 
@@ -7,4 +7,4 @@ alwaysApply: false
 
 P1–P5 and named first-cuts are **closed**. Do not start another bind-group / vertex-layout / depth / texture-mip or labels/limits/sampler/canvas-first-cut PR.
 
-Current queue: read `docs/agent/product-010.md`. Historical: `docs/archive/webgpu-guest-pipeline.md`.
+Living auto: read `docs/agent/native-dawn.md`. Historical: `docs/archive/webgpu-guest-pipeline.md`.

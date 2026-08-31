@@ -4,7 +4,7 @@
 
 Living **auto** queue for L5 `0.1.0` gates. Playbook: [`../agent/product-010.md`](../agent/product-010.md). Policy: [`rfc-l5-productization.md`](rfc-l5-productization.md). Gfx shape: [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md).
 
-P0 / P1 auto knives stay **closed**. P2 Wasmtime pin is a **named** queue ([`wasmtime-p2.md`](../agent/wasmtime-p2.md)) — not this script’s `Next:`.
+P0 / P1 auto knives stay **closed**. This leftover table is **empty**. Living auto: [`../agent/native-dawn.md`](../agent/native-dawn.md). P2 Wasmtime pin is a **named** queue ([`wasmtime-p2.md`](../agent/wasmtime-p2.md)) — not this script’s `Next:`.
 
 Remaining: `python3 ./scripts/product-010-remaining.py`. A lane drops when its **`gap: p010 … pending`** needle leaves **this file**. Do **not** remove a needle without landing that lane’s DoD.
 

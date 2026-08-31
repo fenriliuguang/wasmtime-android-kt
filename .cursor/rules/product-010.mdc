@@ -1,15 +1,14 @@
 ---
-description: 0.1.0 product subset auto queue (L5 gates + gfx frame loop)
+description: CLOSED 0.1.0 product subset — redirect 下一刀 to native-dawn
 alwaysApply: true
 ---
 
-# `0.1.0` product gates
+# `0.1.0` product gates (empty)
 
-For 下一刀 / 0.1.0 / P010 / product subset / clocks instant leftover named as 0.1.0 backlog / stream / cli result / filesystem leftover / sockets outbound / http body / gfx frame loop, read `docs/agent/product-010.md` and follow it.
+`0.1.0` / P010 leftover named as that playbook only. For 下一刀 / GPU host / Dawn consume rewrite, read `docs/agent/native-dawn.md` and run `python3 ./scripts/native-dawn-remaining.py`.
 
-P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, G-dev, or wasi:webgpu G1–G9 / F1–F9 / guest-pipeline / WG-6.
+P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, G-dev, or wasi:webgpu G1–G9 / F1–F9 / guest-pipeline / WG-6.
 
-- Next PR: `.\scripts\product-010-remaining.ps1` or `python3 ./scripts/product-010-remaining.py` (one printed Next: only).
-- Do not add `wasmtime-wasi` without a size + Android thread note. Grep the package string in `cm.rs`, then Read ~80 lines.
-- One lane per PR. Every IO / gfx-loop lane has a device instrument (Cloud has no device: still add it). Hub freeze: no root README / `CHANGELOG.md` / `ci.yml` / `CONTRIBUTING.md` except this playbook / gate-amendment PR, P010-PUB, and **P010-DEMO** (README Demo section only — link an out-of-tree wasm→runtime→present demo; do not vendor it).
+- `0.1.0` remaining is empty: `python3 ./scripts/product-010-remaining.py` prints a pointer to native-dawn.
+- Do not invent extra `0.1.0` gates. Do not add `wasmtime-wasi` without a size + Android thread note.
 - Never file GitHub issues (or Discussions-as-issues) on Wasmtime, WASI, or any other upstream. No `gh issue create`.

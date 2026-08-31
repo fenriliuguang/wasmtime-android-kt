@@ -2,7 +2,7 @@
 
 [English](claim-010.md) | **中文**
 
-L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8 的发布说明形 **产品子集**。与英文冲突时以英文为准。**不是**合规宣称（NG-4 / NG-5）。坐标 **`0.1.0`**。发布 CI：[`.github/workflows/publish.yml`](../../.github/workflows/publish.yml)（secrets / arm64 `.so` 缺失时不要强发）。
+L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8 的发布说明形 **产品子集**。与英文冲突时以英文为准。**不是**合规宣称（NG-4 / NG-5）。坐标 **`0.1.0`**。现行消费改写：[`../agent/native-dawn.md`](../agent/native-dawn.md)（全量钉 Dawn C；立方体只是演示）。发布 CI：[`.github/workflows/publish.yml`](../../.github/workflows/publish.yml)（secrets / arm64 `.so` 缺失时不要强发）。
 
 ## 一句话
 
