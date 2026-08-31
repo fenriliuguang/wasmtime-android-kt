@@ -1,6 +1,6 @@
 //! Store host state: Kotlin callbacks + u32-rep widget / gpu resources.
 
-use crate::gpu_dispatch::NativeGpu;
+use crate::native_gpu::NativeGpuHost;
 use jni::objects::GlobalRef;
 use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
@@ -207,8 +207,9 @@ pub struct HostState {
     /// Kotlin [ExperimentalHostCallbacks] for experimental CM host (M3/M4)
     /// and leftover [`crate::gpu_dispatch::GpuBackend::JniBackend`].
     pub experimental_host_cb: Option<GlobalRef>,
-    /// In-process Dawn C consume. Unset → JNI default (`GpuBackend::JniBackend`).
-    pub native_gpu: Option<NativeGpu>,
+    /// In-process Dawn C consume ([`NativeGpuHost`]). Unset → JNI default
+    /// (`GpuBackend::JniBackend`).
+    pub native_gpu: Option<NativeGpuHost>,
     /// P010-GFXV: 1-slot `on-frame` vsync gate (Choreographer → GpuThread write).
     pub gfx_on_frame: Arc<GfxOnFrameGate>,
 }

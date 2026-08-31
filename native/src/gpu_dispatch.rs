@@ -2,19 +2,14 @@
 //! [`GpuBackend::JniBackend`].
 //!
 //! ND-DISP: dispatch only. Default is JNI so existing tests stay green.
-//! [`NativeGpu`] may be unset; trait + handle table land in ND-HOST.
-//! ND-SO: Dawn C API `.so` recipe `scripts/build-dawn-c-android.py` (not loaded
-//! until ND-DEFAULT). Do not reimplement `jvm::exp_*` here.
+//! ND-HOST: [`crate::native_gpu::NativeGpu`] trait + handle table. Consume
+//! methods land in ND-BOOT+. ND-SO: Dawn C API `.so` recipe
+//! `scripts/build-dawn-c-android.py` (not loaded until ND-DEFAULT). Do not
+//! reimplement `jvm::exp_*` here.
 
 use crate::host::HostState;
+use crate::native_gpu::NativeGpuHost;
 use jni::objects::GlobalRef;
-
-/// In-process Dawn C consume (product path after ND-DEFAULT).
-/// Empty occupant until ND-HOST lands the trait + handle table.
-#[derive(Debug, Default)]
-pub struct NativeGpu {
-    _private: (),
-}
 
 /// Backend selected for pin `wasi:webgpu` imports.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -33,7 +28,7 @@ impl HostState {
     }
 
     /// JNI leftover callback when the backend is [`GpuBackend::JniBackend`].
-    /// NativeGpu selected → `None` (consume methods land in ND-HOST+).
+    /// NativeGpu selected → `None` (consume methods land in ND-BOOT+).
     pub fn webgpu_jni_cb(&self) -> Option<GlobalRef> {
         match self.webgpu_backend() {
             GpuBackend::NativeGpu => None,
@@ -45,13 +40,19 @@ impl HostState {
     pub fn require_webgpu_jni_cb(&self) -> wasmtime::Result<GlobalRef> {
         match self.webgpu_backend() {
             GpuBackend::NativeGpu => Err(wasmtime::Error::msg(
-                "NativeGpu selected; consume methods land in ND-HOST",
+                "NativeGpu selected; consume methods land in ND-BOOT",
             )),
             GpuBackend::JniBackend => self
                 .experimental_host_cb
                 .clone()
                 .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set")),
         }
+    }
+
+    /// Native consume slot. `None` when JNI is the product default.
+    #[allow(dead_code)] // ND-BOOT+
+    pub fn native_gpu_mut(&mut self) -> Option<&mut NativeGpuHost> {
+        self.native_gpu.as_mut()
     }
 }
 
@@ -70,9 +71,10 @@ mod tests {
     #[test]
     fn native_slot_selects_native_gpu() {
         let mut host = HostState::default();
-        host.native_gpu = Some(NativeGpu::default());
+        host.native_gpu = Some(NativeGpuHost::default());
         assert_eq!(host.webgpu_backend(), GpuBackend::NativeGpu);
         assert!(host.webgpu_jni_cb().is_none());
         assert!(host.require_webgpu_jni_cb().is_err());
+        assert!(host.native_gpu_mut().is_some());
     }
 }

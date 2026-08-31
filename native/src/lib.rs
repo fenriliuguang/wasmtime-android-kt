@@ -11,6 +11,7 @@ mod gpu_dispatch;
 mod handles;
 mod host;
 mod jvm;
+mod native_gpu;
 mod webgpu_abi;
 
 use jni::objects::JClass;
