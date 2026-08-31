@@ -2,10 +2,10 @@
 //! [`GpuBackend::JniBackend`].
 //!
 //! ND-DISP: dispatch only. Default is JNI so existing tests stay green.
-//! ND-HOST: [`crate::native_gpu::NativeGpu`] trait + handle table. Consume
-//! methods land in ND-BOOT+. ND-SO: Dawn C API `.so` recipe
-//! `scripts/build-dawn-c-android.py` (not loaded until ND-DEFAULT). Do not
-//! reimplement `jvm::exp_*` here.
+//! ND-HOST: NativeGpu trait + handle table. ND-BOOT: request-adapter /
+//! request-device / queue / boot info. Further methods ND-RES+. ND-SO: Dawn C
+//! API `.so` recipe `scripts/build-dawn-c-android.py` (not loaded until
+//! ND-DEFAULT). Do not reimplement `jvm::exp_*` here.
 
 use crate::host::HostState;
 use crate::native_gpu::NativeGpuHost;
@@ -40,7 +40,7 @@ impl HostState {
     pub fn require_webgpu_jni_cb(&self) -> wasmtime::Result<GlobalRef> {
         match self.webgpu_backend() {
             GpuBackend::NativeGpu => Err(wasmtime::Error::msg(
-                "NativeGpu selected; consume methods land in ND-BOOT",
+                "NativeGpu selected; consume methods land in ND-RES",
             )),
             GpuBackend::JniBackend => self
                 .experimental_host_cb
@@ -50,9 +50,16 @@ impl HostState {
     }
 
     /// Native consume slot. `None` when JNI is the product default.
-    #[allow(dead_code)] // ND-BOOT+
+    #[allow(dead_code)] // ND-RES+
     pub fn native_gpu_mut(&mut self) -> Option<&mut NativeGpuHost> {
         self.native_gpu.as_mut()
+    }
+
+    /// Required NativeGpu host when [`GpuBackend::NativeGpu`] is selected.
+    pub fn require_native_gpu(&mut self) -> wasmtime::Result<&mut NativeGpuHost> {
+        self.native_gpu
+            .as_mut()
+            .ok_or_else(|| wasmtime::Error::msg("NativeGpu selected but slot empty"))
     }
 }
 

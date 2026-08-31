@@ -1,0 +1,41 @@
+# Gap: `wasi:webgpu` WIT ↔ NativeGpu ↔ Dawn C
+
+**English** | [中文](gap-webgpu-native-dawn.zh.md)
+
+Living map for the **in-process Dawn C** consume path (`NativeGpu`). Pin: `wasi:webgpu@0.3.0-rc.2`. JNI leftover: [`gap-webgpu-wit-androidx.md`](gap-webgpu-wit-androidx.md). Playbook: [`../agent/native-dawn.md`](../agent/native-dawn.md). Do not treat this page as a cut queue — needles stay in [`../scheme/native-dawn.md`](../scheme/native-dawn.md).
+
+Dawn C `u64` slots stay **0** until a later lane dlopens `libwebgpu_dawn.so`. Table-backed boot is still NativeGpu (no ART/JNI).
+
+**Degree**
+
+| Tag | Meaning |
+|-----|---------|
+| **Table** | Guest value reaches `NativeGpuHost` handle table; Dawn C slot is 0 |
+| **Dawn** | Guest value reaches Dawn C (`webgpu.h`) |
+| **Record** | Packed on the host record; Dawn C has no slot |
+| **Pending** | Later native-dawn lane |
+| **JNI** | Still `JniBackend` leftover (product default until ND-DEFAULT) |
+
+## 1. Coverage (this file created ND-BOOT)
+
+| Family | Degree |
+|--------|--------|
+| `gpu.request-adapter` / `gpu-adapter.request-device` / `gpu-device.queue` | **Table** |
+| Adapter info / features / limits needed to boot | **Table** |
+| create-buffer / texture / sampler / shader-module / texture-view | **Pending** ND-RES |
+| bind-group / layouts / pipelines | **Pending** ND-PIPE |
+| command encoder / passes / draws / copies | **Pending** ND-ENC |
+| queue submit / write-buffer / write-texture / work-done | **Pending** ND-QUEUE |
+| Remaining pin `[method]`s (`wasi_webgpu_method` suite) | **Pending** ND-REST |
+| canvas `ANativeWindow` surface / present | **Pending** ND-SURF |
+
+## 2. Leftover vs Dawn C
+
+| WIT | NativeGpu | Dawn C |
+|-----|-----------|--------|
+| `gpu-shader-module-descriptor.compilation-hints` | **Record** (ND-RES keeps on the table row) | no `WGPUShaderModuleDescriptor` hints slot |
+| `gpu-canvas-configuration.color-space` | **Pending** ND-SURF / **Record** if still no slot | no color-space on `WGPUSurfaceConfiguration` at androidx `1.0.0-alpha05` pin |
+| `gpu-canvas-configuration.tone-mapping` | **Pending** ND-SURF / **Record** if still no slot | no tone-mapping slot |
+| All other pin `[method]`s not in §1 Table rows | **Pending** the lane in §1 | C API exists for most; consume when that lane lands |
+
+Unwired JNI store is unchanged: `gpu.request-adapter` → guest **`none`**. NativeGpu selected (slot set) → table-backed adapter (not `none`).

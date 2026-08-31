@@ -12,6 +12,8 @@ mod handles;
 mod host;
 mod jvm;
 mod native_gpu;
+#[cfg(test)]
+mod native_gpu_consume_tests;
 mod webgpu_abi;
 
 use jni::objects::JClass;

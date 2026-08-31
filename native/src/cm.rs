@@ -2,6 +2,7 @@
 
 use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_err, throw_link};
+use crate::gpu_dispatch::GpuBackend;
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
     gfx_on_frame_lookup, gfx_on_frame_register, gfx_on_frame_unregister, wasi_monotonic_now_ns,
@@ -12,6 +13,7 @@ use crate::host::{
     GpuTextureView, HostState, Widget,
 };
 use crate::jvm;
+use crate::native_gpu::{NativeRequestAdapterOptions, NativeRequestDeviceDescriptor};
 use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
     GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBindingResource,
@@ -722,7 +724,26 @@ fn l2_supported_limits_handles(
     Ok((cb, l2_adapter, device))
 }
 
-fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<(), String> {
+fn native_gpu_error(err: crate::native_gpu::NativeGpuError) -> wasmtime::Error {
+    wasmtime::Error::msg(err.to_string())
+}
+
+fn native_adapter_info_for(
+    caller: &mut StoreContextMut<'_, HostState>,
+    info: &Resource<GpuAdapterInfo>,
+) -> wasmtime::Result<crate::native_gpu::NativeAdapterInfo> {
+    let info_adapter = caller.data_mut().table.get(info)?.adapter;
+    let gpu = caller.data_mut().require_native_gpu()?;
+    let handle = gpu
+        .resolve_adapter(info_adapter)
+        .map_err(native_gpu_error)?;
+    gpu.adapter_info(handle).map_err(native_gpu_error)
+}
+
+pub(crate) fn define_host(
+    linker: &mut Linker<HostState>,
+    fixture_ctors: bool,
+) -> Result<(), String> {
     linker
         .root()
         .resource(
@@ -1862,9 +1883,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu.request-adapter",
                 |accessor, (gpu, options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
                     Box::pin(async move {
-                        let cb = accessor.with(|mut access| -> wasmtime::Result<_> {
+                        let backend = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let _ = access.data_mut().table.get(&gpu)?;
-                            Ok(access.data_mut().webgpu_jni_cb())
+                            Ok(access.data_mut().webgpu_backend())
                         })?;
                         // True CM async even when unwired (guest `none`, not a trap).
                         let (tx, rx) = oneshot::channel::<()>();
@@ -1872,12 +1893,6 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             let _ = tx.send(());
                         });
                         let _ = rx.await;
-                        let Some(cb) = cb else {
-                            return Ok((None,));
-                        };
-                        // L2: `power-preference` 0=none/undefined, 1=low-power, 2=high-performance.
-                        // `force-fallback-adapter` 0=none/false, 1=true.
-                        // `xr-compatible` -1=none, 0=false, 1=true.
                         let (power_preference, force_fallback, feature_level, xr_compatible) =
                             match options.as_ref() {
                                 None => (0i32, 0i32, String::new(), -1i32),
@@ -1897,24 +1912,65 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                                     (power, fallback, feature, xr)
                                 }
                             };
-                        let adapter_rep = jvm::exp_request_adapter_described(
-                            &cb,
-                            power_preference,
-                            force_fallback,
-                            feature_level,
-                            xr_compatible,
-                        )
-                        .map_err(wasmtime::Error::msg)?;
-                        if adapter_rep == 0 {
-                            return Ok((None,));
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                let native_opts = NativeRequestAdapterOptions {
+                                    feature_level: feature_level.as_str(),
+                                    power_preference,
+                                    force_fallback_adapter: force_fallback != 0,
+                                    xr_compatible: match xr_compatible {
+                                        -1 => None,
+                                        0 => Some(false),
+                                        _ => Some(true),
+                                    },
+                                };
+                                let resource = accessor.with(|mut access| -> wasmtime::Result<_> {
+                                    let handle = {
+                                        let gpu = access.data_mut().require_native_gpu()?;
+                                        gpu.request_adapter(&native_opts)
+                                    };
+                                    match handle {
+                                        None => Ok(None),
+                                        Some(h) => Ok(Some(
+                                            access
+                                                .data_mut()
+                                                .table
+                                                .push(GpuAdapter { rep: h.raw() })?,
+                                        )),
+                                    }
+                                })?;
+                                Ok((resource,))
+                            }
+                            GpuBackend::JniBackend => {
+                                let cb = accessor.with(|mut access| -> wasmtime::Result<_> {
+                                    Ok(access.data_mut().webgpu_jni_cb())
+                                })?;
+                                let Some(cb) = cb else {
+                                    return Ok((None,));
+                                };
+                                // L2: `power-preference` 0=none/undefined, 1=low-power, 2=high-performance.
+                                // `force-fallback-adapter` 0=none/false, 1=true.
+                                // `xr-compatible` -1=none, 0=false, 1=true.
+                                let adapter_rep = jvm::exp_request_adapter_described(
+                                    &cb,
+                                    power_preference,
+                                    force_fallback,
+                                    feature_level,
+                                    xr_compatible,
+                                )
+                                .map_err(wasmtime::Error::msg)?;
+                                if adapter_rep == 0 {
+                                    return Ok((None,));
+                                }
+                                let resource = accessor.with(|mut access| {
+                                    access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuAdapter { rep: adapter_rep })
+                                })?;
+                                Ok((Some(resource),))
+                            }
                         }
-                        let resource = accessor.with(|mut access| {
-                            access
-                                .data_mut()
-                                .table
-                                .push(GpuAdapter { rep: adapter_rep })
-                        })?;
-                        Ok((Some(resource),))
                     })
                 },
             )
@@ -2013,19 +2069,36 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter.features",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
+                    let backend = caller.data().webgpu_backend();
                     let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_adapter = if adapter_rep == 0 {
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                    } else {
-                        adapter_rep
-                    };
-                    jvm::exp_adapter_features_described(&cb, l2_adapter)
-                        .map_err(wasmtime::Error::msg)?;
-                    let resource = caller.data_mut().table.push(GpuSupportedFeatures {
-                        adapter: l2_adapter,
-                    })?;
-                    Ok((resource,))
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let l2_adapter = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                gpu.resolve_adapter(adapter_rep)
+                                    .map_err(native_gpu_error)?
+                                    .raw()
+                            };
+                            let resource = caller.data_mut().table.push(GpuSupportedFeatures {
+                                adapter: l2_adapter,
+                            })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_adapter = if adapter_rep == 0 {
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                            } else {
+                                adapter_rep
+                            };
+                            jvm::exp_adapter_features_described(&cb, l2_adapter)
+                                .map_err(wasmtime::Error::msg)?;
+                            let resource = caller.data_mut().table.push(GpuSupportedFeatures {
+                                adapter: l2_adapter,
+                            })?;
+                            Ok((resource,))
+                        }
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2033,16 +2106,33 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-features.has",
                 |mut caller, (features, value): (Resource<GpuSupportedFeatures>, String)| {
+                    let backend = caller.data().webgpu_backend();
                     let features_adapter = caller.data_mut().table.get(&features)?.adapter;
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_adapter = if features_adapter == 0 {
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                    } else {
-                        features_adapter
-                    };
-                    let has = jvm::exp_supported_features_has_described(&cb, l2_adapter, value)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((has != 0,))
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let has = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let adapter = gpu
+                                    .resolve_adapter(features_adapter)
+                                    .map_err(native_gpu_error)?;
+                                gpu.adapter_has_feature(adapter, &value)
+                                    .map_err(native_gpu_error)?
+                            };
+                            Ok((has,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_adapter = if features_adapter == 0 {
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                            } else {
+                                features_adapter
+                            };
+                            let has =
+                                jvm::exp_supported_features_has_described(&cb, l2_adapter, value)
+                                    .map_err(wasmtime::Error::msg)?;
+                            Ok((has != 0,))
+                        }
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2050,20 +2140,38 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter.limits",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
+                    let backend = caller.data().webgpu_backend();
                     let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_adapter = if adapter_rep == 0 {
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                    } else {
-                        adapter_rep
-                    };
-                    jvm::exp_adapter_limits_described(&cb, l2_adapter)
-                        .map_err(wasmtime::Error::msg)?;
-                    let resource = caller.data_mut().table.push(GpuSupportedLimits {
-                        adapter: l2_adapter,
-                        device: 0,
-                    })?;
-                    Ok((resource,))
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let l2_adapter = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                gpu.resolve_adapter(adapter_rep)
+                                    .map_err(native_gpu_error)?
+                                    .raw()
+                            };
+                            let resource = caller.data_mut().table.push(GpuSupportedLimits {
+                                adapter: l2_adapter,
+                                device: 0,
+                            })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_adapter = if adapter_rep == 0 {
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                            } else {
+                                adapter_rep
+                            };
+                            jvm::exp_adapter_limits_described(&cb, l2_adapter)
+                                .map_err(wasmtime::Error::msg)?;
+                            let resource = caller.data_mut().table.push(GpuSupportedLimits {
+                                adapter: l2_adapter,
+                                device: 0,
+                            })?;
+                            Ok((resource,))
+                        }
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2698,19 +2806,37 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter.info",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
+                    let backend = caller.data().webgpu_backend();
                     let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_adapter = if adapter_rep == 0 {
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                    } else {
-                        adapter_rep
-                    };
-                    jvm::exp_adapter_info_described(&cb, l2_adapter)
-                        .map_err(wasmtime::Error::msg)?;
-                    let resource = caller.data_mut().table.push(GpuAdapterInfo {
-                        adapter: l2_adapter,
-                    })?;
-                    Ok((resource,))
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let l2_adapter = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let handle =
+                                    gpu.resolve_adapter(adapter_rep).map_err(native_gpu_error)?;
+                                let _ = gpu.adapter_info(handle).map_err(native_gpu_error)?;
+                                handle.raw()
+                            };
+                            let resource = caller.data_mut().table.push(GpuAdapterInfo {
+                                adapter: l2_adapter,
+                            })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_adapter = if adapter_rep == 0 {
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                            } else {
+                                adapter_rep
+                            };
+                            jvm::exp_adapter_info_described(&cb, l2_adapter)
+                                .map_err(wasmtime::Error::msg)?;
+                            let resource = caller.data_mut().table.push(GpuAdapterInfo {
+                                adapter: l2_adapter,
+                            })?;
+                            Ok((resource,))
+                        }
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2724,6 +2850,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.vendor",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.vendor,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
@@ -2741,6 +2871,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.architecture",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.architecture,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
@@ -2759,6 +2893,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.device",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.device,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
@@ -2776,6 +2914,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.description",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.description,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
@@ -2793,6 +2935,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.subgroup-min-size",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.subgroup_min_size,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
@@ -2810,6 +2956,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.subgroup-max-size",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.subgroup_max_size,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
@@ -2827,6 +2977,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.is-fallback-adapter",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.is_fallback_adapter,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
@@ -3037,7 +3191,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     Box::pin(async move {
                         let (
-                            cb,
+                            backend,
                             adapter_rep,
                             required_features,
                             required_limits,
@@ -3075,9 +3229,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                                         )
                                     }
                                 };
-                            let cb = access.data_mut().require_webgpu_jni_cb()?;
+                            let backend = access.data_mut().webgpu_backend();
                             Ok::<_, wasmtime::Error>((
-                                cb,
+                                backend,
                                 adapter_rep,
                                 required_features,
                                 required_limits,
@@ -3090,33 +3244,63 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             let _ = tx.send(());
                         });
                         let _ = rx.await;
-                        let l2_adapter = if adapter_rep == 0 {
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                        } else {
-                            adapter_rep
-                        };
-                        let device_rep = jvm::exp_adapter_request_device_described(
-                            &cb,
-                            l2_adapter,
-                            required_features,
-                            required_limits,
-                            label,
-                            default_queue_label,
-                        )
-                        .map_err(wasmtime::Error::msg)?;
-                        if device_rep == 0 {
-                            return Ok((Err(RequestDeviceError {
-                                kind: RequestDeviceErrorKind::OperationError,
-                                message: "adapter-request-device returned 0".into(),
-                            }),));
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                let native_desc = NativeRequestDeviceDescriptor {
+                                    required_features: required_features.as_slice(),
+                                    required_limits_rep: required_limits,
+                                    label: label.as_str(),
+                                    default_queue_label: default_queue_label.as_str(),
+                                };
+                                let resource = accessor.with(|mut access| -> wasmtime::Result<_> {
+                                    let handle = {
+                                        let gpu = access.data_mut().require_native_gpu()?;
+                                        let adapter = gpu
+                                            .resolve_adapter(adapter_rep)
+                                            .map_err(native_gpu_error)?;
+                                        gpu.request_device(adapter, &native_desc)
+                                            .map_err(native_gpu_error)?
+                                    };
+                                    Ok(access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuDevice { rep: handle.raw() })?)
+                                })?;
+                                Ok((Ok(resource),))
+                            }
+                            GpuBackend::JniBackend => {
+                                let cb = accessor.with(|mut access| {
+                                    access.data_mut().require_webgpu_jni_cb()
+                                })?;
+                                let l2_adapter = if adapter_rep == 0 {
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                                } else {
+                                    adapter_rep
+                                };
+                                let device_rep = jvm::exp_adapter_request_device_described(
+                                    &cb,
+                                    l2_adapter,
+                                    required_features,
+                                    required_limits,
+                                    label,
+                                    default_queue_label,
+                                )
+                                .map_err(wasmtime::Error::msg)?;
+                                if device_rep == 0 {
+                                    return Ok((Err(RequestDeviceError {
+                                        kind: RequestDeviceErrorKind::OperationError,
+                                        message: "adapter-request-device returned 0".into(),
+                                    }),));
+                                }
+                                let resource = accessor.with(|mut access| {
+                                    access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuDevice { rep: device_rep })
+                                })?;
+                                Ok((Ok(resource),))
+                            }
                         }
-                        let resource = accessor.with(|mut access| {
-                            access
-                                .data_mut()
-                                .table
-                                .push(GpuDevice { rep: device_rep })
-                        })?;
-                        Ok((Ok(resource),))
                     })
                 },
             )
@@ -3145,23 +3329,42 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-device.queue",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller.data().require_webgpu_jni_cb()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
-                    let queue_rep = jvm::exp_device_get_queue_described(&cb, l2_device)
-                        .map_err(wasmtime::Error::msg)?;
-                    if queue_rep == 0 {
-                        return Err(wasmtime::Error::msg("device-queue returned 0"));
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device =
+                                    gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                                gpu.device_queue(device).map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuQueue { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let queue_rep = jvm::exp_device_get_queue_described(&cb, l2_device)
+                                .map_err(wasmtime::Error::msg)?;
+                            if queue_rep == 0 {
+                                return Err(wasmtime::Error::msg("device-queue returned 0"));
+                            }
+                            let resource =
+                                caller.data_mut().table.push(GpuQueue { rep: queue_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller.data_mut().table.push(GpuQueue { rep: queue_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;

@@ -20,7 +20,7 @@ Cube / out-of-tree demo is **not** a consume needle.
 | ND-DISP | landed 2026-08-31 (NativeGpu \| JniBackend; JNI default) |
 | ND-SO | landed 2026-08-31 (Dawn C API Android `.so` recipe; JNI leftover still default) |
 | ND-HOST | landed 2026-08-31 (`NativeGpu` trait + handle table; no product Kotlin GPU API) |
-| ND-BOOT | `gap: nd boot pending` |
+| ND-BOOT | landed 2026-08-31 (native request-adapter / request-device / queue + boot info; table-backed) |
 | ND-RES | `gap: nd res pending` |
 | ND-PIPE | `gap: nd pipe pending` |
 | ND-ENC | `gap: nd enc pending` |

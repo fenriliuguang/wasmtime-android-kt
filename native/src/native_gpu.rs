@@ -72,10 +72,16 @@ pub struct HandleEntry {
 
 /// In-memory handle table (Kotlin `HandleTable` equivalent). Single-threaded
 /// host calls (same model as P0 `docs/mapping/threading.md`).
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct HandleTable {
     next_id: u32,
     entries: HashMap<u32, HandleEntry>,
+}
+
+impl Default for HandleTable {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HandleTable {
@@ -169,6 +175,7 @@ pub enum NativeGpuError {
         expected: ResourceKind,
         found: ResourceKind,
     },
+    AdapterUnavailable,
 }
 
 impl fmt::Display for NativeGpuError {
@@ -185,6 +192,9 @@ impl fmt::Display for NativeGpuError {
                 f,
                 "invalid GPU handle {handle}: expected {expected:?} but found {found:?}"
             ),
+            NativeGpuError::AdapterUnavailable => {
+                write!(f, "NativeGpu request-adapter returned none")
+            }
         }
     }
 }
@@ -201,19 +211,182 @@ pub trait NativeGpu: Send {
     fn handles_of_kind(&self, kind: ResourceKind) -> Vec<GpuHandle>;
     fn size(&self) -> usize;
     fn clear(&mut self);
+
+    fn request_adapter(&mut self, options: &NativeRequestAdapterOptions<'_>) -> Option<GpuHandle>;
+    fn request_device(
+        &mut self,
+        adapter: GpuHandle,
+        desc: &NativeRequestDeviceDescriptor<'_>,
+    ) -> Result<GpuHandle, NativeGpuError>;
+    fn device_queue(&mut self, device: GpuHandle) -> Result<GpuHandle, NativeGpuError>;
+    fn adapter_info(&self, adapter: GpuHandle) -> Result<NativeAdapterInfo, NativeGpuError>;
+    fn adapter_has_feature(&self, adapter: GpuHandle, name: &str) -> Result<bool, NativeGpuError>;
+}
+
+/// Packed `[method]gpu.request-adapter` options (cm.rs lowering).
+#[derive(Clone, Debug, Default)]
+pub struct NativeRequestAdapterOptions<'a> {
+    pub feature_level: &'a str,
+    /// 0 = none, 1 = low-power, 2 = high-performance.
+    pub power_preference: i32,
+    pub force_fallback_adapter: bool,
+    pub xr_compatible: Option<bool>,
+}
+
+/// Packed `[method]gpu-adapter.request-device` descriptor (cm.rs lowering).
+#[derive(Clone, Debug, Default)]
+pub struct NativeRequestDeviceDescriptor<'a> {
+    pub required_features: &'a [i32],
+    pub required_limits_rep: i32,
+    pub label: &'a str,
+    pub default_queue_label: &'a str,
+}
+
+/// Table-backed adapter info until Dawn C `wgpuAdapterGetInfo`.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeAdapterInfo {
+    pub vendor: String,
+    pub architecture: String,
+    pub device: String,
+    pub description: String,
+    pub subgroup_min_size: u32,
+    pub subgroup_max_size: u32,
+    pub is_fallback_adapter: bool,
+}
+
+impl Default for NativeAdapterInfo {
+    fn default() -> Self {
+        Self {
+            vendor: String::new(),
+            architecture: String::new(),
+            device: "native-gpu".into(),
+            description: "table-backed NativeGpu (Dawn C slot 0)".into(),
+            subgroup_min_size: 4,
+            subgroup_max_size: 128,
+            is_fallback_adapter: false,
+        }
+    }
 }
 
 /// Table-backed [`NativeGpu`]. Dawn C slots stay 0 until a consume lane dlopens.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct NativeGpuHost {
     table: HandleTable,
+    interned_queues: HashMap<u32, u32>,
+    adapter_info: HashMap<u32, NativeAdapterInfo>,
+}
+
+impl Default for NativeGpuHost {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NativeGpuHost {
     pub fn new() -> Self {
         Self {
             table: HandleTable::new(),
+            interned_queues: HashMap::new(),
+            adapter_info: HashMap::new(),
         }
+    }
+
+    fn forget_side(&mut self, handle: GpuHandle, kind: ResourceKind) {
+        match kind {
+            ResourceKind::Adapter => {
+                self.adapter_info.remove(&handle.raw());
+            }
+            ResourceKind::Device => {
+                self.interned_queues.remove(&handle.raw());
+            }
+            _ => {}
+        }
+    }
+
+    /// `rep == 0` is the fixture `get-adapter` stub; otherwise a live table id.
+    pub fn resolve_adapter(&mut self, adapter_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if adapter_rep == GpuHandle::NULL {
+            self.request_adapter(&NativeRequestAdapterOptions::default())
+                .ok_or(NativeGpuError::AdapterUnavailable)
+        } else {
+            let handle = GpuHandle::from_raw(adapter_rep)?;
+            self.get(handle, ResourceKind::Adapter)?;
+            Ok(handle)
+        }
+    }
+
+    /// `rep == 0` is the fixture `get-device` stub; otherwise a live table id.
+    pub fn resolve_device(&mut self, device_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if device_rep == GpuHandle::NULL {
+            let adapter = self.resolve_adapter(GpuHandle::NULL)?;
+            self.request_device(adapter, &NativeRequestDeviceDescriptor::default())
+        } else {
+            let handle = GpuHandle::from_raw(device_rep)?;
+            self.get(handle, ResourceKind::Device)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn request_adapter(
+        &mut self,
+        options: &NativeRequestAdapterOptions<'_>,
+    ) -> Option<GpuHandle> {
+        let mut info = NativeAdapterInfo::default();
+        info.is_fallback_adapter = options.force_fallback_adapter;
+        let _ = options.feature_level;
+        let _ = options.power_preference;
+        let _ = options.xr_compatible;
+        let handle = self.table.insert(ResourceKind::Adapter, 0);
+        self.adapter_info.insert(handle.raw(), info);
+        Some(handle)
+    }
+
+    pub fn request_device(
+        &mut self,
+        adapter: GpuHandle,
+        desc: &NativeRequestDeviceDescriptor<'_>,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(adapter, ResourceKind::Adapter)?;
+        let _ = desc.required_features;
+        let _ = desc.required_limits_rep;
+        let _ = desc.label;
+        let _ = desc.default_queue_label;
+        Ok(self.table.insert(ResourceKind::Device, 0))
+    }
+
+    pub fn device_queue(&mut self, device: GpuHandle) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        if let Some(&raw) = self.interned_queues.get(&device.raw()) {
+            if let Ok(existing) = GpuHandle::from_raw(raw) {
+                if self.table.contains(existing) {
+                    let _ = self.get(existing, ResourceKind::Queue)?;
+                    return Ok(existing);
+                }
+            }
+        }
+        let queue = self.table.insert(ResourceKind::Queue, 0);
+        self.interned_queues.insert(device.raw(), queue.raw());
+        Ok(queue)
+    }
+
+    pub fn adapter_info(&self, adapter: GpuHandle) -> Result<NativeAdapterInfo, NativeGpuError> {
+        self.get(adapter, ResourceKind::Adapter)?;
+        Ok(self
+            .adapter_info
+            .get(&adapter.raw())
+            .cloned()
+            .unwrap_or_default())
+    }
+
+    pub fn adapter_has_feature(
+        &self,
+        adapter: GpuHandle,
+        name: &str,
+    ) -> Result<bool, NativeGpuError> {
+        self.get(adapter, ResourceKind::Adapter)?;
+        let _ = name;
+        // Table-backed: no Dawn feature bits until a consume lane dlopens.
+        Ok(false)
     }
 }
 
@@ -231,11 +404,15 @@ impl NativeGpu for NativeGpuHost {
     }
 
     fn drop_handle(&mut self, handle: GpuHandle) -> Result<HandleEntry, NativeGpuError> {
-        self.table.drop_handle(handle)
+        let entry = self.table.drop_handle(handle)?;
+        self.forget_side(handle, entry.kind);
+        Ok(entry)
     }
 
     fn try_drop(&mut self, handle: GpuHandle) -> Option<HandleEntry> {
-        self.table.try_drop(handle)
+        let entry = self.table.try_drop(handle)?;
+        self.forget_side(handle, entry.kind);
+        Some(entry)
     }
 
     fn handles_of_kind(&self, kind: ResourceKind) -> Vec<GpuHandle> {
@@ -248,6 +425,32 @@ impl NativeGpu for NativeGpuHost {
 
     fn clear(&mut self) {
         self.table.clear();
+        self.interned_queues.clear();
+        self.adapter_info.clear();
+    }
+
+    fn request_adapter(&mut self, options: &NativeRequestAdapterOptions<'_>) -> Option<GpuHandle> {
+        NativeGpuHost::request_adapter(self, options)
+    }
+
+    fn request_device(
+        &mut self,
+        adapter: GpuHandle,
+        desc: &NativeRequestDeviceDescriptor<'_>,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        NativeGpuHost::request_device(self, adapter, desc)
+    }
+
+    fn device_queue(&mut self, device: GpuHandle) -> Result<GpuHandle, NativeGpuError> {
+        NativeGpuHost::device_queue(self, device)
+    }
+
+    fn adapter_info(&self, adapter: GpuHandle) -> Result<NativeAdapterInfo, NativeGpuError> {
+        NativeGpuHost::adapter_info(self, adapter)
+    }
+
+    fn adapter_has_feature(&self, adapter: GpuHandle, name: &str) -> Result<bool, NativeGpuError> {
+        NativeGpuHost::adapter_has_feature(self, adapter, name)
     }
 }
 
@@ -350,5 +553,44 @@ mod tests {
             let _ = gpu.insert(kind, 0);
         }
         assert_eq!(gpu.size(), 22);
+    }
+
+    #[test]
+    fn request_adapter_device_queue_boot_no_jni() {
+        let mut gpu = NativeGpuHost::new();
+        let adapter = gpu
+            .request_adapter(&NativeRequestAdapterOptions {
+                xr_compatible: Some(true),
+                ..Default::default()
+            })
+            .expect("table-backed adapter");
+        assert_ne!(adapter.raw(), GpuHandle::NULL);
+        let device = gpu
+            .request_device(
+                adapter,
+                &NativeRequestDeviceDescriptor {
+                    label: "l2",
+                    default_queue_label: "l2",
+                    required_features: &[0, 1],
+                    required_limits_rep: 0,
+                },
+            )
+            .expect("table-backed device");
+        let q1 = gpu.device_queue(device).expect("queue");
+        let q2 = gpu.device_queue(device).expect("interned queue");
+        assert_eq!(q1, q2, "device.queue interned like DawnWasiWebGpuHost");
+        let info = gpu.adapter_info(adapter).expect("info");
+        assert_eq!(info.device, "native-gpu");
+        assert!(!info.is_fallback_adapter);
+        assert!(!gpu.adapter_has_feature(adapter, "timestamp-query").unwrap());
+        let via_zero = gpu.resolve_device(0).expect("fixture get-device");
+        assert_ne!(via_zero.raw(), GpuHandle::NULL);
+    }
+
+    #[test]
+    fn handle_table_default_skips_null() {
+        let mut table = HandleTable::default();
+        let h = table.insert(ResourceKind::Queue, 0);
+        assert_ne!(h.raw(), GpuHandle::NULL);
     }
 }
