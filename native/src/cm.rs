@@ -6452,8 +6452,9 @@ pub(crate) fn define_host(
                             let label = descriptor.label.clone().unwrap_or_default();
                             let constants = pipeline_constant_rep(&descriptor.compute.constants);
                             let device_rep = access.data_mut().table.get(&device)?.rep;
+                            let backend = access.data_mut().webgpu_backend();
                             Ok((
-                                access.data().webgpu_backend(),
+                                backend,
                                 device_rep,
                                 shader_rep,
                                 entry_point,
