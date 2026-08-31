@@ -87,7 +87,8 @@ fn wasi_webgpu_method_supported_limits_max_bindings_per_bind_group_smoke() -> wa
 }
 
 #[test]
-fn wasi_webgpu_method_supported_limits_max_bindings_per_bind_group_call_async() -> wasmtime::Result<()> {
+fn wasi_webgpu_method_supported_limits_max_bindings_per_bind_group_call_async(
+) -> wasmtime::Result<()> {
     let mut config = Config::new();
     config.wasm_component_model(true);
     config.wasm_component_model_async(true);

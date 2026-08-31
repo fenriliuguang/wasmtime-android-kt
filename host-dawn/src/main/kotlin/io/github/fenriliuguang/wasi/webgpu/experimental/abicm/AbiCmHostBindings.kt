@@ -40,8 +40,9 @@ import io.github.fenriliuguang.wasi.webgpu.experimental.host.CanvasConfigureLeft
  *
  * Frame lifetime (guest-descriptor-cube D): tracks View↔Texture pairs from
  * [surfaceGetCurrentTextureView] because Texture is not a WIT resource and Guest never sees its
- * rep. Pairs are [WasiWebGpuHost.tryDrop]ped on present / next acquire / unconfigure / session
- * handoff. [WasiWebGpuHost.releaseFrameResources] still sweeps encoder orphans.
+ * rep, **and** product `gpu-canvas-context.get-current-texture` textures (guest may never
+ * `resource.drop`). Pairs are [WasiWebGpuHost.tryDrop]ped on present / next acquire / unconfigure /
+ * session handoff. [WasiWebGpuHost.releaseFrameResources] still sweeps encoder orphans.
  *
  * **Still not true WIT destructors** — wasmtime4j `resourceTable` miss skips `.destructor`
  * (see patches/UPSTREAM.md §4). Demo may keep [WasiWebGpuHost.releaseAllGpuObjects] as Session
@@ -536,6 +537,7 @@ class AbiCmHostBindings(
     }
 
     fun canvasContextUnconfigure(context: Int) {
+        releaseTrackedFrameTextures()
         host.canvasContextUnconfigure(context)
     }
 

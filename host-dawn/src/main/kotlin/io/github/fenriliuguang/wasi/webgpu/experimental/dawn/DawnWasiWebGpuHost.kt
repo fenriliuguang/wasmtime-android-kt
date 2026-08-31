@@ -96,6 +96,9 @@ import androidx.webgpu.UncapturedErrorCallback
 import androidx.webgpu.VertexFormat
 import androidx.webgpu.VertexStepMode
 import androidx.webgpu.helper.initLibrary
+import android.os.Debug
+import android.util.Log
+import io.github.fenriliuguang.wasmtime.android.jni.NativeBridge
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindGroupLayoutDescriptor
 import io.github.fenriliuguang.wasi.webgpu.experimental.host.BindingResource
@@ -176,6 +179,8 @@ private data class PendingCanvasPresent(
     val surface: GpuHandle,
     val texture: GpuHandle,
     val views: MutableSet<Int> = mutableSetOf(),
+    val commandBuffers: MutableList<Int> = mutableListOf(),
+    val gpuDone: CountDownLatch = CountDownLatch(1),
 )
 
 /**
@@ -197,17 +202,37 @@ class DawnWasiWebGpuHost private constructor(
     private val eventPoller = Executors.newSingleThreadExecutor()
     private val pipelineLayouts = HashMap<Int, GPUPipelineLayout>()
     private val deviceAdapters = HashMap<GpuHandle, GpuHandle>()
+    /** One HandleTable [ResourceKind.Queue] per device so per-frame `get-queue` does not grow the table. */
+    private val internedQueues = HashMap<GpuHandle, GpuHandle>()
+    /** Exact-capacity scratches so Dawn `capacity()` matches size (no per-frame `slice()`). */
+    private val writeBufferScratchBySize = HashMap<Int, ByteBuffer>()
     /** Host-owned Android window for `gpu-canvas-context` (not a product `surface-*`). */
     private var canvasNativeWindow: Long = 0L
     private var canvasWidth: Int = 0
     private var canvasHeight: Int = 0
     private var pendingCanvasLeftovers: CanvasConfigureLeftovers? = null
     private var pendingCanvasPresent: PendingCanvasPresent? = null
+    /**
+     * Recently presented swapchain images. Close only after GPU work **and**
+     * after [CANVAS_FRAMES_TO_KEEP] newer frames (compositor may still scan).
+     */
+    private val presentedCanvasRing = ArrayDeque<PendingCanvasPresent>()
+    /**
+     * Presented frames not yet covered by a batch fence (C7). Guarded by [gpuLock].
+     * androidx.webgpu leaks a callback+executor JNI global ref per `onSubmittedWorkDone`
+     * call, so we fence [FENCE_BATCH] frames at once instead of one per frame.
+     */
+    private val pendingFenceFrames = mutableListOf<PendingCanvasPresent>()
     /** Dawn format of the bound-window swapchain; 0 when no windowed canvas is configured. */
     private var canvasSwapchainFormat: Int = 0
     /** Serializes Dawn GPU work with [GPUInstance.processEvents] (Mali SIGSEGV under races). */
     private val gpuLock = Any()
     @Volatile private var closed = false
+    private var lastCanvasAcquireNs = 0L
+    private var canvasAcquireSamples = 0
+    private var canvasIntervalLt11 = 0
+    private var canvasIntervalMid = 0
+    private var canvasIntervalGt20 = 0
 
     init {
         // Keep L2 GpuVertex* constants aligned with androidx.webgpu for CM Guest u32 flags.
@@ -219,11 +244,14 @@ class DawnWasiWebGpuHost private constructor(
         }
         eventPoller.execute {
             while (!closed) {
-                synchronized(gpuLock) {
+                val fenceInFlight = synchronized(gpuLock) {
                     runCatching { instance.processEvents() }
+                    // H26: close old BLAST images here, never on the vsync→present path.
+                    retireGpuDoneCanvasFramesLocked()
+                    presentedCanvasRing.any { it.gpuDone.count != 0L }
                 }
                 try {
-                    Thread.sleep(POLL_MS)
+                    Thread.sleep(if (fenceInFlight) POLL_MS_FENCE else POLL_MS)
                 } catch (_: InterruptedException) {
                     Thread.currentThread().interrupt()
                     break
@@ -287,8 +315,17 @@ class DawnWasiWebGpuHost private constructor(
     }
 
     override fun deviceGetQueue(device: GpuHandle): GpuHandle {
-        val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
-        return handles.insert(ResourceKind.Queue, gpuDevice.queue)
+        synchronized(gpuLock) {
+            internedQueues[device]?.let { existing ->
+                if (handles.contains(existing)) {
+                    return existing
+                }
+            }
+            val gpuDevice = handles.get<GPUDevice>(device, ResourceKind.Device)
+            val queue = handles.insert(ResourceKind.Queue, gpuDevice.queue)
+            internedQueues[device] = queue
+            return queue
+        }
     }
 
     override fun deviceCreateBuffer(device: GpuHandle, descriptor: BufferDescriptor): GpuHandle {
@@ -737,7 +774,27 @@ class DawnWasiWebGpuHost private constructor(
             val format = caps.formats.firstOrNull { preferredFormat != 0 && it == preferredFormat }
                 ?: caps.formats.firstOrNull()
                 ?: throw HostException.Backend("surface has no texture formats")
-            val presentMode = PresentMode.Fifo
+            val presentMode = when {
+                // Mailbox at 120 Hz 1:1 grew BLAST to 6 images and mixed 8/16 ms
+                // acquire. Fifo in-order; cap the window to 3 buffers (H9).
+                caps.presentModes.any { it == PresentMode.Fifo } -> PresentMode.Fifo
+                caps.presentModes.any { it == PresentMode.Mailbox } -> PresentMode.Mailbox
+                else -> caps.presentModes.firstOrNull() ?: PresentMode.Fifo
+            }
+            if (canvasNativeWindow != 0L) {
+                val rc = NativeBridge.nativeSetANativeWindowBufferCount(
+                    canvasNativeWindow,
+                    SWAPCHAIN_BUFFER_COUNT,
+                )
+                Log.i(
+                    HITCH_TAG,
+                    "ANativeWindow_setBufferCount($SWAPCHAIN_BUFFER_COUNT) rc=$rc",
+                )
+            }
+            Log.i(
+                HITCH_TAG,
+                "surface presentModes=${caps.presentModes.joinToString()} chosen=$presentMode",
+            )
             val alphaMode = leftover?.alphaMode?.takeIf { it >= 0 }?.let { wit ->
                 wit + 1
             } ?: (caps.alphaModes.firstOrNull() ?: CompositeAlphaMode.Opaque)
@@ -767,9 +824,16 @@ class DawnWasiWebGpuHost private constructor(
     }
 
     override fun surfaceGetCurrentTexture(surface: GpuHandle): SurfaceTextureResult {
+        // Do not hold gpuLock across getCurrentTexture: BLAST may block waiting
+        // for a free image, and the poller must still processEvents + retire
+        // (H21 + H26). GpuThread vs poller overlap is only this acquire.
+        val gpuSurface = synchronized(gpuLock) {
+            handles.get<GPUSurface>(surface, ResourceKind.Surface)
+        }
+        val t0 = System.nanoTime()
+        val surfaceTexture = gpuSurface.getCurrentTexture()
+        val acquireNs = System.nanoTime() - t0
         synchronized(gpuLock) {
-            val gpuSurface = handles.get<GPUSurface>(surface, ResourceKind.Surface)
-            val surfaceTexture = gpuSurface.getCurrentTexture()
             val status = when (surfaceTexture.status) {
                 SurfaceGetCurrentTextureStatus.SuccessOptimal -> SurfaceTextureStatus.SuccessOptimal
                 SurfaceGetCurrentTextureStatus.SuccessSuboptimal -> SurfaceTextureStatus.SuccessSuboptimal
@@ -778,6 +842,7 @@ class DawnWasiWebGpuHost private constructor(
                 SurfaceGetCurrentTextureStatus.Lost -> SurfaceTextureStatus.Lost
                 else -> SurfaceTextureStatus.Error
             }
+            noteCanvasAcquireLocked(acquireNs, status)
             val texture = surfaceTexture.texture
             return if (
                 texture != null &&
@@ -806,6 +871,11 @@ class DawnWasiWebGpuHost private constructor(
             canvasWidth = width
             canvasHeight = height
         }
+        val rc = NativeBridge.nativeSetANativeWindowBufferCount(
+            nativeWindowHandle,
+            SWAPCHAIN_BUFFER_COUNT,
+        )
+        Log.i(HITCH_TAG, "bindCanvas ANativeWindow_perform SET_BUFFER_COUNT($SWAPCHAIN_BUFFER_COUNT) rc=$rc")
     }
 
     /** Stage leftover configure fields for the next [canvasContextConfigure] (same thread). */
@@ -901,6 +971,10 @@ class DawnWasiWebGpuHost private constructor(
             )
         }
         val snapshot = synchronized(gpuLock) {
+            // Must return the previous BLAST image before the next acquire.
+            // Overwriting pendingCanvasPresent leaked GPUTexture handles; Mali
+            // hitching rose until GpuThread SIGSEGV (fault 0x20).
+            discardUnpresentedCanvasFrameLocked()
             val state = handles.get<DawnCanvasContextState>(
                 GpuHandle(context),
                 ResourceKind.CanvasContext,
@@ -943,12 +1017,100 @@ class DawnWasiWebGpuHost private constructor(
         }
     }
 
-    /** Caller must hold [gpuLock]. Present once after [queueSubmit]. */
+    /** Caller must hold [gpuLock]. */
     private fun presentPendingCanvasFrameLocked() {
+        val pending = pendingCanvasPresent
+        if (pending != null) {
+            pendingCanvasPresent = null
+            val gpuSurface = handles.get<GPUSurface>(pending.surface, ResourceKind.Surface)
+            gpuSurface.present()
+            presentedCanvasRing.addLast(pending)
+            // Recycle after async GPU fence (see queueSubmit).
+        }
+        // Do not sweep command buffers here: GPU may still be executing the
+        // just-submitted encoder. Closing GPUCommandBuffer caused GpuThread
+        // SIGSEGV 0x20 in the continuous cube loop.
+        runCatching { instance.processEvents() }
+    }
+
+    /** Caller must hold [gpuLock]. Close a swapchain texture that was never presented. */
+    private fun discardUnpresentedCanvasFrameLocked() {
         val pending = pendingCanvasPresent ?: return
         pendingCanvasPresent = null
-        surfacePresent(pending.surface)
-        runCatching { instance.processEvents() }
+        dropCanvasFrameResourcesLocked(pending)
+    }
+
+    /** Caller must hold [gpuLock]. Drop oldest frames whose GPU work is done. */
+    private fun retireGpuDoneCanvasFramesLocked() {
+        while (presentedCanvasRing.size > CANVAS_FRAMES_TO_KEEP) {
+            val oldest = presentedCanvasRing.first()
+            if (oldest.gpuDone.count != 0L) {
+                break
+            }
+            dropCanvasFrameResourcesLocked(presentedCanvasRing.removeFirst())
+        }
+    }
+
+    /** Caller must hold [gpuLock]. Drop every canvas swapchain texture we still hold. */
+    private fun dropAllCanvasFramesLocked() {
+        discardUnpresentedCanvasFrameLocked()
+        pendingFenceFrames.clear()
+        while (presentedCanvasRing.isNotEmpty()) {
+            dropCanvasFrameResourcesLocked(presentedCanvasRing.removeFirst())
+        }
+    }
+
+    /** Caller must hold [gpuLock]. Return the BLAST buffer; do not sweep guest-owned textures. */
+    private fun dropCanvasFrameResourcesLocked(pending: PendingCanvasPresent) {
+        pending.gpuDone.countDown()
+        for (viewRaw in pending.views) {
+            if (viewRaw != 0) {
+                tryDropLocked(GpuHandle(viewRaw), closeResource = true)
+            }
+        }
+        tryDropLocked(pending.texture, closeResource = true)
+        for (cbRaw in pending.commandBuffers) {
+            if (cbRaw != 0) {
+                tryDropLocked(GpuHandle(cbRaw), closeResource = true)
+            }
+        }
+    }
+
+    /** Caller must hold [gpuLock]. H21 acquire ns + H2 interval histogram (logcat `GfxHitch`). */
+    private fun noteCanvasAcquireLocked(acquireNs: Long, status: SurfaceTextureStatus) {
+        val now = System.nanoTime()
+        val prev = lastCanvasAcquireNs
+        lastCanvasAcquireNs = now
+        if (acquireNs >= 2_000_000L ||
+            (status != SurfaceTextureStatus.SuccessOptimal &&
+                status != SurfaceTextureStatus.SuccessSuboptimal)
+        ) {
+            Log.w(
+                HITCH_TAG,
+                "acquire ${acquireNs}ns status=$status " +
+                    "gcCount=${Debug.getRuntimeStat("art.gc.gc-count")} " +
+                    "gcTimeMs=${Debug.getRuntimeStat("art.gc.gc-time")}",
+            )
+        }
+        if (prev == 0L) {
+            return
+        }
+        val intervalNs = now - prev
+        canvasAcquireSamples++
+        when {
+            intervalNs < 11_000_000L -> canvasIntervalLt11++
+            intervalNs <= 20_000_000L -> canvasIntervalMid++
+            else -> canvasIntervalGt20++
+        }
+        if (canvasAcquireSamples % 120 == 0) {
+            Log.i(
+                HITCH_TAG,
+                "acquire n=$canvasAcquireSamples last=${acquireNs}ns " +
+                    "lastDtNs=$intervalNs ring=${presentedCanvasRing.size} " +
+                    "interval <11ms=$canvasIntervalLt11 11-20ms=$canvasIntervalMid " +
+                    ">20ms=$canvasIntervalGt20 status=$status",
+            )
+        }
     }
 
     override fun canvasContextHasConfiguration(context: Int): Int {
@@ -1360,7 +1522,33 @@ class DawnWasiWebGpuHost private constructor(
 
     override fun textureDestroy(texture: GpuHandle) {
         synchronized(gpuLock) {
-            handles.get<GPUTexture>(texture, ResourceKind.Texture).close()
+            pendingCanvasPresent?.let { pending ->
+                if (pending.texture == texture) {
+                    pendingCanvasPresent = null
+                    for (viewRaw in pending.views) {
+                        if (viewRaw != 0) {
+                            tryDropLocked(GpuHandle(viewRaw), closeResource = true)
+                        }
+                    }
+                } else {
+                    pending.views.remove(texture.raw)
+                }
+            }
+            presentedCanvasRing.removeAll { frame ->
+                if (frame.texture != texture) {
+                    false
+                } else {
+                    frame.gpuDone.countDown()
+                    for (viewRaw in frame.views) {
+                        if (viewRaw != 0) {
+                            tryDropLocked(GpuHandle(viewRaw), closeResource = true)
+                        }
+                    }
+                    true
+                }
+            }
+            // Idempotent: guest destroy after present / resource.drop after host recycle.
+            tryDropLocked(texture, closeResource = true)
         }
     }
 
@@ -2375,12 +2563,18 @@ class DawnWasiWebGpuHost private constructor(
         bufferOffset: Long,
         data: ByteArray,
     ) {
-        val gpuQueue = handles.get<GPUQueue>(queue, ResourceKind.Queue)
-        val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
-        val byteBuffer = ByteBuffer.allocateDirect(data.size).order(ByteOrder.nativeOrder())
-        byteBuffer.put(data)
-        byteBuffer.flip()
-        gpuQueue.writeBuffer(gpuBuffer, bufferOffset, byteBuffer)
+        synchronized(gpuLock) {
+            val gpuQueue = handles.get<GPUQueue>(queue, ResourceKind.Queue)
+            val gpuBuffer = handles.get<GPUBuffer>(buffer, ResourceKind.Buffer)
+            val byteBuffer = writeBufferScratchBySize.getOrPut(data.size) {
+                ByteBuffer.allocateDirect(data.size).order(ByteOrder.nativeOrder())
+            }
+            byteBuffer.clear()
+            byteBuffer.put(data)
+            byteBuffer.flip()
+            // Dawn writeBuffer uses ByteBuffer.capacity(), not remaining().
+            gpuQueue.writeBuffer(gpuBuffer, bufferOffset, byteBuffer)
+        }
     }
 
     override fun queueWriteTexture(
@@ -2407,14 +2601,44 @@ class DawnWasiWebGpuHost private constructor(
     }
 
     override fun queueSubmit(queue: GpuHandle, commandBuffers: List<GpuHandle>) {
+        val gpuQueue: GPUQueue
+        val toFence: List<PendingCanvasPresent>?
         synchronized(gpuLock) {
-            val gpuQueue = handles.get<GPUQueue>(queue, ResourceKind.Queue)
+            gpuQueue = handles.get<GPUQueue>(queue, ResourceKind.Queue)
             val buffers = commandBuffers.map {
                 handles.get<GPUCommandBuffer>(it, ResourceKind.CommandBuffer)
             }.toTypedArray()
             gpuQueue.submit(buffers)
+            pendingCanvasPresent?.commandBuffers?.addAll(commandBuffers.map { it.raw })
+            val before = presentedCanvasRing.size
             presentPendingCanvasFrameLocked()
+            if (presentedCanvasRing.size > before) {
+                pendingFenceFrames.add(presentedCanvasRing.last())
+            }
+            // C7: batch several presents into one fence to halve the androidx.webgpu
+            // callback+executor global-ref leak (2 refs per call, never deleted).
+            toFence = if (pendingFenceFrames.size >= FENCE_BATCH) {
+                pendingFenceFrames.toList().also { pendingFenceFrames.clear() }
+            } else {
+                null
+            }
         }
+        if (toFence == null) {
+            return
+        }
+        // Fence only counts down. Close/retire runs on the event poller (H26).
+        gpuQueue.onSubmittedWorkDone(
+            callbackExecutor,
+            object : GPURequestCallback<Unit> {
+                override fun onResult(result: Unit) {
+                    toFence.forEach { it.gpuDone.countDown() }
+                }
+
+                override fun onError(exception: Exception) {
+                    toFence.forEach { it.gpuDone.countDown() }
+                }
+            },
+        )
     }
 
     override fun bufferMapAsync(buffer: GpuHandle, mode: Int, offset: Long, size: Long) {
@@ -2776,8 +3000,9 @@ class DawnWasiWebGpuHost private constructor(
     /** Caller must hold [gpuLock]. */
     private fun releaseFrameResourcesLocked() {
         // Encoder / pass / command-buffer orphans only.
-        // Swapchain View↔Texture pairs are tryDrop'd by AbiCmHostBindings.frameTextureByView.
-        // Must NOT sweep all Texture/TextureView — Guest-owned depth/albedo (cube) live across frames.
+        // Swapchain View↔Texture pairs are tryDrop'd by pendingCanvasPresent /
+        // AbiCmHostBindings (product canvas + Track A surface-get-view).
+        // Must NOT sweep all Texture/TextureView — Guest-owned depth/albedo live across frames.
         for (
             kind in listOf(
                 ResourceKind.CommandBuffer,
@@ -2802,6 +3027,7 @@ class DawnWasiWebGpuHost private constructor(
     override fun releaseSurfaces() {
         synchronized(gpuLock) {
             presentPendingCanvasFrameLocked()
+            dropAllCanvasFramesLocked()
             canvasSwapchainFormat = 0
             // Encoders + leftover swapchain Texture/View so GPUSurface can disconnect.
             // Guest-owned textures should already be gone via drop-cube / releaseAllGpuObjects.
@@ -2829,6 +3055,7 @@ class DawnWasiWebGpuHost private constructor(
     override fun releaseAllGpuObjects() {
         synchronized(gpuLock) {
             presentPendingCanvasFrameLocked()
+            dropAllCanvasFramesLocked()
             canvasSwapchainFormat = 0
             for (handle in handles.handlesOfKind(ResourceKind.Surface)) {
                 runCatching {
@@ -2968,7 +3195,24 @@ class DawnWasiWebGpuHost private constructor(
     }
 
     companion object {
+        private const val HITCH_TAG = "GfxHitch"
         private const val POLL_MS = 5L
+        /** While a canvas GPU fence is in flight, poll faster so retire is not 5 ms late (H7). */
+        private const val POLL_MS_FENCE = 1L
+        /**
+         * Presented swapchain images kept after [GPUQueue.onSubmittedWorkDone]
+         * (display may still scan the last 1–2). Closing sooner UAFd Mali.
+         * Keep-8 exhausted this AAR’s BLAST pool (acquire blocked 2–4 ms/frame).
+         */
+        private const val CANVAS_FRAMES_TO_KEEP = 3
+        /**
+         * C7: fence this many presents per `onSubmittedWorkDone`. 2 halves the
+         * androidx.webgpu global-ref leak (2 refs/call) while keeping the ring
+         * peak at keep+1 = 4 < the 5-deep BLAST pool (no acquire block).
+         */
+        private const val FENCE_BATCH = 2
+        /** H9: BLAST images. 3 returned EINVAL (below BLAST min). 4 is the floor on V2458A. */
+        private const val SWAPCHAIN_BUFFER_COUNT = 4
         private const val TIMEOUT_SEC = 30L
         /** WebGPU copyBufferToTexture / copyTextureToBuffer row alignment. */
         private const val TEXEL_COPY_BYTES_PER_ROW = 256

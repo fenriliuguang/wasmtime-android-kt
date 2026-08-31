@@ -4,6 +4,7 @@ use jni::objects::{GlobalRef, JByteArray, JIntArray, JObject, JString, JValue};
 use jni::sys::JavaVM as SysJavaVM;
 use jni::{JNIEnv, JavaVM};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::sync::mpsc::{self, Sender};
 use std::sync::OnceLock;
 
@@ -16,6 +17,9 @@ enum PumpJob {
 
 thread_local! {
     static PUMP_JNI: RefCell<Option<Sender<PumpJob>>> = const { RefCell::new(None) };
+    /// Exact-size `jbyteArray` reuse for `HostArg::Bytes` (H16: per-frame
+    /// `NewByteArray` of the cube uniform GC'd every few seconds).
+    static CACHED_JBYTES: RefCell<HashMap<usize, GlobalRef>> = RefCell::new(HashMap::new());
 }
 
 pub fn set_vm(vm: *mut SysJavaVM) {
@@ -78,6 +82,24 @@ fn with_env<T: Send + 'static>(
     f(&mut env)
 }
 
+fn cached_jbyte_gref(env: &mut JNIEnv, v: &[u8]) -> Result<GlobalRef, String> {
+    let n = v.len();
+    CACHED_JBYTES.with(|cell| {
+        let mut map = cell.borrow_mut();
+        if let Some(gref) = map.get(&n) {
+            return Ok(gref.clone());
+        }
+        let arr = env
+            .new_byte_array(n as i32)
+            .map_err(|e| format!("host new_byte_array: {e}"))?;
+        let gref = env
+            .new_global_ref(&arr)
+            .map_err(|e| format!("host new_global_ref: {e}"))?;
+        map.insert(n, gref.clone());
+        Ok(gref)
+    })
+}
+
 fn check_exception(env: &mut JNIEnv) -> Result<(), String> {
     if env.exception_check().unwrap_or(false) {
         let _ = env.exception_describe();
@@ -106,6 +128,7 @@ fn call_with_host_args<'a>(
 ) -> Result<jni::objects::JValueOwned<'a>, String> {
     let mut java_strings: Vec<JString<'a>> = Vec::new();
     let mut java_int_arrays: Vec<JIntArray<'a>> = Vec::new();
+    let mut java_byte_grefs: Vec<GlobalRef> = Vec::new();
     let mut java_byte_arrays: Vec<JByteArray<'a>> = Vec::new();
     for arg in args {
         match arg {
@@ -124,11 +147,14 @@ fn call_with_host_args<'a>(
                 java_int_arrays.push(arr);
             }
             HostArg::Bytes(v) => {
-                let arr = env
-                    .new_byte_array(v.len() as i32)
-                    .map_err(|e| format!("host {name} new_byte_array: {e}"))?;
-                let i8s: Vec<i8> = v.iter().map(|b| *b as i8).collect();
-                env.set_byte_array_region(&arr, 0, &i8s)
+                let gref = cached_jbyte_gref(env, v)?;
+                java_byte_grefs.push(gref);
+                let local = env
+                    .new_local_ref(java_byte_grefs.last().unwrap().as_obj())
+                    .map_err(|e| format!("host {name} new_local_ref: {e}"))?;
+                let arr = JByteArray::from(local);
+                let i8s = unsafe { std::slice::from_raw_parts(v.as_ptr() as *const i8, v.len()) };
+                env.set_byte_array_region(&arr, 0, i8s)
                     .map_err(|e| format!("host {name} set_byte_array_region: {e}"))?;
                 java_byte_arrays.push(arr);
             }
@@ -1009,10 +1035,7 @@ pub fn exp_canvas_context_get_current_texture_described(
 }
 
 /// P010-GFXL: Guest `wasi-gfx` `[method]context.present`.
-pub fn exp_canvas_context_present_described(
-    cb: &GlobalRef,
-    context: u32,
-) -> Result<(), String> {
+pub fn exp_canvas_context_present_described(cb: &GlobalRef, context: u32) -> Result<(), String> {
     call_void(
         cb,
         "canvasContextPresentDescribed",

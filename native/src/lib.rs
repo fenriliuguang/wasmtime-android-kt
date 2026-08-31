@@ -13,7 +13,7 @@ mod jvm;
 mod webgpu_abi;
 
 use jni::objects::JClass;
-use jni::sys::{jint, jstring, JNI_VERSION_1_6, JavaVM};
+use jni::sys::{jint, jlong, jstring, JavaVM, JNI_VERSION_1_6};
 use jni::JNIEnv;
 use std::os::raw::c_void;
 
@@ -47,5 +47,48 @@ fn to_jstring(env: &mut JNIEnv, s: &str) -> jstring {
     match env.new_string(s) {
         Ok(js) => js.into_raw(),
         Err(_) => std::ptr::null_mut(),
+    }
+}
+
+// H9: cap BLAST images. `ANativeWindow_setBufferCount` lives in
+// libnativewindow.so (not libandroid); public NDK headers omit it.
+#[cfg(target_os = "android")]
+extern "C" {
+    fn dlopen(filename: *const i8, flags: i32) -> *mut c_void;
+    fn dlsym(handle: *mut c_void, symbol: *const i8) -> *mut c_void;
+}
+
+#[cfg(target_os = "android")]
+const RTLD_NOW: i32 = 2;
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeSetANativeWindowBufferCount(
+    _env: JNIEnv,
+    _class: JClass,
+    window: jlong,
+    count: jint,
+) -> jint {
+    #[cfg(target_os = "android")]
+    {
+        if window == 0 || count < 2 {
+            return -1;
+        }
+        unsafe {
+            let lib = dlopen(c"libnativewindow.so".as_ptr() as *const i8, RTLD_NOW);
+            if lib.is_null() {
+                return -2;
+            }
+            let sym = dlsym(lib, c"ANativeWindow_setBufferCount".as_ptr() as *const i8);
+            if sym.is_null() {
+                return -3;
+            }
+            let f: extern "C" fn(*mut c_void, usize) -> i32 = std::mem::transmute(sym);
+            f(window as *mut c_void, count as usize)
+        }
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (window, count);
+        -1
     }
 }

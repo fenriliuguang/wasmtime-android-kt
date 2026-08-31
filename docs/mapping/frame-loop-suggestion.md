@@ -2,11 +2,11 @@
 
 **English** | [中文](frame-loop-suggestion.zh.md)
 
-**Status: shape notes for [`rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md). Remaining gfx auto cut: [`product-010.md`](../agent/product-010.md) `P010-DEMO`. Last `0.1.0` auto cut: `P010-DEMO` (README, not this file).**
+**Status: shape notes for [`rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md). `0.1.0` gfx loop landed. Living host consume: [`../agent/native-dawn.md`](../agent/native-dawn.md). Do not rewrite this guest pull-stream shape.**
 
 This page records host/guest sketches for the **accepted** `0.1.0` gfx present loop. It does **not** add a lane to [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md). It does **not** reopen P0 wasi:webgpu (G1–G9 / WG-6). **NG-9 still forbids promoting gfx to P0**; the product gate is the gfx RFC, not this file.
 
-Living auto queue is **`0.1.0` complete frame loop** then demo: product adapter/device (**P010-GFXB**) then Choreographer vsync (**P010-GFXV**, landed) then **P010-DEMO**. On-screen today is one-shot WG-6 plus vsync-paced `WasiGfxFrameLoopInstrumentedTest`. Thread rules: [`threading-android.md`](threading-android.md). WIT pin is **P010-GFXP** (`v0.2.0`); host `on-frame` is P010-GFXH; skeleton present loop is P010-GFXL; vsync 1-slot is P010-GFXV.
+`0.1.0` loop landed (GFXB/GFXV/DEMO). Native Dawn present attaches to the same `GfxOnFrameGate` (**ND-SURF**). On-screen today is one-shot WG-6 plus vsync-paced `WasiGfxFrameLoopInstrumentedTest`. Thread rules: [`threading-android.md`](threading-android.md). WIT pin is **P010-GFXP** (`v0.2.0`).
 
 Upstream sketches below follow [wasi-gfx/wasi-gfx](https://github.com/wasi-gfx/wasi-gfx) tag **`v0.2.0`** (`wasi-gfx:surface@0.2.0` + `surface-webgpu` importing `wasi:webgpu@0.3.0-rc.2`). Vendored [`../../third_party/wasi-gfx/v0.2.0/wit/surface.wit`](../../third_party/wasi-gfx/v0.2.0/wit/surface.wit). Names may move; do not pick a second tag without a changelog.
 
@@ -125,7 +125,7 @@ world windowed-webgpu {
 
 `run` must be **async** so reading `on-frame` can yield. Official CLI `run` result landed as P1 W5 (`result`); a demo world may still keep a tiny export.
 
-Host `on-frame` (P010-GFXH) returns a CM `stream<frame-event>`. **P010-GFXV:** UI Choreographer posts vsync into a 1-slot gate; `poll_produce` writes on **GpuThread**; unconsumed beats drop; `surfaceDestroyed` closes the stream. Pin `on-frame` is a sync `func` (not `async func`); this repo does not enable Wasmtime stackful CM async. Product `surface-webgpu` `context.present` is P010-GFXL.
+Host `on-frame` (P010-GFXH) returns a CM `stream<frame-event>`. **P010-GFXV:** UI Choreographer posts vsync into a 1-slot gate; `poll_produce` writes on **GpuThread**; unconsumed beats drop; `surfaceDestroyed` closes the stream. Pin `on-frame` is a sync `func` (not `async func`); this repo does not enable Wasmtime stackful CM async. Product `surface-webgpu` `context.present` is P010-GFXL. Cube hitch (device): [`gfx-hitch-checklist.md`](gfx-hitch-checklist.md).
 
 ## 4. MoonBit guest (illustrative)
 

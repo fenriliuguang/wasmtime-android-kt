@@ -196,7 +196,10 @@ fn wasi_webgpu_method_canvas_context_present_smoke() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 1, "guest must configure, drop own texture, return harness 1");
+    assert_eq!(
+        v, 1,
+        "guest must configure, drop own texture, return harness 1"
+    );
     Ok(())
 }
 
@@ -217,6 +220,9 @@ fn wasi_webgpu_method_canvas_context_present_call_async() -> wasmtime::Result<()
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 1, "guest must configure, drop own texture, return harness 1");
+    assert_eq!(
+        v, 1,
+        "guest must configure, drop own texture, return harness 1"
+    );
     Ok(())
 }

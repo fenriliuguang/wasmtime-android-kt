@@ -3,11 +3,12 @@
 [English](README.md) | **中文**
 
 只列现行文档。史实见 [`../archive/README.md`](../archive/README.md)。  
-P0 与 P1 已关闭。现行队列：[`../agent/product-010.md`](../agent/product-010.md)（`0.1.0`）。**L5 已接受。** 与英文冲突时以英文为准。
+P0 形状与 P1、`0.1.0` 已关闭。现行队列：[`../agent/native-dawn.md`](../agent/native-dawn.md)（全量钉 Dawn C）。**L5 已接受。** 与英文冲突时以英文为准。
 
 | 文档 | 角色 |
 |------|------|
-| [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` 手册** |
+| [`../agent/native-dawn.md`](../agent/native-dawn.md) | **现行自动：** native Dawn host |
+| [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` 手册**（已空） |
 | [`claim-010.zh.md`](claim-010.zh.md) | **`0.1.0` 宣称表**（不是 CTS） |
 | [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | P2 手册（点名） |
 | [`rfc-ecosystem-contribution.zh.md`](rfc-ecosystem-contribution.zh.md) | **Accepted：** 可引用 Host |

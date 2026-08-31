@@ -11,6 +11,12 @@ import java.nio.ByteOrder
 class CpuWasiWebGpuHost : WasiWebGpuHost {
 
     private val handles = HandleTable()
+    /** Current unpresented `get-current-texture` canvas texture. */
+    private var pendingCanvasTexture: GpuHandle? = null
+    private val pendingCanvasViews = LinkedHashSet<Int>()
+    /** Last presented canvas texture; recycled on the next acquire / present. */
+    private var lastCanvasTexture: GpuHandle? = null
+    private val lastCanvasViews = LinkedHashSet<Int>()
 
     private class Adapter(
         val vendor: String = "cpu-vendor",
@@ -811,13 +817,17 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
     }
 
     override fun canvasContextUnconfigure(context: Int) {
+        dropLastCanvasFrame()
+        dropPendingCanvasFrame()
         if (context == 0) return
         handles.get<CanvasContext>(GpuHandle(context), ResourceKind.CanvasContext).configured = false
     }
 
     override fun canvasContextGetCurrentTexture(context: Int): GpuHandle {
+        dropLastCanvasFrame()
+        dropPendingCanvasFrame()
         if (context == 0) {
-            return handles.insert(
+            val texture = handles.insert(
                 ResourceKind.Texture,
                 Texture(
                     width = 1,
@@ -826,6 +836,8 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
                     usage = GpuTextureUsage.RENDER_ATTACHMENT,
                 ),
             )
+            pendingCanvasTexture = texture
+            return texture
         }
         val state = handles.get<CanvasContext>(GpuHandle(context), ResourceKind.CanvasContext)
         if (!state.configured) {
@@ -834,14 +846,40 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         handles.get<Device>(GpuHandle(state.device), ResourceKind.Device)
         val format = if (state.format != 0) state.format else GpuTextureFormat.RGBA8_UNORM
         val usage = if (state.usage != 0) state.usage else GpuTextureUsage.RENDER_ATTACHMENT
-        return handles.insert(
+        val texture = handles.insert(
             ResourceKind.Texture,
             Texture(width = 1, height = 1, format = format, usage = usage),
         )
+        pendingCanvasTexture = texture
+        return texture
     }
 
     override fun canvasContextPresent(context: Int) {
-        // CPU host has no swapchain; gfx present is a successful no-op.
+        dropLastCanvasFrame()
+        lastCanvasTexture = pendingCanvasTexture
+        lastCanvasViews.addAll(pendingCanvasViews)
+        pendingCanvasTexture = null
+        pendingCanvasViews.clear()
+    }
+
+    private fun dropLastCanvasFrame() {
+        dropCanvasPair(lastCanvasTexture, lastCanvasViews)
+        lastCanvasTexture = null
+    }
+
+    private fun dropPendingCanvasFrame() {
+        dropCanvasPair(pendingCanvasTexture, pendingCanvasViews)
+        pendingCanvasTexture = null
+    }
+
+    private fun dropCanvasPair(texture: GpuHandle?, views: MutableSet<Int>) {
+        for (viewRaw in views) {
+            if (viewRaw != 0) {
+                handles.tryDrop(GpuHandle(viewRaw))
+            }
+        }
+        views.clear()
+        texture?.let { handles.tryDrop(it) }
     }
 
     override fun canvasContextHasConfiguration(context: Int): Int {
@@ -908,7 +946,11 @@ class CpuWasiWebGpuHost : WasiWebGpuHost {
         descriptor: TextureViewDescriptor,
     ): GpuHandle {
         handles.get<Texture>(texture, ResourceKind.Texture)
-        return handles.insert(ResourceKind.TextureView, TextureView())
+        val view = handles.insert(ResourceKind.TextureView, TextureView())
+        if (pendingCanvasTexture == texture) {
+            pendingCanvasViews.add(view.raw)
+        }
+        return view
     }
 
     override fun textureWidth(texture: GpuHandle): Int =

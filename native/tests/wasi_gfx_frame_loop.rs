@@ -246,9 +246,15 @@ struct GfxOnFrameGate {
 
 struct GfxOnFrameInner {
     pending: bool,
+    in_frame: bool,
     closed: bool,
     dropped: u32,
     consumed: u32,
+    last_post_ns: u64,
+    period_ns: u64,
+    post_generation: u64,
+    last_take_gen: Option<u64>,
+    wait_epoch: u64,
 }
 
 enum GfxOnFrameTake {
@@ -262,9 +268,15 @@ impl GfxOnFrameGate {
         Arc::new(Self {
             inner: Mutex::new(GfxOnFrameInner {
                 pending: false,
+                in_frame: false,
                 closed: false,
                 dropped: 0,
                 consumed: 0,
+                last_post_ns: 0,
+                period_ns: 0,
+                post_generation: 0,
+                last_take_gen: None,
+                wait_epoch: 0,
             }),
             cv: Condvar::new(),
         })
@@ -275,13 +287,38 @@ impl GfxOnFrameGate {
     }
 
     fn post(&self) {
+        self.post_at(0);
+    }
+
+    fn post_at(&self, frame_time_nanos: i64) {
         let mut g = self.lock();
+        g.post_generation = g.post_generation.saturating_add(1);
+        if frame_time_nanos > 0 {
+            let ts = frame_time_nanos as u64;
+            if g.last_post_ns > 0 {
+                let dt = ts.saturating_sub(g.last_post_ns);
+                if (2_000_000..25_000_000).contains(&dt) {
+                    g.period_ns = if g.period_ns == 0 {
+                        dt
+                    } else {
+                        (g.period_ns.saturating_mul(3).saturating_add(dt)) / 4
+                    };
+                }
+            }
+            g.last_post_ns = ts;
+        }
         if g.closed {
+            return;
+        }
+        if g.in_frame {
+            g.dropped = g.dropped.saturating_add(1);
+            DROPPED_BEATS.store(g.dropped, Ordering::SeqCst);
             return;
         }
         if g.pending {
             g.dropped = g.dropped.saturating_add(1);
             DROPPED_BEATS.store(g.dropped, Ordering::SeqCst);
+            self.cv.notify_one();
             return;
         }
         g.pending = true;
@@ -294,11 +331,26 @@ impl GfxOnFrameGate {
         self.cv.notify_all();
     }
 
+    fn need_beats(_period_ns: u64) -> u64 {
+        1
+    }
+
     fn wait_take(&self, finish: bool) -> GfxOnFrameTake {
         let mut g = self.lock();
+        g.in_frame = false;
+        g.pending = false;
+        g.wait_epoch = g.wait_epoch.saturating_add(1);
+        let need = Self::need_beats(g.period_ns);
+        let start_gen = g.post_generation;
+        let target = match g.last_take_gen {
+            Some(prev) => prev.saturating_add(need),
+            None => start_gen.saturating_add(need),
+        };
         loop {
-            if g.pending {
+            if g.post_generation >= target {
                 g.pending = false;
+                g.in_frame = true;
+                g.last_take_gen = Some(g.post_generation);
                 g.consumed = g.consumed.saturating_add(1);
                 return GfxOnFrameTake::Item;
             }
@@ -315,7 +367,7 @@ impl GfxOnFrameGate {
     fn wait_ready(&self, finish: bool) -> GfxOnFrameTake {
         let mut g = self.lock();
         loop {
-            if g.pending {
+            if g.pending || g.in_frame {
                 return GfxOnFrameTake::Item;
             }
             if g.closed {
@@ -339,6 +391,38 @@ impl GfxOnFrameGate {
     fn consumed(&self) -> u32 {
         self.lock().consumed
     }
+
+    fn wait_epoch(&self) -> u64 {
+        self.lock().wait_epoch
+    }
+}
+
+/// Spawn `wait_take` and block until it is parked on the condvar (or fail
+/// if queued vsyncs completed the take immediately).
+fn spawn_blocked_wait(gate: &Arc<GfxOnFrameGate>) -> thread::JoinHandle<GfxOnFrameTake> {
+    let epoch = gate.wait_epoch();
+    let waiter = gate.clone();
+    let handle = thread::spawn(move || waiter.wait_take(false));
+    let deadline = Instant::now() + Duration::from_secs(2);
+    loop {
+        if gate.wait_epoch() != epoch {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "wait_take thread did not start"
+        );
+        assert!(
+            !handle.is_finished(),
+            "wait_take returned before a fresh vsync (burst)"
+        );
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(
+        !handle.is_finished(),
+        "wait_take returned before a fresh vsync (burst)"
+    );
+    handle
 }
 
 struct GfxOnFrameProducer {
@@ -390,12 +474,14 @@ fn start_vsync(gate: Arc<GfxOnFrameGate>) -> wasmtime::Result<()> {
             gate.post();
             gate.post();
             let deadline = Instant::now() + Duration::from_secs(5);
-            while gate.consumed() < 1 && Instant::now() < deadline {
-                thread::sleep(Duration::from_millis(2));
-            }
-            gate.post();
             while gate.consumed() < 2 && Instant::now() < deadline {
-                thread::sleep(Duration::from_millis(2));
+                gate.post();
+                thread::sleep(Duration::from_millis(1));
+            }
+            let burst = Instant::now() + Duration::from_millis(30);
+            while Instant::now() < burst {
+                gate.post();
+                thread::sleep(Duration::from_millis(1));
             }
             gate.close();
         })
@@ -672,4 +758,53 @@ fn wasi_gfx_frame_loop_vsync_paced() -> wasmtime::Result<()> {
         "unconsumed vsync beats must be dropped"
     );
     Ok(())
+}
+
+/// 120 Hz 1:1: a vsync during `in_frame` is enough for the next take.
+/// Waiting an extra beat after wait-start forced 60 fps on a 120 Hz Fifo panel.
+#[test]
+fn gfx_gate_120hz_in_frame_vsync_releases_next_take() {
+    let gate = GfxOnFrameGate::new();
+    let waiter = gate.clone();
+    let first = thread::spawn(move || waiter.wait_take(false));
+    thread::sleep(Duration::from_millis(20));
+    gate.post_at(8_333_333);
+    first.join().expect("first wait_take");
+    assert_eq!(gate.consumed(), 1);
+
+    gate.post_at(16_666_666);
+
+    let second = gate.clone();
+    second.wait_take(false);
+    assert_eq!(gate.consumed(), 2);
+
+    let third = spawn_blocked_wait(&gate);
+    gate.post_at(25_000_000);
+    third.join().expect("third wait_take");
+    assert_eq!(gate.consumed(), 3);
+}
+
+/// A stall that queues several vsyncs must become **one** present (latch to
+/// current gen). The following take still waits for a fresh vsync.
+#[test]
+fn gfx_gate_queued_vsyncs_do_not_burst() {
+    let gate = GfxOnFrameGate::new();
+    let waiter = gate.clone();
+    let first = thread::spawn(move || waiter.wait_take(false));
+    thread::sleep(Duration::from_millis(20));
+    gate.post_at(8_333_333);
+    gate.post_at(16_666_666);
+    first.join().expect("first wait_take");
+
+    for i in 1..=4 {
+        gate.post_at(16_666_666 + i * 8_333_333);
+    }
+
+    assert!(matches!(gate.wait_take(false), GfxOnFrameTake::Item));
+    assert_eq!(gate.consumed(), 2);
+
+    let third = spawn_blocked_wait(&gate);
+    gate.post_at(16_666_666 + 5 * 8_333_333);
+    third.join().expect("third wait_take");
+    assert_eq!(gate.consumed(), 3);
 }

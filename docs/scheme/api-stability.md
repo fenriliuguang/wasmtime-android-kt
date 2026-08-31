@@ -19,6 +19,7 @@
 15. **P010-GFXL landed:** product guest loops `on-frame` → `get-current-texture` → submit → `context.present`. **P010-GFXB:** GPU bootstrap is pin `get-gpu` → `request-adapter` → `request-device`. **P010-GFXV:** Choreographer vsync 1-slot into `on-frame`; unconsumed beats drop; `surfaceDestroyed` closes the stream. Last auto cut: **P010-DEMO**. WG-6 one-shot stays.
 16. **P010-CLAIM landed:** release-notes claim table [`claim-010.md`](claim-010.md) — all 224 pin `[method]` names instantiate; androidx holes listed; WASI subset vs named-only. **Not** CTS.
 17. **P010-PUB landed:** version `0.1.0`; consumer GAV `android-webgpu` / `runtime` / `host-dawn`. `runtime-api` / `runtime-jni` are Maven transitives only.
+18. **Native Dawn host (living):** [`../agent/native-dawn.md`](../agent/native-dawn.md). Guest pin and Kotlin `Store` / `WebGpuBackend` stay. Default consume moves to Dawn C (`ND-DEFAULT` is a `0.x` MINOR). `ExperimentalHostCallbacks` remains the `dawn-jni` leftover, not public SPI. Cube is not a consume gate.
 
 ## `0.x` rules
 

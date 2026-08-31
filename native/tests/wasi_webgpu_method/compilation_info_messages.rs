@@ -45,9 +45,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         let resource = store
             .data_mut()
             .table
-            .push(GpuCompilationInfo {
-                shader_module: 0,
-            })?;
+            .push(GpuCompilationInfo { shader_module: 0 })?;
         Ok((resource,))
     })?;
     webgpu.func_wrap(
@@ -55,9 +53,10 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |mut caller, (info,): (Resource<GpuCompilationInfo>,)| {
             caller.data_mut().table.get(&info).map(|_| ())?;
             called.store(true, Ordering::SeqCst);
-            let msg = caller.data_mut().table.push(GpuCompilationMessage {
-                shader_module: 0,
-            })?;
+            let msg = caller
+                .data_mut()
+                .table
+                .push(GpuCompilationMessage { shader_module: 0 })?;
             Ok((vec![msg],))
         },
     )?;

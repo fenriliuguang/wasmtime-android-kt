@@ -4,8 +4,9 @@ use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_err, throw_link};
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
-    gfx_on_frame_lookup, gfx_on_frame_register, gfx_on_frame_unregister, GfxOnFrameGate,
-    GfxOnFrameTake, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
+    gfx_on_frame_lookup, gfx_on_frame_register, gfx_on_frame_unregister, wasi_monotonic_now_ns,
+    GfxOnFrameGate, GfxOnFrameTake, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer,
+    GpuCommandBuffer,
     GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout,
     GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder,
     GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
@@ -827,18 +828,16 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
 
     // WASI 0.3: wasi:clocks/monotonic-clock@0.3.0 (now + resolution + wait-for + wait-until).
     {
-        use std::sync::OnceLock;
-        use std::time::Instant;
-        // Shared Instant epoch for now / wait-until (same process-wide mark).
-        static MONOTONIC_START: OnceLock<Instant> = OnceLock::new();
-
         let mut clocks = linker
             .instance("wasi:clocks/monotonic-clock@0.3.0")
             .map_err(|e| e.to_string())?;
         clocks
-            .func_wrap("now", |_store, ()| {
-                let start = MONOTONIC_START.get_or_init(Instant::now);
-                Ok((start.elapsed().as_nanos() as u64,))
+            .func_wrap("now", |store, ()| {
+                // H3: during on-frame, vsync instant of the consumed beat (not wakeup).
+                Ok((store
+                    .data()
+                    .gfx_on_frame
+                    .in_frame_instant_ns(wasi_monotonic_now_ns()),))
             })
             .map_err(|e| e.to_string())?;
         clocks
@@ -867,8 +866,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
         clocks
             .func_wrap_concurrent("wait-until", |_accessor, (when,): (u64,)| {
                 Box::pin(async move {
-                    let start = MONOTONIC_START.get_or_init(Instant::now);
-                    let now = start.elapsed().as_nanos() as u64;
+                    let now = wasi_monotonic_now_ns();
                     let sleep_ns = when.saturating_sub(now).min(1_000_000_000); // 1s host cap
                     let (tx, rx) = oneshot::channel::<()>();
                     std::thread::spawn(move || {
@@ -7721,7 +7719,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         Vec::new()
                     } else {
                         let end = (start + copy_len).min(data.len());
-                        data[start..end].to_vec()
+                        if start == 0 && end == data.len() {
+                            data
+                        } else {
+                            data[start..end].to_vec()
+                        }
                     };
                     let cb = caller
                         .data()
@@ -9977,13 +9979,14 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     mut env: JNIEnv,
     _class: JClass,
     store: jlong,
+    frame_time_nanos: jlong,
 ) {
     if store == 0 {
         throw(&mut env, "null store handle");
         return;
     }
     if let Some(gate) = gfx_on_frame_lookup(store) {
-        gate.post();
+        gate.post(frame_time_nanos);
     }
 }
 

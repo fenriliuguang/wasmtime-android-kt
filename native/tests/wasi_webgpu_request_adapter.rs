@@ -41,9 +41,8 @@ fn wasi_webgpu_request_adapter_smoke() -> wasmtime::Result<()> {
     let v = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
-                let func = accessor.with(|mut access| {
-                    instance.get_typed_func::<(), (u32,)>(&mut access, "run")
-                })?;
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
                 let (value,) = func.call_concurrent(accessor, ()).await?;
                 Ok(value)
             })
@@ -72,6 +71,9 @@ fn wasi_webgpu_request_adapter_call_async() -> wasmtime::Result<()> {
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
     let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
     let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
-    assert_eq!(v, 7, "guest run must return stub adapter rep via call_async");
+    assert_eq!(
+        v, 7,
+        "guest run must return stub adapter rep via call_async"
+    );
     Ok(())
 }

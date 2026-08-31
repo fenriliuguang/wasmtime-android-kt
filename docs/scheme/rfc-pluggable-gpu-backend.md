@@ -173,3 +173,4 @@ Landed: `:host-dawn` / `:android-webgpu`; `ExperimentalWebGpuBridge` moved out o
 - SPI method list grows with S-series; bump `0.x` MINOR.  
 - Changing “default product includes Dawn” or “none vs trap” needs a new RFC.  
 - 2026-08-26: L5 dual-track (explicit = stable; discover = bundle convenience); Central at `0.1.0`.
+- 2026-08-31: **Native Dawn host** ([`../agent/native-dawn.md`](../agent/native-dawn.md)). Default product adapter **will** be in-process Dawn C (same pin; one `.so`). Kotlin `WebGpuBackend` remains BYO / discover. androidx JNI consume becomes leftover `id = "dawn-jni"`. Not a second renderer (NG-7). `ND-DEFAULT` is a `0.x` MINOR when it lands. Full pin method suite is the consume DoD; cube is demo only.

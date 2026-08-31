@@ -31,6 +31,9 @@ fn wasi_monotonic_clock_now_smoke() -> wasmtime::Result<()> {
     let func = instance.get_typed_func::<(), (u64,)>(&mut store, "run")?;
     let (a,) = func.call(&mut store, ())?;
     let (b,) = func.call(&mut store, ())?;
-    assert!(b >= a, "monotonic mark must not decrease: first={a} second={b}");
+    assert!(
+        b >= a,
+        "monotonic mark must not decrease: first={a} second={b}"
+    );
     Ok(())
 }

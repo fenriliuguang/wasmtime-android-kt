@@ -100,7 +100,7 @@ class WasiGfxFrameLoopInstrumentedTest {
                 object : Choreographer.FrameCallback {
                     override fun doFrame(frameTimeNanos: Long) {
                         val s = storeRef.get() ?: return
-                        s.postGfxVsync()
+                        s.postGfxVsync(frameTimeNanos)
                         if (storeRef.get() != null) {
                             Choreographer.getInstance().postFrameCallback(this)
                         }

@@ -64,8 +64,7 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
         move |accessor, (device,): (Resource<GpuDevice>,)| {
             let called = called.clone();
             Box::pin(async move {
-                accessor
-                    .with(|mut access| access.data_mut().table.get(&device).map(|_| ()))?;
+                accessor.with(|mut access| access.data_mut().table.get(&device).map(|_| ()))?;
                 called.store(true, Ordering::SeqCst);
                 Ok((Ok::<Option<Resource<GpuError>>, PopErrorScopeError>(None),))
             })

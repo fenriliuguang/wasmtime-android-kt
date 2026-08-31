@@ -15,16 +15,17 @@ fn wasi_random_get_bytes_smoke() -> wasmtime::Result<()> {
     let component = Component::new(&engine, bytes)?;
 
     let mut linker = Linker::new(&engine);
-    linker
-        .instance("wasi:random/random@0.3.0")?
-        .func_wrap("get-random-bytes", |_store, (len,): (u64,)| {
+    linker.instance("wasi:random/random@0.3.0")?.func_wrap(
+        "get-random-bytes",
+        |_store, (len,): (u64,)| {
             let n = (len as usize).min(4096);
             let mut bytes = vec![0u8; n];
             if n > 0 {
                 getrandom::fill(&mut bytes).map_err(|e| wasmtime::Error::msg(e.to_string()))?;
             }
             Ok((bytes,))
-        })?;
+        },
+    )?;
 
     let mut store = Store::new(&engine, ());
     let instance = linker.instantiate(&mut store, &component)?;

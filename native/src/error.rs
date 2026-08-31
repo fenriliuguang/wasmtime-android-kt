@@ -13,18 +13,12 @@ pub enum Kind {
 impl Kind {
     fn class(self) -> &'static str {
         match self {
-            Kind::Api => {
-                "io/github/fenriliuguang/wasmtime/android/api/WasmtimeApiException"
-            }
+            Kind::Api => "io/github/fenriliuguang/wasmtime/android/api/WasmtimeApiException",
             Kind::Compile => {
                 "io/github/fenriliuguang/wasmtime/android/api/WasmtimeCompileException"
             }
-            Kind::Link => {
-                "io/github/fenriliuguang/wasmtime/android/api/WasmtimeLinkException"
-            }
-            Kind::Trap => {
-                "io/github/fenriliuguang/wasmtime/android/api/WasmtimeTrapException"
-            }
+            Kind::Link => "io/github/fenriliuguang/wasmtime/android/api/WasmtimeLinkException",
+            Kind::Trap => "io/github/fenriliuguang/wasmtime/android/api/WasmtimeTrapException",
         }
     }
 }

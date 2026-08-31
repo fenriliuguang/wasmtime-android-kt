@@ -25,10 +25,16 @@ fn register(linker: &mut Linker<TestHost>, called: Arc<AtomicBool>) -> wasmtime:
             Ok(())
         },
     )?;
-    webgpu.func_wrap("[constructor]record-gpu-pipeline-constant-value", |mut store, ()| {
-        let resource = store.data_mut().table.push(RecordGpuPipelineConstantValue)?;
-        Ok((resource,))
-    })?;
+    webgpu.func_wrap(
+        "[constructor]record-gpu-pipeline-constant-value",
+        |mut store, ()| {
+            let resource = store
+                .data_mut()
+                .table
+                .push(RecordGpuPipelineConstantValue)?;
+            Ok((resource,))
+        },
+    )?;
     webgpu.func_wrap(
         "[method]record-gpu-pipeline-constant-value.values",
         move |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
@@ -81,7 +87,8 @@ fn wasi_webgpu_method_record_gpu_pipeline_constant_value_values_smoke() -> wasmt
 }
 
 #[test]
-fn wasi_webgpu_method_record_gpu_pipeline_constant_value_values_call_async() -> wasmtime::Result<()> {
+fn wasi_webgpu_method_record_gpu_pipeline_constant_value_values_call_async() -> wasmtime::Result<()>
+{
     let mut config = Config::new();
     config.wasm_component_model(true);
     config.wasm_component_model_async(true);
