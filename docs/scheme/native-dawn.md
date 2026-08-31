@@ -18,7 +18,7 @@ Cube / out-of-tree demo is **not** a consume needle.
 |------|-----------------------------|
 | ND-RFC | landed 2026-08-31 (playbook / skill / gates) |
 | ND-DISP | landed 2026-08-31 (NativeGpu \| JniBackend; JNI default) |
-| ND-SO | `gap: nd so pending` |
+| ND-SO | landed 2026-08-31 (Dawn C API Android `.so` recipe; JNI leftover still default) |
 | ND-HOST | `gap: nd host pending` |
 | ND-BOOT | `gap: nd boot pending` |
 | ND-RES | `gap: nd res pending` |

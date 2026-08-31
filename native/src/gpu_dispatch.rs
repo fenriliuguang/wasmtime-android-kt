@@ -3,7 +3,8 @@
 //!
 //! ND-DISP: dispatch only. Default is JNI so existing tests stay green.
 //! [`NativeGpu`] may be unset; trait + handle table land in ND-HOST.
-//! Do not reimplement `jvm::exp_*` here.
+//! ND-SO: Dawn C API `.so` recipe `scripts/build-dawn-c-android.py` (not loaded
+//! until ND-DEFAULT). Do not reimplement `jvm::exp_*` here.
 
 use crate::host::HostState;
 use jni::objects::GlobalRef;

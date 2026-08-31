@@ -6,6 +6,8 @@
 
 **现行（2026-08-31）：** 默认消费将改走 Dawn C（[`agent/native-dawn.md`](agent/native-dawn.md)）。Kotlin 主机当映射与 `dawn-jni` 剩路。不要默认 APK 里放两份 Dawn。
 
+**ND-SO 钉：** 与 `androidx.webgpu:webgpu:1.0.0-alpha05` AAR 同一 Dawn SHA（`9d41fdf36977cca92361c6ae2769129bbaaafd9b`）。配方 [`../scripts/build-dawn-c-android.py`](../scripts/build-dawn-c-android.py)。`.so` 不进 git；ND-DEFAULT 之前不进默认 APK。
+
 对外仍是 `:host-dawn` / `:android-webgpu` / `WebGpuBackend`。Maven 坐标（`0.1.0`）：`runtime` / `host-dawn` / **`android-webgpu`**。`WasiWebGpuHost` 是实现细节（首拷保留 `…experimental…` 包名）。
 
 ## 树内布局

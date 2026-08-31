@@ -35,6 +35,7 @@ cargo license --manifest-path native/Cargo.toml --avoid-dev-deps --avoid-build-d
 |------------|--------------|
 | AndroidX (`core-ktx`, `appcompat`, test libs) | Apache-2.0 |
 | `androidx.webgpu:webgpu:1.0.0-alpha05` | Dawn Java API + bundled `libwebgpu_c_bundled.so`. AndroidX artifact is Apache-2.0; Dawn native is typically BSD-3-Clause — see the AAR `NOTICE`. **Do not git-add the `.so`.** |
+| Dawn C API (ND-SO, not default APK) | Same Dawn SHA as that AAR (`9d41fdf36977cca92361c6ae2769129bbaaafd9b`). Recipe [`scripts/build-dawn-c-android.py`](scripts/build-dawn-c-android.py) builds `libwebgpu_dawn.so` (`webgpu.h` exports). BSD-3-Clause: [`native/third_party/dawn-c/LICENSE`](native/third_party/dawn-c/LICENSE). **Do not git-add the `.so`.** Do not ship next to androidx bundled. |
 | Kotlin stdlib / Gradle plugins | Apache-2.0 |
 | JUnit 4 | EPL-1.0 |
 | Vendored Host Kotlin (`:host-dawn` `…experimental.host` / `dawn` / `abicm`) | MIT. Copied from `wasi-webgpu-jvm-mvp` (copyright 焚日流光 2026). Full text: [`host-dawn/third_party/wasi-webgpu-jvm-mvp/LICENSE`](host-dawn/third_party/wasi-webgpu-jvm-mvp/LICENSE). Origin commit: [`ORIGIN.txt`](host-dawn/third_party/wasi-webgpu-jvm-mvp/ORIGIN.txt). |

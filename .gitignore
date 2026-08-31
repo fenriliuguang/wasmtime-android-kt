@@ -26,5 +26,11 @@ android/jniLibs/build-info.json
 desktop/jniLibs/build-info.json
 !native/link-stubs/libpthread.so
 
+# ND-SO Dawn C API clone / install / AAR cache (never git-add androidx or self-built .so).
+native/third_party/dawn-c/src/
+native/third_party/dawn-c/out/
+native/third_party/dawn-c/install/
+native/third_party/dawn-c/.cache/
+
 # Copied from fixtures/m1 by smoke-app preBuild.
 smoke-app/src/androidTest/assets/
