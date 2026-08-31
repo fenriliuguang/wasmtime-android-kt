@@ -1,5 +1,6 @@
 //! Store host state: Kotlin callbacks + u32-rep widget / gpu resources.
 
+use crate::gpu_dispatch::NativeGpu;
 use jni::objects::GlobalRef;
 use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
@@ -203,8 +204,11 @@ pub struct GpuBuffer {
 pub struct HostState {
     pub table: ResourceTable,
     pub add_cb: Option<GlobalRef>,
-    /// Kotlin [ExperimentalHostCallbacks] for experimental CM host (M3/M4).
+    /// Kotlin [ExperimentalHostCallbacks] for experimental CM host (M3/M4)
+    /// and leftover [`crate::gpu_dispatch::GpuBackend::JniBackend`].
     pub experimental_host_cb: Option<GlobalRef>,
+    /// In-process Dawn C consume. Unset → JNI default (`GpuBackend::JniBackend`).
+    pub native_gpu: Option<NativeGpu>,
     /// P010-GFXV: 1-slot `on-frame` vsync gate (Choreographer → GpuThread write).
     pub gfx_on_frame: Arc<GfxOnFrameGate>,
 }
@@ -215,6 +219,7 @@ impl Default for HostState {
             table: ResourceTable::new(),
             add_cb: None,
             experimental_host_cb: None,
+            native_gpu: None,
             gfx_on_frame: GfxOnFrameGate::new(),
         }
     }
@@ -509,11 +514,20 @@ mod gfx_h3_instant {
             if gate.wait_epoch() != epoch {
                 break;
             }
-            assert!(std::time::Instant::now() < deadline, "wait_take thread did not start");
-            assert!(!handle.is_finished(), "wait_take returned before a fresh vsync");
+            assert!(
+                std::time::Instant::now() < deadline,
+                "wait_take thread did not start"
+            );
+            assert!(
+                !handle.is_finished(),
+                "wait_take returned before a fresh vsync"
+            );
             thread::sleep(Duration::from_millis(1));
         }
-        assert!(!handle.is_finished(), "wait_take returned before a fresh vsync");
+        assert!(
+            !handle.is_finished(),
+            "wait_take returned before a fresh vsync"
+        );
         handle
     }
 }

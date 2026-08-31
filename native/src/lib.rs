@@ -7,6 +7,7 @@
 mod cm;
 mod engine;
 mod error;
+mod gpu_dispatch;
 mod handles;
 mod host;
 mod jvm;

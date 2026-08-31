@@ -17,7 +17,7 @@ Cube / out-of-tree demo is **not** a consume needle.
 | Lane | Needle (delete when landed) |
 |------|-----------------------------|
 | ND-RFC | landed 2026-08-31 (playbook / skill / gates) |
-| ND-DISP | `gap: nd disp pending` |
+| ND-DISP | landed 2026-08-31 (NativeGpu \| JniBackend; JNI default) |
 | ND-SO | `gap: nd so pending` |
 | ND-HOST | `gap: nd host pending` |
 | ND-BOOT | `gap: nd boot pending` |
