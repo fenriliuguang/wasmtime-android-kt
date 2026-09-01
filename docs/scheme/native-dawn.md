@@ -25,7 +25,7 @@ Cube / out-of-tree demo is **not** a consume needle.
 | ND-PIPE | landed 2026-08-31 (native bind-group/layout + compute/render pipelines; async + constants; table-backed) |
 | ND-ENC | landed 2026-09-01 (native command-encoder / render-compute pass / draws / copies / query-sets; table-backed) |
 | ND-QUEUE | landed 2026-09-01 (native submit / write-buffer-with-copy / write-texture / work-done; one host copy; table-backed) |
-| ND-REST | `gap: nd rest pending` |
+| ND-REST | landed 2026-09-01 (native remaining pin `[method]`s; `wasi_webgpu_method` green on NativeGpu; table-backed) |
 | ND-SURF | `gap: nd surf pending` |
 | ND-DEFAULT | `gap: nd default pending` |
 | ND-CLAIM | `gap: nd claim pending` |

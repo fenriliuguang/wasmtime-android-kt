@@ -259,3 +259,35 @@ fn queue_on_submitted_work_done_fixture_on_native_gpu() -> wasmtime::Result<()> 
     assert_eq!(v, 1);
     Ok(())
 }
+
+/// ND-REST: every remaining pin `[method]` fixture on product `define_host` + NativeGpu.
+#[test]
+fn all_w1_method_fixtures_on_native_gpu() -> wasmtime::Result<()> {
+    let dir = format!("{}/../fixtures/w1", env!("CARGO_MANIFEST_DIR"));
+    let mut names: Vec<String> = std::fs::read_dir(&dir)?
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.starts_with("webgpu_method_") && n.ends_with(".wasm"))
+        .collect();
+    names.sort();
+    assert!(
+        names.len() >= 200,
+        "expected the full w1 method suite, got {}",
+        names.len()
+    );
+    let mut failed = Vec::new();
+    for name in &names {
+        match run_w1(name, true) {
+            Ok(1) => {}
+            Ok(other) => failed.push(format!("{name}: run={other}")),
+            Err(err) => failed.push(format!("{name}: {err}")),
+        }
+    }
+    assert!(
+        failed.is_empty(),
+        "NativeGpu wasi_webgpu_method sweep failed ({}):\n{}",
+        failed.len(),
+        failed.join("\n")
+    );
+    Ok(())
+}

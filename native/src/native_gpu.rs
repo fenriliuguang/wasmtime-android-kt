@@ -284,6 +284,28 @@ pub struct NativeQueueWrite {
     pub bytes: Vec<u8>,
 }
 
+/// Table-backed buffer leftover until Dawn C is bound.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeBuffer {
+    pub size: u64,
+    pub usage: u32,
+    pub mapped: bool,
+    pub mapped_bytes: Vec<u8>,
+}
+
+/// Table-backed texture leftover until Dawn C is bound.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeTexture {
+    pub width: u32,
+    pub height: u32,
+    pub depth: u32,
+    pub format: u32,
+    pub usage: u32,
+    pub mip: u32,
+    pub sample: u32,
+    pub dimension: u32,
+}
+
 impl Default for NativeAdapterInfo {
     fn default() -> Self {
         Self {
@@ -316,6 +338,14 @@ pub struct NativeGpuHost {
     queue_writes: HashMap<u32, NativeQueueWrite>,
     /// Last `queue.submit` command-buffer reps.
     last_submit: Vec<u32>,
+    /// WIT `record-option-gpu-size64` maps keyed by resource `rep`.
+    size64_records: HashMap<u32, Vec<(String, Option<u64>)>>,
+    /// `.label` / `.set-label` leftover (Dawn C slot still 0).
+    labels: HashMap<u32, String>,
+    /// Buffer size / usage / map leftover until Dawn C is bound.
+    buffers: HashMap<u32, NativeBuffer>,
+    /// Texture getter leftover until Dawn C is bound.
+    textures: HashMap<u32, NativeTexture>,
 }
 
 impl Default for NativeGpuHost {
@@ -336,6 +366,10 @@ impl NativeGpuHost {
             query_sets: HashMap::new(),
             queue_writes: HashMap::new(),
             last_submit: Vec::new(),
+            size64_records: HashMap::new(),
+            labels: HashMap::new(),
+            buffers: HashMap::new(),
+            textures: HashMap::new(),
         }
     }
 
@@ -359,8 +393,15 @@ impl NativeGpuHost {
             ResourceKind::Queue => {
                 self.queue_writes.remove(&handle.raw());
             }
+            ResourceKind::Buffer => {
+                self.buffers.remove(&handle.raw());
+            }
+            ResourceKind::Texture => {
+                self.textures.remove(&handle.raw());
+            }
             _ => {}
         }
+        self.labels.remove(&handle.raw());
     }
 
     /// `rep == 0` is the fixture `get-adapter` stub; otherwise a live table id.
@@ -469,8 +510,25 @@ impl NativeGpuHost {
         label: &str,
     ) -> Result<GpuHandle, NativeGpuError> {
         self.get(device, ResourceKind::Device)?;
-        let _ = (size, usage, mapped_at_creation, label);
-        Ok(self.table.insert(ResourceKind::Buffer, 0))
+        let mapped = mapped_at_creation == 1;
+        let handle = self.table.insert(ResourceKind::Buffer, 0);
+        if !label.is_empty() {
+            self.labels.insert(handle.raw(), label.to_string());
+        }
+        self.buffers.insert(
+            handle.raw(),
+            NativeBuffer {
+                size,
+                usage,
+                mapped,
+                mapped_bytes: if mapped {
+                    vec![0; size.min(4096) as usize]
+                } else {
+                    Vec::new()
+                },
+            },
+        );
+        Ok(handle)
     }
 
     pub fn create_texture(
@@ -488,19 +546,25 @@ impl NativeGpuHost {
         label: &str,
     ) -> Result<GpuHandle, NativeGpuError> {
         self.get(device, ResourceKind::Device)?;
-        let _ = (
-            width,
-            height,
-            depth,
-            format,
-            usage,
-            mip,
-            sample,
-            dimension,
-            view_formats,
-            label,
+        let _ = view_formats;
+        let handle = self.table.insert(ResourceKind::Texture, 0);
+        if !label.is_empty() {
+            self.labels.insert(handle.raw(), label.to_string());
+        }
+        self.textures.insert(
+            handle.raw(),
+            NativeTexture {
+                width,
+                height,
+                depth,
+                format,
+                usage,
+                mip,
+                sample,
+                dimension,
+            },
         );
-        Ok(self.table.insert(ResourceKind::Texture, 0))
+        Ok(handle)
     }
 
     pub fn create_sampler(
@@ -1148,6 +1212,195 @@ impl NativeGpuHost {
         let _ = self.resolve_queue(queue_rep)?;
         Ok(())
     }
+
+    pub fn set_label(&mut self, rep: u32, label: String) {
+        self.labels.insert(rep, label);
+    }
+
+    pub fn label(&self, rep: u32) -> String {
+        self.labels.get(&rep).cloned().unwrap_or_default()
+    }
+
+    pub fn size64_add(&mut self, handle: u32, key: String, value: Option<u64>) {
+        let rec = self.size64_records.entry(handle).or_default();
+        if let Some(slot) = rec.iter_mut().find(|(k, _)| *k == key) {
+            slot.1 = value;
+        } else {
+            rec.push((key, value));
+        }
+    }
+
+    pub fn size64_get(&self, handle: u32, key: &str) -> Option<Option<u64>> {
+        self.size64_records
+            .get(&handle)
+            .and_then(|rec| rec.iter().find(|(k, _)| k == key).map(|(_, v)| *v))
+    }
+
+    pub fn size64_has(&self, handle: u32, key: &str) -> bool {
+        self.size64_get(handle, key).is_some()
+    }
+
+    pub fn size64_remove(&mut self, handle: u32, key: &str) {
+        if let Some(rec) = self.size64_records.get_mut(&handle) {
+            rec.retain(|(k, _)| k != key);
+        }
+    }
+
+    pub fn size64_keys(&self, handle: u32) -> Vec<String> {
+        self.size64_records
+            .get(&handle)
+            .map(|rec| rec.iter().map(|(k, _)| k.clone()).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn size64_values(&self, handle: u32) -> Vec<Option<u64>> {
+        self.size64_records
+            .get(&handle)
+            .map(|rec| rec.iter().map(|(_, v)| *v).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn size64_entries(&self, handle: u32) -> Vec<(String, Option<u64>)> {
+        self.size64_records
+            .get(&handle)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn buffer_size(&mut self, buffer_rep: u32) -> Result<u64, NativeGpuError> {
+        let handle = self.resolve_buffer(buffer_rep)?;
+        Ok(self.buffers.get(&handle.raw()).map(|b| b.size).unwrap_or(0))
+    }
+
+    pub fn buffer_usage(&mut self, buffer_rep: u32) -> Result<u32, NativeGpuError> {
+        let handle = self.resolve_buffer(buffer_rep)?;
+        Ok(self
+            .buffers
+            .get(&handle.raw())
+            .map(|b| b.usage)
+            .unwrap_or(0))
+    }
+
+    pub fn buffer_mapped(&mut self, buffer_rep: u32) -> Result<bool, NativeGpuError> {
+        let handle = self.resolve_buffer(buffer_rep)?;
+        Ok(self
+            .buffers
+            .get(&handle.raw())
+            .map(|b| b.mapped)
+            .unwrap_or(false))
+    }
+
+    pub fn buffer_map_async(&mut self, buffer_rep: u32) -> Result<(), NativeGpuError> {
+        let handle = self.resolve_buffer(buffer_rep)?;
+        if let Some(buf) = self.buffers.get_mut(&handle.raw()) {
+            buf.mapped = true;
+            if buf.mapped_bytes.is_empty() {
+                buf.mapped_bytes = vec![0; buf.size.min(4096) as usize];
+            }
+        }
+        Ok(())
+    }
+
+    pub fn buffer_unmap(&mut self, buffer_rep: u32) -> Result<(), NativeGpuError> {
+        let handle = self.resolve_buffer(buffer_rep)?;
+        if let Some(buf) = self.buffers.get_mut(&handle.raw()) {
+            buf.mapped = false;
+        }
+        Ok(())
+    }
+
+    pub fn buffer_mapped_range(&mut self, buffer_rep: u32) -> Result<Vec<u8>, NativeGpuError> {
+        let handle = self.resolve_buffer(buffer_rep)?;
+        Ok(self
+            .buffers
+            .get(&handle.raw())
+            .map(|b| b.mapped_bytes.clone())
+            .unwrap_or_default())
+    }
+
+    pub fn buffer_set_mapped_range(
+        &mut self,
+        buffer_rep: u32,
+        data: Vec<u8>,
+    ) -> Result<(), NativeGpuError> {
+        let handle = self.resolve_buffer(buffer_rep)?;
+        if let Some(buf) = self.buffers.get_mut(&handle.raw()) {
+            buf.mapped_bytes = data;
+            buf.mapped = true;
+        }
+        Ok(())
+    }
+
+    pub fn texture_meta(&mut self, texture_rep: u32) -> Result<NativeTexture, NativeGpuError> {
+        let handle = self.resolve_texture(texture_rep)?;
+        Ok(self
+            .textures
+            .get(&handle.raw())
+            .cloned()
+            .unwrap_or(NativeTexture {
+                width: 1,
+                height: 1,
+                depth: 1,
+                format: 0,
+                usage: 0,
+                mip: 1,
+                sample: 1,
+                dimension: 2,
+            }))
+    }
+
+    pub fn create_render_bundle_encoder(
+        &mut self,
+        device: GpuHandle,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        Ok(self.table.insert(ResourceKind::RenderBundleEncoder, 0))
+    }
+
+    pub fn resolve_render_bundle_encoder(
+        &mut self,
+        encoder_rep: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        if encoder_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.create_render_bundle_encoder(device)
+        } else {
+            let handle = GpuHandle::from_raw(encoder_rep)?;
+            self.get(handle, ResourceKind::RenderBundleEncoder)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn finish_render_bundle(&mut self, encoder_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        let _ = self.resolve_render_bundle_encoder(encoder_rep)?;
+        Ok(self.table.insert(ResourceKind::RenderBundle, 0))
+    }
+
+    pub fn pipeline_bind_group_layout(
+        &mut self,
+        _pipeline_rep: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        let device = self.resolve_device(GpuHandle::NULL)?;
+        self.create_bind_group_layout(device, &[], &[], &[], &[], &[])
+    }
+
+    pub fn canvas_configure(&mut self, ctx_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if ctx_rep == GpuHandle::NULL {
+            Ok(self.table.insert(ResourceKind::CanvasContext, 0))
+        } else if let Ok(handle) = GpuHandle::from_raw(ctx_rep) {
+            if self.table.contains(handle) {
+                return Ok(handle);
+            }
+            Ok(self.table.insert(ResourceKind::CanvasContext, 0))
+        } else {
+            Ok(self.table.insert(ResourceKind::CanvasContext, 0))
+        }
+    }
+
+    pub fn canvas_current_texture(&mut self, _ctx_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        let device = self.resolve_device(GpuHandle::NULL)?;
+        self.create_texture(device, 1, 1, 1, 0, 0, 1, 1, 2, &[], "")
+    }
 }
 
 impl NativeGpu for NativeGpuHost {
@@ -1193,6 +1446,10 @@ impl NativeGpu for NativeGpuHost {
         self.query_sets.clear();
         self.queue_writes.clear();
         self.last_submit.clear();
+        self.size64_records.clear();
+        self.labels.clear();
+        self.buffers.clear();
+        self.textures.clear();
     }
 
     fn request_adapter(&mut self, options: &NativeRequestAdapterOptions<'_>) -> Option<GpuHandle> {
@@ -1472,5 +1729,29 @@ mod tests {
         assert_eq!(gpu.last_submit().len(), 1);
         gpu.on_submitted_work_done(queue.raw()).expect("work-done");
         assert_eq!(gpu.get(queue, ResourceKind::Queue).unwrap().dawn, 0);
+    }
+
+    #[test]
+    fn rest_labels_size64_buffer_bundle_no_jni() {
+        let mut gpu = NativeGpuHost::new();
+        let device = gpu.resolve_device(0).expect("boot device");
+        gpu.set_label(device.raw(), "l2".into());
+        assert_eq!(gpu.label(device.raw()), "l2");
+        gpu.size64_add(3, "w".into(), Some(4));
+        assert!(gpu.size64_has(3, "w"));
+        assert_eq!(gpu.size64_get(3, "w"), Some(Some(4)));
+        assert_eq!(gpu.size64_keys(3), vec!["w".to_string()]);
+        let buf = gpu.create_buffer(device, 8, 0x4, 1, "buf").expect("buffer");
+        assert_eq!(gpu.buffer_size(buf.raw()).unwrap(), 8);
+        assert!(gpu.buffer_mapped(buf.raw()).unwrap());
+        gpu.buffer_unmap(buf.raw()).unwrap();
+        assert!(!gpu.buffer_mapped(buf.raw()).unwrap());
+        let enc = gpu
+            .create_render_bundle_encoder(device)
+            .expect("bundle-encoder");
+        let bundle = gpu.finish_render_bundle(enc.raw()).expect("bundle");
+        assert_eq!(gpu.get(bundle, ResourceKind::RenderBundle).unwrap().dawn, 0);
+        let tex = gpu.canvas_current_texture(0).expect("canvas texture");
+        assert_eq!(gpu.texture_meta(tex.raw()).unwrap().width, 1);
     }
 }
