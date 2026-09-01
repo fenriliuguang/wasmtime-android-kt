@@ -11,12 +11,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
-import androidx.webgpu.helper.Util
 import io.github.fenriliuguang.wasmtime.android.Component
 import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
 import io.github.fenriliuguang.wasmtime.android.host.dawn.GpuBackends
+import io.github.fenriliuguang.wasmtime.android.jni.NativeBridge
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -55,7 +55,7 @@ class WasiWebGpuDawnGuestCanvasPresentInstrumentedTest {
                             Store.create(engine).use { store ->
                                 store.setWebGpuBackend(GpuBackends.dawn())
                                 store.bindCanvasNativeWindow(
-                                    Util.windowFromSurface(ctx.surface),
+                                    NativeBridge.nativeWindowFromSurface(ctx.surface),
                                     ctx.width,
                                     ctx.height,
                                 )

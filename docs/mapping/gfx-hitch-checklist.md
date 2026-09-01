@@ -6,7 +6,7 @@ Not a cut queue. Living **device** investigation for the out-of-tree rotating cu
 
 Hitch **still observed** as a **~5 s small compositor rewind** after H12 made present 1:1 (~8.3 ms acquire, 0 `>20ms`). App-side DisplayManager votes that force SurfaceFlinger to 120 Hz **worsen** it (~3 s). H1–H28: do not restack those votes. **Far causes** (runtime wiring / guest / Wasmtime / compositor) are §6. Do not vendor the demo. Do not file upstream GitHub issues.
 
-Related: [`gap-webgpu-wit-androidx.md`](gap-webgpu-wit-androidx.md) §5, [`threading-android.md`](threading-android.md) §8, [`frame-loop-suggestion.md`](frame-loop-suggestion.md). Guest clocks/dt lives in the **out-of-tree** examples repo.
+Related: [`gap-webgpu-wit-androidx.md`](gap-webgpu-wit-androidx.md) §5, [`threading-android.md`](threading-android.md) §8, [`frame-loop-suggestion.md`](frame-loop-suggestion.md). Guest clocks/dt lives in the **out-of-tree** examples repo. Dawn C A/B (same hitch after dropping androidx JNI): [`gfx-hitch-native-dawn.md`](gfx-hitch-native-dawn.md).
 
 **Check**
 
@@ -141,6 +141,7 @@ Sources: this tree (`native/src/engine.rs`, `native/src/cm.rs` `poll_produce` / 
 | D22 | Vivo RMS / `vivo_rms_screen` / adaptive 60·90·120 | **Open** / **Likely** | Device has `vivo_rms_screen`; `mAlwaysRespectAppRequest=false`; forcing SF 120 **increased** hitch frequency. Vivo “Smart Switch” / auto refresh is a known flicker class. | User Settings: lock 120 Hz, disable smart switch. Not a runtime vote. |
 | D23 | Kernel / DisplayModeDirector idle refresh timeout | **Open** (weak) | Cube presents every vsync, so the layer is not idle. Idle timers (often seconds) still appear in vendor SF. | Overlay “show refresh rate”; watch if Hz dips at the pop. |
 | D24 | Native androidx.webgpu cube (no Wasmtime) would hitch the same | **Closed** — upstream does **not** reproduce it alone | `hosts/native-webgpu` `CubeActivity` (pure androidx.webgpu 1.0.0-alpha05, no Wasmtime, no `host-dawn`) on V2458A: 1:1 present @120 Hz, Choreographer ~8.3 ms (0 `>20ms`), acquire ~8.3 ms (0 `>20ms`, `SuccessOptimal`), display pinned 120 Hz — clean timing **and no ~5 s pop** (eye-checked). Upstream androidx.webgpu / SF / OEM VRR is smooth on its own. | The pop is Wasmtime/`host-dawn`-specific: re-open D2 (CM pump vsync→present latency) and D3 (no present timestamp). |
+| D25 | NativeGpu Dawn C + Wasmtime would be smooth (no androidx JNI) | **Closed** — same ~5 s class | 2026-09-01 `fullscreen-surface` + `libwebgpu_dawn.so`: `dlopen` ok, Vulkan adapter, Choreographer 120 Hz 0 `>20ms`, visual rewind remains. ART/Kotlin hot-path tax is **Closed** for this hitch. | Transfer table: [`gfx-hitch-native-dawn.md`](gfx-hitch-native-dawn.md). |
 
 ### 6.5 Suggested probes (one variable)
 
@@ -148,4 +149,5 @@ Sources: this tree (`native/src/engine.rs`, `native/src/cm.rs` `poll_produce` / 
 2. **Perfetto FrameTimeline** for 20 s: `BUFFER_STUFFING` / `PREDICTION_ERROR` aligned to the pop.  
 3. **Settings lock 120 Hz** (no app vote change).  
 4. **Skip-present every N frames** (guest or host) to drain BLAST — only if timestats shows stuffing.  
-5. **No-Wasmtime native cube** A/B. Stop if it hitch-matches. → **Done** (D24): native cube is smooth (no ~5 s pop) → the hitch is Wasmtime/`host-dawn`-specific, not upstream. Re-open D2/D3.
+5. **No-Wasmtime native cube** A/B. Stop if it hitch-matches. → **Done** (D24): native cube is smooth (no ~5 s pop) → the hitch is Wasmtime/`host-dawn`-specific, not upstream. Re-open D2/D3.  
+6. **Dawn C NativeGpu A/B** (drop androidx JNI, keep Wasmtime). → **Done** (D25): same pop → not the androidx façade. Continue on [`gfx-hitch-native-dawn.md`](gfx-hitch-native-dawn.md).

@@ -30,7 +30,12 @@ INSTALL = PIN_DIR / "install"
 SRC = PIN_DIR / "src"
 
 ANDROIDX_WEBGPU = "1.0.0-alpha05"
-DAWN_COMMIT = "9d41fdf36977cca92361c6ae2769129bbaaafd9b"
+# Default pin matches androidx AAR. Override with --commit / DAWN_COMMIT
+# (local experiment: latest GitHub dated tag, not a Chromium branch).
+DAWN_COMMIT = os.environ.get(
+    "DAWN_COMMIT",
+    "9d41fdf36977cca92361c6ae2769129bbaaafd9b",
+)
 NDK_VERSION = "28.2.13676358"
 API_LEVEL = 24
 AAR_NAME = f"webgpu-{ANDROIDX_WEBGPU}.aar"
@@ -38,9 +43,13 @@ AAR_URL = (
     "https://dl.google.com/dl/android/maven2/androidx/webgpu/webgpu/"
     f"{ANDROIDX_WEBGPU}/{AAR_NAME}"
 )
+# googlesource first, then GitHub, then CN-reachable GitHub frontends.
 DAWN_REMOTES = (
     "https://dawn.googlesource.com/dawn",
     "https://github.com/google/dawn.git",
+    "https://ghfast.top/https://github.com/google/dawn.git",
+    "https://gitclone.com/github.com/google/dawn.git",
+    "https://kkgithub.com/google/dawn.git",
 )
 C_API_NEEDLES = (
     "wgpuDeviceCreateBuffer",
@@ -160,6 +169,35 @@ def probe_aar() -> None:
         f"C API build ({C_API_SO}) from pin {DAWN_COMMIT}."
     )
     print("Do not git-add the AAR or libwebgpu_c_bundled.so.")
+
+
+def ensure_cmake_on_path() -> None:
+    """Prefer Android SDK CMake (not on PATH by default)."""
+    if shutil.which("cmake"):
+        return
+    sdk = os.environ.get("ANDROID_SDK_ROOT") or os.environ.get("ANDROID_HOME")
+    roots: list[Path] = []
+    if sdk:
+        roots.append(Path(sdk))
+    local = ROOT / "local.properties"
+    if local.is_file():
+        for line in local.read_text(encoding="utf-8").splitlines():
+            if line.startswith("sdk.dir="):
+                roots.append(Path(line.split("=", 1)[1].strip().replace("\\", "/")))
+    roots.append(Path.home() / "AppData" / "Local" / "Android" / "Sdk")
+    for root in roots:
+        cmake_root = root / "cmake"
+        if not cmake_root.is_dir():
+            continue
+        for bin_dir in sorted(cmake_root.glob("*/bin"), reverse=True):
+            if (bin_dir / "cmake.exe").is_file() or (bin_dir / "cmake").is_file():
+                os.environ["PATH"] = str(bin_dir) + os.pathsep + os.environ.get("PATH", "")
+                print(f"using cmake from {bin_dir}")
+                return
+    die(
+        "cmake not on PATH. Install Android SDK cmake "
+        '(sdkmanager --install "cmake;3.31.6") or add cmake to PATH.'
+    )
 
 
 def find_ndk() -> Path:
@@ -288,9 +326,109 @@ def build_abi(ndk: Path, abi: str) -> Path:
     return dest
 
 
+PREBUILT_TAG = os.environ.get("DAWN_PREBUILT_TAG", "v20260828.215121")
+PREBUILT_SHA = os.environ.get(
+    "DAWN_PREBUILT_SHA",
+    "bddf1a04f7c262107a9aae301c45fc49e15c7fef",
+)
+PREBUILT_MIRRORS = (
+    "https://ghfast.top/https://github.com/google/dawn/releases/download/"
+    f"{PREBUILT_TAG}/dawn-android-{PREBUILT_SHA}.tar.gz",
+    "https://github.com/google/dawn/releases/download/"
+    f"{PREBUILT_TAG}/dawn-android-{PREBUILT_SHA}.tar.gz",
+)
+CLANG_TRIPLE = {
+    "arm64-v8a": "aarch64-linux-android24",
+    "armeabi-v7a": "armv7a-linux-androideabi24",
+    "x86_64": "x86_64-linux-android24",
+    "x86": "i686-linux-android24",
+}
+
+
+def find_ndk_clang(ndk: Path, abi: str) -> Path:
+    triple = CLANG_TRIPLE.get(abi)
+    if not triple:
+        die(f"no clang triple for ABI {abi}")
+    prebuilt = ndk / "toolchains" / "llvm" / "prebuilt"
+    for name in (f"{triple}-clang++.cmd", f"{triple}-clang++"):
+        hits = list(prebuilt.rglob(name))
+        if hits:
+            return hits[0]
+    die(f"NDK clang++ for {triple} not under {prebuilt}")
+    raise AssertionError
+
+
+def link_prebuilt_archive(archive: Path, abi: str, ndk: Path) -> Path:
+    dest_dir = OUT / abi
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / C_API_SO
+    clang = find_ndk_clang(ndk, abi)
+    cmd = [
+        str(clang),
+        "-shared",
+        "-fPIC",
+        # APK does not ship libc++_shared.so; NDK clang++ defaults to it.
+        "-static-libstdc++",
+        "-Wl,--whole-archive",
+        str(archive),
+        "-Wl,--no-whole-archive",
+        f"-Wl,-soname,{C_API_SO}",
+        "-llog",
+        "-landroid",
+        "-lvulkan",
+        "-ldl",
+        "-lm",
+        "-o",
+        str(dest),
+    ]
+    run(cmd)
+    names = symbol_names(nm_defined(dest))
+    missing = [n for n in C_API_NEEDLES if n not in names]
+    if missing:
+        die(f"{dest} missing C API exports {missing}")
+    mib = dest.stat().st_size / (1024 * 1024)
+    print(f"prebuilt-linked {dest}  {dest.stat().st_size} bytes ({mib:.2f} MiB)")
+    print(f"Dawn GitHub prebuilt {PREBUILT_TAG} ({PREBUILT_SHA[:12]})")
+    print("Do not git-add this .so.")
+    return dest
+
+
+def install_prebuilt(targets: list[str]) -> None:
+    """Google Dawn Android release is static `.a`; link a C API `.so` with NDK."""
+    ndk = find_ndk()
+    tarball = CACHE / f"dawn-android-{PREBUILT_SHA[:8]}.tar.gz"
+    if not (tarball.is_file() and tarball.stat().st_size > 1_000_000):
+        last: Exception | None = None
+        for url in PREBUILT_MIRRORS:
+            try:
+                print(f"fetch {url}")
+                download(url, tarball)
+                if tarball.is_file() and tarball.stat().st_size > 1_000_000:
+                    last = None
+                    break
+            except Exception as exc:  # noqa: BLE001
+                last = exc
+        if last is not None:
+            die(f"prebuilt download failed: {last}")
+    extract = CACHE / "dawn-android-prebuilt"
+    extract.mkdir(parents=True, exist_ok=True)
+    run(["tar", "-xf", str(tarball), "-C", str(extract)])
+    for abi in targets:
+        archives = [
+            p
+            for p in extract.rglob("libwebgpu_dawn.a")
+            if abi in p.parts
+        ]
+        if not archives:
+            die(f"prebuilt tarball has no {abi}/libwebgpu_dawn.a")
+        link_prebuilt_archive(archives[0], abi, ndk)
+
+
 def build(targets: list[str]) -> None:
+    ensure_cmake_on_path()
     ndk = find_ndk()
     print(f"NDK {ndk}")
+    print(f"cmake {shutil.which('cmake')}")
     for abi in targets:
         build_abi(ndk, abi)
 
@@ -300,21 +438,35 @@ def main() -> None:
     ap.add_argument("--probe-aar", action="store_true")
     ap.add_argument("--build", action="store_true")
     ap.add_argument(
+        "--prebuilt",
+        action="store_true",
+        help="Use Google Dawn Android GitHub .a and NDK-link libwebgpu_dawn.so",
+    )
+    ap.add_argument(
         "--targets",
         nargs="+",
         default=["arm64-v8a"],
         help="Android ABIs for --build (default: arm64-v8a)",
     )
+    ap.add_argument(
+        "--commit",
+        default=None,
+        help="Dawn git SHA (overrides DAWN_COMMIT / default androidx pin)",
+    )
     args = ap.parse_args()
-    if not args.probe_aar and not args.build:
+    if args.commit:
+        globals()["DAWN_COMMIT"] = args.commit
+    if not args.probe_aar and not args.build and not args.prebuilt:
         ap.print_help()
         print()
-        die("pass --probe-aar and/or --build")
+        die("pass --probe-aar and/or --build and/or --prebuilt")
     print(f"Playbook: docs/agent/native-dawn.md  ND-SO")
     print(f"Dawn pin: {DAWN_COMMIT}  androidx.webgpu:{ANDROIDX_WEBGPU}")
     print(f"Output (gitignored): {OUT}/<abi>/{C_API_SO}")
     if args.probe_aar:
         probe_aar()
+    if args.prebuilt:
+        install_prebuilt(args.targets)
     if args.build:
         build(args.targets)
 

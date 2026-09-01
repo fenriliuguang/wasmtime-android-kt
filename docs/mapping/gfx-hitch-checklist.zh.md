@@ -6,7 +6,7 @@
 
 下列 **Check** 以本页中文表为准；英文页与本页同步。H12 之后整体流畅；剩下 **约 5 s 小抖** 时 acquire 仍 8.3 ms。H1–H28 不要再叠 DisplayManager 投票。**远因**（运行时接线 / guest / Wasmtime / 合成器）见 §6。不要 vendor demo。不要给上游提 GitHub issue。
 
-相关：[`gap-webgpu-wit-androidx.zh.md`](gap-webgpu-wit-androidx.zh.md) §5、[`threading-android.md`](threading-android.md) §8、[`frame-loop-suggestion.zh.md`](frame-loop-suggestion.zh.md)。Guest 时钟 / dt 在**仓外** examples 仓。
+相关：[`gap-webgpu-wit-androidx.zh.md`](gap-webgpu-wit-androidx.zh.md) §5、[`threading-android.md`](threading-android.md) §8、[`frame-loop-suggestion.zh.md`](frame-loop-suggestion.zh.md)。Guest 时钟 / dt 在**仓外** examples 仓。Dawn C A/B（去掉 androidx JNI 后仍抖）：[`gfx-hitch-native-dawn.zh.md`](gfx-hitch-native-dawn.zh.md)。
 
 **Check**
 
@@ -141,6 +141,7 @@
 | D22 | Vivo RMS / `vivo_rms_screen` / 自适应 60·90·120 | **Open** / **Likely** | 设备有 `vivo_rms_screen`；`mAlwaysRespectAppRequest=false`；强行 SF 120 **提高** 抖动频率。Vivo「智能切换」是已知闪烁类问题。 | 用户设置：锁 120 Hz、关掉智能切换。不要用 runtime 投票。 |
 | D23 | Kernel / DisplayModeDirector 空闲降刷新超时 | **Open**（弱） | 立方体每拍 present，图层并不空闲。厂商 SF 里仍常见数秒 idle timer。 | 打开「显示刷新率」叠加层，看弹出时 Hz 是否掉。 |
 | D24 | 不含 Wasmtime 的原生 androidx.webgpu 立方体也会同样抖 | **Closed** — 上游单独**不会**复现 | `hosts/native-webgpu` `CubeActivity`（纯 androidx.webgpu 1.0.0-alpha05，无 Wasmtime、无 `host-dawn`）在 V2458A 上：1:1 出帧 @120 Hz，Choreographer ~8.3 ms（0 `>20ms`），acquire ~8.3 ms（0 `>20ms`，`SuccessOptimal`），显示钉在 120 Hz——计时干净**且无约 5 s 弹出**（肉眼确认）。仅 androidx.webgpu / SF / OEM VRR 本身是流畅的。 | 弹出是 Wasmtime/`host-dawn` 特有：重开 D2（CM 泵 vsync→present 延迟）与 D3（无 present 时间戳）。 |
+| D25 | NativeGpu Dawn C + Wasmtime 会流畅（无 androidx JNI） | **Closed** — 同一类约 5 s | 2026-09-01 `fullscreen-surface` + `libwebgpu_dawn.so`：`dlopen` 成功，Vulkan adapter，Choreographer 120 Hz 0 `>20ms`，画面回退仍在。ART/Kotlin 热路径税对这次抖动是 **Closed**。 | 转移表：[`gfx-hitch-native-dawn.zh.md`](gfx-hitch-native-dawn.zh.md)。 |
 
 ### 6.5 建议探针（一次一个变量）
 
@@ -148,4 +149,5 @@
 2. **Perfetto FrameTimeline** 采 20 s：`BUFFER_STUFFING` / `PREDICTION_ERROR` 是否对齐弹出。  
 3. **系统设置锁 120 Hz**（不改 app 投票）。  
 4. **每 N 帧 skip-present**（guest 或 host）抽干 BLAST — 仅当 timestats 显示 stuffing。  
-5. **无 Wasmtime 原生立方体** A/B。若同样抖就停在合成器。 → **已做**（D24）：原生立方体流畅（无约 5 s 弹出）→ 抖动是 Wasmtime/`host-dawn` 特有，不是上游。重开 D2/D3。
+5. **无 Wasmtime 原生立方体** A/B。若同样抖就停在合成器。 → **已做**（D24）：原生立方体流畅（无约 5 s 弹出）→ 抖动是 Wasmtime/`host-dawn` 特有，不是上游。重开 D2/D3。  
+6. **Dawn C NativeGpu A/B**（去掉 androidx JNI，保留 Wasmtime）。 → **已做**（D25）：同样弹出 → 不是 androidx 门面。转到 [`gfx-hitch-native-dawn.zh.md`](gfx-hitch-native-dawn.zh.md)。

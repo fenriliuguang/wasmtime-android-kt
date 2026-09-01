@@ -11,6 +11,8 @@
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
+use crate::dawn_c;
+
 /// Dawn C object pointer/id. `0` until a later lane binds `webgpu.h`.
 pub type DawnSlot = u64;
 
@@ -157,6 +159,16 @@ impl HandleTable {
 
     pub fn size(&self) -> usize {
         self.entries.len()
+    }
+
+    pub fn dawn_of(&self, handle: GpuHandle) -> DawnSlot {
+        self.entries.get(&handle.0).map(|e| e.dawn).unwrap_or(0)
+    }
+
+    pub fn set_dawn(&mut self, handle: GpuHandle, dawn: DawnSlot) {
+        if let Some(entry) = self.entries.get_mut(&handle.0) {
+            entry.dawn = dawn;
+        }
     }
 
     pub fn clear(&mut self) {
@@ -399,6 +411,12 @@ pub struct NativeGpuHost {
     presented_ring: VecDeque<NativeCanvasFrame>,
     /// How many times `canvas_present` actually presented (not no-op).
     present_count: u32,
+    /// Dawn C instance (0 = table-backed / `.so` missing).
+    dawn_instance: DawnSlot,
+    /// One `WGPUSurface` for the bound `ANativeWindow`.
+    dawn_surface: DawnSlot,
+    dawn_surface_format: u32,
+    dawn_surface_configured: bool,
 }
 
 impl Default for NativeGpuHost {
@@ -408,24 +426,21 @@ impl Default for NativeGpuHost {
 }
 
 impl NativeGpuHost {
-    /// Best-effort `dlopen` of the ND-SO `libwebgpu_dawn.so`. Missing `.so`
+    /// Best-effort `dlopen` + `dlsym` of `libwebgpu_dawn.so`. Missing `.so`
     /// (Cloud / recipe not run) is not an error; Dawn C slots stay 0.
     pub fn try_load_dawn_c() -> bool {
-        #[cfg(target_os = "android")]
-        {
-            unsafe {
-                extern "C" {
-                    fn dlopen(filename: *const i8, flags: i32) -> *mut std::ffi::c_void;
-                }
-                const RTLD_NOW: i32 = 2;
-                let lib = dlopen(c"libwebgpu_dawn.so".as_ptr() as *const i8, RTLD_NOW);
-                !lib.is_null()
-            }
+        dawn_c::try_load()
+    }
+
+    fn dawn_of(&self, handle: GpuHandle) -> DawnSlot {
+        self.table.dawn_of(handle)
+    }
+
+    fn ensure_instance(&mut self) -> DawnSlot {
+        if self.dawn_instance == 0 && Self::try_load_dawn_c() {
+            self.dawn_instance = dawn_c::create_instance();
         }
-        #[cfg(not(target_os = "android"))]
-        {
-            false
-        }
+        self.dawn_instance
     }
 
     pub fn new() -> Self {
@@ -448,6 +463,10 @@ impl NativeGpuHost {
             pending_present: None,
             presented_ring: VecDeque::new(),
             present_count: 0,
+            dawn_instance: 0,
+            dawn_surface: 0,
+            dawn_surface_format: 0,
+            dawn_surface_configured: false,
         }
     }
 
@@ -485,6 +504,23 @@ impl NativeGpuHost {
         self.labels.remove(&handle.raw());
     }
 
+    /// C2: do not `wgpuTextureRelease` a just-presented swapchain image.
+    fn is_live_swapchain_texture(&self, handle: GpuHandle) -> bool {
+        let raw = handle.raw();
+        self.pending_present.is_some_and(|f| f.texture == raw)
+            || self.presented_ring.iter().any(|f| f.texture == raw)
+    }
+
+    fn release_dawn_entry(&mut self, handle: GpuHandle, entry: HandleEntry) {
+        if entry.dawn == 0 {
+            return;
+        }
+        if entry.kind == ResourceKind::Texture && self.is_live_swapchain_texture(handle) {
+            return;
+        }
+        dawn_c::release(entry.kind, entry.dawn);
+    }
+
     /// `rep == 0` is the fixture `get-adapter` stub; otherwise a live table id.
     pub fn resolve_adapter(&mut self, adapter_rep: u32) -> Result<GpuHandle, NativeGpuError> {
         if adapter_rep == GpuHandle::NULL {
@@ -518,7 +554,16 @@ impl NativeGpuHost {
         let _ = options.feature_level;
         let _ = options.power_preference;
         let _ = options.xr_compatible;
-        let handle = self.table.insert(ResourceKind::Adapter, 0);
+        let instance = self.ensure_instance();
+        let dawn = if instance != 0 {
+            dawn_c::request_adapter_vulkan(instance)
+        } else {
+            0
+        };
+        if dawn != 0 {
+            info.description = "Dawn C Vulkan adapter".into();
+        }
+        let handle = self.table.insert(ResourceKind::Adapter, dawn);
         self.adapter_info.insert(handle.raw(), info);
         Some(handle)
     }
@@ -533,7 +578,9 @@ impl NativeGpuHost {
         let _ = desc.required_limits_rep;
         let _ = desc.label;
         let _ = desc.default_queue_label;
-        Ok(self.table.insert(ResourceKind::Device, 0))
+        let instance = self.ensure_instance();
+        let dawn = dawn_c::request_device(instance, self.dawn_of(adapter));
+        Ok(self.table.insert(ResourceKind::Device, dawn))
     }
 
     pub fn device_queue(&mut self, device: GpuHandle) -> Result<GpuHandle, NativeGpuError> {
@@ -546,7 +593,8 @@ impl NativeGpuHost {
                 }
             }
         }
-        let queue = self.table.insert(ResourceKind::Queue, 0);
+        let dawn = dawn_c::device_queue(self.dawn_of(device));
+        let queue = self.table.insert(ResourceKind::Queue, dawn);
         self.interned_queues.insert(device.raw(), queue.raw());
         Ok(queue)
     }
@@ -592,7 +640,8 @@ impl NativeGpuHost {
     ) -> Result<GpuHandle, NativeGpuError> {
         self.get(device, ResourceKind::Device)?;
         let mapped = mapped_at_creation == 1;
-        let handle = self.table.insert(ResourceKind::Buffer, 0);
+        let dawn = dawn_c::create_buffer(self.dawn_of(device), size, usage, mapped, label);
+        let handle = self.table.insert(ResourceKind::Buffer, dawn);
         if !label.is_empty() {
             self.labels.insert(handle.raw(), label.to_string());
         }
@@ -689,8 +738,8 @@ impl NativeGpuHost {
         hint_entries: &str,
     ) -> Result<GpuHandle, NativeGpuError> {
         self.get(device, ResourceKind::Device)?;
-        let _ = (code, label);
-        let handle = self.table.insert(ResourceKind::ShaderModule, 0);
+        let dawn = dawn_c::create_shader(self.dawn_of(device), code, label);
+        let handle = self.table.insert(ResourceKind::ShaderModule, dawn);
         if !hint_layouts.is_empty() || !hint_entries.is_empty() {
             self.shader_hints.insert(
                 handle.raw(),
@@ -732,7 +781,12 @@ impl NativeGpuHost {
             base_layer,
             layer_count,
         );
-        Ok(self.table.insert(ResourceKind::TextureView, 0))
+        let dawn = if self.dawn_of(texture) != 0 {
+            dawn_c::create_view(self.dawn_of(texture))
+        } else {
+            0
+        };
+        Ok(self.table.insert(ResourceKind::TextureView, dawn))
     }
 
     pub fn resolve_shader(&mut self, shader_rep: u32) -> Result<GpuHandle, NativeGpuError> {
@@ -788,7 +842,13 @@ impl NativeGpuHost {
             sampler_types,
             texture_sample_types,
         );
-        Ok(self.table.insert(ResourceKind::BindGroupLayout, 0))
+        let dawn = dawn_c::create_bind_group_layout(
+            self.dawn_of(device),
+            bindings,
+            visibilities,
+            buffer_types,
+        );
+        Ok(self.table.insert(ResourceKind::BindGroupLayout, dawn))
     }
 
     pub fn create_pipeline_layout(
@@ -805,7 +865,20 @@ impl NativeGpuHost {
             }
         }
         let _ = label;
-        Ok(self.table.insert(ResourceKind::PipelineLayout, 0))
+        let slots: Vec<DawnSlot> = bind_group_layouts
+            .iter()
+            .filter_map(|&raw| {
+                if raw > 0 {
+                    GpuHandle::from_raw(raw as u32)
+                        .ok()
+                        .map(|h| self.dawn_of(h))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let dawn = dawn_c::create_pipeline_layout(self.dawn_of(device), &slots, label);
+        Ok(self.table.insert(ResourceKind::PipelineLayout, dawn))
     }
 
     pub fn create_bind_group(
@@ -819,8 +892,27 @@ impl NativeGpuHost {
     ) -> Result<GpuHandle, NativeGpuError> {
         self.get(device, ResourceKind::Device)?;
         self.get(layout, ResourceKind::BindGroupLayout)?;
-        let _ = (label, bindings, kinds, handles);
-        Ok(self.table.insert(ResourceKind::BindGroup, 0))
+        let slots: Vec<DawnSlot> = handles
+            .iter()
+            .filter_map(|&raw| {
+                if raw > 0 {
+                    GpuHandle::from_raw(raw as u32)
+                        .ok()
+                        .map(|h| self.dawn_of(h))
+                } else {
+                    Some(0)
+                }
+            })
+            .collect();
+        let dawn = dawn_c::create_bind_group(
+            self.dawn_of(device),
+            self.dawn_of(layout),
+            bindings,
+            kinds,
+            &slots,
+            label,
+        );
+        Ok(self.table.insert(ResourceKind::BindGroup, dawn))
     }
 
     fn copy_constant_record(&self, rep: i32) -> Vec<(String, f64)> {
@@ -919,17 +1011,81 @@ impl NativeGpuHost {
         vertex_constants: i32,
         fragment_constants: i32,
     ) -> Result<GpuHandle, NativeGpuError> {
+        self.create_render_pipeline_described(
+            device,
+            vertex_shader,
+            vertex_entry,
+            fragment_shader,
+            fragment_entry,
+            format,
+            layout_rep,
+            label,
+            vertex_constants,
+            fragment_constants,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+        )
+    }
+
+    pub fn create_render_pipeline_described(
+        &mut self,
+        device: GpuHandle,
+        vertex_shader: u32,
+        vertex_entry: &str,
+        fragment_shader: i32,
+        fragment_entry: &str,
+        format: i32,
+        layout_rep: i32,
+        label: &str,
+        vertex_constants: i32,
+        fragment_constants: i32,
+        vb_strides: &[i32],
+        vb_step_modes: &[i32],
+        attr_index: &[i32],
+        attr_formats: &[i32],
+        attr_offsets: &[i32],
+        attr_locations: &[i32],
+        primitive: &[i32],
+    ) -> Result<GpuHandle, NativeGpuError> {
         self.get(device, ResourceKind::Device)?;
-        let _ = self.resolve_shader(vertex_shader)?;
-        if fragment_shader > 0 {
-            let _ = self.resolve_shader(fragment_shader as u32)?;
-        }
-        if layout_rep > 0 {
+        let vs = self.resolve_shader(vertex_shader)?;
+        let fs = if fragment_shader > 0 {
+            self.resolve_shader(fragment_shader as u32)?
+        } else {
+            vs
+        };
+        let layout_dawn = if layout_rep > 0 {
             let h = GpuHandle::from_raw(layout_rep as u32)?;
             self.get(h, ResourceKind::PipelineLayout)?;
-        }
-        let _ = (vertex_entry, fragment_entry, format, label);
-        let handle = self.table.insert(ResourceKind::RenderPipeline, 0);
+            self.dawn_of(h)
+        } else {
+            0
+        };
+        let dawn = dawn_c::create_render_pipeline(
+            self.dawn_of(device),
+            layout_dawn,
+            self.dawn_of(vs),
+            vertex_entry,
+            self.dawn_of(fs),
+            fragment_entry,
+            format as u32,
+            primitive,
+            dawn_c::VertexPack {
+                strides: vb_strides,
+                step_modes: vb_step_modes,
+                attr_index,
+                attr_formats,
+                attr_offsets,
+                attr_locations,
+            },
+            label,
+        );
+        let handle = self.table.insert(ResourceKind::RenderPipeline, dawn);
         self.pipeline_constants.insert(
             handle.raw(),
             NativePipelineConstants {
@@ -1010,8 +1166,8 @@ impl NativeGpuHost {
         label: &str,
     ) -> Result<GpuHandle, NativeGpuError> {
         self.get(device, ResourceKind::Device)?;
-        let _ = label;
-        Ok(self.table.insert(ResourceKind::CommandEncoder, 0))
+        let dawn = dawn_c::create_encoder(self.dawn_of(device), label);
+        Ok(self.table.insert(ResourceKind::CommandEncoder, dawn))
     }
 
     pub fn resolve_encoder(&mut self, encoder_rep: u32) -> Result<GpuHandle, NativeGpuError> {
@@ -1081,7 +1237,39 @@ impl NativeGpuHost {
             }
         }
         let _ = self.resolve_texture_view(depth_view)?;
-        Ok(self.table.insert(ResourceKind::RenderPassEncoder, 0))
+        self.begin_render_pass_described(encoder, color_views, &[], &[], &[], &[], depth_view)
+    }
+
+    pub fn begin_render_pass_described(
+        &mut self,
+        encoder: GpuHandle,
+        color_views: &[i32],
+        color_loads: &[i32],
+        color_stores: &[i32],
+        color_has_clears: &[i32],
+        color_clear_bits: &[i32],
+        depth_view: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(encoder, ResourceKind::CommandEncoder)?;
+        let mut views = Vec::with_capacity(color_views.len());
+        for &view in color_views {
+            if view > 0 {
+                let h = self.resolve_texture_view(view as u32)?;
+                views.push(self.dawn_of(h));
+            }
+        }
+        if depth_view != 0 {
+            let _ = self.resolve_texture_view(depth_view)?;
+        }
+        let dawn = dawn_c::begin_render_pass(
+            self.dawn_of(encoder),
+            &views,
+            color_loads,
+            color_stores,
+            color_has_clears,
+            color_clear_bits,
+        );
+        Ok(self.table.insert(ResourceKind::RenderPassEncoder, dawn))
     }
 
     pub fn resolve_render_pass(&mut self, pass_rep: u32) -> Result<GpuHandle, NativeGpuError> {
@@ -1127,8 +1315,8 @@ impl NativeGpuHost {
         label: &str,
     ) -> Result<GpuHandle, NativeGpuError> {
         self.get(encoder, ResourceKind::CommandEncoder)?;
-        let _ = label;
-        Ok(self.table.insert(ResourceKind::CommandBuffer, 0))
+        let dawn = dawn_c::encoder_finish(self.dawn_of(encoder), label);
+        Ok(self.table.insert(ResourceKind::CommandBuffer, dawn))
     }
 
     pub fn encoder_copy(
@@ -1183,12 +1371,84 @@ impl NativeGpuHost {
     }
 
     pub fn render_pass_end(&mut self, pass_rep: u32) -> Result<(), NativeGpuError> {
-        let _ = self.resolve_render_pass(pass_rep)?;
+        let pass = self.resolve_render_pass(pass_rep)?;
+        dawn_c::pass_end(self.dawn_of(pass));
         Ok(())
     }
 
     pub fn render_pass_draw(&mut self, pass_rep: u32) -> Result<(), NativeGpuError> {
-        let _ = self.resolve_render_pass(pass_rep)?;
+        self.render_pass_draw_counts(pass_rep, 3, 1, 0, 0)
+    }
+
+    pub fn render_pass_draw_counts(
+        &mut self,
+        pass_rep: u32,
+        vertex_count: u32,
+        instance_count: u32,
+        first_vertex: u32,
+        first_instance: u32,
+    ) -> Result<(), NativeGpuError> {
+        let pass = self.resolve_render_pass(pass_rep)?;
+        dawn_c::pass_draw(
+            self.dawn_of(pass),
+            vertex_count,
+            instance_count,
+            first_vertex,
+            first_instance,
+        );
+        Ok(())
+    }
+
+    pub fn render_pass_set_pipeline(
+        &mut self,
+        pass_rep: u32,
+        pipeline_rep: u32,
+    ) -> Result<(), NativeGpuError> {
+        let pass = self.resolve_render_pass(pass_rep)?;
+        if pipeline_rep != 0 {
+            if let Ok(pipeline) = GpuHandle::from_raw(pipeline_rep) {
+                if self.get(pipeline, ResourceKind::RenderPipeline).is_ok() {
+                    dawn_c::pass_set_pipeline(self.dawn_of(pass), self.dawn_of(pipeline));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn render_pass_set_bind_group(
+        &mut self,
+        pass_rep: u32,
+        index: u32,
+        bind_group_rep: u32,
+    ) -> Result<(), NativeGpuError> {
+        let pass = self.resolve_render_pass(pass_rep)?;
+        let group = if bind_group_rep == 0 {
+            0
+        } else {
+            let h = GpuHandle::from_raw(bind_group_rep)?;
+            self.get(h, ResourceKind::BindGroup)?;
+            self.dawn_of(h)
+        };
+        dawn_c::pass_set_bind_group(self.dawn_of(pass), index, group);
+        Ok(())
+    }
+
+    pub fn render_pass_set_vertex_buffer(
+        &mut self,
+        pass_rep: u32,
+        slot: u32,
+        buffer_rep: u32,
+        offset: u64,
+        size: u64,
+    ) -> Result<(), NativeGpuError> {
+        let pass = self.resolve_render_pass(pass_rep)?;
+        let buffer = if buffer_rep == 0 {
+            0
+        } else {
+            let h = self.resolve_buffer(buffer_rep)?;
+            self.dawn_of(h)
+        };
+        dawn_c::pass_set_vertex_buffer(self.dawn_of(pass), slot, buffer, offset, size);
         Ok(())
     }
 
@@ -1232,11 +1492,15 @@ impl NativeGpuHost {
         queue_rep: u32,
         command_reps: &[u32],
     ) -> Result<(), NativeGpuError> {
-        let _ = self.resolve_queue(queue_rep)?;
+        let queue = self.resolve_queue(queue_rep)?;
         let mut resolved = Vec::with_capacity(command_reps.len());
+        let mut dawn_cmds = Vec::with_capacity(command_reps.len());
         for &rep in command_reps {
-            resolved.push(self.resolve_command_buffer(rep)?.raw());
+            let cmd = self.resolve_command_buffer(rep)?;
+            dawn_cmds.push(self.dawn_of(cmd));
+            resolved.push(cmd.raw());
         }
+        dawn_c::queue_submit(self.dawn_of(queue), &dawn_cmds);
         self.last_submit = resolved;
         // H8: submit may auto-present; second guest present is a no-op.
         let _ = self.canvas_present();
@@ -1259,6 +1523,7 @@ impl NativeGpuHost {
     ) -> Result<(), NativeGpuError> {
         let queue = self.resolve_queue(queue_rep)?;
         let buffer = self.resolve_buffer(buffer_rep)?;
+        dawn_c::write_buffer(self.dawn_of(queue), self.dawn_of(buffer), offset, &bytes);
         self.queue_writes.insert(
             queue.raw(),
             NativeQueueWrite {
@@ -1528,6 +1793,13 @@ impl NativeGpuHost {
             match oldest {
                 Some(frame) if frame.gpu_done => {
                     self.presented_ring.pop_front();
+                    if let Ok(tex) = GpuHandle::from_raw(frame.texture) {
+                        let slot = self.dawn_of(tex);
+                        if slot != 0 {
+                            dawn_c::release(ResourceKind::Texture, slot);
+                            self.table.set_dawn(tex, 0);
+                        }
+                    }
                 }
                 _ => break,
             }
@@ -1535,7 +1807,61 @@ impl NativeGpuHost {
     }
 
     fn discard_unpresented_canvas_frame(&mut self) {
-        self.pending_present = None;
+        if let Some(frame) = self.pending_present.take() {
+            if let Ok(tex) = GpuHandle::from_raw(frame.texture) {
+                let slot = self.dawn_of(tex);
+                if slot != 0 {
+                    dawn_c::release(ResourceKind::Texture, slot);
+                    self.table.set_dawn(tex, 0);
+                }
+            }
+        }
+    }
+
+    fn ensure_dawn_surface(&mut self, device: GpuHandle) -> Option<GpuHandle> {
+        let win = self.canvas_window?;
+        let instance = self.ensure_instance();
+        if instance == 0 {
+            return Some(self.table.insert(ResourceKind::Surface, 0));
+        }
+        if self.dawn_surface == 0 {
+            self.dawn_surface = dawn_c::create_surface(instance, win.native_window);
+        }
+        if self.dawn_surface_format == 0 {
+            let adapter = self
+                .table
+                .handles_of_kind(ResourceKind::Adapter)
+                .first()
+                .copied()
+                .and_then(|h| {
+                    let slot = self.dawn_of(h);
+                    if slot != 0 {
+                        Some(slot)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(0);
+            self.dawn_surface_format = dawn_c::surface_preferred_format(self.dawn_surface, adapter);
+        }
+        let _ = device;
+        Some(self.table.insert(ResourceKind::Surface, self.dawn_surface))
+    }
+
+    pub fn preferred_canvas_format(&mut self) -> u32 {
+        if self.dawn_surface_format != 0 {
+            return self.dawn_surface_format;
+        }
+        if let Some(device) = self.table.handles_of_kind(ResourceKind::Device).first().copied() {
+            let _ = self.ensure_dawn_surface(device);
+        } else if let Ok(device) = self.resolve_device(0) {
+            let _ = self.ensure_dawn_surface(device);
+        }
+        if self.dawn_surface_format != 0 {
+            self.dawn_surface_format
+        } else {
+            0x1B // BGRA8Unorm — table-backed leftover
+        }
     }
 
     pub fn canvas_configure(
@@ -1561,11 +1887,23 @@ impl NativeGpuHost {
         } else {
             self.table.insert(ResourceKind::CanvasContext, 0)
         };
-        let surface = if self.canvas_window.is_some() {
-            Some(self.table.insert(ResourceKind::Surface, 0).raw())
-        } else {
-            None
-        };
+        let surface = self.ensure_dawn_surface(device).map(|h| h.raw());
+        if let (Some(win), Some(_surf)) = (self.canvas_window, surface) {
+            let fmt = if format == 0 {
+                self.dawn_surface_format
+            } else {
+                format
+            };
+            dawn_c::surface_configure(
+                self.dawn_surface,
+                self.dawn_of(device),
+                fmt,
+                win.width,
+                win.height,
+            );
+            self.dawn_surface_configured = self.dawn_surface != 0 && self.dawn_of(device) != 0;
+            self.dawn_surface_format = fmt;
+        }
         self.canvas_contexts.insert(
             handle.raw(),
             NativeCanvasContext {
@@ -1614,8 +1952,22 @@ impl NativeGpuHost {
             }
             _ => (1, 1, 0, 0),
         };
+        dawn_c::process_events(self.dawn_instance);
+        let dawn_tex = if self.dawn_surface_configured {
+            dawn_c::surface_current_texture(self.dawn_surface)
+        } else {
+            0
+        };
+        let (width, height) = if dawn_tex != 0 {
+            dawn_c::texture_size(dawn_tex)
+        } else {
+            (width, height)
+        };
         let texture =
             self.create_texture(device, width, height, 1, format, usage, 1, 1, 2, &[], "")?;
+        if dawn_tex != 0 {
+            self.table.set_dawn(texture, dawn_tex);
+        }
         let surface = self
             .canvas_contexts
             .get(&ctx_rep)
@@ -1634,6 +1986,9 @@ impl NativeGpuHost {
         let Some(frame) = self.pending_present.take() else {
             return false;
         };
+        if self.dawn_surface != 0 {
+            let _ = dawn_c::surface_present(self.dawn_surface);
+        }
         // C2: do not close() the just-presented texture here.
         self.presented_ring.push_back(NativeCanvasFrame {
             gpu_done: false,
@@ -1660,12 +2015,14 @@ impl NativeGpu for NativeGpuHost {
 
     fn drop_handle(&mut self, handle: GpuHandle) -> Result<HandleEntry, NativeGpuError> {
         let entry = self.table.drop_handle(handle)?;
+        self.release_dawn_entry(handle, entry);
         self.forget_side(handle, entry.kind);
         Ok(entry)
     }
 
     fn try_drop(&mut self, handle: GpuHandle) -> Option<HandleEntry> {
         let entry = self.table.try_drop(handle)?;
+        self.release_dawn_entry(handle, entry);
         self.forget_side(handle, entry.kind);
         Some(entry)
     }

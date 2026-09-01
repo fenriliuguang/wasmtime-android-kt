@@ -51,6 +51,13 @@ object NativeBridge {
     @JvmStatic
     external fun nativeSetANativeWindowBufferCount(window: Long, count: Int): Int
 
+    /**
+     * `ANativeWindow*` from an Android `Surface` (`Any` — `:runtime-jni` is JVM).
+     * Does not load androidx `libwebgpu_c_bundled.so`.
+     */
+    @JvmStatic
+    external fun nativeWindowFromSurface(surface: Any): Long
+
     @JvmStatic external fun nativeComponentCompile(engine: Long, bytes: ByteArray): Long
     @JvmStatic external fun nativeComponentClose(handle: Long)
 

@@ -5,6 +5,7 @@
 //! P3: stream.read (host→guest) + stream.write/take (guest→host).
 
 mod cm;
+mod dawn_c;
 mod engine;
 mod error;
 mod gpu_dispatch;
@@ -16,8 +17,8 @@ mod native_gpu;
 mod native_gpu_consume_tests;
 mod webgpu_abi;
 
-use jni::objects::JClass;
-use jni::sys::{jint, jlong, jstring, JavaVM, JNI_VERSION_1_6};
+use jni::objects::{JClass, JObject};
+use jni::sys::{jint, jlong, jobject, jstring, JavaVM, JNI_VERSION_1_6};
 use jni::JNIEnv;
 use std::os::raw::c_void;
 
@@ -94,5 +95,38 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     {
         let _ = (window, count);
         -1
+    }
+}
+
+/// `ANativeWindow_fromSurface` without androidx `Util` / `libwebgpu_c_bundled.so`.
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeWindowFromSurface(
+    env: JNIEnv,
+    _class: JClass,
+    surface: JObject,
+) -> jlong {
+    #[cfg(target_os = "android")]
+    {
+        if surface.is_null() {
+            return 0;
+        }
+        unsafe {
+            let lib = dlopen(c"libandroid.so".as_ptr() as *const i8, RTLD_NOW);
+            if lib.is_null() {
+                return 0;
+            }
+            let sym = dlsym(lib, c"ANativeWindow_fromSurface".as_ptr() as *const i8);
+            if sym.is_null() {
+                return 0;
+            }
+            let f: extern "C" fn(*mut jni::sys::JNIEnv, jobject) -> *mut c_void =
+                std::mem::transmute(sym);
+            f(env.get_raw(), surface.as_raw()) as jlong
+        }
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (env, surface);
+        0
     }
 }
