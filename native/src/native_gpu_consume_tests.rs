@@ -231,3 +231,31 @@ fn create_query_set_fixture_on_native_gpu() -> wasmtime::Result<()> {
     assert_eq!(v, 1);
     Ok(())
 }
+
+#[test]
+fn queue_submit_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_queue_submit.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn write_buffer_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_write_buffer.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn write_texture_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_write_texture.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn queue_on_submitted_work_done_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_queue_on_submitted_work_done.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}

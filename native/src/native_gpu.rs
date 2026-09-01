@@ -276,6 +276,14 @@ pub struct NativeQuerySet {
     pub count: u32,
 }
 
+/// One host copy of guest `write-*-with-copy` bytes (no JNI bounce).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeQueueWrite {
+    pub target: u32,
+    pub offset: u64,
+    pub bytes: Vec<u8>,
+}
+
 impl Default for NativeAdapterInfo {
     fn default() -> Self {
         Self {
@@ -304,6 +312,10 @@ pub struct NativeGpuHost {
     pipeline_constants: HashMap<u32, NativePipelineConstants>,
     /// `gpu-query-set` type/count leftover until Dawn C is bound.
     query_sets: HashMap<u32, NativeQuerySet>,
+    /// Last `write-buffer-with-copy` / `write-texture-with-copy` per queue (one copy).
+    queue_writes: HashMap<u32, NativeQueueWrite>,
+    /// Last `queue.submit` command-buffer reps.
+    last_submit: Vec<u32>,
 }
 
 impl Default for NativeGpuHost {
@@ -322,6 +334,8 @@ impl NativeGpuHost {
             pipeline_constant_records: HashMap::new(),
             pipeline_constants: HashMap::new(),
             query_sets: HashMap::new(),
+            queue_writes: HashMap::new(),
+            last_submit: Vec::new(),
         }
     }
 
@@ -341,6 +355,9 @@ impl NativeGpuHost {
             }
             ResourceKind::QuerySet => {
                 self.query_sets.remove(&handle.raw());
+            }
+            ResourceKind::Queue => {
+                self.queue_writes.remove(&handle.raw());
             }
             _ => {}
         }
@@ -1039,6 +1056,98 @@ impl NativeGpuHost {
         let _ = self.resolve_compute_pass(pass_rep)?;
         Ok(())
     }
+
+    pub fn resolve_queue(&mut self, queue_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if queue_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.device_queue(device)
+        } else {
+            let handle = GpuHandle::from_raw(queue_rep)?;
+            self.get(handle, ResourceKind::Queue)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn resolve_command_buffer(
+        &mut self,
+        command_rep: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        if command_rep == GpuHandle::NULL {
+            let encoder = self.resolve_encoder(GpuHandle::NULL)?;
+            self.encoder_finish(encoder, "")
+        } else {
+            let handle = GpuHandle::from_raw(command_rep)?;
+            self.get(handle, ResourceKind::CommandBuffer)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn queue_submit(
+        &mut self,
+        queue_rep: u32,
+        command_reps: &[u32],
+    ) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_queue(queue_rep)?;
+        let mut resolved = Vec::with_capacity(command_reps.len());
+        for &rep in command_reps {
+            resolved.push(self.resolve_command_buffer(rep)?.raw());
+        }
+        self.last_submit = resolved;
+        Ok(())
+    }
+
+    pub fn last_submit(&self) -> &[u32] {
+        &self.last_submit
+    }
+
+    /// Guest `list<u8>` is already one copy off linear memory; store it (no JNI).
+    pub fn write_buffer_with_copy(
+        &mut self,
+        queue_rep: u32,
+        buffer_rep: u32,
+        offset: u64,
+        bytes: Vec<u8>,
+    ) -> Result<(), NativeGpuError> {
+        let queue = self.resolve_queue(queue_rep)?;
+        let buffer = self.resolve_buffer(buffer_rep)?;
+        self.queue_writes.insert(
+            queue.raw(),
+            NativeQueueWrite {
+                target: buffer.raw(),
+                offset,
+                bytes,
+            },
+        );
+        Ok(())
+    }
+
+    pub fn write_texture_with_copy(
+        &mut self,
+        queue_rep: u32,
+        texture_rep: u32,
+        bytes: Vec<u8>,
+    ) -> Result<(), NativeGpuError> {
+        let queue = self.resolve_queue(queue_rep)?;
+        let texture = self.resolve_texture(texture_rep)?;
+        self.queue_writes.insert(
+            queue.raw(),
+            NativeQueueWrite {
+                target: texture.raw(),
+                offset: 0,
+                bytes,
+            },
+        );
+        Ok(())
+    }
+
+    pub fn last_queue_write(&self, queue: GpuHandle) -> Option<&NativeQueueWrite> {
+        self.queue_writes.get(&queue.raw())
+    }
+
+    pub fn on_submitted_work_done(&mut self, queue_rep: u32) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_queue(queue_rep)?;
+        Ok(())
+    }
 }
 
 impl NativeGpu for NativeGpuHost {
@@ -1082,6 +1191,8 @@ impl NativeGpu for NativeGpuHost {
         self.pipeline_constant_records.clear();
         self.pipeline_constants.clear();
         self.query_sets.clear();
+        self.queue_writes.clear();
+        self.last_submit.clear();
     }
 
     fn request_adapter(&mut self, options: &NativeRequestAdapterOptions<'_>) -> Option<GpuHandle> {
@@ -1342,5 +1453,24 @@ mod tests {
         assert_ne!(buf.raw(), GpuHandle::NULL);
         assert_eq!(gpu.query_set_type(query).unwrap(), 0);
         assert_eq!(gpu.get(buf, ResourceKind::CommandBuffer).unwrap().dawn, 0);
+    }
+
+    #[test]
+    fn queue_submit_write_one_copy_no_jni() {
+        let mut gpu = NativeGpuHost::new();
+        let device = gpu.resolve_device(0).expect("boot device");
+        let queue = gpu.device_queue(device).expect("queue");
+        let buffer = gpu.create_buffer(device, 4, 0x8, -1, "").expect("buffer");
+        gpu.write_buffer_with_copy(queue.raw(), buffer.raw(), 0, b"l2\0\0".to_vec())
+            .expect("write-buffer");
+        let write = gpu.last_queue_write(queue).expect("one copy stored");
+        assert_eq!(write.bytes, b"l2\0\0");
+        assert_eq!(write.offset, 0);
+        gpu.write_texture_with_copy(queue.raw(), 0, b"l2\0\0".to_vec())
+            .expect("write-texture");
+        gpu.queue_submit(queue.raw(), &[0]).expect("submit");
+        assert_eq!(gpu.last_submit().len(), 1);
+        gpu.on_submitted_work_done(queue.raw()).expect("work-done");
+        assert_eq!(gpu.get(queue, ResourceKind::Queue).unwrap().dawn, 0);
     }
 }

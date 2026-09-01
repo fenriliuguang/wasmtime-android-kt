@@ -3,7 +3,7 @@
 //!
 //! ND-DISP: dispatch only. Default is JNI so existing tests stay green.
 //! ND-HOST: NativeGpu trait + handle table. ND-BOOT: request-adapter /
-//! request-device / queue / boot info. Further methods ND-QUEUE+. ND-SO: Dawn C
+//! request-device / queue / boot info. Further methods ND-REST+. ND-SO: Dawn C
 //! API `.so` recipe `scripts/build-dawn-c-android.py` (not loaded until
 //! ND-DEFAULT). Do not reimplement `jvm::exp_*` here.
 
@@ -40,7 +40,7 @@ impl HostState {
     pub fn require_webgpu_jni_cb(&self) -> wasmtime::Result<GlobalRef> {
         match self.webgpu_backend() {
             GpuBackend::NativeGpu => Err(wasmtime::Error::msg(
-                "NativeGpu selected; consume methods land in ND-QUEUE",
+                "NativeGpu selected; consume methods land in ND-REST",
             )),
             GpuBackend::JniBackend => self
                 .experimental_host_cb
@@ -50,7 +50,7 @@ impl HostState {
     }
 
     /// Native consume slot. `None` when JNI is the product default.
-    #[allow(dead_code)] // ND-QUEUE+
+    #[allow(dead_code)] // ND-REST+
     pub fn native_gpu_mut(&mut self) -> Option<&mut NativeGpuHost> {
         self.native_gpu.as_mut()
     }

@@ -7771,25 +7771,47 @@ pub(crate) fn define_host(
                 "[method]gpu-queue.on-submitted-work-done",
                 |accessor, (queue,): (Resource<GpuQueue>,)| {
                     Box::pin(async move {
-                        let (cb, queue_rep) =
+                        let (backend, queue_rep) =
                             accessor.with(|mut access| -> wasmtime::Result<_> {
                                 let queue_rep = access.data_mut().table.get(&queue)?.rep;
-                                let cb = access.data_mut().require_webgpu_jni_cb()?;
-                                Ok((cb, queue_rep))
+                                let backend = access.data_mut().webgpu_backend();
+                                Ok((backend, queue_rep))
                             })?;
-                        let l2_queue = if queue_rep == 0 {
-                            let adapter_rep =
-                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                            let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                                .map_err(wasmtime::Error::msg)?;
-                            jvm::exp_device_get_queue(&cb, device_rep)
-                                .map_err(wasmtime::Error::msg)?
-                        } else {
-                            queue_rep
-                        };
-                        jvm::exp_queue_on_submitted_work_done_described(&cb, l2_queue)
-                            .map_err(wasmtime::Error::msg)?;
-                        Ok(())
+                        let (tx, rx) = oneshot::channel::<()>();
+                        std::thread::spawn(move || {
+                            let _ = tx.send(());
+                        });
+                        let _ = rx.await;
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                accessor.with(|mut access| -> wasmtime::Result<_> {
+                                    access
+                                        .data_mut()
+                                        .require_native_gpu()?
+                                        .on_submitted_work_done(queue_rep)
+                                        .map_err(native_gpu_error)
+                                })?;
+                                Ok(())
+                            }
+                            GpuBackend::JniBackend => {
+                                let cb = accessor
+                                    .with(|mut access| access.data_mut().require_webgpu_jni_cb())?;
+                                let l2_queue = if queue_rep == 0 {
+                                    let adapter_rep = jvm::exp_request_adapter(&cb)
+                                        .map_err(wasmtime::Error::msg)?;
+                                    let device_rep =
+                                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                            .map_err(wasmtime::Error::msg)?;
+                                    jvm::exp_device_get_queue(&cb, device_rep)
+                                        .map_err(wasmtime::Error::msg)?
+                                } else {
+                                    queue_rep
+                                };
+                                jvm::exp_queue_on_submitted_work_done_described(&cb, l2_queue)
+                                    .map_err(wasmtime::Error::msg)?;
+                                Ok(())
+                            }
+                        }
                     })
                 },
             )
@@ -7805,6 +7827,14 @@ pub(crate) fn define_host(
                     let mut command_reps = Vec::with_capacity(commands.len());
                     for command in &commands {
                         command_reps.push(caller.data_mut().table.get(command)?.rep);
+                    }
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .queue_submit(queue_rep, &command_reps)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let mut device_rep = 0u32;
@@ -7870,6 +7900,14 @@ pub(crate) fn define_host(
                             data[start..end].to_vec()
                         }
                     };
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .write_buffer_with_copy(queue_rep, buffer_rep, offset, payload)
+                            .map_err(native_gpu_error)?;
+                        return Ok((Ok::<(), WriteBufferError>(()),));
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let mut device_rep = 0u32;
                     let l2_queue = if queue_rep == 0 {
@@ -7925,6 +7963,14 @@ pub(crate) fn define_host(
                         .bytes_per_row
                         .unwrap_or(width.saturating_mul(4))
                         .max(1);
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .write_texture_with_copy(queue_rep, texture_rep, payload)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let mut device_rep = 0u32;
                     let l2_queue = if queue_rep == 0 {
