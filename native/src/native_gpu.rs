@@ -269,6 +269,13 @@ pub struct NativePipelineConstants {
     pub fragment: Vec<(String, f64)>,
 }
 
+/// Table-backed query-set descriptor (Dawn C slot still 0).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeQuerySet {
+    pub ty: u32,
+    pub count: u32,
+}
+
 impl Default for NativeAdapterInfo {
     fn default() -> Self {
         Self {
@@ -295,6 +302,8 @@ pub struct NativeGpuHost {
     pipeline_constant_records: HashMap<u32, Vec<(String, f64)>>,
     /// Constants copied onto compute/render pipelines at create (Dawn slot still 0).
     pipeline_constants: HashMap<u32, NativePipelineConstants>,
+    /// `gpu-query-set` type/count leftover until Dawn C is bound.
+    query_sets: HashMap<u32, NativeQuerySet>,
 }
 
 impl Default for NativeGpuHost {
@@ -312,6 +321,7 @@ impl NativeGpuHost {
             shader_hints: HashMap::new(),
             pipeline_constant_records: HashMap::new(),
             pipeline_constants: HashMap::new(),
+            query_sets: HashMap::new(),
         }
     }
 
@@ -328,6 +338,9 @@ impl NativeGpuHost {
             }
             ResourceKind::ComputePipeline | ResourceKind::RenderPipeline => {
                 self.pipeline_constants.remove(&handle.raw());
+            }
+            ResourceKind::QuerySet => {
+                self.query_sets.remove(&handle.raw());
             }
             _ => {}
         }
@@ -777,6 +790,255 @@ impl NativeGpuHost {
         let _ = entry;
         Ok(self.pipeline_constants.get(&pipeline.raw()))
     }
+
+    pub fn resolve_texture_view(&mut self, view_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if view_rep == GpuHandle::NULL {
+            let texture = self.resolve_texture(GpuHandle::NULL)?;
+            self.create_texture_view(texture, 0, 0, 0, 0, 1, 0, 1)
+        } else {
+            let handle = GpuHandle::from_raw(view_rep)?;
+            self.get(handle, ResourceKind::TextureView)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn resolve_bind_group(&mut self, bind_group_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if bind_group_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            let layout = self.resolve_bind_group_layout(GpuHandle::NULL)?;
+            self.create_bind_group(device, layout, "", &[], &[], &[])
+        } else {
+            let handle = GpuHandle::from_raw(bind_group_rep)?;
+            self.get(handle, ResourceKind::BindGroup)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn resolve_render_pipeline(
+        &mut self,
+        pipeline_rep: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        if pipeline_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.create_render_pipeline(device, 0, "", 0, "", 0, 0, "", 0, 0)
+        } else {
+            let handle = GpuHandle::from_raw(pipeline_rep)?;
+            self.get(handle, ResourceKind::RenderPipeline)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn resolve_compute_pipeline(
+        &mut self,
+        pipeline_rep: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        if pipeline_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.create_compute_pipeline(device, 0, "", 0, "", 0)
+        } else {
+            let handle = GpuHandle::from_raw(pipeline_rep)?;
+            self.get(handle, ResourceKind::ComputePipeline)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn create_command_encoder(
+        &mut self,
+        device: GpuHandle,
+        label: &str,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        let _ = label;
+        Ok(self.table.insert(ResourceKind::CommandEncoder, 0))
+    }
+
+    pub fn resolve_encoder(&mut self, encoder_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if encoder_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.create_command_encoder(device, "")
+        } else {
+            let handle = GpuHandle::from_raw(encoder_rep)?;
+            self.get(handle, ResourceKind::CommandEncoder)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn create_query_set(
+        &mut self,
+        device: GpuHandle,
+        ty: u32,
+        count: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(device, ResourceKind::Device)?;
+        let handle = self.table.insert(ResourceKind::QuerySet, 0);
+        self.query_sets
+            .insert(handle.raw(), NativeQuerySet { ty, count });
+        Ok(handle)
+    }
+
+    pub fn resolve_query_set(&mut self, query_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if query_rep == GpuHandle::NULL {
+            let device = self.resolve_device(GpuHandle::NULL)?;
+            self.create_query_set(device, 0, 1)
+        } else {
+            let handle = GpuHandle::from_raw(query_rep)?;
+            self.get(handle, ResourceKind::QuerySet)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn query_set_type(&self, query: GpuHandle) -> Result<u32, NativeGpuError> {
+        self.get(query, ResourceKind::QuerySet)?;
+        Ok(self.query_sets.get(&query.raw()).map(|q| q.ty).unwrap_or(0))
+    }
+
+    pub fn query_set_count(&self, query: GpuHandle) -> Result<u32, NativeGpuError> {
+        self.get(query, ResourceKind::QuerySet)?;
+        Ok(self
+            .query_sets
+            .get(&query.raw())
+            .map(|q| q.count)
+            .unwrap_or(1))
+    }
+
+    pub fn query_set_destroy(&mut self, query: GpuHandle) -> Result<(), NativeGpuError> {
+        self.get(query, ResourceKind::QuerySet)?;
+        Ok(())
+    }
+
+    pub fn begin_render_pass(
+        &mut self,
+        encoder: GpuHandle,
+        color_views: &[i32],
+        depth_view: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(encoder, ResourceKind::CommandEncoder)?;
+        for &view in color_views {
+            if view >= 0 {
+                let _ = self.resolve_texture_view(view as u32)?;
+            }
+        }
+        let _ = self.resolve_texture_view(depth_view)?;
+        Ok(self.table.insert(ResourceKind::RenderPassEncoder, 0))
+    }
+
+    pub fn resolve_render_pass(&mut self, pass_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if pass_rep == GpuHandle::NULL {
+            let encoder = self.resolve_encoder(GpuHandle::NULL)?;
+            self.begin_render_pass(encoder, &[], 0)
+        } else {
+            let handle = GpuHandle::from_raw(pass_rep)?;
+            self.get(handle, ResourceKind::RenderPassEncoder)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn begin_compute_pass(
+        &mut self,
+        encoder: GpuHandle,
+        query_rep: u32,
+        begin_idx: u32,
+        end_idx: u32,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(encoder, ResourceKind::CommandEncoder)?;
+        if query_rep != GpuHandle::NULL || begin_idx != 0 || end_idx != 0 {
+            let _ = self.resolve_query_set(query_rep)?;
+        }
+        let _ = (begin_idx, end_idx);
+        Ok(self.table.insert(ResourceKind::ComputePassEncoder, 0))
+    }
+
+    pub fn resolve_compute_pass(&mut self, pass_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        if pass_rep == GpuHandle::NULL {
+            let encoder = self.resolve_encoder(GpuHandle::NULL)?;
+            self.begin_compute_pass(encoder, 0, 0, 0)
+        } else {
+            let handle = GpuHandle::from_raw(pass_rep)?;
+            self.get(handle, ResourceKind::ComputePassEncoder)?;
+            Ok(handle)
+        }
+    }
+
+    pub fn encoder_finish(
+        &mut self,
+        encoder: GpuHandle,
+        label: &str,
+    ) -> Result<GpuHandle, NativeGpuError> {
+        self.get(encoder, ResourceKind::CommandEncoder)?;
+        let _ = label;
+        Ok(self.table.insert(ResourceKind::CommandBuffer, 0))
+    }
+
+    pub fn encoder_copy(
+        &mut self,
+        encoder_rep: u32,
+        src_buffer: Option<u32>,
+        dst_buffer: Option<u32>,
+        src_texture: Option<u32>,
+        dst_texture: Option<u32>,
+    ) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_encoder(encoder_rep)?;
+        if let Some(rep) = src_buffer {
+            let _ = self.resolve_buffer(rep)?;
+        }
+        if let Some(rep) = dst_buffer {
+            let _ = self.resolve_buffer(rep)?;
+        }
+        if let Some(rep) = src_texture {
+            let _ = self.resolve_texture(rep)?;
+        }
+        if let Some(rep) = dst_texture {
+            let _ = self.resolve_texture(rep)?;
+        }
+        Ok(())
+    }
+
+    pub fn encoder_clear_buffer(
+        &mut self,
+        encoder_rep: u32,
+        buffer_rep: u32,
+    ) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_encoder(encoder_rep)?;
+        let _ = self.resolve_buffer(buffer_rep)?;
+        Ok(())
+    }
+
+    pub fn encoder_resolve_query_set(
+        &mut self,
+        encoder_rep: u32,
+        query_rep: u32,
+        dest_rep: u32,
+    ) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_encoder(encoder_rep)?;
+        let _ = self.resolve_query_set(query_rep)?;
+        let _ = self.resolve_buffer(dest_rep)?;
+        Ok(())
+    }
+
+    pub fn encoder_debug(&mut self, encoder_rep: u32) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_encoder(encoder_rep)?;
+        Ok(())
+    }
+
+    pub fn render_pass_end(&mut self, pass_rep: u32) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_render_pass(pass_rep)?;
+        Ok(())
+    }
+
+    pub fn render_pass_draw(&mut self, pass_rep: u32) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_render_pass(pass_rep)?;
+        Ok(())
+    }
+
+    pub fn compute_pass_end(&mut self, pass_rep: u32) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_compute_pass(pass_rep)?;
+        Ok(())
+    }
+
+    pub fn compute_pass_dispatch(&mut self, pass_rep: u32) -> Result<(), NativeGpuError> {
+        let _ = self.resolve_compute_pass(pass_rep)?;
+        Ok(())
+    }
 }
 
 impl NativeGpu for NativeGpuHost {
@@ -819,6 +1081,7 @@ impl NativeGpu for NativeGpuHost {
         self.shader_hints.clear();
         self.pipeline_constant_records.clear();
         self.pipeline_constants.clear();
+        self.query_sets.clear();
     }
 
     fn request_adapter(&mut self, options: &NativeRequestAdapterOptions<'_>) -> Option<GpuHandle> {
@@ -1052,5 +1315,32 @@ mod tests {
             gpu.get(render, ResourceKind::RenderPipeline).unwrap().dawn,
             0
         );
+    }
+
+    #[test]
+    fn create_encoder_passes_draws_copies_no_jni() {
+        let mut gpu = NativeGpuHost::new();
+        let device = gpu.resolve_device(0).expect("boot device");
+        let encoder = gpu.create_command_encoder(device, "l2").expect("encoder");
+        let query = gpu.create_query_set(device, 0, 1).expect("query");
+        let pass = gpu
+            .begin_render_pass(encoder, &[0], 0)
+            .expect("render-pass");
+        gpu.render_pass_draw(pass.raw()).expect("draw");
+        gpu.render_pass_end(pass.raw()).expect("end");
+        let compute = gpu
+            .begin_compute_pass(encoder, query.raw(), 0, 1)
+            .expect("compute-pass");
+        gpu.compute_pass_dispatch(compute.raw()).expect("dispatch");
+        gpu.compute_pass_end(compute.raw()).expect("compute-end");
+        gpu.encoder_copy(encoder.raw(), Some(0), Some(0), None, None)
+            .expect("copy");
+        gpu.encoder_debug(encoder.raw()).expect("debug");
+        let buf = gpu.encoder_finish(encoder, "l2").expect("finish");
+        assert_ne!(encoder.raw(), GpuHandle::NULL);
+        assert_ne!(pass.raw(), GpuHandle::NULL);
+        assert_ne!(buf.raw(), GpuHandle::NULL);
+        assert_eq!(gpu.query_set_type(query).unwrap(), 0);
+        assert_eq!(gpu.get(buf, ResourceKind::CommandBuffer).unwrap().dawn, 0);
     }
 }

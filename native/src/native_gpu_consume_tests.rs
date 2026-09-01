@@ -168,3 +168,66 @@ fn create_render_pipeline_async_fixture_on_native_gpu() -> wasmtime::Result<()> 
     assert_eq!(v, 1);
     Ok(())
 }
+
+#[test]
+fn create_command_encoder_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_command_encoder.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn begin_render_pass_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_begin_render_pass.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn render_pass_end_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_render_pass_end.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn command_encoder_finish_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_command_encoder_finish.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn begin_compute_pass_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_begin_compute_pass.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn compute_pass_end_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_compute_pass_end.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn render_pass_draw_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_render_pass_draw.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn copy_buffer_to_buffer_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_copy_buffer_to_buffer.wasm", false)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn create_query_set_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_create_query_set.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
