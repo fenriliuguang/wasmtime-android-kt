@@ -260,6 +260,20 @@ fn queue_on_submitted_work_done_fixture_on_native_gpu() -> wasmtime::Result<()> 
     Ok(())
 }
 
+#[test]
+fn canvas_context_present_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_canvas_context_present.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
+#[test]
+fn canvas_context_get_configuration_fixture_on_native_gpu() -> wasmtime::Result<()> {
+    let v = run_w1("webgpu_method_canvas_context_get_configuration.wasm", true)?;
+    assert_eq!(v, 1);
+    Ok(())
+}
+
 /// ND-REST: every remaining pin `[method]` fixture on product `define_host` + NativeGpu.
 #[test]
 fn all_w1_method_fixtures_on_native_gpu() -> wasmtime::Result<()> {

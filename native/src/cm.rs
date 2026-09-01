@@ -1572,6 +1572,24 @@ pub(crate) fn define_host(
                     .map(|m| m as i32)
                     .unwrap_or(-1);
                 let alpha_mode = config.alpha_mode.map(|a| a as i32).unwrap_or(-1);
+                if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                    let handle = {
+                        let gpu = caller.data_mut().require_native_gpu()?;
+                        gpu.canvas_configure(
+                            ctx_rep,
+                            device_rep,
+                            format,
+                            usage,
+                            color_space,
+                            tone_mapping,
+                            alpha_mode,
+                            &view_formats,
+                        )
+                        .map_err(native_gpu_error)?
+                    };
+                    caller.data_mut().table.get_mut(&ctx)?.canvas_rep = handle.raw();
+                    return Ok(());
+                }
                 let Some(cb) = caller.data().experimental_host_cb.clone() else {
                     caller.data_mut().table.get_mut(&ctx)?.canvas_rep = 1;
                     return Ok(());
@@ -1608,6 +1626,18 @@ pub(crate) fn define_host(
             "[method]context.get-current-texture",
             |mut caller, (ctx,): (Resource<GfxWebGpuContext>,)| {
                 let ctx_rep = caller.data_mut().table.get(&ctx)?.canvas_rep;
+                if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                    let handle = {
+                        let gpu = caller.data_mut().require_native_gpu()?;
+                        gpu.canvas_current_texture(ctx_rep)
+                            .map_err(native_gpu_error)?
+                    };
+                    let resource = caller
+                        .data_mut()
+                        .table
+                        .push(GpuTexture { rep: handle.raw() })?;
+                    return Ok((resource,));
+                }
                 let Some(cb) = caller.data().experimental_host_cb.clone() else {
                     let resource = caller.data_mut().table.push(GpuTexture { rep: 0 })?;
                     return Ok((resource,));
@@ -1632,6 +1662,11 @@ pub(crate) fn define_host(
             "[method]context.present",
             |mut caller, (ctx,): (Resource<GfxWebGpuContext>,)| {
                 let ctx_rep = caller.data_mut().table.get(&ctx)?.canvas_rep;
+                if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                    let _ = ctx_rep;
+                    caller.data_mut().require_native_gpu()?.canvas_present();
+                    return Ok(());
+                }
                 if let Some(cb) = caller.data().experimental_host_cb.clone() {
                     jvm::exp_canvas_context_present_described(&cb, ctx_rep)
                         .map_err(wasmtime::Error::msg)?;
@@ -4338,10 +4373,18 @@ pub(crate) fn define_host(
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
                         let handle = {
                             let gpu = caller.data_mut().require_native_gpu()?;
-                            let _ = gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
-                            gpu.canvas_configure(ctx_rep).map_err(native_gpu_error)?
+                            gpu.canvas_configure(
+                                ctx_rep,
+                                device_rep,
+                                format,
+                                usage,
+                                color_space,
+                                tone_mapping,
+                                alpha_mode,
+                                &view_formats,
+                            )
+                            .map_err(native_gpu_error)?
                         };
-                        let _ = (format, usage, view_formats, color_space, tone_mapping, alpha_mode);
                         caller.data_mut().table.get_mut(&ctx)?.rep = handle.raw();
                         return Ok(());
                     }
@@ -4382,6 +4425,10 @@ pub(crate) fn define_host(
                 |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
                     let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .canvas_unconfigure(ctx_rep);
                         return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -4397,7 +4444,32 @@ pub(crate) fn define_host(
                 |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
                     let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((Option::<GpuCanvasConfigurationOwned>::None,));
+                        let snap = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.canvas_configuration(ctx_rep)
+                                .map(|c| (c.device, c.format, c.usage))
+                        };
+                        let Some((device_rep, format, usage)) = snap else {
+                            return Ok((Option::<GpuCanvasConfigurationOwned>::None,));
+                        };
+                        let device = caller
+                            .data_mut()
+                            .table
+                            .push(GpuDevice { rep: device_rep })?;
+                        let usage_opt = if usage == 0 {
+                            None
+                        } else {
+                            Some(GpuTextureUsage::from_webgpu_u32(usage))
+                        };
+                        return Ok((Some(GpuCanvasConfigurationOwned {
+                            device,
+                            format: GpuTextureFormat::from_dawn_u32(format),
+                            usage: usage_opt,
+                            view_formats: None,
+                            color_space: None,
+                            tone_mapping: None,
+                            alpha_mode: None,
+                        }),));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let has = jvm::exp_canvas_context_has_configuration_described(&cb, ctx_rep)
@@ -10829,6 +10901,29 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     if let Some(gate) = gfx_on_frame_lookup(store) {
         gate.close();
     }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreBindCanvasNativeWindow(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    window: jlong,
+    width: jint,
+    height: jint,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    if window == 0 || width <= 0 || height <= 0 {
+        throw(&mut env, "invalid canvas native window");
+        return;
+    }
+    let store = unsafe { from_handle::<HostStore>(store) };
+    store
+        .data_mut()
+        .bind_canvas_native_window(window, width as u32, height as u32);
 }
 
 #[no_mangle]

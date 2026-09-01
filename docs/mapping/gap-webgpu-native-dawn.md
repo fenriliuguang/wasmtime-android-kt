@@ -16,7 +16,7 @@ Dawn C `u64` slots stay **0** until a later lane dlopens `libwebgpu_dawn.so`. Ta
 | **Pending** | Later native-dawn lane |
 | **JNI** | Still `JniBackend` leftover (product default until ND-DEFAULT) |
 
-## 1. Coverage (updated ND-REST)
+## 1. Coverage (updated ND-SURF)
 
 | Family | Degree |
 |--------|--------|
@@ -27,16 +27,16 @@ Dawn C `u64` slots stay **0** until a later lane dlopens `libwebgpu_dawn.so`. Ta
 | command encoder / passes / draws / copies / query-sets | **Table** |
 | queue submit / write-buffer / write-texture / work-done | **Table** (guest `list<u8>` is one host copy; Dawn C slot 0) |
 | Remaining pin `[method]`s (`wasi_webgpu_method` suite) | **Table** (labels / limits getters / WGSL features / map-async / error scopes / lost / compilation-info / render bundles / canvas get-configuration stub; Dawn C slot 0) |
-| canvas `ANativeWindow` surface / present | **Pending** ND-SURF |
+| canvas `ANativeWindow` surface / present | **Table** (`Store.bindCanvasNativeWindow` + hitch keep-3 / Fifo / H8; Dawn C slot 0) |
 
 ## 2. Leftover vs Dawn C
 
 | WIT | NativeGpu | Dawn C |
 |-----|-----------|--------|
 | `gpu-shader-module-descriptor.compilation-hints` | **Record** on `NativeGpuHost` (not copied into Dawn C) | no `WGPUShaderModuleDescriptor` hints slot |
-| `gpu-canvas-configuration.color-space` | **Pending** ND-SURF / **Record** if still no slot | no color-space on `WGPUSurfaceConfiguration` at androidx `1.0.0-alpha05` pin |
-| `gpu-canvas-configuration.tone-mapping` | **Pending** ND-SURF / **Record** if still no slot | no tone-mapping slot |
-| `gpu-canvas-context` configure / get-current-texture (table stub; no `ANativeWindow`) | **Table** until ND-SURF | real surface is ND-SURF |
-| Real `ANativeWindow` surface / present | **Pending** ND-SURF | C API `WGPUSurface` from window handle |
+| `gpu-canvas-configuration.color-space` | **Record** on `NativeCanvasContext` | no color-space on `WGPUSurfaceConfiguration` at androidx `1.0.0-alpha05` pin |
+| `gpu-canvas-configuration.tone-mapping` | **Record** on `NativeCanvasContext` | no tone-mapping slot |
+| `gpu-canvas-context` configure / get-current-texture / present | **Table** (window handle + hitch ring; Dawn C slot 0) | `wgpuInstanceCreateSurface` when ND-DEFAULT loads the `.so` |
+| Device instruments on native default | **Pending** ND-DEVICE | Cloud has no device |
 
 Unwired JNI store is unchanged: `gpu.request-adapter` → guest **`none`**. NativeGpu selected (slot set) → table-backed adapter (not `none`).

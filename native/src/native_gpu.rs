@@ -8,7 +8,7 @@
 //! the table is exercised from `#[cfg(test)]` only (cdylib has no rlib).
 #![allow(dead_code)]
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
 /// Dawn C object pointer/id. `0` until a later lane binds `webgpu.h`.
@@ -293,6 +293,49 @@ pub struct NativeBuffer {
     pub mapped_bytes: Vec<u8>,
 }
 
+/// H9: `ANativeWindow_setBufferCount` before configure (3 = EINVAL on BLAST).
+pub const SWAPCHAIN_BUFFER_COUNT: u32 = 4;
+/// C2 / H26: keep last N presented images until GPU done **and** newer presents.
+pub const CANVAS_FRAMES_TO_KEEP: usize = 3;
+
+/// Table-backed present mode. Mailbox is not the product default (H6).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NativePresentMode {
+    Fifo,
+}
+
+/// Store / `bindCanvasNativeWindow` handle. Opaque `ANativeWindow*` as `i64`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeCanvasWindow {
+    pub native_window: i64,
+    pub width: u32,
+    pub height: u32,
+    pub buffer_count: u32,
+    pub present_mode: NativePresentMode,
+}
+
+/// Table-backed `gpu-canvas-context` after configure.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeCanvasContext {
+    pub configured: bool,
+    pub device: u32,
+    pub format: u32,
+    pub usage: u32,
+    pub surface: Option<u32>,
+    pub color_space: i32,
+    pub tone_mapping: i32,
+    pub alpha_mode: i32,
+    pub view_formats: Vec<i32>,
+}
+
+/// Swapchain frame: present then recycle after GPU done + keep-3 (never same-present close).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeCanvasFrame {
+    pub surface: u32,
+    pub texture: u32,
+    pub gpu_done: bool,
+}
+
 /// Table-backed texture leftover until Dawn C is bound.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeTexture {
@@ -346,6 +389,16 @@ pub struct NativeGpuHost {
     buffers: HashMap<u32, NativeBuffer>,
     /// Texture getter leftover until Dawn C is bound.
     textures: HashMap<u32, NativeTexture>,
+    /// `bindCanvasNativeWindow` / Store window handle (opaque `ANativeWindow*`).
+    canvas_window: Option<NativeCanvasWindow>,
+    /// Configured `gpu-canvas-context` leftover (color-space / tone-mapping Record).
+    canvas_contexts: HashMap<u32, NativeCanvasContext>,
+    /// Acquired, not yet presented (H8: present clears this).
+    pending_present: Option<NativeCanvasFrame>,
+    /// Presented images; close only after GPU done + keep-3 (C2).
+    presented_ring: VecDeque<NativeCanvasFrame>,
+    /// How many times `canvas_present` actually presented (not no-op).
+    present_count: u32,
 }
 
 impl Default for NativeGpuHost {
@@ -370,6 +423,11 @@ impl NativeGpuHost {
             labels: HashMap::new(),
             buffers: HashMap::new(),
             textures: HashMap::new(),
+            canvas_window: None,
+            canvas_contexts: HashMap::new(),
+            pending_present: None,
+            presented_ring: VecDeque::new(),
+            present_count: 0,
         }
     }
 
@@ -398,6 +456,9 @@ impl NativeGpuHost {
             }
             ResourceKind::Texture => {
                 self.textures.remove(&handle.raw());
+            }
+            ResourceKind::CanvasContext => {
+                self.canvas_contexts.remove(&handle.raw());
             }
             _ => {}
         }
@@ -1157,6 +1218,10 @@ impl NativeGpuHost {
             resolved.push(self.resolve_command_buffer(rep)?.raw());
         }
         self.last_submit = resolved;
+        // H8: submit may auto-present; second guest present is a no-op.
+        let _ = self.canvas_present();
+        self.mark_canvas_gpu_done();
+        self.retire_canvas_frames();
         Ok(())
     }
 
@@ -1210,6 +1275,8 @@ impl NativeGpuHost {
 
     pub fn on_submitted_work_done(&mut self, queue_rep: u32) -> Result<(), NativeGpuError> {
         let _ = self.resolve_queue(queue_rep)?;
+        self.mark_canvas_gpu_done();
+        self.retire_canvas_frames();
         Ok(())
     }
 
@@ -1384,22 +1451,177 @@ impl NativeGpuHost {
         self.create_bind_group_layout(device, &[], &[], &[], &[], &[])
     }
 
-    pub fn canvas_configure(&mut self, ctx_rep: u32) -> Result<GpuHandle, NativeGpuError> {
-        if ctx_rep == GpuHandle::NULL {
-            Ok(self.table.insert(ResourceKind::CanvasContext, 0))
-        } else if let Ok(handle) = GpuHandle::from_raw(ctx_rep) {
-            if self.table.contains(handle) {
-                return Ok(handle);
-            }
-            Ok(self.table.insert(ResourceKind::CanvasContext, 0))
-        } else {
-            Ok(self.table.insert(ResourceKind::CanvasContext, 0))
+    pub fn bind_canvas_native_window(
+        &mut self,
+        native_window: i64,
+        width: u32,
+        height: u32,
+    ) -> Result<(), NativeGpuError> {
+        if native_window == 0 {
+            return Err(NativeGpuError::InvalidHandle {
+                handle: 0,
+                message: "window-handle is null",
+            });
+        }
+        if width == 0 || height == 0 {
+            return Err(NativeGpuError::InvalidHandle {
+                handle: 0,
+                message: "invalid canvas size",
+            });
+        }
+        self.canvas_window = Some(NativeCanvasWindow {
+            native_window,
+            width,
+            height,
+            buffer_count: SWAPCHAIN_BUFFER_COUNT,
+            present_mode: NativePresentMode::Fifo,
+        });
+        Ok(())
+    }
+
+    pub fn canvas_window(&self) -> Option<NativeCanvasWindow> {
+        self.canvas_window
+    }
+
+    pub fn canvas_present_count(&self) -> u32 {
+        self.present_count
+    }
+
+    pub fn canvas_ring_len(&self) -> usize {
+        self.presented_ring.len()
+    }
+
+    pub fn canvas_pending(&self) -> Option<NativeCanvasFrame> {
+        self.pending_present
+    }
+
+    fn mark_canvas_gpu_done(&mut self) {
+        for frame in &mut self.presented_ring {
+            frame.gpu_done = true;
         }
     }
 
-    pub fn canvas_current_texture(&mut self, _ctx_rep: u32) -> Result<GpuHandle, NativeGpuError> {
-        let device = self.resolve_device(GpuHandle::NULL)?;
-        self.create_texture(device, 1, 1, 1, 0, 0, 1, 1, 2, &[], "")
+    /// Recycle only GPU-done frames older than keep-3. Never close the just-presented image.
+    fn retire_canvas_frames(&mut self) {
+        while self.presented_ring.len() > CANVAS_FRAMES_TO_KEEP {
+            let oldest = self.presented_ring.front().copied();
+            match oldest {
+                Some(frame) if frame.gpu_done => {
+                    self.presented_ring.pop_front();
+                }
+                _ => break,
+            }
+        }
+    }
+
+    fn discard_unpresented_canvas_frame(&mut self) {
+        self.pending_present = None;
+    }
+
+    pub fn canvas_configure(
+        &mut self,
+        ctx_rep: u32,
+        device_rep: u32,
+        format: u32,
+        usage: u32,
+        color_space: i32,
+        tone_mapping: i32,
+        alpha_mode: i32,
+        view_formats: &[i32],
+    ) -> Result<GpuHandle, NativeGpuError> {
+        let device = self.resolve_device(device_rep)?;
+        let handle = if ctx_rep == GpuHandle::NULL {
+            self.table.insert(ResourceKind::CanvasContext, 0)
+        } else if let Ok(existing) = GpuHandle::from_raw(ctx_rep) {
+            if self.table.contains(existing) {
+                existing
+            } else {
+                self.table.insert(ResourceKind::CanvasContext, 0)
+            }
+        } else {
+            self.table.insert(ResourceKind::CanvasContext, 0)
+        };
+        let surface = if self.canvas_window.is_some() {
+            Some(self.table.insert(ResourceKind::Surface, 0).raw())
+        } else {
+            None
+        };
+        self.canvas_contexts.insert(
+            handle.raw(),
+            NativeCanvasContext {
+                configured: true,
+                device: device.raw(),
+                format,
+                usage,
+                surface,
+                color_space,
+                tone_mapping,
+                alpha_mode,
+                view_formats: view_formats.to_vec(),
+            },
+        );
+        Ok(handle)
+    }
+
+    pub fn canvas_unconfigure(&mut self, ctx_rep: u32) {
+        self.discard_unpresented_canvas_frame();
+        if let Some(state) = self.canvas_contexts.get_mut(&ctx_rep) {
+            state.configured = false;
+            state.surface = None;
+        }
+    }
+
+    pub fn canvas_configuration(&self, ctx_rep: u32) -> Option<&NativeCanvasContext> {
+        self.canvas_contexts.get(&ctx_rep).filter(|c| c.configured)
+    }
+
+    pub fn canvas_current_texture(&mut self, ctx_rep: u32) -> Result<GpuHandle, NativeGpuError> {
+        // H1: do not wait the previous GPU fence on acquire.
+        self.discard_unpresented_canvas_frame();
+        let device_rep = self
+            .canvas_contexts
+            .get(&ctx_rep)
+            .map(|c| c.device)
+            .unwrap_or(0);
+        let device = self.resolve_device(device_rep)?;
+        let (width, height, format, usage) = match self.canvas_contexts.get(&ctx_rep) {
+            Some(c) if c.configured => {
+                let (w, h) = self
+                    .canvas_window
+                    .map(|win| (win.width, win.height))
+                    .unwrap_or((1, 1));
+                (w, h, c.format, c.usage)
+            }
+            _ => (1, 1, 0, 0),
+        };
+        let texture =
+            self.create_texture(device, width, height, 1, format, usage, 1, 1, 2, &[], "")?;
+        let surface = self
+            .canvas_contexts
+            .get(&ctx_rep)
+            .and_then(|c| c.surface)
+            .unwrap_or(0);
+        self.pending_present = Some(NativeCanvasFrame {
+            surface,
+            texture: texture.raw(),
+            gpu_done: false,
+        });
+        Ok(texture)
+    }
+
+    /// H8: idempotent. Second present with no pending acquire is a no-op.
+    pub fn canvas_present(&mut self) -> bool {
+        let Some(frame) = self.pending_present.take() else {
+            return false;
+        };
+        // C2: do not close() the just-presented texture here.
+        self.presented_ring.push_back(NativeCanvasFrame {
+            gpu_done: false,
+            ..frame
+        });
+        self.present_count = self.present_count.saturating_add(1);
+        self.retire_canvas_frames();
+        true
     }
 }
 
@@ -1450,6 +1672,11 @@ impl NativeGpu for NativeGpuHost {
         self.labels.clear();
         self.buffers.clear();
         self.textures.clear();
+        self.canvas_window = None;
+        self.canvas_contexts.clear();
+        self.pending_present = None;
+        self.presented_ring.clear();
+        self.present_count = 0;
     }
 
     fn request_adapter(&mut self, options: &NativeRequestAdapterOptions<'_>) -> Option<GpuHandle> {
@@ -1753,5 +1980,43 @@ mod tests {
         assert_eq!(gpu.get(bundle, ResourceKind::RenderBundle).unwrap().dawn, 0);
         let tex = gpu.canvas_current_texture(0).expect("canvas texture");
         assert_eq!(gpu.texture_meta(tex.raw()).unwrap().width, 1);
+    }
+
+    #[test]
+    fn canvas_window_hitch_invariants_no_jni() {
+        let mut gpu = NativeGpuHost::new();
+        assert!(gpu.bind_canvas_native_window(0, 64, 64).is_err());
+        gpu.bind_canvas_native_window(0x1000, 64, 48)
+            .expect("bind window");
+        let win = gpu.canvas_window().expect("window stored");
+        assert_eq!(win.buffer_count, SWAPCHAIN_BUFFER_COUNT);
+        assert_eq!(win.present_mode, NativePresentMode::Fifo);
+        assert_eq!(win.width, 64);
+        let device = gpu.resolve_device(0).expect("device");
+        let ctx = gpu
+            .canvas_configure(0, device.raw(), 0x16, 0x10, -1, -1, -1, &[])
+            .expect("configure");
+        let cfg = gpu.canvas_configuration(ctx.raw()).expect("configured");
+        assert!(cfg.surface.is_some(), "windowed configure inserts Surface");
+        let tex = gpu.canvas_current_texture(ctx.raw()).expect("acquire");
+        assert_eq!(gpu.texture_meta(tex.raw()).unwrap().width, 64);
+        assert!(gpu.canvas_pending().is_some());
+        assert!(gpu.canvas_present(), "first present");
+        assert!(!gpu.canvas_present(), "H8 second present is no-op");
+        assert_eq!(gpu.canvas_present_count(), 1);
+        assert_eq!(gpu.canvas_ring_len(), 1);
+        for _ in 0..5 {
+            let _ = gpu.canvas_current_texture(ctx.raw()).expect("acquire");
+            assert!(gpu.canvas_present());
+        }
+        let queue = gpu.device_queue(device).expect("interned queue");
+        gpu.queue_submit(queue.raw(), &[]).expect("submit");
+        assert!(
+            gpu.canvas_ring_len() <= CANVAS_FRAMES_TO_KEEP,
+            "keep-3 after GPU done, ring={}",
+            gpu.canvas_ring_len()
+        );
+        gpu.canvas_unconfigure(ctx.raw());
+        assert!(gpu.canvas_configuration(ctx.raw()).is_none());
     }
 }

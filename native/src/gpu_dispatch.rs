@@ -41,7 +41,7 @@ impl HostState {
     pub fn require_webgpu_jni_cb(&self) -> wasmtime::Result<GlobalRef> {
         match self.webgpu_backend() {
             GpuBackend::NativeGpu => Err(wasmtime::Error::msg(
-                "NativeGpu selected; canvas surface / present land in ND-SURF",
+                "NativeGpu selected; JNI leftover until ND-DEFAULT",
             )),
             GpuBackend::JniBackend => self
                 .experimental_host_cb
@@ -61,6 +61,16 @@ impl HostState {
         self.native_gpu
             .as_mut()
             .ok_or_else(|| wasmtime::Error::msg("NativeGpu selected but slot empty"))
+    }
+
+    /// `bindCanvasNativeWindow` / Store window handle. Forwards to NativeGpu when set.
+    pub fn bind_canvas_native_window(&mut self, window: i64, width: u32, height: u32) {
+        self.canvas_native_window = window;
+        self.canvas_width = width;
+        self.canvas_height = height;
+        if let Some(gpu) = self.native_gpu.as_mut() {
+            let _ = gpu.bind_canvas_native_window(window, width, height);
+        }
     }
 }
 
@@ -84,5 +94,20 @@ mod tests {
         assert!(host.webgpu_jni_cb().is_none());
         assert!(host.require_webgpu_jni_cb().is_err());
         assert!(host.native_gpu_mut().is_some());
+    }
+
+    #[test]
+    fn store_window_forwards_to_native_gpu() {
+        let mut host = HostState::default();
+        host.native_gpu = Some(NativeGpuHost::default());
+        host.bind_canvas_native_window(0x2000, 32, 16);
+        let win = host
+            .native_gpu
+            .as_ref()
+            .and_then(|g| g.canvas_window())
+            .expect("forwarded");
+        assert_eq!(win.native_window, 0x2000);
+        assert_eq!(win.height, 16);
+        assert_eq!(win.buffer_count, crate::native_gpu::SWAPCHAIN_BUFFER_COUNT);
     }
 }

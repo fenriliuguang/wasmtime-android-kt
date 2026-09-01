@@ -210,6 +210,10 @@ pub struct HostState {
     /// In-process Dawn C consume ([`NativeGpuHost`]). Unset → JNI default
     /// (`GpuBackend::JniBackend`).
     pub native_gpu: Option<NativeGpuHost>,
+    /// Store window handle (`ANativeWindow*`) until NativeGpu is selected.
+    pub canvas_native_window: i64,
+    pub canvas_width: u32,
+    pub canvas_height: u32,
     /// P010-GFXV: 1-slot `on-frame` vsync gate (Choreographer → GpuThread write).
     pub gfx_on_frame: Arc<GfxOnFrameGate>,
 }
@@ -221,6 +225,9 @@ impl Default for HostState {
             add_cb: None,
             experimental_host_cb: None,
             native_gpu: None,
+            canvas_native_window: 0,
+            canvas_width: 0,
+            canvas_height: 0,
             gfx_on_frame: GfxOnFrameGate::new(),
         }
     }

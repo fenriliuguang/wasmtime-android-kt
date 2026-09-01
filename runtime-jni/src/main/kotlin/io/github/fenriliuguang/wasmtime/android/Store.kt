@@ -96,6 +96,21 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
     }
 
     /**
+     * Bind an `ANativeWindow*` for NativeGpu `gpu-canvas-context` configure /
+     * get-current-texture / present. H9: `setBufferCount(4)` before configure.
+     */
+    fun bindCanvasNativeWindow(nativeWindowHandle: Long, width: Int, height: Int) {
+        require(handle != 0L) { "store closed" }
+        NativeBridge.nativeSetANativeWindowBufferCount(nativeWindowHandle, 4)
+        NativeBridge.nativeStoreBindCanvasNativeWindow(
+            handle,
+            nativeWindowHandle,
+            width,
+            height,
+        )
+    }
+
+    /**
      * **Not product API.** Convenience for leftover `request-adapter` → `u32` smokes.
      */
     @Deprecated("Not product API. Use setWebGpuBackend.")

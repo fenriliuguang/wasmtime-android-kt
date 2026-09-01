@@ -35,6 +35,13 @@ object NativeBridge {
     external fun nativeStoreSetExperimentalHost(store: Long, callback: ExperimentalHostCallbacks)
     @JvmStatic external fun nativeStorePostGfxVsync(store: Long, frameTimeNanos: Long)
     @JvmStatic external fun nativeStoreCloseGfxOnFrame(store: Long)
+    @JvmStatic
+    external fun nativeStoreBindCanvasNativeWindow(
+        store: Long,
+        nativeWindowHandle: Long,
+        width: Int,
+        height: Int,
+    )
 
     /**
      * H9: `NATIVE_WINDOW_SET_BUFFER_COUNT` before Dawn configure.
