@@ -3084,4 +3084,90 @@ mod tests {
         assert_eq!(gpu.canvas_present_count(), 1);
         assert_eq!(gpu.hitch.stage_spike_n, 0, "table-backed stages stay quiet");
     }
+
+    #[test]
+    fn hotpath_synthetic_120hz_beats_are_1_to_1() {
+        use crate::host::{GfxOnFrameGate, GfxOnFrameTake};
+        use std::thread;
+        use std::time::Duration;
+
+        let gate = GfxOnFrameGate::new();
+        let mut gpu = NativeGpuHost::new();
+        gpu.bind_canvas_native_window(0x1000, 64, 48)
+            .expect("bind window");
+        let device = gpu.resolve_device(0).expect("device");
+        let ctx = gpu
+            .canvas_configure(0, device.raw(), 0x16, 0x10, -1, -1, -1, &[])
+            .expect("configure");
+        let queue = gpu.device_queue(device).expect("queue");
+        let buffer = gpu.create_buffer(device, 4, 0x8, -1, "").expect("buffer");
+
+        const PERIOD: u64 = 8_333_333;
+        const T0: u64 = 1_000_000_000;
+        const BEATS: u32 = 12;
+
+        for i in 0..BEATS {
+            let ts = (T0 + u64::from(i) * PERIOD) as i64;
+            if i == 0 {
+                let waiter = gate.clone();
+                let take = thread::spawn(move || waiter.wait_take(false));
+                thread::sleep(Duration::from_millis(20));
+                gate.post(ts);
+                take.join().expect("first take");
+            } else {
+                gate.post(ts);
+                assert!(
+                    matches!(gate.wait_take(false), GfxOnFrameTake::Item),
+                    "beat {i} must take without waiting an extra vsync"
+                );
+            }
+            assert_eq!(
+                gate.last_take_vsync_ns(),
+                ts as u64,
+                "gate consumed Choreographer ts beat {i}"
+            );
+            gpu.note_consumed_vsync(gate.last_take_vsync_ns());
+            let _ = gpu.canvas_current_texture(ctx.raw()).expect("acquire");
+            gpu.write_buffer_with_copy(queue.raw(), buffer.raw(), 0, b"l2\0\0".to_vec())
+                .expect("write");
+            gpu.queue_submit(queue.raw(), &[]).expect("submit");
+            assert!(
+                !gpu.canvas_present(),
+                "H8 no-op after auto-present beat {i}"
+            );
+            assert_eq!(gpu.canvas_present_count(), i + 1);
+        }
+
+        assert_eq!(gpu.hitch.vsync_dt_n, BEATS - 1);
+        assert_eq!(gpu.hitch.vsync_dt_8_9, BEATS - 1);
+        assert_eq!(gpu.hitch.vsync_dt_lt8, 0);
+        assert_eq!(gpu.hitch.vsync_dt_9_17, 0);
+        assert_eq!(gpu.hitch.vsync_dt_gt17, 0);
+        assert_eq!(gpu.hitch.stage_spike_n, 0);
+        assert!(
+            gpu.canvas_ring_len() <= CANVAS_FRAMES_TO_KEEP,
+            "keep-3, ring={}",
+            gpu.canvas_ring_len()
+        );
+
+        let stamp_beats = hitch_desired_present_beats();
+        if stamp_beats >= 1 {
+            let last_vsync = T0 + u64::from(BEATS - 1) * PERIOD;
+            let expect = last_vsync.saturating_add(PERIOD.saturating_mul(stamp_beats as u64));
+            assert_eq!(
+                gpu.hitch.last_desired_ns, expect,
+                "desired-present stays 1:1 with vsync + {stamp_beats} beats"
+            );
+        }
+
+        let jump = (T0 + u64::from(BEATS + 1) * PERIOD) as i64;
+        gate.post(jump);
+        assert!(matches!(gate.wait_take(false), GfxOnFrameTake::Item));
+        gpu.note_consumed_vsync(gate.last_take_vsync_ns());
+        assert_eq!(
+            gpu.hitch.vsync_dt_9_17, 1,
+            "skipped beat is visible in angleDt"
+        );
+        assert_eq!(gpu.hitch.vsync_dt_8_9, BEATS - 1);
+    }
 }

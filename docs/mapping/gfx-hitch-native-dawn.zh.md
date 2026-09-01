@@ -204,3 +204,9 @@ SurfaceFlinger / BLAST / 面板
 
 - D24 立方体：没有 Wasmtime；androidx `GPUSurface.present`；每 2 次 present 一次真 `onSubmittedWorkDone`（C7 batch）。
 - NativeGpu 立方体：Wasmtime CM 泵 + `GfxOnFrameGate`；`queue.submit` 自动 present（H8）；`mark_canvas_gpu_done` 是立刻标完。
+
+### 6.5 云环境 vs 真机
+
+云环境**模拟不了**真机 present 路径。没有 Android，没有 `ANativeWindow`，没有 Mali/Vulkan Dawn `.so`，没有 BLAST / SurfaceFlinger / 120 Hz 面板。Linux 上 `hitch_monotonic_ns` 为 0，所以 `present n=` / `phase-crossing` / retire 存活直方图在这里不跑。`try_load_dawn_c` 尽力而为，slot 仍是 0。
+
+云环境**能**查的是进程内节拍机：用合成的 Choreographer 时间戳跑 `GfxOnFrameGate` 1:1 + `NativeGpuHost` acquire → write → submit → H8 空操作 → keep-3 → desired-present 节奏 → `vsync_dt` 桶。这就是 `hotpath_synthetic_120hz_beats_are_1_to_1`。云上绿**关不掉**肉眼弹出。

@@ -204,3 +204,9 @@ Do **not** restack keep / DisplayManager / GameState / JNI removal until a stage
 
 - D24 cube: no Wasmtime; androidx `GPUSurface.present`; real `onSubmittedWorkDone` every 2 presents (C7 batch).
 - NativeGpu cube: Wasmtime CM pump + `GfxOnFrameGate`; `queue.submit` auto-presents (H8); `mark_canvas_gpu_done` is immediate.
+
+### 6.5 Cloud vs device
+
+Cloud **cannot** simulate the device present path. There is no Android, no `ANativeWindow`, no Mali/Vulkan Dawn `.so`, no BLAST / SurfaceFlinger / 120 Hz panel. `hitch_monotonic_ns` is 0 on Linux, so `present n=` / `phase-crossing` / retire-age histograms do not run here. `try_load_dawn_c` is best-effort; slots stay 0.
+
+What Cloud **can** check is the in-process beat machine with synthetic Choreographer timestamps: `GfxOnFrameGate` 1:1 + `NativeGpuHost` acquire → write → submit → H8 no-op → keep-3 → desired-present cadence → `vsync_dt` buckets. That is `hotpath_synthetic_120hz_beats_are_1_to_1`. A green Cloud run does **not** close the eye-pop.
