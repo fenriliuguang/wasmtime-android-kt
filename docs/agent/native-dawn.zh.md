@@ -2,9 +2,13 @@
 
 [English](native-dawn.md) | **中文**
 
-P0 **形状**与 P1、`0.1.0` 自动刀已关闭。本队列在**同一钉**后面把默认消费从 JNI/androidx 换成 **进程内 Dawn C**。一车道一 PR。禁止重切 G1–G9 / F1–F9 / WG-6 **那些旧队列名**。
+P0 **形状**与 P1、`0.1.0` 自动刀已关闭。本队列在**同一钉**后面把默认消费从 JNI/androidx 换成 **进程内 Dawn C**。禁止重切 G1–G9 / F1–F9 / WG-6 **那些旧队列名**。
 
-下一刀：`python3 ./scripts/native-dawn-remaining.py`（或 `.\scripts\native-dawn-remaining.ps1`）。只做打印的 **Next:**。针在 [`../scheme/native-dawn.md`](../scheme/native-dawn.md)。
+## 集成（仅本队列）
+
+长期分支 **`cursor/native-dawn-rewrite-1355`**：**一刀一提交**，**整段做完再提一个 PR** 合入 `main`。不要每刀开 PR。待在该分支上推送提交。`native-dawn-remaining.py` 打空（**ND-DEVICE** 落地）之后才开 PR，并保留各刀提交（不要 squash 成一颗）。
+
+下一刀：`python3 ./scripts/native-dawn-remaining.py`。只做打印的 **Next:**（一次 commit）。针在 [`../scheme/native-dawn.md`](../scheme/native-dawn.md)。
 
 ## 目标
 
@@ -18,6 +22,6 @@ P0 **形状**与 P1、`0.1.0` 自动刀已关闭。本队列在**同一钉**后�
 
 ## 车道（自动序）
 
-ND-DISP → ND-SO → ND-HOST → ND-BOOT → ND-RES → ND-PIPE → ND-ENC → ND-QUEUE → **ND-REST（全量 method 测试）** → ND-SURF → ND-DEFAULT → ND-CLAIM → ND-DEVICE（仪器 + 立方体演示行）。
+ND-DISP → ND-SO → ND-HOST → ND-BOOT → ND-RES → ND-PIPE → ND-ENC → ND-QUEUE → **ND-REST（全量 method 测试）** → ND-SURF → ND-DEFAULT → ND-CLAIM → ND-DEVICE（仪器 + 立方体演示行）→ **一个 PR**。
 
 与英文冲突时以英文为准。禁止 JS 式 callback。禁止双份 Dawn `.so`。禁止向上游 `gh issue create`。Cloud 无真机，仍要列出仪器。

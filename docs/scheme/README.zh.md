@@ -3,7 +3,7 @@
 [English](README.md) | **中文**
 
 只列现行文档。史实见 [`../archive/README.md`](../archive/README.md)。  
-P0 形状与 P1、`0.1.0` 已关闭。现行队列：[`../agent/native-dawn.md`](../agent/native-dawn.md)（全量钉 Dawn C）。**L5 已接受。** 与英文冲突时以英文为准。
+P0 形状与 P1、`0.1.0` 已关闭。现行队列：[`../agent/native-dawn.md`](../agent/native-dawn.md)（全量钉 Dawn C），长期分支 **`cursor/native-dawn-rewrite-1355`**（一刀一提交，做完再一个 PR）。**L5 已接受。** 与英文冲突时以英文为准。
 
 | 文档 | 角色 |
 |------|------|

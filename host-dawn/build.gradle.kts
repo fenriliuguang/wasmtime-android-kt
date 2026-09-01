@@ -6,7 +6,7 @@ plugins {
 extra["wasmtime.publishedArtifactId"] = "host-dawn"
 extra["wasmtime.publishedName"] = "Wasmtime Android Dawn host"
 extra["wasmtime.publishedDescription"] =
-    "Dawn/androidx.webgpu backend for wasmtime-android-kt. Prefer android-webgpu unless BYO runtime."
+    "Dawn C (NativeGpu) default + androidx dawn-jni leftover. Prefer android-webgpu unless BYO runtime."
 apply(from = rootProject.file("gradle/wasmtime-publish.gradle"))
 
 android {
@@ -26,6 +26,21 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    sourceSets {
+        getByName("main") {
+            // Recipe output `native/third_party/dawn-c/out/<abi>/libwebgpu_dawn.so`
+            // (gitignored). Empty dir is fine when Cloud has no NDK.
+            jniLibs.directories.add("${rootProject.projectDir}/native/third_party/dawn-c/out")
+        }
+    }
+
+    packaging {
+        jniLibs {
+            // Product default is one C API `.so`. androidx bundled is dawn-jni leftover.
+            excludes += "**/libwebgpu_c_bundled.so"
+        }
+    }
 }
 
 kotlin {
@@ -34,6 +49,6 @@ kotlin {
 
 dependencies {
     api(project(":runtime-jni"))
-    // Dawn Java + bundled .so (not git). Bump via changelog when changing the pin.
+    // dawn-jni leftover Kotlin (`DawnWasiWebGpuHost`). Bundled .so is packaging-excluded.
     api(libs.androidx.webgpu)
 }

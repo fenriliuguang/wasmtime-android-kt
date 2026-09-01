@@ -13,7 +13,7 @@
 | 问题 | 决定 |
 |------|------|
 | 默认集成方式 | **`main` + 短命功能分支 + PR** |
-| 是否开多条长期并行线（如常驻 `feature/stream` / `feature/webgpu`） | **否** |
+| 是否开多条长期并行线（如常驻 `feature/stream` / `feature/webgpu`） | **否**；唯一例外：native-dawn 长期分支 `cursor/native-dawn-rewrite-1355` |
 | 「并行」指什么 | 同时存在 **少量短命 PR**（通常 ≤2–3），各自独立 DoD，常合主干 |
 | 合并单元 | 一 PR 一事；可独立 revert |
 | `main` 要求 | 始终可构建；未完成能力不靠长期分叉隐瞒 |
@@ -38,9 +38,11 @@
 | `fix/<issue>` | 缺陷 | 合并即删 |
 | `chore/<topic>` | 工具链 / 追踪表刷新 | 合并即删 |
 
+**例外（2026-08-31）：** native-dawn 只用长期分支 **`cursor/native-dawn-rewrite-1355`**，一刀一提交，队列清空后再提 **一个** PR 合 `main`（保留各刀提交）。见 [`../agent/native-dawn.md`](../agent/native-dawn.md)。
+
 禁止：
 
-- 无主的常驻 `feature/*` 作为第二主干  
+- 无主的常驻 `feature/*` 作为第二主干（native-dawn 例外仅上述命名分支）  
 - 在功能分支上顺手做 Wasmtime **major** 升级（须独立 PR + [`wasmtime-tracking.md`](wasmtime-tracking.md) RFC）  
 - 用分支代替 feature flag 长期隐藏破坏性半成品（`0.x` 可破 API，但须可审、可 CHANGELOG）
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Next native-dawn host PR. Same output as native-dawn-remaining.ps1.
+"""Next native-dawn host *commit* on cursor/native-dawn-rewrite-1355.
 
 P0 wasi:webgpu shape, P1 WASI 0.3, and 0.1.0 product queues are closed.
 This script prints ND-* from needles in docs/scheme/native-dawn.md.
+Do not open a PR until leftover is empty.
 """
 from __future__ import annotations
 
@@ -111,14 +112,20 @@ def main() -> None:
             leftover.append((lane_id, title, method))
 
     print("Playbook: docs/agent/native-dawn.md")
+    print("Branch: cursor/native-dawn-rewrite-1355")
     if leftover:
         lane_id, title, method = leftover[0]
         print(f"Next: {lane_id} {title}")
         print(f"  {method}")
         print("Tracking: docs/scheme/native-dawn.md")
+        print("Do not open a PR; commit this lane on the long branch.")
     else:
         print("Next: (native-dawn host queue empty)")
         print("Tracking: docs/scheme/native-dawn.md")
+        print(
+            "Open one PR: cursor/native-dawn-rewrite-1355 → main "
+            "(keep lane commits)."
+        )
         print(
             "Named-only: P2 Wasmtime pin, cube-only path, hitch D3, "
             "G-cmd, G-fs-full, listen/UDP, wasi-testsuite, wasmtime-wasi, "

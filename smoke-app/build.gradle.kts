@@ -101,6 +101,7 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            excludes += "**/libwebgpu_c_bundled.so"
         }
     }
 }

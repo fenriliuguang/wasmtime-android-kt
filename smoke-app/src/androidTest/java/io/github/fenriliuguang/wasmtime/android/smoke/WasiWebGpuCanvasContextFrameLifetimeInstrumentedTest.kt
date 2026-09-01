@@ -15,9 +15,8 @@ import org.junit.runner.RunWith
 
 /**
  * Product canvas `get-current-texture` + present must not grow the handle table.
- * Out-of-tree cube on Mali: hitching then GpuThread SIGSEGV when swapchain
- * textures were never [tryDrop]ped after GPU work. Dawn waits
- * `onSubmittedWorkDone` then recycles; this Cpu host keeps last+pending.
+ * Cpu hitch twin (keep last+pending). NativeGpu keep-3 + GPU-done retire lives
+ * in `native_gpu.rs`; this instrument does not attach `dawn-jni`.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest {

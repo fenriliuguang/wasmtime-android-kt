@@ -6,7 +6,7 @@ Living **auto** queue: default `wasi:webgpu` consume via **Dawn C** on the Wasmt
 
 P0 / P1 auto knives stay **closed**. P2 Wasmtime pin is **named**. Do **not** re-cut G1–G9 / F1–F9 / WG-6 as those queues.
 
-Remaining: `python3 ./scripts/native-dawn-remaining.py`. A lane drops when its **`gap: nd … pending`** needle leaves **this file**. Do **not** remove a needle without landing that lane’s DoD.
+Branch: **`cursor/native-dawn-rewrite-1355`**. Remaining: `python3 ./scripts/native-dawn-remaining.py` (next **commit**, not next PR). A lane drops when its **`gap: nd … pending`** needle leaves **this file**. Do **not** remove a needle without landing that lane’s DoD. Open **one** PR to `main` only when this table has no pending needles.
 
 Cube / out-of-tree demo is **not** a consume needle.
 
@@ -17,19 +17,19 @@ Cube / out-of-tree demo is **not** a consume needle.
 | Lane | Needle (delete when landed) |
 |------|-----------------------------|
 | ND-RFC | landed 2026-08-31 (playbook / skill / gates) |
-| ND-DISP | `gap: nd disp pending` |
-| ND-SO | `gap: nd so pending` |
-| ND-HOST | `gap: nd host pending` |
-| ND-BOOT | `gap: nd boot pending` |
-| ND-RES | `gap: nd res pending` |
-| ND-PIPE | `gap: nd pipe pending` |
-| ND-ENC | `gap: nd enc pending` |
-| ND-QUEUE | `gap: nd queue pending` |
-| ND-REST | `gap: nd rest pending` |
-| ND-SURF | `gap: nd surf pending` |
-| ND-DEFAULT | `gap: nd default pending` |
-| ND-CLAIM | `gap: nd claim pending` |
-| ND-DEVICE | `gap: nd device pending` |
+| ND-DISP | landed 2026-08-31 (NativeGpu \| JniBackend; JNI default) |
+| ND-SO | landed 2026-08-31 (Dawn C API Android `.so` recipe; JNI leftover still default) |
+| ND-HOST | landed 2026-08-31 (`NativeGpu` trait + handle table; no product Kotlin GPU API) |
+| ND-BOOT | landed 2026-08-31 (native request-adapter / request-device / queue + boot info; table-backed) |
+| ND-RES | landed 2026-08-31 (native create-buffer/texture/sampler/shader/view; hints Record) |
+| ND-PIPE | landed 2026-08-31 (native bind-group/layout + compute/render pipelines; async + constants; table-backed) |
+| ND-ENC | landed 2026-09-01 (native command-encoder / render-compute pass / draws / copies / query-sets; table-backed) |
+| ND-QUEUE | landed 2026-09-01 (native submit / write-buffer-with-copy / write-texture / work-done; one host copy; table-backed) |
+| ND-REST | landed 2026-09-01 (native remaining pin `[method]`s; `wasi_webgpu_method` green on NativeGpu; table-backed) |
+| ND-SURF | landed 2026-09-01 (NativeGpu Surface from Store/`bindCanvasNativeWindow`; configure / get-current-texture / present; hitch keep-3 + Fifo + H8; table-backed) |
+| ND-DEFAULT | landed 2026-09-01 (`GpuBackends.dawn()` / `:android-webgpu` is NativeGpu; `dawn-jni` leftover; one C API `.so`; `0.2.0`) |
+| ND-CLAIM | landed 2026-09-01 (claim-010 degree Dawn C / NativeGpu, not JNI instantiate; still not CTS) |
+| ND-DEVICE | landed 2026-09-01 (named gfx/WG-6 instruments on `GpuBackends.dawn()`; cube is demo row) |
 
 ## Named-only (never `Next:`)
 

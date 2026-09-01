@@ -4,7 +4,9 @@
 
 P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 official-shape is **closed**. `0.1.0` product gates are **empty**. Do **not** re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, G-dev, or wasi:webgpu G1–G9 / F1–F9 / guest-pipeline / WG-6 **as those queues**. This queue **replaces the JNI/androidx consume path** behind the same pin.
 
-Living **auto** queue after `0.1.0`. Tracking needles: [`../scheme/native-dawn.md`](../scheme/native-dawn.md). One lane, one PR.
+Living **auto** queue after `0.1.0`. Tracking needles: [`../scheme/native-dawn.md`](../scheme/native-dawn.md).
+
+**Integration (this queue only):** one long-lived branch, **one lane = one commit**, **one PR when the queue is empty**. Do **not** open a PR per lane. Branch: **`cursor/native-dawn-rewrite-1355`**. Stay on it; do not fork a short `feat/` / `cursor/` cut per knife. Push commits to that branch. Open **one** PR to `main` after `ND-DEVICE` (remaining script empty). Keep the lane commits on that PR (do not squash them into a single commit). Exception to [`vcs-workflow.md`](../scheme/vcs-workflow.md) “no long-lived lines.”
 
 P2 Wasmtime pin stays **named-only** ([`wasmtime-p2.md`](wasmtime-p2.md)).
 
@@ -40,7 +42,7 @@ If the user named a lane (`ND-DISP`, `native-dawn`, `下一刀`), keep **one** f
 
 No `pwsh`: `python3 ./scripts/native-dawn-remaining.py` (same flags: `--all`).
 
-Do the printed **Next:** line only. `product-010-remaining` is empty; do not invent new `0.1.0` needles.
+Do the printed **Next:** line only — as **one commit** on `cursor/native-dawn-rewrite-1355`. Do **not** open a PR for that commit. `product-010-remaining` is empty; do not invent new `0.1.0` needles.
 
 ## Hard bans
 
@@ -52,7 +54,8 @@ Do the printed **Next:** line only. `product-010-remaining` is empty; do not inv
 - Do **not** add `wasmtime-wasi` without a size + Android thread note.
 - Do **not** introduce wasmtime4j.
 - Do **not** JS-style frame callbacks. Reuse [`threading-android.md`](../mapping/threading-android.md) + [`GfxOnFrameGate`](../../native/src/host.rs); do not rewrite gfx.
-- Do **not** edit hub files on a feature lane: root `README.md` / `README.zh.md`, `CHANGELOG.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`. Exception: this playbook / gate-amendment PR.
+- Do **not** open a per-lane PR, draft PR, or “stack” PR. The only allowed PR is the **final** merge of `cursor/native-dawn-rewrite-1355` → `main` when remaining is empty.
+- Do **not** edit hub files on a lane commit: root `README.md` / `README.zh.md`, `CHANGELOG.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`. Exception: this playbook / gate-amendment **commit** on the long branch.
 - Do **not** crate-`cargo fmt`. rustfmt **only** `.rs` this slice changed.
 - Do **not** read `native/src/cm.rs` without an offset. Grep the symbol, then Read ~80 lines.
 - Never file GitHub issues on Wasmtime, WASI, wasi-webgpu, Dawn, or androidx. No `gh issue create`.
@@ -77,7 +80,7 @@ Keep `func_wrap_concurrent` + yield for WIT `async func`. `rustc` **1.97.1**.
 
 Copy this table. Do not shrink a consume lane to “cube enough.”
 
-| PR | Needle in [`../scheme/native-dawn.md`](../scheme/native-dawn.md) | DoD |
+| Commit | Needle in [`../scheme/native-dawn.md`](../scheme/native-dawn.md) | DoD |
 |----|------------------------------------------------------------------|-----|
 | **ND-RFC** | *(landed this playbook)* | Playbook + remaining script + skill/rule + gate amendments. `native-dawn-remaining.py` prints **`Next: ND-DISP`**. |
 | **ND-DISP** | `gap: nd disp pending` | `cm.rs` webgpu imports dispatch `NativeGpu \| JniBackend`. Default remains JNI so all existing tests stay green. Native slot may be unset. Changelog. Reuse `exp_*` unchanged. Remove the needle. |
@@ -92,7 +95,7 @@ Copy this table. Do not shrink a consume lane to “cube enough.”
 | **ND-SURF** | `gap: nd surf pending` | Native Dawn `Surface` from `ANativeWindow*` (`bindCanvasNativeWindow` / `Store` window handle). `gpu-canvas-context` configure / get-current-texture / present. Hitch invariants: no same-present `close()`, GPU fence + keep-3, no acquire-wait of previous fence, Fifo, intern one queue, submit/`present` idempotent (H8). **Reuse** canvas-context + frame-lifetime instruments. Cube is **not** this lane’s DoD. Remove the needle. |
 | **ND-DEFAULT** | `gap: nd default pending` | Product `GpuBackends.dawn()` / `:android-webgpu` default is NativeGpu. androidx path is explicit `id = "dawn-jni"` (BYO). **One** Dawn `.so` in the default APK. `0.x` MINOR + changelog. Kotlin SPI still `setWebGpuBackend`. Remove the needle. |
 | **ND-CLAIM** | `gap: nd claim pending` | [`claim-010.md`](../scheme/claim-010.md): default consume degree is **Dawn C**, not “instantiate via JNI.” Update [`gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md) (JNI leftover) + living native gap. Still **not** CTS. Changelog. Remove the needle. |
-| **ND-DEVICE** | `gap: nd device pending` | Existing product instruments (`WasiGfxFrameLoopInstrumentedTest`, WG-6 guest compute/render/present, canvas lifetime) listed as running on **native default**. Out-of-tree **cube** is one **demo** on-screen row (not vendored; not a substitute for instruments). Cloud has **no** device: still **name** the instruments; do not fail the PR solely for missing `connectedAndroidTest`. Remove the needle. |
+| **ND-DEVICE** | `gap: nd device pending` | Existing product instruments (`WasiGfxFrameLoopInstrumentedTest`, WG-6 guest compute/render/present, canvas lifetime) listed as running on **native default**. Out-of-tree **cube** is one **demo** on-screen row (not vendored; not a substitute for instruments). Cloud has **no** device: still **name** the instruments; do not fail the **final** PR solely for missing `connectedAndroidTest`. Remove the needle. Then open **one** PR `cursor/native-dawn-rewrite-1355` → `main`. |
 
 ## Named-only (never `Next:`)
 
@@ -132,9 +135,9 @@ Device (required where the table says Device / `ND-DEVICE`):
 .\gradlew.bat :smoke-app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=<instrument>
 ```
 
-Cloud has **no** device. Still **add or list** the instrument; do not fail the PR solely because this checkout could not run it.
+Cloud has **no** device. Still **add or list** the instrument; do not fail the **final** PR solely because this checkout could not run it.
 
-This playbook amendment (docs-only): `python3 ./scripts/native-dawn-remaining.py` must print **`Next: ND-DISP`**. `python3 ./scripts/product-010-remaining.py` must print the empty `0.1.0` queue and point here.
+This playbook amendment (docs-only, on the long branch): `python3 ./scripts/native-dawn-remaining.py` must print **`Next: ND-DISP`** and name branch `cursor/native-dawn-rewrite-1355`. `python3 ./scripts/product-010-remaining.py` must print the empty `0.1.0` queue and point here.
 
 ## Acceptance gates (product)
 
@@ -149,9 +152,9 @@ This playbook amendment (docs-only): `python3 ./scripts/native-dawn-remaining.py
 | Claim | `ND-CLAIM` upgrades degree to Dawn C; not CTS | Silent drop of pin methods |
 | Binary | One Dawn `.so`; size + thread note | androidx + self-built both in default APK |
 
-## PR title
+## Commit message (one per lane)
 
-- This open: `docs: start native-dawn host playbook and remaining queue`
+- Workflow / playbook on this branch: `docs: native-dawn long-lived rewrite branch`
 - DISP / HOST: `refactor(webgpu): ND …`
 - SO: `build(webgpu): ND Dawn C Android so`
 - Consume: `feat(webgpu): ND …`
@@ -159,7 +162,7 @@ This playbook amendment (docs-only): `python3 ./scripts/native-dawn-remaining.py
 - CLAIM: `docs: ND native Dawn claim table`
 - DEVICE: `test(webgpu): ND instruments on native default`
 
-Label: `documentation` for docs-only; `enhancement` for code.
+Final PR (only when remaining is empty): title `feat(webgpu): native Dawn C host (full pin)`; label `enhancement`. Keep lane commits.
 
 ## Copy source
 

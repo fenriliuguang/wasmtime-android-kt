@@ -2,38 +2,37 @@
 
 use crate::engine::new_engine;
 use crate::error::{throw, throw_compile, throw_err, throw_link};
+use crate::gpu_dispatch::GpuBackend;
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
     gfx_on_frame_lookup, gfx_on_frame_register, gfx_on_frame_unregister, wasi_monotonic_now_ns,
     GfxOnFrameGate, GfxOnFrameTake, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer,
-    GpuCommandBuffer,
-    GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout,
-    GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder,
-    GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
+    GpuCommandBuffer, GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice,
+    GpuPipelineLayout, GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder,
+    GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture,
+    GpuTextureView, HostState, Widget,
 };
 use crate::jvm;
+use crate::native_gpu::{NativeRequestAdapterOptions, NativeRequestDeviceDescriptor};
 use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
     GpuAdapterInfo, GpuBindGroupDescriptor, GpuBindGroupLayoutDescriptor, GpuBindingResource,
-    GpuBufferBindingType, GpuSamplerBindingType, GpuTextureSampleType,
-    GpuBufferDescriptor, GpuBufferMapState, GpuBufferUsage, GpuCanvasConfiguration,
-    GpuCanvasConfigurationOwned, GpuCanvasContext, GpuColor, GpuCommandBufferDescriptor,
-    GpuCommandEncoderDescriptor, GpuCompilationInfo, GpuCompilationMessage,
-    GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor,
+    GpuBlendFactor, GpuBlendOperation, GpuBufferBindingType, GpuBufferDescriptor,
+    GpuBufferMapState, GpuBufferUsage, GpuCanvasConfiguration, GpuCanvasConfigurationOwned,
+    GpuCanvasContext, GpuColor, GpuColorWrite, GpuCommandBufferDescriptor,
+    GpuCommandEncoderDescriptor, GpuCompareFunction, GpuCompilationInfo, GpuCompilationMessage,
+    GpuCompilationMessageType, GpuComputePassDescriptor, GpuComputePipelineDescriptor, GpuCullMode,
     GpuDeviceDescriptor, GpuDeviceLostInfo, GpuDeviceLostReason, GpuError, GpuErrorFilter,
-    GpuErrorKind, GpuExtent3D, GpuIndexFormat, GpuLayoutMode, GpuMapMode,
-    GpuBlendFactor, GpuBlendOperation, GpuColorWrite, GpuCompareFunction, GpuCullMode, GpuFrontFace,
-    GpuStencilFaceState, GpuStencilOperation,
-    GpuMipmapFilterMode, GpuPipelineErrorReason, GpuPipelineLayoutDescriptor,
-    GpuPrimitiveTopology,
+    GpuErrorKind, GpuExtent3D, GpuFrontFace, GpuIndexFormat, GpuLayoutMode, GpuMapMode,
+    GpuMipmapFilterMode, GpuPipelineErrorReason, GpuPipelineLayoutDescriptor, GpuPrimitiveTopology,
     GpuQuerySetDescriptor, GpuQueryType, GpuRenderBundleDescriptor,
     GpuRenderBundleEncoderDescriptor, GpuRenderPassDescriptor, GpuRenderPipelineDescriptor,
-    GpuRequestAdapterOptions, GpuSamplerDescriptor,
-    GpuShaderModuleDescriptor, GpuShaderStage, GpuSupportedFeatures,
-    GpuSupportedLimits, GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
-    GpuTextureDescriptor,
-    GpuTextureDimension, GpuTextureFormat, GpuTextureUsage, GpuTextureViewDescriptor,
-    GpuTextureViewDimension, GpuUncapturedErrorEvent, GpuVertexFormat, GpuVertexStepMode, MapAsyncError, PopErrorScopeError,
+    GpuRequestAdapterOptions, GpuSamplerBindingType, GpuSamplerDescriptor,
+    GpuShaderModuleDescriptor, GpuShaderStage, GpuStencilFaceState, GpuStencilOperation,
+    GpuSupportedFeatures, GpuSupportedLimits, GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout,
+    GpuTexelCopyTextureInfo, GpuTextureDescriptor, GpuTextureDimension, GpuTextureFormat,
+    GpuTextureSampleType, GpuTextureUsage, GpuTextureViewDescriptor, GpuTextureViewDimension,
+    GpuUncapturedErrorEvent, GpuVertexFormat, GpuVertexStepMode, MapAsyncError, PopErrorScopeError,
     RecordGpuPipelineConstantValue, RecordOptionGpuSize64, RequestDeviceError,
     RequestDeviceErrorKind, SetBindGroupError, UnmapError, WgslLanguageFeatures, WriteBufferError,
 };
@@ -182,9 +181,7 @@ fn pack_stencil_face(face: &Option<GpuStencilFaceState>) -> [i32; 5] {
 
 /// Empty vec = absent. Packed ints: format, depth-write, compare, front/back 5-tuples,
 /// then (has, value) for read-mask / write-mask / bias / slope-bits / clamp-bits.
-fn pack_depth_stencil(
-    depth_stencil: &Option<crate::webgpu_abi::GpuDepthStencilState>,
-) -> Vec<i32> {
+fn pack_depth_stencil(depth_stencil: &Option<crate::webgpu_abi::GpuDepthStencilState>) -> Vec<i32> {
     let Some(ds) = depth_stencil else {
         return Vec::new();
     };
@@ -317,9 +314,7 @@ fn pack_color_clear_bits(c: &GpuColor) -> [i32; 4] {
 }
 
 /// Guest `option<record-gpu-pipeline-constant-value>` → host handle (0 = none).
-fn pipeline_constant_rep(
-    rec: &Option<Resource<RecordGpuPipelineConstantValue>>,
-) -> i32 {
+fn pipeline_constant_rep(rec: &Option<Resource<RecordGpuPipelineConstantValue>>) -> i32 {
     rec.as_ref().map(|r| r.rep() as i32).unwrap_or(0)
 }
 
@@ -623,21 +618,21 @@ fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
             "authority",
         ));
     }
-    let (host, port) = authority.rsplit_once(':').ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, "host:port")
-    })?;
-    let ip: std::net::Ipv4Addr = host.parse().map_err(|e| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{e}"))
-    })?;
+    let (host, port) = authority
+        .rsplit_once(':')
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "host:port"))?;
+    let ip: std::net::Ipv4Addr = host
+        .parse()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{e}")))?;
     if ip.is_unspecified() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "unspecified",
         ));
     }
-    let port: u16 = port.parse().map_err(|e| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{e}"))
-    })?;
+    let port: u16 = port
+        .parse()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{e}")))?;
     let addr = SocketAddr::from((ip, port));
     let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(2))?;
     stream.set_read_timeout(Some(Duration::from_secs(2)))?;
@@ -712,7 +707,6 @@ impl StreamConsumer<HostState> for CollectConsumer {
     }
 }
 
-
 fn l2_supported_limits_handles(
     caller: &mut StoreContextMut<'_, HostState>,
     limits: &Resource<GpuSupportedLimits>,
@@ -721,12 +715,7 @@ fn l2_supported_limits_handles(
         let entry = caller.data_mut().table.get(limits)?;
         (entry.adapter, entry.device)
     };
-    let cb = caller
-        .data()
-        .experimental_host_cb
-        .as_ref()
-        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-        .cloned()?;
+    let cb = caller.data().require_webgpu_jni_cb()?;
     let l2_adapter = if adapter == 0 && device == 0 {
         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
     } else {
@@ -735,7 +724,26 @@ fn l2_supported_limits_handles(
     Ok((cb, l2_adapter, device))
 }
 
-fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<(), String> {
+fn native_gpu_error(err: crate::native_gpu::NativeGpuError) -> wasmtime::Error {
+    wasmtime::Error::msg(err.to_string())
+}
+
+fn native_adapter_info_for(
+    caller: &mut StoreContextMut<'_, HostState>,
+    info: &Resource<GpuAdapterInfo>,
+) -> wasmtime::Result<crate::native_gpu::NativeAdapterInfo> {
+    let info_adapter = caller.data_mut().table.get(info)?.adapter;
+    let gpu = caller.data_mut().require_native_gpu()?;
+    let handle = gpu
+        .resolve_adapter(info_adapter)
+        .map_err(native_gpu_error)?;
+    gpu.adapter_info(handle).map_err(native_gpu_error)
+}
+
+pub(crate) fn define_host(
+    linker: &mut Linker<HostState>,
+    fixture_ctors: bool,
+) -> Result<(), String> {
     linker
         .root()
         .resource(
@@ -1107,11 +1115,13 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
         types
             .func_wrap(
                 "[method]descriptor.open-at",
-                |mut store, (desc, path): (Resource<FsDescriptor>, String)| {
-                    match fs_open_child(&mut store.data_mut().table, &desc, &path) {
-                        Ok(child) => Ok((Ok(child),)),
-                        Err(code) => Ok((Err(code),)),
-                    }
+                |mut store, (desc, path): (Resource<FsDescriptor>, String)| match fs_open_child(
+                    &mut store.data_mut().table,
+                    &desc,
+                    &path,
+                ) {
+                    Ok(child) => Ok((Ok(child),)),
+                    Err(code) => Ok((Err(code),)),
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1135,12 +1145,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap("get-directories", |mut store, ()| {
                 std::fs::create_dir_all(filesystem_sandbox_root())
                     .map_err(|e| wasmtime::Error::msg(format!("sandbox mkdir: {e}")))?;
-                let resource = store
-                    .data_mut()
-                    .table
-                    .push(FsDescriptor {
-                        path: filesystem_sandbox_root(),
-                    })?;
+                let resource = store.data_mut().table.push(FsDescriptor {
+                    path: filesystem_sandbox_root(),
+                })?;
                 Ok((vec![(resource, ".".to_string())],))
             })
             .map_err(|e| e.to_string())?;
@@ -1174,8 +1181,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         access.data_mut().table.get(&sock)?;
                         Ok(())
                     })?;
-                    let (done_tx, done_rx) =
-                        oneshot::channel::<std::io::Result<TcpConnected>>();
+                    let (done_tx, done_rx) = oneshot::channel::<std::io::Result<TcpConnected>>();
                     std::thread::spawn(move || {
                         let _ = done_tx.send(tcp_connect_guest(addr));
                     });
@@ -1223,9 +1229,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
                     use std::io::Write;
                     let mut client = client;
-                    match client.write_all(&bytes).and_then(|_| {
-                        client.shutdown(std::net::Shutdown::Write)
-                    }) {
+                    match client
+                        .write_all(&bytes)
+                        .and_then(|_| client.shutdown(std::net::Shutdown::Write))
+                    {
                         Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(())),
                         Err(_) => Ok(Err(SockErrorCode::Unknown)),
                     }
@@ -1276,8 +1283,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             )
             .map_err(|e| e.to_string())?;
         create
-            .func_wrap("create-tcp-socket", |mut store, (family,): (IpAddressFamily,)| {
-                match family {
+            .func_wrap(
+                "create-tcp-socket",
+                |mut store, (family,): (IpAddressFamily,)| match family {
                     IpAddressFamily::Ipv4 => {
                         let resource = store.data_mut().table.push(TcpSocket {
                             client: None,
@@ -1286,8 +1294,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         Ok((Ok(resource),))
                     }
                     IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::Unknown),)),
-                }
-            })
+                },
+            )
             .map_err(|e| e.to_string())?;
     }
 
@@ -1451,38 +1459,32 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             )
             .map_err(|e| e.to_string())?;
         client
-            .func_wrap_concurrent(
-                "send",
-                |accessor, (req,): (Resource<HttpRequest>,)| {
-                    Box::pin(async move {
-                        let authority = accessor.with(|mut access| {
-                            Ok::<_, wasmtime::Error>(
-                                access.data_mut().table.delete(req)?.authority,
-                            )
-                        })?;
-                        let (done_tx, done_rx) =
-                            oneshot::channel::<std::io::Result<(u16, Vec<u8>)>>();
-                        std::thread::spawn(move || {
-                            let _ = done_tx.send(http_send_get(&authority));
-                        });
-                        let outcome = done_rx
-                            .await
-                            .map_err(|_| wasmtime::Error::msg("send canceled"))?;
-                        match outcome {
-                            Ok((status, body)) => {
-                                let resource = accessor.with(|mut access| {
-                                    access.data_mut().table.push(HttpResponse {
-                                        status,
-                                        body: Arc::new(Mutex::new(body)),
-                                    })
-                                })?;
-                                Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
-                            }
-                            Err(_) => Ok((Err(HttpErrorCode::Unknown),)),
+            .func_wrap_concurrent("send", |accessor, (req,): (Resource<HttpRequest>,)| {
+                Box::pin(async move {
+                    let authority = accessor.with(|mut access| {
+                        Ok::<_, wasmtime::Error>(access.data_mut().table.delete(req)?.authority)
+                    })?;
+                    let (done_tx, done_rx) = oneshot::channel::<std::io::Result<(u16, Vec<u8>)>>();
+                    std::thread::spawn(move || {
+                        let _ = done_tx.send(http_send_get(&authority));
+                    });
+                    let outcome = done_rx
+                        .await
+                        .map_err(|_| wasmtime::Error::msg("send canceled"))?;
+                    match outcome {
+                        Ok((status, body)) => {
+                            let resource = accessor.with(|mut access| {
+                                access.data_mut().table.push(HttpResponse {
+                                    status,
+                                    body: Arc::new(Mutex::new(body)),
+                                })
+                            })?;
+                            Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
                         }
-                    })
-                },
-            )
+                        Err(_) => Ok((Err(HttpErrorCode::Unknown),)),
+                    }
+                })
+            })
             .map_err(|e| e.to_string())?;
     }
 
@@ -1519,8 +1521,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut store, (this,): (Resource<GfxSurface>,)| {
                     store.data_mut().table.get(&this)?;
                     let gate = store.data().gfx_on_frame.clone();
-                    let reader =
-                        StreamReader::new(&mut store, GfxOnFrameProducer { gate })?;
+                    let reader = StreamReader::new(&mut store, GfxOnFrameProducer { gate })?;
                     Ok((reader,))
                 },
             )
@@ -1571,6 +1572,24 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     .map(|m| m as i32)
                     .unwrap_or(-1);
                 let alpha_mode = config.alpha_mode.map(|a| a as i32).unwrap_or(-1);
+                if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                    let handle = {
+                        let gpu = caller.data_mut().require_native_gpu()?;
+                        gpu.canvas_configure(
+                            ctx_rep,
+                            device_rep,
+                            format,
+                            usage,
+                            color_space,
+                            tone_mapping,
+                            alpha_mode,
+                            &view_formats,
+                        )
+                        .map_err(native_gpu_error)?
+                    };
+                    caller.data_mut().table.get_mut(&ctx)?.canvas_rep = handle.raw();
+                    return Ok(());
+                }
                 let Some(cb) = caller.data().experimental_host_cb.clone() else {
                     caller.data_mut().table.get_mut(&ctx)?.canvas_rep = 1;
                     return Ok(());
@@ -1596,9 +1615,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )
                 .map_err(wasmtime::Error::msg)?;
                 if handle == 0 {
-                    return Err(wasmtime::Error::msg(
-                        "gfx context.configure returned 0",
-                    ));
+                    return Err(wasmtime::Error::msg("gfx context.configure returned 0"));
                 }
                 caller.data_mut().table.get_mut(&ctx)?.canvas_rep = handle;
                 Ok(())
@@ -1609,11 +1626,22 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             "[method]context.get-current-texture",
             |mut caller, (ctx,): (Resource<GfxWebGpuContext>,)| {
                 let ctx_rep = caller.data_mut().table.get(&ctx)?.canvas_rep;
-                let Some(cb) = caller.data().experimental_host_cb.clone() else {
+                if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                    let vsync = caller.data().gfx_on_frame.last_take_vsync_ns();
+                    let handle = {
+                        let gpu = caller.data_mut().require_native_gpu()?;
+                        gpu.note_consumed_vsync(vsync);
+                        gpu.canvas_current_texture(ctx_rep)
+                            .map_err(native_gpu_error)?
+                    };
                     let resource = caller
                         .data_mut()
                         .table
-                        .push(GpuTexture { rep: 0 })?;
+                        .push(GpuTexture { rep: handle.raw() })?;
+                    return Ok((resource,));
+                }
+                let Some(cb) = caller.data().experimental_host_cb.clone() else {
+                    let resource = caller.data_mut().table.push(GpuTexture { rep: 0 })?;
                     return Ok((resource,));
                 };
                 let texture_rep =
@@ -1636,6 +1664,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             "[method]context.present",
             |mut caller, (ctx,): (Resource<GfxWebGpuContext>,)| {
                 let ctx_rep = caller.data_mut().table.get(&ctx)?.canvas_rep;
+                if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                    let _ = ctx_rep;
+                    caller.data_mut().require_native_gpu()?.canvas_present();
+                    return Ok(());
+                }
                 if let Some(cb) = caller.data().experimental_host_cb.clone() {
                     jvm::exp_canvas_context_present_described(&cb, ctx_rep)
                         .map_err(wasmtime::Error::msg)?;
@@ -1851,6 +1884,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
     // Experimental stays sync.
     // S5: first canonical list is submit; other lists still later.
     {
+        // ND-DISP: pin imports dispatch NativeGpu | JniBackend via
+        // HostState::webgpu_backend (JNI default; native slot may be unset).
         let mut webgpu = linker
             .instance("wasi:webgpu/webgpu@0.3.0-rc.2")
             .map_err(|e| e.to_string())?;
@@ -1885,9 +1920,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu.request-adapter",
                 |accessor, (gpu, options): (Resource<Gpu>, Option<GpuRequestAdapterOptions>)| {
                     Box::pin(async move {
-                        let cb = accessor.with(|mut access| -> wasmtime::Result<_> {
+                        let backend = accessor.with(|mut access| -> wasmtime::Result<_> {
                             let _ = access.data_mut().table.get(&gpu)?;
-                            Ok(access.data_mut().experimental_host_cb.clone())
+                            Ok(access.data_mut().webgpu_backend())
                         })?;
                         // True CM async even when unwired (guest `none`, not a trap).
                         let (tx, rx) = oneshot::channel::<()>();
@@ -1895,51 +1930,85 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             let _ = tx.send(());
                         });
                         let _ = rx.await;
-                        let Some(cb) = cb else {
-                            return Ok((None,));
-                        };
-                        // L2: `power-preference` 0=none/undefined, 1=low-power, 2=high-performance.
-                        // `force-fallback-adapter` 0=none/false, 1=true.
-                        // `xr-compatible` -1=none, 0=false, 1=true.
                         let (power_preference, force_fallback, feature_level, xr_compatible) =
-                            match options.as_ref()
-                        {
-                            None => (0i32, 0i32, String::new(), -1i32),
-                            Some(opts) => {
-                                let power = match opts.power_preference {
-                                    None => 0,
-                                    Some(p) => p as u8 as i32 + 1,
+                            match options.as_ref() {
+                                None => (0i32, 0i32, String::new(), -1i32),
+                                Some(opts) => {
+                                    let power = match opts.power_preference {
+                                        None => 0,
+                                        Some(p) => p as u8 as i32 + 1,
+                                    };
+                                    let fallback =
+                                        i32::from(opts.force_fallback_adapter.unwrap_or(false));
+                                    let feature = opts.feature_level.clone().unwrap_or_default();
+                                    let xr = match opts.xr_compatible {
+                                        None => -1,
+                                        Some(false) => 0,
+                                        Some(true) => 1,
+                                    };
+                                    (power, fallback, feature, xr)
+                                }
+                            };
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                let native_opts = NativeRequestAdapterOptions {
+                                    feature_level: feature_level.as_str(),
+                                    power_preference,
+                                    force_fallback_adapter: force_fallback != 0,
+                                    xr_compatible: match xr_compatible {
+                                        -1 => None,
+                                        0 => Some(false),
+                                        _ => Some(true),
+                                    },
                                 };
-                                let fallback =
-                                    i32::from(opts.force_fallback_adapter.unwrap_or(false));
-                                let feature =
-                                    opts.feature_level.clone().unwrap_or_default();
-                                let xr = match opts.xr_compatible {
-                                    None => -1,
-                                    Some(false) => 0,
-                                    Some(true) => 1,
-                                };
-                                (power, fallback, feature, xr)
+                                let resource =
+                                    accessor.with(|mut access| -> wasmtime::Result<_> {
+                                        let handle = {
+                                            let gpu = access.data_mut().require_native_gpu()?;
+                                            gpu.request_adapter(&native_opts)
+                                        };
+                                        match handle {
+                                            None => Ok(None),
+                                            Some(h) => Ok(Some(
+                                                access
+                                                    .data_mut()
+                                                    .table
+                                                    .push(GpuAdapter { rep: h.raw() })?,
+                                            )),
+                                        }
+                                    })?;
+                                Ok((resource,))
                             }
-                        };
-                        let adapter_rep = jvm::exp_request_adapter_described(
-                            &cb,
-                            power_preference,
-                            force_fallback,
-                            feature_level,
-                            xr_compatible,
-                        )
-                        .map_err(wasmtime::Error::msg)?;
-                        if adapter_rep == 0 {
-                            return Ok((None,));
+                            GpuBackend::JniBackend => {
+                                let cb = accessor.with(|mut access| -> wasmtime::Result<_> {
+                                    Ok(access.data_mut().webgpu_jni_cb())
+                                })?;
+                                let Some(cb) = cb else {
+                                    return Ok((None,));
+                                };
+                                // L2: `power-preference` 0=none/undefined, 1=low-power, 2=high-performance.
+                                // `force-fallback-adapter` 0=none/false, 1=true.
+                                // `xr-compatible` -1=none, 0=false, 1=true.
+                                let adapter_rep = jvm::exp_request_adapter_described(
+                                    &cb,
+                                    power_preference,
+                                    force_fallback,
+                                    feature_level,
+                                    xr_compatible,
+                                )
+                                .map_err(wasmtime::Error::msg)?;
+                                if adapter_rep == 0 {
+                                    return Ok((None,));
+                                }
+                                let resource = accessor.with(|mut access| {
+                                    access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuAdapter { rep: adapter_rep })
+                                })?;
+                                Ok((Some(resource),))
+                            }
                         }
-                        let resource = accessor.with(|mut access| {
-                            access
-                                .data_mut()
-                                .table
-                                .push(GpuAdapter { rep: adapter_rep })
-                        })?;
-                        Ok((Some(resource),))
                     })
                 },
             )
@@ -1960,12 +2029,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu.get-preferred-canvas-format",
                 |mut caller, (gpu,): (Resource<Gpu>,)| {
                     let _ = caller.data_mut().table.get(&gpu)?;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let dawn = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .preferred_canvas_format();
+                        return Ok((GpuTextureFormat::from_dawn_u32(dawn),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let dawn = jvm::exp_gpu_get_preferred_canvas_format_described(&cb)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((GpuTextureFormat::from_dawn_u32(dawn),))
@@ -1977,12 +2048,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu.wgsl-language-features",
                 |mut caller, (gpu,): (Resource<Gpu>,)| {
                     let _ = caller.data_mut().table.get(&gpu)?;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(WgslLanguageFeatures { gpu: 0 })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     jvm::exp_gpu_wgsl_language_features_described(&cb)
                         .map_err(wasmtime::Error::msg)?;
                     let resource = caller
@@ -1998,12 +2071,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]wgsl-language-features.has",
                 |mut caller, (features, value): (Resource<WgslLanguageFeatures>, String)| {
                     let _features_gpu = caller.data_mut().table.get(&features)?.gpu;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = value;
+                        return Ok((false,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let has = jvm::exp_wgsl_language_features_has_described(&cb, value)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((has != 0,))
@@ -2053,27 +2125,36 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter.features",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
+                    let backend = caller.data().webgpu_backend();
                     let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_adapter = if adapter_rep == 0 {
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                    } else {
-                        adapter_rep
-                    };
-                    jvm::exp_adapter_features_described(&cb, l2_adapter)
-                        .map_err(wasmtime::Error::msg)?;
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuSupportedFeatures {
-                            adapter: l2_adapter,
-                        })?;
-                    Ok((resource,))
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let l2_adapter = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                gpu.resolve_adapter(adapter_rep)
+                                    .map_err(native_gpu_error)?
+                                    .raw()
+                            };
+                            let resource = caller.data_mut().table.push(GpuSupportedFeatures {
+                                adapter: l2_adapter,
+                            })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_adapter = if adapter_rep == 0 {
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                            } else {
+                                adapter_rep
+                            };
+                            jvm::exp_adapter_features_described(&cb, l2_adapter)
+                                .map_err(wasmtime::Error::msg)?;
+                            let resource = caller.data_mut().table.push(GpuSupportedFeatures {
+                                adapter: l2_adapter,
+                            })?;
+                            Ok((resource,))
+                        }
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2081,21 +2162,33 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-features.has",
                 |mut caller, (features, value): (Resource<GpuSupportedFeatures>, String)| {
+                    let backend = caller.data().webgpu_backend();
                     let features_adapter = caller.data_mut().table.get(&features)?.adapter;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_adapter = if features_adapter == 0 {
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                    } else {
-                        features_adapter
-                    };
-                    let has = jvm::exp_supported_features_has_described(&cb, l2_adapter, value)
-                        .map_err(wasmtime::Error::msg)?;
-                    Ok((has != 0,))
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let has = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let adapter = gpu
+                                    .resolve_adapter(features_adapter)
+                                    .map_err(native_gpu_error)?;
+                                gpu.adapter_has_feature(adapter, &value)
+                                    .map_err(native_gpu_error)?
+                            };
+                            Ok((has,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_adapter = if features_adapter == 0 {
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                            } else {
+                                features_adapter
+                            };
+                            let has =
+                                jvm::exp_supported_features_has_described(&cb, l2_adapter, value)
+                                    .map_err(wasmtime::Error::msg)?;
+                            Ok((has != 0,))
+                        }
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2103,25 +2196,38 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter.limits",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
+                    let backend = caller.data().webgpu_backend();
                     let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_adapter = if adapter_rep == 0 {
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                    } else {
-                        adapter_rep
-                    };
-                    jvm::exp_adapter_limits_described(&cb, l2_adapter)
-                        .map_err(wasmtime::Error::msg)?;
-                    let resource = caller.data_mut().table.push(GpuSupportedLimits {
-                        adapter: l2_adapter,
-                        device: 0,
-                    })?;
-                    Ok((resource,))
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let l2_adapter = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                gpu.resolve_adapter(adapter_rep)
+                                    .map_err(native_gpu_error)?
+                                    .raw()
+                            };
+                            let resource = caller.data_mut().table.push(GpuSupportedLimits {
+                                adapter: l2_adapter,
+                                device: 0,
+                            })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_adapter = if adapter_rep == 0 {
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                            } else {
+                                adapter_rep
+                            };
+                            jvm::exp_adapter_limits_described(&cb, l2_adapter)
+                                .map_err(wasmtime::Error::msg)?;
+                            let resource = caller.data_mut().table.push(GpuSupportedLimits {
+                                adapter: l2_adapter,
+                                device: 0,
+                            })?;
+                            Ok((resource,))
+                        }
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2142,12 +2248,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         let entry = caller.data_mut().table.get(&limits)?;
                         (entry.adapter, entry.device)
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((1u32,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if limits_adapter == 0 && limits_device == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2171,12 +2275,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         let entry = caller.data_mut().table.get(&limits)?;
                         (entry.adapter, entry.device)
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((1u32,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if limits_adapter == 0 && limits_device == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2201,12 +2303,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         let entry = caller.data_mut().table.get(&limits)?;
                         (entry.adapter, entry.device)
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((1u32,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if limits_adapter == 0 && limits_device == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2230,12 +2330,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         let entry = caller.data_mut().table.get(&limits)?;
                         (entry.adapter, entry.device)
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((1u64,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if limits_adapter == 0 && limits_device == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2255,9 +2353,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-color-attachment-bytes-per-sample",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_color_attachment_bytes_per_sample_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_color_attachment_bytes_per_sample_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2267,10 +2374,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-color-attachments",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_color_attachments_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_color_attachments_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2279,9 +2394,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-invocations-per-workgroup",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_compute_invocations_per_workgroup_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_compute_invocations_per_workgroup_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2291,10 +2415,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroup-size-x",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_compute_workgroup_size_x_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_compute_workgroup_size_x_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2303,10 +2435,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroup-size-y",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_compute_workgroup_size_y_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_compute_workgroup_size_y_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2315,10 +2455,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroup-size-z",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_compute_workgroup_size_z_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_compute_workgroup_size_z_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2327,9 +2475,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroups-per-dimension",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_compute_workgroups_per_dimension_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_compute_workgroups_per_dimension_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2339,9 +2496,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-compute-workgroup-storage-size",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_compute_workgroup_storage_size_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_compute_workgroup_storage_size_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2351,6 +2517,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-dynamic-storage-buffers-per-pipeline-layout",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
                     let value = jvm::exp_supported_limits_max_dynamic_storage_buffers_per_pipeline_layout_described(&cb, l2_adapter, limits_device)
@@ -2363,6 +2533,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-dynamic-uniform-buffers-per-pipeline-layout",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
                     let value = jvm::exp_supported_limits_max_dynamic_uniform_buffers_per_pipeline_layout_described(&cb, l2_adapter, limits_device)
@@ -2375,10 +2549,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-immediate-size",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_immediate_size_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_immediate_size_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2387,9 +2569,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-inter-stage-shader-variables",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_inter_stage_shader_variables_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_inter_stage_shader_variables_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2399,9 +2590,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-sampled-textures-per-shader-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_sampled_textures_per_shader_stage_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_sampled_textures_per_shader_stage_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2411,10 +2611,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-samplers-per-shader-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_samplers_per_shader_stage_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_samplers_per_shader_stage_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2423,9 +2631,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-storage-buffer-binding-size",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u64,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_storage_buffer_binding_size_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_storage_buffer_binding_size_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2435,9 +2652,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-storage-buffers-in-fragment-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_storage_buffers_in_fragment_stage_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_storage_buffers_in_fragment_stage_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2447,9 +2673,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-storage-buffers-in-vertex-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_storage_buffers_in_vertex_stage_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_storage_buffers_in_vertex_stage_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2459,9 +2694,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-storage-buffers-per-shader-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_storage_buffers_per_shader_stage_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_storage_buffers_per_shader_stage_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2471,9 +2715,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-storage-textures-in-fragment-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_storage_textures_in_fragment_stage_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_storage_textures_in_fragment_stage_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2483,9 +2736,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-storage-textures-in-vertex-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_storage_textures_in_vertex_stage_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_storage_textures_in_vertex_stage_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2495,9 +2757,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-storage-textures-per-shader-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_storage_textures_per_shader_stage_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_storage_textures_per_shader_stage_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2507,10 +2778,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-texture-array-layers",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_texture_array_layers_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_texture_array_layers_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2519,10 +2798,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-texture-dimension1-d",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_texture_dimension1_d_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_texture_dimension1_d_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2531,10 +2818,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-texture-dimension2-d",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_texture_dimension2_d_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_texture_dimension2_d_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2543,10 +2838,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-texture-dimension3-d",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_texture_dimension3_d_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_texture_dimension3_d_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2555,9 +2858,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-uniform-buffer-binding-size",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u64,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_uniform_buffer_binding_size_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_uniform_buffer_binding_size_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2567,9 +2879,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-uniform-buffers-per-shader-stage",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_uniform_buffers_per_shader_stage_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_max_uniform_buffers_per_shader_stage_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2579,10 +2900,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-vertex-attributes",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_vertex_attributes_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_vertex_attributes_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2591,10 +2920,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-vertex-buffer-array-stride",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_vertex_buffer_array_stride_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_vertex_buffer_array_stride_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2603,10 +2940,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.max-vertex-buffers",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_max_vertex_buffers_described(&cb, l2_adapter, limits_device)
-                        .map_err(wasmtime::Error::msg)?;
+                    let value = jvm::exp_supported_limits_max_vertex_buffers_described(
+                        &cb,
+                        l2_adapter,
+                        limits_device,
+                    )
+                    .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
             )
@@ -2615,9 +2960,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.min-storage-buffer-offset-alignment",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_min_storage_buffer_offset_alignment_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_min_storage_buffer_offset_alignment_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2627,9 +2981,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-supported-limits.min-uniform-buffer-offset-alignment",
                 |mut caller, (limits,): (Resource<GpuSupportedLimits>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = caller.data_mut().table.get(&limits)?;
+                        return Ok((1u32,));
+                    }
                     let (cb, l2_adapter, limits_device) =
                         l2_supported_limits_handles(&mut caller, &limits)?;
-                    let value = jvm::exp_supported_limits_min_uniform_buffer_offset_alignment_described(&cb, l2_adapter, limits_device)
+                    let value =
+                        jvm::exp_supported_limits_min_uniform_buffer_offset_alignment_described(
+                            &cb,
+                            l2_adapter,
+                            limits_device,
+                        )
                         .map_err(wasmtime::Error::msg)?;
                     Ok((value,))
                 },
@@ -2639,24 +3002,37 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter.info",
                 |mut caller, (adapter,): (Resource<GpuAdapter>,)| {
+                    let backend = caller.data().webgpu_backend();
                     let adapter_rep = caller.data_mut().table.get(&adapter)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_adapter = if adapter_rep == 0 {
-                        jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                    } else {
-                        adapter_rep
-                    };
-                    jvm::exp_adapter_info_described(&cb, l2_adapter)
-                        .map_err(wasmtime::Error::msg)?;
-                    let resource = caller.data_mut().table.push(GpuAdapterInfo {
-                        adapter: l2_adapter,
-                    })?;
-                    Ok((resource,))
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let l2_adapter = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let handle =
+                                    gpu.resolve_adapter(adapter_rep).map_err(native_gpu_error)?;
+                                let _ = gpu.adapter_info(handle).map_err(native_gpu_error)?;
+                                handle.raw()
+                            };
+                            let resource = caller.data_mut().table.push(GpuAdapterInfo {
+                                adapter: l2_adapter,
+                            })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_adapter = if adapter_rep == 0 {
+                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                            } else {
+                                adapter_rep
+                            };
+                            jvm::exp_adapter_info_described(&cb, l2_adapter)
+                                .map_err(wasmtime::Error::msg)?;
+                            let resource = caller.data_mut().table.push(GpuAdapterInfo {
+                                adapter: l2_adapter,
+                            })?;
+                            Ok((resource,))
+                        }
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -2670,13 +3046,12 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.vendor",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.vendor,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2692,13 +3067,12 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.architecture",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.architecture,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2715,13 +3089,12 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.device",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.device,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2737,13 +3110,12 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.description",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.description,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2759,13 +3131,12 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.subgroup-min-size",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.subgroup_min_size,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2781,13 +3152,12 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.subgroup-max-size",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.subgroup_max_size,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2803,13 +3173,12 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-adapter-info.is-fallback-adapter",
                 |mut caller, (info,): (Resource<GpuAdapterInfo>,)| {
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let native = native_adapter_info_for(&mut caller, &info)?;
+                        return Ok((native.is_fallback_adapter,));
+                    }
                     let info_adapter = caller.data_mut().table.get(&info)?.adapter;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_adapter = if info_adapter == 0 {
                         jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
                     } else {
@@ -2846,12 +3215,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                  (record, key, value): (Resource<RecordOptionGpuSize64>, String, Option<u64>)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller.data_mut().require_native_gpu()?.size64_add(handle, key, value);
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let (has_value, raw) = match value {
                         None => (0i32, 0u64),
                         Some(v) => (1i32, v),
@@ -2870,12 +3238,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record, key): (Resource<RecordOptionGpuSize64>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let value = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .size64_get(handle, &key);
+                        return Ok((value,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let state = jvm::exp_record_option_gpu_size64_get_state_described(
                         &cb,
                         handle,
@@ -2902,12 +3272,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record, key): (Resource<RecordOptionGpuSize64>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let has = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .size64_has(handle, &key);
+                        return Ok((has,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let has = jvm::exp_record_option_gpu_size64_has_described(&cb, handle, key)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((has != 0,))
@@ -2920,12 +3292,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record, key): (Resource<RecordOptionGpuSize64>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .size64_remove(handle, &key);
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     jvm::exp_record_option_gpu_size64_remove_described(&cb, handle, key)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
@@ -2938,12 +3312,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record,): (Resource<RecordOptionGpuSize64>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let keys = caller.data_mut().require_native_gpu()?.size64_keys(handle);
+                        return Ok((keys,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let count = jvm::exp_record_option_gpu_size64_keys_count_described(&cb, handle)
                         .map_err(wasmtime::Error::msg)?;
                     let mut keys = Vec::with_capacity(count as usize);
@@ -2963,12 +3336,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record,): (Resource<RecordOptionGpuSize64>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let values = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .size64_values(handle);
+                        return Ok((values,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let count =
                         jvm::exp_record_option_gpu_size64_values_count_described(&cb, handle)
                             .map_err(wasmtime::Error::msg)?;
@@ -2998,12 +3373,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record,): (Resource<RecordOptionGpuSize64>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let entries = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .size64_entries(handle);
+                        return Ok((entries,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let count =
                         jvm::exp_record_option_gpu_size64_entries_count_described(&cb, handle)
                             .map_err(wasmtime::Error::msg)?;
@@ -3053,7 +3430,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     Box::pin(async move {
                         let (
-                            cb,
+                            backend,
                             adapter_rep,
                             required_features,
                             required_limits,
@@ -3091,16 +3468,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                                         )
                                     }
                                 };
-                            let cb = access
-                                .data_mut()
-                                .experimental_host_cb
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    wasmtime::Error::msg("experimental host callback not set")
-                                })
-                                .cloned()?;
+                            let backend = access.data_mut().webgpu_backend();
                             Ok::<_, wasmtime::Error>((
-                                cb,
+                                backend,
                                 adapter_rep,
                                 required_features,
                                 required_limits,
@@ -3113,33 +3483,63 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             let _ = tx.send(());
                         });
                         let _ = rx.await;
-                        let l2_adapter = if adapter_rep == 0 {
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
-                        } else {
-                            adapter_rep
-                        };
-                        let device_rep = jvm::exp_adapter_request_device_described(
-                            &cb,
-                            l2_adapter,
-                            required_features,
-                            required_limits,
-                            label,
-                            default_queue_label,
-                        )
-                        .map_err(wasmtime::Error::msg)?;
-                        if device_rep == 0 {
-                            return Ok((Err(RequestDeviceError {
-                                kind: RequestDeviceErrorKind::OperationError,
-                                message: "adapter-request-device returned 0".into(),
-                            }),));
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                let native_desc = NativeRequestDeviceDescriptor {
+                                    required_features: required_features.as_slice(),
+                                    required_limits_rep: required_limits,
+                                    label: label.as_str(),
+                                    default_queue_label: default_queue_label.as_str(),
+                                };
+                                let resource = accessor.with(|mut access| -> wasmtime::Result<_> {
+                                    let handle = {
+                                        let gpu = access.data_mut().require_native_gpu()?;
+                                        let adapter = gpu
+                                            .resolve_adapter(adapter_rep)
+                                            .map_err(native_gpu_error)?;
+                                        gpu.request_device(adapter, &native_desc)
+                                            .map_err(native_gpu_error)?
+                                    };
+                                    Ok(access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuDevice { rep: handle.raw() })?)
+                                })?;
+                                Ok((Ok(resource),))
+                            }
+                            GpuBackend::JniBackend => {
+                                let cb = accessor.with(|mut access| {
+                                    access.data_mut().require_webgpu_jni_cb()
+                                })?;
+                                let l2_adapter = if adapter_rep == 0 {
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?
+                                } else {
+                                    adapter_rep
+                                };
+                                let device_rep = jvm::exp_adapter_request_device_described(
+                                    &cb,
+                                    l2_adapter,
+                                    required_features,
+                                    required_limits,
+                                    label,
+                                    default_queue_label,
+                                )
+                                .map_err(wasmtime::Error::msg)?;
+                                if device_rep == 0 {
+                                    return Ok((Err(RequestDeviceError {
+                                        kind: RequestDeviceErrorKind::OperationError,
+                                        message: "adapter-request-device returned 0".into(),
+                                    }),));
+                                }
+                                let resource = accessor.with(|mut access| {
+                                    access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuDevice { rep: device_rep })
+                                })?;
+                                Ok((Ok(resource),))
+                            }
                         }
-                        let resource = accessor.with(|mut access| {
-                            access
-                                .data_mut()
-                                .table
-                                .push(GpuDevice { rep: device_rep })
-                        })?;
-                        Ok((Ok(resource),))
                     })
                 },
             )
@@ -3168,28 +3568,42 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-device.queue",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
-                    let queue_rep = jvm::exp_device_get_queue_described(&cb, l2_device)
-                        .map_err(wasmtime::Error::msg)?;
-                    if queue_rep == 0 {
-                        return Err(wasmtime::Error::msg("device-queue returned 0"));
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device =
+                                    gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                                gpu.device_queue(device).map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuQueue { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let queue_rep = jvm::exp_device_get_queue_described(&cb, l2_device)
+                                .map_err(wasmtime::Error::msg)?;
+                            if queue_rep == 0 {
+                                return Err(wasmtime::Error::msg("device-queue returned 0"));
+                            }
+                            let resource =
+                                caller.data_mut().table.push(GpuQueue { rep: queue_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller.data_mut().table.push(GpuQueue { rep: queue_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -3198,12 +3612,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.destroy",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3254,12 +3666,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-error.message",
                 |mut caller, (error,): (Resource<GpuError>,)| {
                     let error_device = caller.data_mut().table.get(&error)?.device;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if error_device == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3279,12 +3689,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-error.kind",
                 |mut caller, (error,): (Resource<GpuError>,)| {
                     let error_device = caller.data_mut().table.get(&error)?.device;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((GpuErrorKind::from_host_u32(0),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if error_device == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3304,12 +3712,19 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.features",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let adapter = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let _ = gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                            gpu.resolve_adapter(0).map_err(native_gpu_error)?.raw()
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuSupportedFeatures { adapter })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3322,12 +3737,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         .map_err(wasmtime::Error::msg)?;
                     let adapter_rep = jvm::exp_device_adapter_described(&cb, l2_device)
                         .map_err(wasmtime::Error::msg)?;
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuSupportedFeatures {
-                            adapter: adapter_rep,
-                        })?;
+                    let resource = caller.data_mut().table.push(GpuSupportedFeatures {
+                        adapter: adapter_rep,
+                    })?;
                     Ok((resource,))
                 },
             )
@@ -3337,12 +3749,20 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.limits",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let device = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.resolve_device(device_rep)
+                                .map_err(native_gpu_error)?
+                                .raw()
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuSupportedLimits { adapter: 0, device })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3366,12 +3786,16 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.adapter-info",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let adapter = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let _ = gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                            gpu.resolve_adapter(0).map_err(native_gpu_error)?.raw()
+                        };
+                        let resource = caller.data_mut().table.push(GpuAdapterInfo { adapter })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3396,12 +3820,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.label",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let label = caller.data_mut().require_native_gpu()?.label(device_rep);
+                        return Ok((label,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3410,8 +3833,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         device_rep
                     };
-                    let label = jvm::exp_device_label_described(&cb, l2)
-                        .map_err(wasmtime::Error::msg)?;
+                    let label =
+                        jvm::exp_device_label_described(&cb, l2).map_err(wasmtime::Error::msg)?;
                     Ok((label,))
                 },
             )
@@ -3421,12 +3844,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.set-label",
                 |mut caller, (device, label): (Resource<GpuDevice>, String)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .set_label(device_rep, label);
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3446,12 +3871,23 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.lost",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let l2_device = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.resolve_device(device_rep)
+                                .map_err(native_gpu_error)?
+                                .raw()
+                        };
+                        let info = caller
+                            .data_mut()
+                            .table
+                            .push(GpuDeviceLostInfo { device: l2_device })?;
+                        let fut = FutureReader::new(&mut caller, async move {
+                            Ok::<Resource<GpuDeviceLostInfo>, wasmtime::Error>(info)
+                        })?;
+                        return Ok((fut,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3477,12 +3913,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.push-error-scope",
                 |mut caller, (device, filter): (Resource<GpuDevice>, GpuErrorFilter)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = filter;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3506,17 +3941,24 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.pop-error-scope",
                 |accessor, (device,): (Resource<GpuDevice>,)| {
                     Box::pin(async move {
+                        let native = accessor.with(|mut access| -> wasmtime::Result<bool> {
+                            let _ = access.data_mut().table.get(&device)?;
+                            Ok(access.data_mut().webgpu_backend() == GpuBackend::NativeGpu)
+                        })?;
+                        if native {
+                            let (tx, rx) = oneshot::channel::<()>();
+                            std::thread::spawn(move || {
+                                let _ = tx.send(());
+                            });
+                            let _ = rx.await;
+                            return Ok((Ok::<Option<Resource<GpuError>>, PopErrorScopeError>(
+                                None,
+                            ),));
+                        }
                         let (cb, device_rep) =
                             accessor.with(|mut access| -> wasmtime::Result<_> {
                                 let device_rep = access.data_mut().table.get(&device)?.rep;
-                                let cb = access
-                                    .data_mut()
-                                    .experimental_host_cb
-                                    .as_ref()
-                                    .ok_or_else(|| {
-                                        wasmtime::Error::msg("experimental host callback not set")
-                                    })
-                                    .cloned()?;
+                                let cb = access.data_mut().require_webgpu_jni_cb()?;
                                 Ok((cb, device_rep))
                             })?;
                         let l2_device = if device_rep == 0 {
@@ -3539,12 +3981,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.on-uncaptured-error",
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let reader = StreamReader::<Resource<GpuError>>::new(&mut caller, vec![])?;
+                        return Ok((reader,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3585,12 +4026,13 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-uncaptured-error-event.error",
                 |mut caller, (event,): (Resource<GpuUncapturedErrorEvent>,)| {
                     let event_device = caller.data_mut().table.get(&event)?.device;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let resource = caller.data_mut().table.push(GpuError {
+                            device: event_device,
+                        })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if event_device == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3626,12 +4068,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device-lost-info.reason",
                 |mut caller, (info,): (Resource<GpuDeviceLostInfo>,)| {
                     let info_device = caller.data_mut().table.get(&info)?.device;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((GpuDeviceLostReason::Unknown,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if info_device == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3651,12 +4091,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device-lost-info.message",
                 |mut caller, (info,): (Resource<GpuDeviceLostInfo>,)| {
                     let info_device = caller.data_mut().table.get(&info)?.device;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if info_device == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3695,12 +4133,21 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         .as_ref()
                         .and_then(|d| d.label.clone())
                         .unwrap_or_default();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device =
+                                gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                            gpu.create_command_encoder(device, &label)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuCommandEncoder { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3729,44 +4176,57 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-device.create-buffer",
                 |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuBufferDescriptor)| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
                     let mapped = match descriptor.mapped_at_creation {
                         None => -1,
                         Some(false) => 0,
                         Some(true) => 1,
                     };
                     let label = descriptor.label.clone().unwrap_or_default();
-                    let buffer_rep = jvm::exp_create_buffer_described(
-                        &cb,
-                        l2_device,
-                        descriptor.size,
-                        descriptor.usage.to_webgpu_u32(),
-                        mapped,
-                        label,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
-                    if buffer_rep == 0 {
-                        return Err(wasmtime::Error::msg("device-create-buffer returned 0"));
+                    let size = descriptor.size;
+                    let usage = descriptor.usage.to_webgpu_u32();
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device =
+                                    gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                                gpu.create_buffer(device, size, usage, mapped, &label)
+                                    .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuBuffer { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let buffer_rep = jvm::exp_create_buffer_described(
+                                &cb, l2_device, size, usage, mapped, label,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if buffer_rep == 0 {
+                                return Err(wasmtime::Error::msg(
+                                    "device-create-buffer returned 0",
+                                ));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuBuffer { rep: buffer_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuBuffer { rep: buffer_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -3785,21 +4245,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "[method]gpu-device.create-texture",
                 |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuTextureDescriptor)| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
                     let width = descriptor.size.width;
                     let height = descriptor.size.height.unwrap_or(1);
                     let depth = descriptor.size.depth_or_array_layers.unwrap_or(1);
@@ -3817,29 +4264,72 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         .map(|v| v.iter().map(|f| f.to_dawn_u32() as i32).collect())
                         .unwrap_or_default();
                     let label = descriptor.label.clone().unwrap_or_default();
-                    let texture_rep = jvm::exp_create_texture_described(
-                        &cb,
-                        l2_device,
-                        width,
-                        height,
-                        depth,
-                        descriptor.format.to_dawn_u32(),
-                        descriptor.usage.to_webgpu_u32(),
-                        mip,
-                        sample,
-                        dimension,
-                        view_formats,
-                        label,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
-                    if texture_rep == 0 {
-                        return Err(wasmtime::Error::msg("device-create-texture returned 0"));
+                    let format = descriptor.format.to_dawn_u32();
+                    let usage = descriptor.usage.to_webgpu_u32();
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device =
+                                    gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                                gpu.create_texture(
+                                    device,
+                                    width,
+                                    height,
+                                    depth,
+                                    format,
+                                    usage,
+                                    mip,
+                                    sample,
+                                    dimension,
+                                    &view_formats,
+                                    &label,
+                                )
+                                .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuTexture { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let texture_rep = jvm::exp_create_texture_described(
+                                &cb,
+                                l2_device,
+                                width,
+                                height,
+                                depth,
+                                format,
+                                usage,
+                                mip,
+                                sample,
+                                dimension,
+                                view_formats,
+                                label,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if texture_rep == 0 {
+                                return Err(wasmtime::Error::msg(
+                                    "device-create-texture returned 0",
+                                ));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuTexture { rep: texture_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuTexture { rep: texture_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -3862,10 +4352,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("get-canvas-context", |mut store, ()| {
-                let resource = store
-                    .data_mut()
-                    .table
-                    .push(GpuCanvasContext { rep: 0 })?;
+                let resource = store.data_mut().table.push(GpuCanvasContext { rep: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -3889,14 +4376,25 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         .map(|m| m as i32)
                         .unwrap_or(-1);
                     let alpha_mode = config.alpha_mode.map(|a| a as i32).unwrap_or(-1);
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| {
-                            wasmtime::Error::msg("experimental host callback not set")
-                        })
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.canvas_configure(
+                                ctx_rep,
+                                device_rep,
+                                format,
+                                usage,
+                                color_space,
+                                tone_mapping,
+                                alpha_mode,
+                                &view_formats,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        caller.data_mut().table.get_mut(&ctx)?.rep = handle.raw();
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -3932,14 +4430,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-canvas-context.unconfigure",
                 |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
                     let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| {
-                            wasmtime::Error::msg("experimental host callback not set")
-                        })
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .canvas_unconfigure(ctx_rep);
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     jvm::exp_canvas_context_unconfigure_described(&cb, ctx_rep)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
@@ -3951,14 +4449,35 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-canvas-context.get-configuration",
                 |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
                     let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| {
-                            wasmtime::Error::msg("experimental host callback not set")
-                        })
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let snap = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.canvas_configuration(ctx_rep)
+                                .map(|c| (c.device, c.format, c.usage))
+                        };
+                        let Some((device_rep, format, usage)) = snap else {
+                            return Ok((Option::<GpuCanvasConfigurationOwned>::None,));
+                        };
+                        let device = caller
+                            .data_mut()
+                            .table
+                            .push(GpuDevice { rep: device_rep })?;
+                        let usage_opt = if usage == 0 {
+                            None
+                        } else {
+                            Some(GpuTextureUsage::from_webgpu_u32(usage))
+                        };
+                        return Ok((Some(GpuCanvasConfigurationOwned {
+                            device,
+                            format: GpuTextureFormat::from_dawn_u32(format),
+                            usage: usage_opt,
+                            view_formats: None,
+                            color_space: None,
+                            tone_mapping: None,
+                            alpha_mode: None,
+                        }),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let has = jvm::exp_canvas_context_has_configuration_described(&cb, ctx_rep)
                         .map_err(wasmtime::Error::msg)?;
                     if has == 0 {
@@ -3970,9 +4489,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     let format =
                         jvm::exp_canvas_context_configuration_format_described(&cb, ctx_rep)
                             .map_err(wasmtime::Error::msg)?;
-                    let usage =
-                        jvm::exp_canvas_context_configuration_usage_described(&cb, ctx_rep)
-                            .map_err(wasmtime::Error::msg)?;
+                    let usage = jvm::exp_canvas_context_configuration_usage_described(&cb, ctx_rep)
+                        .map_err(wasmtime::Error::msg)?;
                     let device = caller
                         .data_mut()
                         .table
@@ -3982,17 +4500,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         Some(GpuTextureUsage::from_webgpu_u32(usage))
                     };
-                    Ok((
-                        Some(GpuCanvasConfigurationOwned {
-                            device,
-                            format: GpuTextureFormat::from_dawn_u32(format),
-                            usage: usage_opt,
-                            view_formats: None,
-                            color_space: None,
-                            tone_mapping: None,
-                            alpha_mode: None,
-                        }),
-                    ))
+                    Ok((Some(GpuCanvasConfigurationOwned {
+                        device,
+                        format: GpuTextureFormat::from_dawn_u32(format),
+                        usage: usage_opt,
+                        view_formats: None,
+                        color_space: None,
+                        tone_mapping: None,
+                        alpha_mode: None,
+                    }),))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -4001,14 +4517,21 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-canvas-context.get-current-texture",
                 |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
                     let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| {
-                            wasmtime::Error::msg("experimental host callback not set")
-                        })
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let vsync = caller.data().gfx_on_frame.last_take_vsync_ns();
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.note_consumed_vsync(vsync);
+                            gpu.canvas_current_texture(ctx_rep)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuTexture { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let texture_rep =
                         jvm::exp_canvas_context_get_current_texture_described(&cb, ctx_rep)
                             .map_err(wasmtime::Error::msg)?;
@@ -4044,22 +4567,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Resource<GpuTexture>,
                     Option<GpuTextureViewDescriptor>,
                 )| {
+                    let backend = caller.data().webgpu_backend();
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_texture = if texture_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_texture(&cb, device_rep).map_err(wasmtime::Error::msg)?
-                    } else {
-                        texture_rep
-                    };
                     let (dimension, aspect, format, base_mip, mip_count, base_layer, layer_count) =
                         match &descriptor {
                             None => (0, 0, 0, 0, -1, 0, -1),
@@ -4073,26 +4582,64 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                                 d.array_layer_count.map(|v| v as i32).unwrap_or(-1),
                             ),
                         };
-                    let view_rep = jvm::exp_texture_create_view_described(
-                        &cb,
-                        l2_texture,
-                        dimension,
-                        aspect,
-                        format,
-                        base_mip,
-                        mip_count,
-                        base_layer,
-                        layer_count,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
-                    if view_rep == 0 {
-                        return Err(wasmtime::Error::msg("texture-create-view returned 0"));
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let texture =
+                                    gpu.resolve_texture(texture_rep).map_err(native_gpu_error)?;
+                                gpu.create_texture_view(
+                                    texture,
+                                    dimension,
+                                    aspect,
+                                    format,
+                                    base_mip,
+                                    mip_count,
+                                    base_layer,
+                                    layer_count,
+                                )
+                                .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuTextureView { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_texture = if texture_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?;
+                                jvm::exp_create_texture(&cb, device_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                texture_rep
+                            };
+                            let view_rep = jvm::exp_texture_create_view_described(
+                                &cb,
+                                l2_texture,
+                                dimension,
+                                aspect,
+                                format,
+                                base_mip,
+                                mip_count,
+                                base_layer,
+                                layer_count,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if view_rep == 0 {
+                                return Err(wasmtime::Error::msg("texture-create-view returned 0"));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuTextureView { rep: view_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuTextureView { rep: view_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -4107,12 +4654,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture-view.label",
                 |mut caller, (view,): (Resource<GpuTextureView>,)| {
                     let view_rep = caller.data_mut().table.get(&view)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if view_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4121,9 +4666,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         let texture_rep = jvm::exp_create_texture(&cb, device_rep)
                             .map_err(wasmtime::Error::msg)?;
                         jvm::exp_texture_create_view_described(
-                            &cb, texture_rep, 0, 0, 0, 0, -1, 0, -1,
+                            &cb,
+                            texture_rep,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            -1,
                         )
-                            .map_err(wasmtime::Error::msg)?
+                        .map_err(wasmtime::Error::msg)?
                     } else {
                         view_rep
                     };
@@ -4138,12 +4691,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture-view.set-label",
                 |mut caller, (view, label): (Resource<GpuTextureView>, String)| {
                     let view_rep = caller.data_mut().table.get(&view)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if view_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4152,9 +4704,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         let texture_rep = jvm::exp_create_texture(&cb, device_rep)
                             .map_err(wasmtime::Error::msg)?;
                         jvm::exp_texture_create_view_described(
-                            &cb, texture_rep, 0, 0, 0, 0, -1, 0, -1,
+                            &cb,
+                            texture_rep,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            -1,
                         )
-                            .map_err(wasmtime::Error::msg)?
+                        .map_err(wasmtime::Error::msg)?
                     } else {
                         view_rep
                     };
@@ -4169,12 +4729,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.destroy",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4195,12 +4753,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.width",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((1u32,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4221,12 +4777,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.height",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((1u32,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4247,12 +4801,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.depth-or-array-layers",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((1u32,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4273,12 +4825,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.mip-level-count",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((1u32,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4299,12 +4849,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.sample-count",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((1u32,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4325,12 +4873,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.dimension",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((GpuTextureDimension::D2,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4351,12 +4897,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.format",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((GpuTextureFormat::Rgba8unorm,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4377,12 +4921,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.usage",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((GpuTextureUsage::from_webgpu_u32(0),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4403,12 +4945,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.texture-binding-view-dimension",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((GpuTextureViewDimension::from_dawn_u32(2),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4429,12 +4969,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.label",
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4444,8 +4982,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         texture_rep
                     };
-                    let label = jvm::exp_texture_label_described(&cb, l2)
-                        .map_err(wasmtime::Error::msg)?;
+                    let label =
+                        jvm::exp_texture_label_described(&cb, l2).map_err(wasmtime::Error::msg)?;
                     Ok((label,))
                 },
             )
@@ -4455,12 +4993,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-texture.set-label",
                 |mut caller, (texture, label): (Resource<GpuTexture>, String)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if texture_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4498,12 +5035,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-buffer.size",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let size = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.buffer_size(buffer_rep).map_err(native_gpu_error)?
+                        };
+                        return Ok((size,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_buffer = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4524,12 +5063,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-buffer.usage",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let bits = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.buffer_usage(buffer_rep).map_err(native_gpu_error)?
+                        };
+                        return Ok((GpuBufferUsage::from_webgpu_u32(bits),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_buffer = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4550,12 +5091,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-buffer.map-state",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let mapped = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.buffer_mapped(buffer_rep).map_err(native_gpu_error)?
+                        };
+                        return Ok((if mapped {
+                            GpuBufferMapState::Mapped
+                        } else {
+                            GpuBufferMapState::Unmapped
+                        },));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_buffer = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4576,12 +5123,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-buffer.label",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_buffer = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4602,12 +5147,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-buffer.set-label",
                 |mut caller, (buffer, label): (Resource<GpuBuffer>, String)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_buffer = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4634,17 +5178,29 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u64>,
                 )| {
                     Box::pin(async move {
+                        let native = accessor.with(|mut access| -> wasmtime::Result<bool> {
+                            let _ = access.data_mut().table.get(&buffer)?;
+                            Ok(access.data_mut().webgpu_backend() == GpuBackend::NativeGpu)
+                        })?;
+                        if native {
+                            let (tx, rx) = oneshot::channel::<()>();
+                            std::thread::spawn(move || {
+                                let _ = tx.send(());
+                            });
+                            let _ = rx.await;
+                            accessor.with(|mut access| -> wasmtime::Result<()> {
+                                let buffer_rep = access.data_mut().table.get(&buffer)?.rep;
+                                let gpu = access.data_mut().require_native_gpu()?;
+                                let _ = (mode, offset, size);
+                                gpu.buffer_map_async(buffer_rep).map_err(native_gpu_error)?;
+                                Ok(())
+                            })?;
+                            return Ok((Ok::<(), MapAsyncError>(()),));
+                        }
                         let (cb, buffer_rep) =
                             accessor.with(|mut access| -> wasmtime::Result<_> {
                                 let buffer_rep = access.data_mut().table.get(&buffer)?.rep;
-                                let cb = access
-                                    .data_mut()
-                                    .experimental_host_cb
-                                    .as_ref()
-                                    .ok_or_else(|| {
-                                        wasmtime::Error::msg("experimental host callback not set")
-                                    })
-                                    .cloned()?;
+                                let cb = access.data_mut().require_webgpu_jni_cb()?;
                                 Ok((cb, buffer_rep))
                             })?;
                         let (tx, rx) = oneshot::channel::<()>();
@@ -4679,12 +5235,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-buffer.unmap",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.buffer_unmap(buffer_rep).map_err(native_gpu_error)?;
+                        }
+                        return Ok((Ok::<(), UnmapError>(()),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_buffer = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4709,12 +5267,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u64>,
                 )| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let data = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let _ = (offset, size);
+                            gpu.buffer_mapped_range(buffer_rep).map_err(native_gpu_error)?
+                        };
+                        return Ok((Ok::<Vec<u8>, GetMappedRangeError>(data),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_buffer = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4746,12 +5307,16 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u64>,
                 )| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let _ = (offset, size);
+                            gpu.buffer_set_mapped_range(buffer_rep, data)
+                                .map_err(native_gpu_error)?;
+                        }
+                        return Ok((Ok::<(), GetMappedRangeError>(()),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_buffer = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4778,12 +5343,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-buffer.destroy",
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_buffer = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4817,21 +5380,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Resource<GpuDevice>,
                     Option<GpuSamplerDescriptor>,
                 )| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
                     let (
                         mag_filter,
                         min_filter,
@@ -4876,30 +5426,73 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             d.lod_max_clamp.unwrap_or(0.0),
                         ),
                     };
-                    let sampler_rep = jvm::exp_create_sampler_described(
-                        &cb,
-                        l2_device,
-                        mag_filter,
-                        min_filter,
-                        address_mode_u,
-                        address_mode_v,
-                        address_mode_w,
-                        mipmap_filter,
-                        compare,
-                        has_lod_min,
-                        lod_min,
-                        has_lod_max,
-                        lod_max,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
-                    if sampler_rep == 0 {
-                        return Err(wasmtime::Error::msg("device-create-sampler returned 0"));
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device = gpu
+                                    .resolve_device(device_rep)
+                                    .map_err(native_gpu_error)?;
+                                gpu.create_sampler(
+                                    device,
+                                    mag_filter,
+                                    min_filter,
+                                    address_mode_u,
+                                    address_mode_v,
+                                    address_mode_w,
+                                    mipmap_filter,
+                                    compare,
+                                    has_lod_min,
+                                    lod_min,
+                                    has_lod_max,
+                                    lod_max,
+                                )
+                                .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuSampler { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let sampler_rep = jvm::exp_create_sampler_described(
+                                &cb,
+                                l2_device,
+                                mag_filter,
+                                min_filter,
+                                address_mode_u,
+                                address_mode_v,
+                                address_mode_w,
+                                mipmap_filter,
+                                compare,
+                                has_lod_min,
+                                lod_min,
+                                has_lod_max,
+                                lod_max,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if sampler_rep == 0 {
+                                return Err(wasmtime::Error::msg(
+                                    "device-create-sampler returned 0",
+                                ));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuSampler { rep: sampler_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuSampler { rep: sampler_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -4914,12 +5507,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-sampler.label",
                 |mut caller, (sampler,): (Resource<GpuSampler>,)| {
                     let sampler_rep = caller.data_mut().table.get(&sampler)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if sampler_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4928,12 +5519,12 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         jvm::exp_create_sampler_described(
                             &cb, device_rep, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0.0,
                         )
-                            .map_err(wasmtime::Error::msg)?
+                        .map_err(wasmtime::Error::msg)?
                     } else {
                         sampler_rep
                     };
-                    let label = jvm::exp_sampler_label_described(&cb, l2)
-                        .map_err(wasmtime::Error::msg)?;
+                    let label =
+                        jvm::exp_sampler_label_described(&cb, l2).map_err(wasmtime::Error::msg)?;
                     Ok((label,))
                 },
             )
@@ -4943,12 +5534,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-sampler.set-label",
                 |mut caller, (sampler, label): (Resource<GpuSampler>, String)| {
                     let sampler_rep = caller.data_mut().table.get(&sampler)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if sampler_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -4957,7 +5547,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         jvm::exp_create_sampler_described(
                             &cb, device_rep, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0.0,
                         )
-                            .map_err(wasmtime::Error::msg)?
+                        .map_err(wasmtime::Error::msg)?
                     } else {
                         sampler_rep
                     };
@@ -4996,6 +5586,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Resource<GpuDevice>,
                     GpuShaderModuleDescriptor,
                 )| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let code = descriptor.code;
                     let label = descriptor.label.clone().unwrap_or_default();
@@ -5015,39 +5606,59 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             hint_layouts.push(layout);
                         }
                     }
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
-                    let shader_rep = jvm::exp_create_shader_module_described(
-                        &cb,
-                        l2_device,
-                        code,
-                        label,
-                        hint_layouts,
-                        hint_entries,
-                    )
-                        .map_err(wasmtime::Error::msg)?;
-                    if shader_rep == 0 {
-                        return Err(wasmtime::Error::msg(
-                            "device-create-shader-module returned 0",
-                        ));
+                    match backend {
+                        GpuBackend::NativeGpu => {
+                            let handle = {
+                                let gpu = caller.data_mut().require_native_gpu()?;
+                                let device = gpu
+                                    .resolve_device(device_rep)
+                                    .map_err(native_gpu_error)?;
+                                gpu.create_shader_module(
+                                    device,
+                                    &code,
+                                    &label,
+                                    &hint_layouts,
+                                    &hint_entries,
+                                )
+                                .map_err(native_gpu_error)?
+                            };
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuShaderModule { rep: handle.raw() })?;
+                            Ok((resource,))
+                        }
+                        GpuBackend::JniBackend => {
+                            let cb = caller.data().require_webgpu_jni_cb()?;
+                            let l2_device = if device_rep == 0 {
+                                let adapter_rep =
+                                    jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                                jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                    .map_err(wasmtime::Error::msg)?
+                            } else {
+                                device_rep
+                            };
+                            let shader_rep = jvm::exp_create_shader_module_described(
+                                &cb,
+                                l2_device,
+                                code,
+                                label,
+                                hint_layouts,
+                                hint_entries,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
+                            if shader_rep == 0 {
+                                return Err(wasmtime::Error::msg(
+                                    "device-create-shader-module returned 0",
+                                ));
+                            }
+                            let resource = caller
+                                .data_mut()
+                                .table
+                                .push(GpuShaderModule { rep: shader_rep })?;
+                            Ok((resource,))
+                        }
                     }
-                    let resource = caller
-                        .data_mut()
-                        .table
-                        .push(GpuShaderModule { rep: shader_rep })?;
-                    Ok((resource,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -5062,17 +5673,30 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-shader-module.get-compilation-info",
                 |accessor, (shader,): (Resource<GpuShaderModule>,)| {
                     Box::pin(async move {
+                        let native = accessor.with(|mut access| -> wasmtime::Result<bool> {
+                            let _ = access.data_mut().table.get(&shader)?;
+                            Ok(access.data_mut().webgpu_backend() == GpuBackend::NativeGpu)
+                        })?;
+                        if native {
+                            let (tx, rx) = oneshot::channel::<()>();
+                            std::thread::spawn(move || {
+                                let _ = tx.send(());
+                            });
+                            let _ = rx.await;
+                            let resource = accessor.with(|mut access| -> wasmtime::Result<_> {
+                                let shader_rep = access.data_mut().table.get(&shader)?.rep;
+                                let gpu = access.data_mut().require_native_gpu()?;
+                                let _ = gpu.resolve_shader(shader_rep).map_err(native_gpu_error)?;
+                                Ok(access.data_mut().table.push(GpuCompilationInfo {
+                                    shader_module: shader_rep,
+                                })?)
+                            })?;
+                            return Ok((resource,));
+                        }
                         let (cb, shader_rep) =
                             accessor.with(|mut access| -> wasmtime::Result<_> {
                                 let shader_rep = access.data_mut().table.get(&shader)?.rep;
-                                let cb = access
-                                    .data_mut()
-                                    .experimental_host_cb
-                                    .as_ref()
-                                    .ok_or_else(|| {
-                                        wasmtime::Error::msg("experimental host callback not set")
-                                    })
-                                    .cloned()?;
+                                let cb = access.data_mut().require_webgpu_jni_cb()?;
                                 Ok((cb, shader_rep))
                             })?;
                         let l2_shader = if shader_rep == 0 {
@@ -5087,12 +5711,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         };
                         jvm::exp_shader_module_get_compilation_info_described(&cb, l2_shader)
                             .map_err(wasmtime::Error::msg)?;
-                        let resource = accessor
-                            .with(|mut access| {
-                                access.data_mut().table.push(GpuCompilationInfo {
-                                    shader_module: l2_shader,
-                                })
-                            })?;
+                        let resource = accessor.with(|mut access| {
+                            access.data_mut().table.push(GpuCompilationInfo {
+                                shader_module: l2_shader,
+                            })
+                        })?;
                         Ok((resource,))
                     })
                 },
@@ -5103,12 +5726,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-shader-module.label",
                 |mut caller, (shader,): (Resource<GpuShaderModule>,)| {
                     let shader_rep = caller.data_mut().table.get(&shader)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if shader_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -5137,12 +5758,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-shader-module.set-label",
                 |mut caller, (shader, label): (Resource<GpuShaderModule>, String)| {
                     let shader_rep = caller.data_mut().table.get(&shader)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if shader_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -5200,12 +5820,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller.data_mut().require_native_gpu()?.pipeline_constant_add(
+                            handle,
+                            key,
+                            value,
+                        );
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     jvm::exp_record_pipeline_constant_value_add_described(&cb, handle, key, value)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
@@ -5218,12 +5841,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let value = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_get(handle, &key);
+                        return Ok((value,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let has = jvm::exp_record_pipeline_constant_value_has_described(
                         &cb,
                         handle,
@@ -5247,12 +5872,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let has = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_has(handle, &key);
+                        return Ok((has,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let has =
                         jvm::exp_record_pipeline_constant_value_has_described(&cb, handle, key)
                             .map_err(wasmtime::Error::msg)?;
@@ -5266,12 +5893,14 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record, key): (Resource<RecordGpuPipelineConstantValue>, String)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_remove(handle, &key);
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     jvm::exp_record_pipeline_constant_value_remove_described(&cb, handle, key)
                         .map_err(wasmtime::Error::msg)?;
                     Ok(())
@@ -5284,16 +5913,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let count = jvm::exp_record_pipeline_constant_value_keys_count_described(
-                        &cb, handle,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let keys = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_keys(handle);
+                        return Ok((keys,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
+                    let count =
+                        jvm::exp_record_pipeline_constant_value_keys_count_described(&cb, handle)
+                            .map_err(wasmtime::Error::msg)?;
                     let mut keys = Vec::with_capacity(count as usize);
                     for i in 0..count {
                         keys.push(
@@ -5313,16 +5943,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let count = jvm::exp_record_pipeline_constant_value_values_count_described(
-                        &cb, handle,
-                    )
-                    .map_err(wasmtime::Error::msg)?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let values = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_values(handle);
+                        return Ok((values,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
+                    let count =
+                        jvm::exp_record_pipeline_constant_value_values_count_described(&cb, handle)
+                            .map_err(wasmtime::Error::msg)?;
                     let mut values = Vec::with_capacity(count as usize);
                     for i in 0..count {
                         values.push(
@@ -5342,22 +5973,25 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 |mut caller, (record,): (Resource<RecordGpuPipelineConstantValue>,)| {
                     let _ = caller.data_mut().table.get(&record)?;
                     let handle = record.rep();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let entries = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pipeline_constant_entries(handle);
+                        return Ok((entries,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let count = jvm::exp_record_pipeline_constant_value_entries_count_described(
                         &cb, handle,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     let mut entries = Vec::with_capacity(count as usize);
                     for i in 0..count {
-                        let key = jvm::exp_record_pipeline_constant_value_entries_get_key_described(
-                            &cb, handle, i,
-                        )
-                        .map_err(wasmtime::Error::msg)?;
+                        let key =
+                            jvm::exp_record_pipeline_constant_value_entries_get_key_described(
+                                &cb, handle, i,
+                            )
+                            .map_err(wasmtime::Error::msg)?;
                         let value =
                             jvm::exp_record_pipeline_constant_value_entries_get_value_described(
                                 &cb, handle, i,
@@ -5391,18 +6025,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-bind-group-layout.label",
                 |mut caller, (layout,): (Resource<GpuBindGroupLayout>,)| {
                     let layout_rep = caller.data_mut().table.get(&layout)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if layout_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_bind_group_layout(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_bind_group_layout(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         layout_rep
                     };
@@ -5417,18 +6050,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-bind-group-layout.set-label",
                 |mut caller, (layout, label): (Resource<GpuBindGroupLayout>, String)| {
                     let layout_rep = caller.data_mut().table.get(&layout)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if layout_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_bind_group_layout(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_bind_group_layout(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         layout_rep
                     };
@@ -5489,12 +6122,30 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             },
                         });
                     }
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            gpu.create_bind_group_layout(
+                                device,
+                                &bindings,
+                                &visibilities,
+                                &buffer_types,
+                                &sampler_types,
+                                &texture_sample_types,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuBindGroupLayout { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    } else {
+                        caller.data().require_webgpu_jni_cb()?
+                    };
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -5544,12 +6195,31 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         }
                     }
                     let label = descriptor.label.clone().unwrap_or_default();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let mut native_layouts = layouts.clone();
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            for slot in native_layouts.iter_mut() {
+                                if *slot == 0 {
+                                    *slot = gpu
+                                        .resolve_bind_group_layout(0)
+                                        .map_err(native_gpu_error)?
+                                        .raw() as i32;
+                                }
+                            }
+                            gpu.create_pipeline_layout(device, &native_layouts, &label)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuPipelineLayout { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -5597,18 +6267,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-pipeline-layout.label",
                 |mut caller, (layout,): (Resource<GpuPipelineLayout>,)| {
                     let layout_rep = caller.data_mut().table.get(&layout)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if layout_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_pipeline_layout(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_pipeline_layout(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         layout_rep
                     };
@@ -5623,18 +6292,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-pipeline-layout.set-label",
                 |mut caller, (layout, label): (Resource<GpuPipelineLayout>, String)| {
                     let layout_rep = caller.data_mut().table.get(&layout)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if layout_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_pipeline_layout(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_pipeline_layout(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         layout_rep
                     };
@@ -5662,29 +6331,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Resource<GpuDevice>,
                     GpuBindGroupDescriptor,
                 )| {
+                    let backend = caller.data().webgpu_backend();
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     let layout_rep = caller.data_mut().table.get(&descriptor.layout)?.rep;
                     let label = descriptor.label.clone().unwrap_or_default();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
-                    let l2_device = if device_rep == 0 {
-                        let adapter_rep =
-                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                        jvm::exp_adapter_request_device(&cb, adapter_rep)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        device_rep
-                    };
-                    let l2_layout = if layout_rep == 0 {
-                        jvm::exp_create_bind_group_layout(&cb, l2_device)
-                            .map_err(wasmtime::Error::msg)?
-                    } else {
-                        layout_rep
-                    };
                     let mut bindings = Vec::with_capacity(descriptor.entries.len());
                     let mut kinds = Vec::with_capacity(descriptor.entries.len());
                     let mut handles = Vec::with_capacity(descriptor.entries.len());
@@ -5707,19 +6357,64 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                                 (2, caller.data_mut().table.get(view)?.rep)
                             }
                         };
-                        let handle = if raw != 0 {
-                            raw
-                        } else if kind == 0 {
+                        kinds.push(kind);
+                        handles.push(raw as i32);
+                    }
+                    if backend == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            let layout = gpu
+                                .resolve_bind_group_layout(layout_rep)
+                                .map_err(native_gpu_error)?;
+                            for (kind, raw) in kinds.iter().zip(handles.iter_mut()) {
+                                if *kind == 0 && *raw == 0 {
+                                    *raw = gpu.resolve_buffer(0).map_err(native_gpu_error)?.raw()
+                                        as i32;
+                                }
+                            }
+                            gpu.create_bind_group(
+                                device, layout, &label, &bindings, &kinds, &handles,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuBindGroup { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
+                    let l2_device = if device_rep == 0 {
+                        let adapter_rep =
+                            jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
+                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        device_rep
+                    };
+                    let l2_layout = if layout_rep == 0 {
+                        jvm::exp_create_bind_group_layout(&cb, l2_device)
+                            .map_err(wasmtime::Error::msg)?
+                    } else {
+                        layout_rep
+                    };
+                    let mut jni_handles = Vec::with_capacity(handles.len());
+                    for (kind, raw) in kinds.iter().zip(handles.iter()) {
+                        let handle = if *raw != 0 {
+                            *raw as u32
+                        } else if *kind == 0 {
                             jvm::exp_create_buffer(&cb, l2_device)
                                 .map_err(wasmtime::Error::msg)?
                         } else {
-                            raw
+                            *raw as u32
                         };
-                        kinds.push(kind);
-                        handles.push(handle as i32);
+                        jni_handles.push(handle as i32);
                     }
                     let bg_rep = jvm::exp_create_bind_group_described(
-                        &cb, l2_device, l2_layout, label, bindings, kinds, handles,
+                        &cb, l2_device, l2_layout, label, bindings, kinds, jni_handles,
                     )
                     .map_err(wasmtime::Error::msg)?;
                     if bg_rep == 0 {
@@ -5744,12 +6439,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-bind-group.label",
                 |mut caller, (bind_group,): (Resource<GpuBindGroup>,)| {
                     let bind_group_rep = caller.data_mut().table.get(&bind_group)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if bind_group_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -5770,12 +6463,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-bind-group.set-label",
                 |mut caller, (bind_group, label): (Resource<GpuBindGroup>, String)| {
                     let bind_group_rep = caller.data_mut().table.get(&bind_group)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if bind_group_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -5813,18 +6505,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pipeline.label",
                 |mut caller, (pipeline,): (Resource<GpuRenderPipeline>,)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pipeline_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_render_pipeline(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_render_pipeline(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         pipeline_rep
                     };
@@ -5839,18 +6530,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pipeline.set-label",
                 |mut caller, (pipeline, label): (Resource<GpuRenderPipeline>, String)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pipeline_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_render_pipeline(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_render_pipeline(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         pipeline_rep
                     };
@@ -5865,12 +6556,20 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pipeline.get-bind-group-layout",
                 |mut caller, (pipeline, index): (Resource<GpuRenderPipeline>, u32)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = index;
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.pipeline_bind_group_layout(pipeline_rep)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuBindGroupLayout { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let layout_rep = jvm::exp_render_pipeline_get_bind_group_layout_described(
                         &cb,
                         pipeline_rep,
@@ -5907,18 +6606,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compute-pipeline.label",
                 |mut caller, (pipeline,): (Resource<GpuComputePipeline>,)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pipeline_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_compute_pipeline(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_compute_pipeline(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         pipeline_rep
                     };
@@ -5933,18 +6631,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compute-pipeline.set-label",
                 |mut caller, (pipeline, label): (Resource<GpuComputePipeline>, String)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pipeline_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_compute_pipeline(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_compute_pipeline(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         pipeline_rep
                     };
@@ -5959,12 +6657,20 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compute-pipeline.get-bind-group-layout",
                 |mut caller, (pipeline, index): (Resource<GpuComputePipeline>, u32)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = index;
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.pipeline_bind_group_layout(pipeline_rep)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuBindGroupLayout { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let layout_rep = jvm::exp_compute_pipeline_get_bind_group_layout_described(
                         &cb,
                         pipeline_rep,
@@ -6023,12 +6729,40 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     let (primitive, multisample, blend, write_mask, depth_stencil) =
                         pack_render_pipeline_semantics(&descriptor);
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            gpu.create_render_pipeline_described(
+                                device,
+                                vertex_shader,
+                                &vertex_entry,
+                                fragment_shader,
+                                &fragment_entry,
+                                format,
+                                layout_rep,
+                                &label,
+                                vertex_constants,
+                                fragment_constants,
+                                &vb_strides,
+                                &vb_step_modes,
+                                &attr_index,
+                                &attr_formats,
+                                &attr_offsets,
+                                &attr_locations,
+                                &primitive,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuRenderPipeline { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6097,12 +6831,29 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     let label = descriptor.label.clone().unwrap_or_default();
                     let constants = pipeline_constant_rep(&descriptor.compute.constants);
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device = gpu
+                                .resolve_device(device_rep)
+                                .map_err(native_gpu_error)?;
+                            gpu.create_compute_pipeline(
+                                device,
+                                shader_rep,
+                                &entry_point,
+                                layout_rep,
+                                &label,
+                                constants,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuComputePipeline { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6143,7 +6894,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     Box::pin(async move {
                         let (
-                            cb,
+                            backend,
                             device_rep,
                             vertex_shader,
                             vertex_entry,
@@ -6199,16 +6950,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             let (primitive, multisample, blend, write_mask, depth_stencil) =
                                 pack_render_pipeline_semantics(&descriptor);
                             let device_rep = access.data_mut().table.get(&device)?.rep;
-                            let cb = access
-                                .data_mut()
-                                .experimental_host_cb
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    wasmtime::Error::msg("experimental host callback not set")
-                                })
-                                .cloned()?;
+                            let backend = access.data_mut().webgpu_backend();
                             Ok((
-                                cb,
+                                backend,
                                 device_rep,
                                 vertex_shader,
                                 vertex_entry,
@@ -6237,54 +6981,90 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             let _ = tx.send(());
                         });
                         let _ = rx.await;
-                        let l2_device = if device_rep == 0 {
-                            let adapter_rep =
-                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                            jvm::exp_adapter_request_device(&cb, adapter_rep)
-                                .map_err(wasmtime::Error::msg)?
-                        } else {
-                            device_rep
-                        };
-                        let pipeline_rep = jvm::exp_create_render_pipeline_described(
-                            &cb,
-                            l2_device,
-                            vertex_shader,
-                            vertex_entry,
-                            fragment_shader,
-                            fragment_entry,
-                            format,
-                            layout_rep,
-                            label,
-                            vb_strides,
-                            vb_step_modes,
-                            attr_index,
-                            attr_formats,
-                            attr_offsets,
-                            attr_locations,
-                            vertex_constants,
-                            fragment_constants,
-                            primitive,
-                            multisample,
-                            blend,
-                            write_mask,
-                            depth_stencil,
-                        )
-                        .map_err(wasmtime::Error::msg)?;
-                        if pipeline_rep == 0 {
-                            return Ok((Err(CreatePipelineError {
-                                kind: CreatePipelineErrorKind::GpuPipelineError(
-                                    GpuPipelineErrorReason::Internal,
-                                ),
-                                message: "device-create-render-pipeline returned 0".into(),
-                            }),));
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                let resource =
+                                    accessor.with(|mut access| -> wasmtime::Result<_> {
+                                        let handle = {
+                                            let gpu = access.data_mut().require_native_gpu()?;
+                                            let device = gpu
+                                                .resolve_device(device_rep)
+                                                .map_err(native_gpu_error)?;
+                                            gpu.create_render_pipeline(
+                                                device,
+                                                vertex_shader,
+                                                &vertex_entry,
+                                                fragment_shader,
+                                                &fragment_entry,
+                                                format,
+                                                layout_rep,
+                                                &label,
+                                                vertex_constants,
+                                                fragment_constants,
+                                            )
+                                            .map_err(native_gpu_error)?
+                                        };
+                                        Ok(access.data_mut().table.push(GpuRenderPipeline {
+                                            rep: handle.raw(),
+                                        })?)
+                                    })?;
+                                Ok((Ok(resource),))
+                            }
+                            GpuBackend::JniBackend => {
+                                let cb = accessor.with(|mut access| {
+                                    access.data_mut().require_webgpu_jni_cb()
+                                })?;
+                                let l2_device = if device_rep == 0 {
+                                    let adapter_rep = jvm::exp_request_adapter(&cb)
+                                        .map_err(wasmtime::Error::msg)?;
+                                    jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                        .map_err(wasmtime::Error::msg)?
+                                } else {
+                                    device_rep
+                                };
+                                let pipeline_rep = jvm::exp_create_render_pipeline_described(
+                                    &cb,
+                                    l2_device,
+                                    vertex_shader,
+                                    vertex_entry,
+                                    fragment_shader,
+                                    fragment_entry,
+                                    format,
+                                    layout_rep,
+                                    label,
+                                    vb_strides,
+                                    vb_step_modes,
+                                    attr_index,
+                                    attr_formats,
+                                    attr_offsets,
+                                    attr_locations,
+                                    vertex_constants,
+                                    fragment_constants,
+                                    primitive,
+                                    multisample,
+                                    blend,
+                                    write_mask,
+                                    depth_stencil,
+                                )
+                                .map_err(wasmtime::Error::msg)?;
+                                if pipeline_rep == 0 {
+                                    return Ok((Err(CreatePipelineError {
+                                        kind: CreatePipelineErrorKind::GpuPipelineError(
+                                            GpuPipelineErrorReason::Internal,
+                                        ),
+                                        message: "device-create-render-pipeline returned 0"
+                                            .into(),
+                                    }),));
+                                }
+                                let resource = accessor.with(|mut access| {
+                                    access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuRenderPipeline { rep: pipeline_rep })
+                                })?;
+                                Ok((Ok(resource),))
+                            }
                         }
-                        let resource = accessor.with(|mut access| {
-                            access
-                                .data_mut()
-                                .table
-                                .push(GpuRenderPipeline { rep: pipeline_rep })
-                        })?;
-                        Ok((Ok(resource),))
                     })
                 },
             )
@@ -6297,81 +7077,109 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     GpuComputePipelineDescriptor,
                 )| {
                     Box::pin(async move {
-                        let (cb, device_rep, shader_rep, entry_point, layout_rep, label, constants) =
-                            accessor.with(|mut access| -> wasmtime::Result<_> {
-                                let shader_rep = access
-                                    .data_mut()
-                                    .table
-                                    .get(&descriptor.compute.module)?
-                                    .rep;
-                                let layout_rep = match &descriptor.layout {
-                                    GpuLayoutMode::Specific(layout) => {
-                                        access.data_mut().table.get(layout)?.rep as i32
-                                    }
-                                    GpuLayoutMode::Auto => 0,
-                                };
-                                let entry_point =
-                                    descriptor.compute.entry_point.clone().unwrap_or_default();
-                                let label = descriptor.label.clone().unwrap_or_default();
-                                let constants =
-                                    pipeline_constant_rep(&descriptor.compute.constants);
-                                let device_rep = access.data_mut().table.get(&device)?.rep;
-                                let cb = access
-                                    .data_mut()
-                                    .experimental_host_cb
-                                    .as_ref()
-                                    .ok_or_else(|| {
-                                        wasmtime::Error::msg("experimental host callback not set")
-                                    })
-                                    .cloned()?;
-                                Ok((
-                                    cb,
-                                    device_rep,
-                                    shader_rep,
-                                    entry_point,
-                                    layout_rep,
-                                    label,
-                                    constants,
-                                ))
-                            })?;
-                        let (tx, rx) = oneshot::channel::<()>();
-                        std::thread::spawn(move || {
-                            let _ = tx.send(());
-                        });
-                        let _ = rx.await;
-                        let l2_device = if device_rep == 0 {
-                            let adapter_rep =
-                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                            jvm::exp_adapter_request_device(&cb, adapter_rep)
-                                .map_err(wasmtime::Error::msg)?
-                        } else {
-                            device_rep
-                        };
-                        let pipeline_rep = jvm::exp_create_compute_pipeline_described(
-                            &cb,
-                            l2_device,
+                        let (
+                            backend,
+                            device_rep,
                             shader_rep,
                             entry_point,
                             layout_rep,
                             label,
                             constants,
-                        )
-                        .map_err(wasmtime::Error::msg)?;
-                        if pipeline_rep == 0 {
-                            return Ok((Err(CreatePipelineError {
-                                kind: CreatePipelineErrorKind::GpuPipelineError(
-                                    GpuPipelineErrorReason::Internal,
-                                ),
-                                message: "device-create-compute-pipeline returned 0".into(),
-                            }),));
-                        }
-                        let resource = accessor.with(|mut access| {
-                            access
-                                .data_mut()
-                                .table
-                                .push(GpuComputePipeline { rep: pipeline_rep })
+                        ) = accessor.with(|mut access| -> wasmtime::Result<_> {
+                            let shader_rep =
+                                access.data_mut().table.get(&descriptor.compute.module)?.rep;
+                            let layout_rep = match &descriptor.layout {
+                                GpuLayoutMode::Specific(layout) => {
+                                    access.data_mut().table.get(layout)?.rep as i32
+                                }
+                                GpuLayoutMode::Auto => 0,
+                            };
+                            let entry_point =
+                                descriptor.compute.entry_point.clone().unwrap_or_default();
+                            let label = descriptor.label.clone().unwrap_or_default();
+                            let constants = pipeline_constant_rep(&descriptor.compute.constants);
+                            let device_rep = access.data_mut().table.get(&device)?.rep;
+                            let backend = access.data_mut().webgpu_backend();
+                            Ok((
+                                backend,
+                                device_rep,
+                                shader_rep,
+                                entry_point,
+                                layout_rep,
+                                label,
+                                constants,
+                            ))
                         })?;
-                        Ok((Ok(resource),))
+                        let (tx, rx) = oneshot::channel::<()>();
+                        std::thread::spawn(move || {
+                            let _ = tx.send(());
+                        });
+                        let _ = rx.await;
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                let resource =
+                                    accessor.with(|mut access| -> wasmtime::Result<_> {
+                                        let handle = {
+                                            let gpu = access.data_mut().require_native_gpu()?;
+                                            let device = gpu
+                                                .resolve_device(device_rep)
+                                                .map_err(native_gpu_error)?;
+                                            gpu.create_compute_pipeline(
+                                                device,
+                                                shader_rep,
+                                                &entry_point,
+                                                layout_rep,
+                                                &label,
+                                                constants,
+                                            )
+                                            .map_err(native_gpu_error)?
+                                        };
+                                        Ok(access.data_mut().table.push(GpuComputePipeline {
+                                            rep: handle.raw(),
+                                        })?)
+                                    })?;
+                                Ok((Ok(resource),))
+                            }
+                            GpuBackend::JniBackend => {
+                                let cb = accessor.with(|mut access| {
+                                    access.data_mut().require_webgpu_jni_cb()
+                                })?;
+                                let l2_device = if device_rep == 0 {
+                                    let adapter_rep = jvm::exp_request_adapter(&cb)
+                                        .map_err(wasmtime::Error::msg)?;
+                                    jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                        .map_err(wasmtime::Error::msg)?
+                                } else {
+                                    device_rep
+                                };
+                                let pipeline_rep = jvm::exp_create_compute_pipeline_described(
+                                    &cb,
+                                    l2_device,
+                                    shader_rep,
+                                    entry_point,
+                                    layout_rep,
+                                    label,
+                                    constants,
+                                )
+                                .map_err(wasmtime::Error::msg)?;
+                                if pipeline_rep == 0 {
+                                    return Ok((Err(CreatePipelineError {
+                                        kind: CreatePipelineErrorKind::GpuPipelineError(
+                                            GpuPipelineErrorReason::Internal,
+                                        ),
+                                        message: "device-create-compute-pipeline returned 0"
+                                            .into(),
+                                    }),));
+                                }
+                                let resource = accessor.with(|mut access| {
+                                    access
+                                        .data_mut()
+                                        .table
+                                        .push(GpuComputePipeline { rep: pipeline_rep })
+                                })?;
+                                Ok((Ok(resource),))
+                            }
+                        }
                     })
                 },
             )
@@ -6387,18 +7195,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-command-encoder.label",
                 |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_command_encoder(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         encoder_rep
                     };
@@ -6413,18 +7220,18 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-command-encoder.set-label",
                 |mut caller, (encoder, label): (Resource<GpuCommandEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
                         let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
                             .map_err(wasmtime::Error::msg)?;
-                        jvm::exp_create_command_encoder(&cb, device_rep).map_err(wasmtime::Error::msg)?
+                        jvm::exp_create_command_encoder(&cb, device_rep)
+                            .map_err(wasmtime::Error::msg)?
                     } else {
                         encoder_rep
                     };
@@ -6456,12 +7263,25 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-device.create-query-set",
                 |mut caller, (device, descriptor): (Resource<GpuDevice>, GpuQuerySetDescriptor)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device =
+                                gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                            gpu.create_query_set(
+                                device,
+                                descriptor.type_.to_host_u32(),
+                                descriptor.count,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuQuerySet { rep: handle.raw() })?;
+                        return Ok((Ok::<_, CreateQuerySetError>(resource),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6490,12 +7310,13 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-query-set.destroy",
                 |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
                     let query_rep = caller.data_mut().table.get(&query_set)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let gpu = caller.data_mut().require_native_gpu()?;
+                        let query = gpu.resolve_query_set(query_rep).map_err(native_gpu_error)?;
+                        gpu.query_set_destroy(query).map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_query = if query_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6516,12 +7337,13 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-query-set.type",
                 |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
                     let query_rep = caller.data_mut().table.get(&query_set)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let gpu = caller.data_mut().require_native_gpu()?;
+                        let query = gpu.resolve_query_set(query_rep).map_err(native_gpu_error)?;
+                        let ty = gpu.query_set_type(query).map_err(native_gpu_error)?;
+                        return Ok((GpuQueryType::from_host_u32(ty),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_query = if query_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6542,12 +7364,13 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-query-set.count",
                 |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
                     let query_rep = caller.data_mut().table.get(&query_set)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let gpu = caller.data_mut().require_native_gpu()?;
+                        let query = gpu.resolve_query_set(query_rep).map_err(native_gpu_error)?;
+                        let count = gpu.query_set_count(query).map_err(native_gpu_error)?;
+                        return Ok((count,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_query = if query_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6568,12 +7391,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-query-set.label",
                 |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
                     let query_set_rep = caller.data_mut().table.get(&query_set)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if query_set_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6594,12 +7415,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-query-set.set-label",
                 |mut caller, (query_set, label): (Resource<GpuQuerySet>, String)| {
                     let query_set_rep = caller.data_mut().table.get(&query_set)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if query_set_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6683,12 +7503,29 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             }
                             None => (0, -1, -1, 0, 1.0),
                         };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let encoder =
+                                gpu.resolve_encoder(encoder_rep).map_err(native_gpu_error)?;
+                            gpu.begin_render_pass_described(
+                                encoder,
+                                &color_views,
+                                &color_loads,
+                                &color_stores,
+                                &color_has_clears,
+                                &color_clear_bits,
+                                depth_view,
+                            )
+                            .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuRenderPassEncoder { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6745,24 +7582,33 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<GpuComputePassDescriptor>,
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let (begin_idx, end_idx) = match descriptor
+                    let (begin_idx, end_idx, query_rep) = match descriptor
                         .as_ref()
                         .and_then(|d| d.timestamp_writes.as_ref())
                     {
                         Some(ts) => {
                             let begin_idx = ts.beginning_of_pass_write_index.unwrap_or(0);
                             let end_idx = ts.end_of_pass_write_index.unwrap_or(0);
-                            let _ = caller.data_mut().table.get(&ts.query_set)?;
-                            (begin_idx, end_idx)
+                            let query_rep = caller.data_mut().table.get(&ts.query_set)?.rep;
+                            (begin_idx, end_idx, query_rep)
                         }
-                        None => (0, 0),
+                        None => (0, 0, 0),
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let encoder =
+                                gpu.resolve_encoder(encoder_rep).map_err(native_gpu_error)?;
+                            gpu.begin_compute_pass(encoder, query_rep, begin_idx, end_idx)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuComputePassEncoder { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6802,12 +7648,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let source_rep = caller.data_mut().table.get(&source)?.rep;
                     let dest_rep = caller.data_mut().table.get(&destination)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .encoder_copy(encoder_rep, Some(source_rep), Some(dest_rep), None, None)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6845,12 +7694,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let source_rep = caller.data_mut().table.get(&source.buffer)?.rep;
                     let dest_rep = caller.data_mut().table.get(&destination.texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .encoder_copy(encoder_rep, Some(source_rep), None, None, Some(dest_rep))
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6888,12 +7740,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let source_rep = caller.data_mut().table.get(&source.texture)?.rep;
                     let dest_rep = caller.data_mut().table.get(&destination.buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .encoder_copy(encoder_rep, None, Some(dest_rep), Some(source_rep), None)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6931,12 +7786,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let source_rep = caller.data_mut().table.get(&source.texture)?.rep;
                     let dest_rep = caller.data_mut().table.get(&destination.texture)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .encoder_copy(encoder_rep, None, None, Some(source_rep), Some(dest_rep))
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -6973,12 +7831,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .encoder_clear_buffer(encoder_rep, buffer_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7023,12 +7884,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let query_rep = caller.data_mut().table.get(&query_set)?.rep;
                     let dest_rep = caller.data_mut().table.get(&destination)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .encoder_resolve_query_set(encoder_rep, query_rep, dest_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7058,12 +7922,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-command-encoder.push-debug-group",
                 |mut caller, (encoder, group_label): (Resource<GpuCommandEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .encoder_debug(encoder_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7085,12 +7952,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-command-encoder.pop-debug-group",
                 |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .encoder_debug(encoder_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7112,12 +7982,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-command-encoder.insert-debug-marker",
                 |mut caller, (encoder, marker_label): (Resource<GpuCommandEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .encoder_debug(encoder_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7158,12 +8031,21 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         .as_ref()
                         .and_then(|d| d.label.clone())
                         .unwrap_or_default();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let encoder =
+                                gpu.resolve_encoder(encoder_rep).map_err(native_gpu_error)?;
+                            gpu.encoder_finish(encoder, &label)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuCommandBuffer { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7205,12 +8087,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-command-buffer.label",
                 |mut caller, (buffer,): (Resource<GpuCommandBuffer>,)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7234,12 +8114,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-command-buffer.set-label",
                 |mut caller, (buffer, label): (Resource<GpuCommandBuffer>, String)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if buffer_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7285,9 +8164,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 let resource = store
                     .data_mut()
                     .table
-                    .push(GpuCompilationInfo {
-                        shader_module: 0,
-                    })?;
+                    .push(GpuCompilationInfo { shader_module: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -7296,9 +8173,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 let resource = store
                     .data_mut()
                     .table
-                    .push(GpuCompilationMessage {
-                        shader_module: 0,
-                    })?;
+                    .push(GpuCompilationMessage { shader_module: 0 })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -7307,12 +8182,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compilation-info.messages",
                 |mut caller, (info,): (Resource<GpuCompilationInfo>,)| {
                     let info_shader = caller.data_mut().table.get(&info)?.shader_module;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((Vec::<Resource<GpuCompilationMessage>>::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if info_shader == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7330,19 +8203,13 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         info_shader
                     };
-                    let count =
-                        jvm::exp_compilation_info_messages_count_described(&cb, l2_shader)
-                            .map_err(wasmtime::Error::msg)?;
+                    let count = jvm::exp_compilation_info_messages_count_described(&cb, l2_shader)
+                        .map_err(wasmtime::Error::msg)?;
                     let mut messages = Vec::with_capacity(count as usize);
                     for _ in 0..count {
-                        messages.push(
-                            caller
-                                .data_mut()
-                                .table
-                                .push(GpuCompilationMessage {
-                                    shader_module: l2_shader,
-                                })?,
-                        );
+                        messages.push(caller.data_mut().table.push(GpuCompilationMessage {
+                            shader_module: l2_shader,
+                        })?);
                     }
                     Ok((messages,))
                 },
@@ -7353,12 +8220,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compilation-message.message",
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7376,9 +8241,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         msg_shader
                     };
-                    let message =
-                        jvm::exp_compilation_message_message_described(&cb, l2_shader)
-                            .map_err(wasmtime::Error::msg)?;
+                    let message = jvm::exp_compilation_message_message_described(&cb, l2_shader)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok((message,))
                 },
             )
@@ -7388,12 +8252,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compilation-message.type",
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((GpuCompilationMessageType::from_host_u32(0),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7422,12 +8284,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compilation-message.line-num",
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((0u64,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7445,9 +8305,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         msg_shader
                     };
-                    let line_num =
-                        jvm::exp_compilation_message_line_num_described(&cb, l2_shader)
-                            .map_err(wasmtime::Error::msg)?;
+                    let line_num = jvm::exp_compilation_message_line_num_described(&cb, l2_shader)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok((line_num,))
                 },
             )
@@ -7457,12 +8316,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compilation-message.line-pos",
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((0u64,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7480,9 +8337,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         msg_shader
                     };
-                    let line_pos =
-                        jvm::exp_compilation_message_line_pos_described(&cb, l2_shader)
-                            .map_err(wasmtime::Error::msg)?;
+                    let line_pos = jvm::exp_compilation_message_line_pos_described(&cb, l2_shader)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok((line_pos,))
                 },
             )
@@ -7492,12 +8348,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compilation-message.offset",
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((0u64,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7515,9 +8369,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         msg_shader
                     };
-                    let offset =
-                        jvm::exp_compilation_message_offset_described(&cb, l2_shader)
-                            .map_err(wasmtime::Error::msg)?;
+                    let offset = jvm::exp_compilation_message_offset_described(&cb, l2_shader)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok((offset,))
                 },
             )
@@ -7527,12 +8380,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compilation-message.length",
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((0u64,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7550,9 +8401,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         msg_shader
                     };
-                    let length =
-                        jvm::exp_compilation_message_length_described(&cb, l2_shader)
-                            .map_err(wasmtime::Error::msg)?;
+                    let length = jvm::exp_compilation_message_length_described(&cb, l2_shader)
+                        .map_err(wasmtime::Error::msg)?;
                     Ok((length,))
                 },
             )
@@ -7562,12 +8412,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-queue.label",
                 |mut caller, (queue,): (Resource<GpuQueue>,)| {
                     let queue_rep = caller.data_mut().table.get(&queue)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if queue_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7577,8 +8425,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     } else {
                         queue_rep
                     };
-                    let label = jvm::exp_queue_label_described(&cb, l2)
-                        .map_err(wasmtime::Error::msg)?;
+                    let label =
+                        jvm::exp_queue_label_described(&cb, l2).map_err(wasmtime::Error::msg)?;
                     Ok((label,))
                 },
             )
@@ -7588,12 +8436,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-queue.set-label",
                 |mut caller, (queue, label): (Resource<GpuQueue>, String)| {
                     let queue_rep = caller.data_mut().table.get(&queue)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if queue_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7614,32 +8461,47 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-queue.on-submitted-work-done",
                 |accessor, (queue,): (Resource<GpuQueue>,)| {
                     Box::pin(async move {
-                        let (cb, queue_rep) =
+                        let (backend, queue_rep) =
                             accessor.with(|mut access| -> wasmtime::Result<_> {
                                 let queue_rep = access.data_mut().table.get(&queue)?.rep;
-                                let cb = access
-                                    .data_mut()
-                                    .experimental_host_cb
-                                    .as_ref()
-                                    .ok_or_else(|| {
-                                        wasmtime::Error::msg("experimental host callback not set")
-                                    })
-                                    .cloned()?;
-                                Ok((cb, queue_rep))
+                                let backend = access.data_mut().webgpu_backend();
+                                Ok((backend, queue_rep))
                             })?;
-                        let l2_queue = if queue_rep == 0 {
-                            let adapter_rep =
-                                jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
-                            let device_rep = jvm::exp_adapter_request_device(&cb, adapter_rep)
-                                .map_err(wasmtime::Error::msg)?;
-                            jvm::exp_device_get_queue(&cb, device_rep)
-                                .map_err(wasmtime::Error::msg)?
-                        } else {
-                            queue_rep
-                        };
-                        jvm::exp_queue_on_submitted_work_done_described(&cb, l2_queue)
-                            .map_err(wasmtime::Error::msg)?;
-                        Ok(())
+                        let (tx, rx) = oneshot::channel::<()>();
+                        std::thread::spawn(move || {
+                            let _ = tx.send(());
+                        });
+                        let _ = rx.await;
+                        match backend {
+                            GpuBackend::NativeGpu => {
+                                accessor.with(|mut access| -> wasmtime::Result<_> {
+                                    access
+                                        .data_mut()
+                                        .require_native_gpu()?
+                                        .on_submitted_work_done(queue_rep)
+                                        .map_err(native_gpu_error)
+                                })?;
+                                Ok(())
+                            }
+                            GpuBackend::JniBackend => {
+                                let cb = accessor
+                                    .with(|mut access| access.data_mut().require_webgpu_jni_cb())?;
+                                let l2_queue = if queue_rep == 0 {
+                                    let adapter_rep = jvm::exp_request_adapter(&cb)
+                                        .map_err(wasmtime::Error::msg)?;
+                                    let device_rep =
+                                        jvm::exp_adapter_request_device(&cb, adapter_rep)
+                                            .map_err(wasmtime::Error::msg)?;
+                                    jvm::exp_device_get_queue(&cb, device_rep)
+                                        .map_err(wasmtime::Error::msg)?
+                                } else {
+                                    queue_rep
+                                };
+                                jvm::exp_queue_on_submitted_work_done_described(&cb, l2_queue)
+                                    .map_err(wasmtime::Error::msg)?;
+                                Ok(())
+                            }
+                        }
                     })
                 },
             )
@@ -7656,12 +8518,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     for command in &commands {
                         command_reps.push(caller.data_mut().table.get(command)?.rep);
                     }
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .queue_submit(queue_rep, &command_reps)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let mut device_rep = 0u32;
                     let l2_queue = if queue_rep == 0 {
                         let adapter_rep =
@@ -7725,12 +8590,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                             data[start..end].to_vec()
                         }
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .write_buffer_with_copy(queue_rep, buffer_rep, offset, payload)
+                            .map_err(native_gpu_error)?;
+                        return Ok((Ok::<(), WriteBufferError>(()),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let mut device_rep = 0u32;
                     let l2_queue = if queue_rep == 0 {
                         let adapter_rep =
@@ -7785,12 +8653,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         .bytes_per_row
                         .unwrap_or(width.saturating_mul(4))
                         .max(1);
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .write_texture_with_copy(queue_rep, texture_rep, payload)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let mut device_rep = 0u32;
                     let l2_queue = if queue_rep == 0 {
                         let adapter_rep =
@@ -7840,12 +8711,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.end",
                 |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .render_pass_end(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7874,12 +8748,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .render_pass_set_pipeline(pass_rep, pipeline_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7910,12 +8787,21 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u32>,
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .render_pass_draw_counts(
+                                pass_rep,
+                                vertex_count,
+                                instance_count.unwrap_or(1),
+                                first_vertex.unwrap_or(0),
+                                first_instance.unwrap_or(0),
+                            )
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -7958,12 +8844,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         Some(ref g) => caller.data_mut().table.get(g)?.rep,
                         None => 0,
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .render_pass_set_bind_group(pass_rep, index, bind_group_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok((Ok::<(), SetBindGroupError>(()),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8003,12 +8892,21 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         Some(ref b) => caller.data_mut().table.get(b)?.rep,
                         None => 0,
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .render_pass_set_vertex_buffer(
+                                pass_rep,
+                                slot,
+                                buffer_rep,
+                                offset.unwrap_or(0),
+                                size.unwrap_or(0),
+                            )
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8048,12 +8946,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     f32,
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8086,12 +8987,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     u32,
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8117,12 +9021,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.set-blend-constant",
                 |mut caller, (pass, color): (Resource<GpuRenderPassEncoder>, GpuColor)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8148,12 +9055,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.set-stencil-reference",
                 |mut caller, (pass, reference): (Resource<GpuRenderPassEncoder>, u32)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8189,12 +9099,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         GpuIndexFormat::Uint16 => 1,
                         GpuIndexFormat::Uint32 => 2,
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8240,12 +9153,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u32>,
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .render_pass_draw(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8283,12 +9199,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .render_pass_draw(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8318,12 +9237,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .render_pass_draw(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8349,12 +9271,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.push-debug-group",
                 |mut caller, (pass, group_label): (Resource<GpuRenderPassEncoder>, String)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8378,12 +9303,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.pop-debug-group",
                 |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8407,12 +9335,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.insert-debug-marker",
                 |mut caller, (pass, marker_label): (Resource<GpuRenderPassEncoder>, String)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8436,12 +9367,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.begin-occlusion-query",
                 |mut caller, (pass, query_index): (Resource<GpuRenderPassEncoder>, u32)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8465,12 +9399,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.end-occlusion-query",
                 |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8494,12 +9431,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.label",
                 |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8510,9 +9445,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         let texture_rep = jvm::exp_create_texture(&cb, device_rep)
                             .map_err(wasmtime::Error::msg)?;
                         let view_rep = jvm::exp_texture_create_view_described(
-                            &cb, texture_rep, 0, 0, 0, 0, -1, 0, -1,
+                            &cb,
+                            texture_rep,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            -1,
                         )
-                            .map_err(wasmtime::Error::msg)?;
+                        .map_err(wasmtime::Error::msg)?;
                         jvm::exp_begin_render_pass_clear(&cb, encoder_rep, view_rep)
                             .map_err(wasmtime::Error::msg)?
                     } else {
@@ -8529,12 +9472,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-pass-encoder.set-label",
                 |mut caller, (pass, label): (Resource<GpuRenderPassEncoder>, String)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8545,9 +9487,17 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         let texture_rep = jvm::exp_create_texture(&cb, device_rep)
                             .map_err(wasmtime::Error::msg)?;
                         let view_rep = jvm::exp_texture_create_view_described(
-                            &cb, texture_rep, 0, 0, 0, 0, -1, 0, -1,
+                            &cb,
+                            texture_rep,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            -1,
                         )
-                            .map_err(wasmtime::Error::msg)?;
+                        .map_err(wasmtime::Error::msg)?;
                         jvm::exp_begin_render_pass_clear(&cb, encoder_rep, view_rep)
                             .map_err(wasmtime::Error::msg)?
                     } else {
@@ -8581,12 +9531,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-bundle.label",
                 |mut caller, (bundle,): (Resource<GpuRenderBundle>,)| {
                     let bundle_rep = caller.data_mut().table.get(&bundle)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if bundle_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8597,7 +9545,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         )
                         .map_err(wasmtime::Error::msg)?;
                         jvm::exp_render_bundle_encoder_finish_described(
-                            &cb, encoder_rep, String::new(),
+                            &cb,
+                            encoder_rep,
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -8614,12 +9564,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-bundle.set-label",
                 |mut caller, (bundle, label): (Resource<GpuRenderBundle>, String)| {
                     let bundle_rep = caller.data_mut().table.get(&bundle)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if bundle_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8630,7 +9579,9 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         )
                         .map_err(wasmtime::Error::msg)?;
                         jvm::exp_render_bundle_encoder_finish_described(
-                            &cb, encoder_rep, String::new(),
+                            &cb,
+                            encoder_rep,
+                            String::new(),
                         )
                         .map_err(wasmtime::Error::msg)?
                     } else {
@@ -8655,12 +9606,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     for bundle in &bundles {
                         bundle_reps.push(caller.data_mut().table.get(bundle)?.rep as i32);
                     }
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8691,12 +9645,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u64>,
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_render_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8747,12 +9704,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-bundle-encoder.label",
                 |mut caller, (encoder,): (Resource<GpuRenderBundleEncoder>,)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8774,12 +9729,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-bundle-encoder.set-label",
                 |mut caller, (encoder, label): (Resource<GpuRenderBundleEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8813,12 +9767,22 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         .map(|f| f.to_dawn_u32())
                         .unwrap_or_else(|| GpuTextureFormat::Rgba8unorm.to_dawn_u32());
                     let sample_count = descriptor.sample_count.unwrap_or(1);
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = descriptor;
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            let device =
+                                gpu.resolve_device(device_rep).map_err(native_gpu_error)?;
+                            gpu.create_render_bundle_encoder(device)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuRenderBundleEncoder { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if device_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8855,12 +9819,20 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         .as_ref()
                         .and_then(|d| d.label.clone())
                         .unwrap_or_default();
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        let handle = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.finish_render_bundle(encoder_rep)
+                                .map_err(native_gpu_error)?
+                        };
+                        let resource = caller
+                            .data_mut()
+                            .table
+                            .push(GpuRenderBundle { rep: handle.raw() })?;
+                        return Ok((resource,));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8897,12 +9869,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8945,12 +9915,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         Some(bind_group) => caller.data_mut().table.get(bind_group)?.rep,
                         None => 0,
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((Ok::<(), SetBindGroupError>(()),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -8989,12 +9957,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u32>,
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9036,12 +10002,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9089,12 +10053,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         Some(buffer) => caller.data_mut().table.get(buffer)?.rep,
                         None => 0,
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9143,12 +10105,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u32>,
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9189,12 +10149,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9229,12 +10187,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9263,12 +10219,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-bundle-encoder.push-debug-group",
                 |mut caller, (encoder, group_label): (Resource<GpuRenderBundleEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9299,12 +10253,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-bundle-encoder.pop-debug-group",
                 |mut caller, (encoder,): (Resource<GpuRenderBundleEncoder>,)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9331,12 +10283,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-render-bundle-encoder.insert-debug-marker",
                 |mut caller, (encoder, marker_label): (Resource<GpuRenderBundleEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9374,12 +10324,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u64>,
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_encoder = if encoder_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9422,12 +10370,10 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compute-pass-encoder.label",
                 |mut caller, (pass,): (Resource<GpuComputePassEncoder>,)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        return Ok((String::new(),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9451,12 +10397,11 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compute-pass-encoder.set-label",
                 |mut caller, (pass, label): (Resource<GpuComputePassEncoder>, String)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let _ = label;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9480,12 +10425,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compute-pass-encoder.end",
                 |mut caller, (pass,): (Resource<GpuComputePassEncoder>,)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .compute_pass_end(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9514,12 +10462,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_compute_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9555,12 +10506,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                         Some(ref g) => caller.data_mut().table.get(g)?.rep,
                         None => 0,
                     };
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_compute_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok((Ok::<(), SetBindGroupError>(()),));
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9595,12 +10549,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u32>,
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .compute_pass_dispatch(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9636,12 +10593,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .compute_pass_dispatch(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9674,12 +10634,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                     Option<u64>,
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_compute_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9710,12 +10673,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compute-pass-encoder.push-debug-group",
                 |mut caller, (pass, group_label): (Resource<GpuComputePassEncoder>, String)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_compute_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9739,12 +10705,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compute-pass-encoder.pop-debug-group",
                 |mut caller, (pass,): (Resource<GpuComputePassEncoder>,)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_compute_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9768,12 +10737,15 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
                 "[method]gpu-compute-pass-encoder.insert-debug-marker",
                 |mut caller, (pass, marker_label): (Resource<GpuComputePassEncoder>, String)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .resolve_compute_pass(pass_rep)
+                            .map_err(native_gpu_error)?;
+                        return Ok(());
+                    }
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_pass = if pass_rep == 0 {
                         let adapter_rep =
                             jvm::exp_request_adapter(&cb).map_err(wasmtime::Error::msg)?;
@@ -9795,8 +10767,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
         webgpu
             .func_wrap_concurrent("request-adapter", |accessor, ()| {
                 Box::pin(async move {
-                    let cb =
-                        accessor.with(|mut access| access.data_mut().experimental_host_cb.clone());
+                    let cb = accessor.with(|mut access| access.data_mut().webgpu_jni_cb());
                     // Yield so this is true concurrent (not sync wrap / Latch fake-async).
                     let (tx, rx) = oneshot::channel::<()>();
                     std::thread::spawn(move || {
@@ -9814,16 +10785,8 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
         webgpu
             .func_wrap_concurrent("adapter-request-device", |accessor, (adapter,): (u32,)| {
                 Box::pin(async move {
-                    let cb = accessor.with(|mut access| {
-                        access
-                            .data_mut()
-                            .experimental_host_cb
-                            .as_ref()
-                            .ok_or_else(|| {
-                                wasmtime::Error::msg("experimental host callback not set")
-                            })
-                            .cloned()
-                    })?;
+                    let cb =
+                        accessor.with(|mut access| access.data_mut().require_webgpu_jni_cb())?;
                     let (tx, rx) = oneshot::channel::<()>();
                     std::thread::spawn(move || {
                         let _ = tx.send(());
@@ -9837,12 +10800,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("device-get-queue", |caller, (device,): (u32,)| {
-                let cb = caller
-                    .data()
-                    .experimental_host_cb
-                    .as_ref()
-                    .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                    .cloned()?;
+                let cb = caller.data().require_webgpu_jni_cb()?;
                 let rep = jvm::exp_device_get_queue(&cb, device).map_err(wasmtime::Error::msg)?;
                 Ok((rep,))
             })
@@ -9851,12 +10809,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "device-create-command-encoder",
                 |caller, (device,): (u32,)| {
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let rep = jvm::exp_create_command_encoder(&cb, device)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((rep,))
@@ -9865,12 +10818,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("command-encoder-finish", |caller, (encoder,): (u32,)| {
-                let cb = caller
-                    .data()
-                    .experimental_host_cb
-                    .as_ref()
-                    .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                    .cloned()?;
+                let cb = caller.data().require_webgpu_jni_cb()?;
                 let rep =
                     jvm::exp_command_encoder_finish(&cb, encoder).map_err(wasmtime::Error::msg)?;
                 Ok((rep,))
@@ -9878,12 +10826,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("queue-submit1", |caller, (queue, commands): (u32, u32)| {
-                let cb = caller
-                    .data()
-                    .experimental_host_cb
-                    .as_ref()
-                    .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                    .cloned()?;
+                let cb = caller.data().require_webgpu_jni_cb()?;
                 jvm::exp_queue_submit1(&cb, queue, commands).map_err(wasmtime::Error::msg)?;
                 Ok(())
             })
@@ -9892,12 +10835,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .func_wrap(
                 "command-encoder-begin-render-pass-clear",
                 |caller, (encoder, view): (u32, u32)| {
-                    let cb = caller
-                        .data()
-                        .experimental_host_cb
-                        .as_ref()
-                        .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                        .cloned()?;
+                    let cb = caller.data().require_webgpu_jni_cb()?;
                     let rep = jvm::exp_begin_render_pass_clear(&cb, encoder, view)
                         .map_err(wasmtime::Error::msg)?;
                     Ok((rep,))
@@ -9906,12 +10844,7 @@ fn define_host(linker: &mut Linker<HostState>, fixture_ctors: bool) -> Result<()
             .map_err(|e| e.to_string())?;
         webgpu
             .func_wrap("render-pass-end", |caller, (pass,): (u32,)| {
-                let cb = caller
-                    .data()
-                    .experimental_host_cb
-                    .as_ref()
-                    .ok_or_else(|| wasmtime::Error::msg("experimental host callback not set"))
-                    .cloned()?;
+                let cb = caller.data().require_webgpu_jni_cb()?;
                 jvm::exp_render_pass_end(&cb, pass).map_err(wasmtime::Error::msg)?;
                 Ok(())
             })
@@ -10006,6 +10939,29 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
 }
 
 #[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreBindCanvasNativeWindow(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    window: jlong,
+    width: jint,
+    height: jint,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    if window == 0 || width <= 0 || height <= 0 {
+        throw(&mut env, "invalid canvas native window");
+        return;
+    }
+    let store = unsafe { from_handle::<HostStore>(store) };
+    store
+        .data_mut()
+        .bind_canvas_native_window(window, width as u32, height as u32);
+}
+
+#[no_mangle]
 pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreSetHostAdd(
     mut env: JNIEnv,
     _class: JClass,
@@ -10054,7 +11010,23 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         }
     };
     let store = unsafe { from_handle::<HostStore>(store) };
-    store.data_mut().experimental_host_cb = Some(gref);
+    let data = store.data_mut();
+    data.disable_native_gpu();
+    data.experimental_host_cb = Some(gref);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreSetNativeGpu(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    let store = unsafe { from_handle::<HostStore>(store) };
+    store.data_mut().enable_native_gpu();
 }
 
 #[no_mangle]

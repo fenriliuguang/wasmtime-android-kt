@@ -1,0 +1,25 @@
+Dawn C API Android `.so` (ND-SO). Not the product default (ND-DEFAULT).
+
+Pin matches `androidx.webgpu:webgpu:1.0.0-alpha05` AAR
+`assets/dawn_build_metadata.json` → `dawn_source_commit_sha`:
+
+  9d41fdf36977cca92361c6ae2769129bbaaafd9b
+
+Upstream: https://dawn.googlesource.com/dawn (GitHub mirror https://github.com/google/dawn)
+License: BSD-3-Clause (see LICENSE in this directory). Same renderer as
+androidx JNI leftover — C API adapter, not a second Dawn (NG-7).
+
+Recipe (does **not** git-add any `.so`):
+
+  python3 ./scripts/build-dawn-c-android.py --probe-aar
+  python3 ./scripts/build-dawn-c-android.py --build
+  .\scripts\build-dawn-c-android.ps1 -ProbeAar
+  .\scripts\build-dawn-c-android.ps1 -Build
+
+`--probe-aar` downloads the published AAR into `.cache/` (gitignored) and
+records JNI leftover size + missing `webgpu.h` exports.
+`--build` needs NDK `28.2.13676358` and writes
+`out/<abi>/libwebgpu_dawn.so` plus generated `webgpu.h` under `install/`.
+
+Do not git-add `libwebgpu_c_bundled.so` (already inside androidx.webgpu).
+Do not ship androidx bundled + this C API `.so` together in the default APK.

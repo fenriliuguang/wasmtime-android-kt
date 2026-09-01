@@ -12,13 +12,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
-import androidx.webgpu.helper.Util
-import io.github.fenriliuguang.wasi.webgpu.experimental.dawn.DawnWasiWebGpuHost
 import io.github.fenriliuguang.wasmtime.android.Component
 import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
-import io.github.fenriliuguang.wasmtime.android.webgpu.ExperimentalWebGpuBridge
+import io.github.fenriliuguang.wasmtime.android.host.dawn.GpuBackends
+import io.github.fenriliuguang.wasmtime.android.jni.NativeBridge
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,8 +33,8 @@ import java.util.concurrent.atomic.AtomicReference
  * events at construct). `surfaceDestroyed` closes the stream so `run` unblocks.
  * WG-6 one-shot `gpu-canvas-context` present stays a regression.
  *
- * Product [Linker.create] (no fixture `get-device`). Explicit Dawn attach
- * (P010-DISC). Cloud has no device.
+ * Product [Linker.create] (no fixture `get-device`). Native default
+ * ([GpuBackends.dawn] / NativeGpu), not `dawn-jni`. Cloud has no device.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiGfxFrameLoopInstrumentedTest {
@@ -44,50 +43,45 @@ class WasiGfxFrameLoopInstrumentedTest {
         val storeRef = AtomicReference<Store?>(null)
         withReadySurface(storeRef) { ctx ->
             runOnGpuThread("GpuThread", timeoutSec = 90) {
-                Log.i(TAG, "GpuThread: create Dawn host")
-                DawnWasiWebGpuHost.create().use { host ->
-                    Log.i(TAG, "GpuThread: bindCanvasNativeWindow ${ctx.width}x${ctx.height}")
-                    host.bindCanvasNativeWindow(
-                        Util.windowFromSurface(ctx.surface),
-                        ctx.width,
-                        ctx.height,
-                    )
-                    val bytes =
-                        InstrumentationRegistry.getInstrumentation()
-                            .context
-                            .assets
-                            .open("wasi/gfx_frame_loop.wasm")
-                            .use { it.readBytes() }
-                    Engine.create().use { engine ->
-                        Component.compile(engine, bytes).use { component ->
-                            Linker.create(engine).use { linker ->
-                                Store.create(engine).use { store ->
-                                    ExperimentalWebGpuBridge.attachDawnGuestCanvasPresent(store, host)
-                                    linker.instantiate(store, component).use { instance ->
-                                        startVsyncOnMain(store, storeRef)
-                                        val closer =
-                                            Thread({
-                                                Thread.sleep(CLOSE_AFTER_VSYNC_MS)
-                                                storeRef.get()?.closeGfxOnFrame()
-                                            }, "gfx-on-frame-close")
-                                        closer.start()
-                                        val frames = instance.callRunConcurrent(store)
-                                        storeRef.set(null)
-                                        runCatching { store.closeGfxOnFrame() }
-                                        closer.join(1_000)
-                                        assertTrue(
-                                            "guest must loop ≥2 vsync-paced on-frame presents, got $frames",
-                                            frames >= 2,
-                                        )
-                                    }
+                Log.i(TAG, "GpuThread: NativeGpu + bindCanvasNativeWindow ${ctx.width}x${ctx.height}")
+                val bytes =
+                    InstrumentationRegistry.getInstrumentation()
+                        .context
+                        .assets
+                        .open("wasi/gfx_frame_loop.wasm")
+                        .use { it.readBytes() }
+                Engine.create().use { engine ->
+                    Component.compile(engine, bytes).use { component ->
+                        Linker.create(engine).use { linker ->
+                            Store.create(engine).use { store ->
+                                store.setWebGpuBackend(GpuBackends.dawn())
+                                store.bindCanvasNativeWindow(
+                                    NativeBridge.nativeWindowFromSurface(ctx.surface),
+                                    ctx.width,
+                                    ctx.height,
+                                )
+                                linker.instantiate(store, component).use { instance ->
+                                    startVsyncOnMain(store, storeRef)
+                                    val closer =
+                                        Thread({
+                                            Thread.sleep(CLOSE_AFTER_VSYNC_MS)
+                                            storeRef.get()?.closeGfxOnFrame()
+                                        }, "gfx-on-frame-close")
+                                    closer.start()
+                                    val frames = instance.callRunConcurrent(store)
+                                    storeRef.set(null)
+                                    runCatching { store.closeGfxOnFrame() }
+                                    closer.join(1_000)
+                                    assertTrue(
+                                        "guest must loop ≥2 vsync-paced on-frame presents, got $frames",
+                                        frames >= 2,
+                                    )
                                 }
                             }
                         }
                     }
-                    runCatching { host.releaseAllGpuObjects() }
-                    host.flushEvents()
-                    Thread.sleep(SURFACE_RELEASE_SETTLE_MS)
                 }
+                Thread.sleep(SURFACE_RELEASE_SETTLE_MS)
             }
         }
     }

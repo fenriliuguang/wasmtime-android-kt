@@ -2,7 +2,7 @@
 
 **English** | [中文](gap-webgpu-wit-androidx.zh.md)
 
-Living map for the **JNI / androidx leftover** (`dawn-jni`). Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). Current work: [`../agent/native-dawn.md`](../agent/native-dawn.md) (Dawn C default consume). Use this table as the **mapping spec** when translating `DawnWasiWebGpuHost`. Product claim (not CTS): [`../scheme/claim-010.md`](../scheme/claim-010.md).
+Living map for the **JNI / androidx leftover** (`GpuBackends.dawnJni()`, `id = "dawn-jni"`). Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). **Product default** is NativeGpu / Dawn C: [`gap-webgpu-native-dawn.md`](gap-webgpu-native-dawn.md). Playbook: [`../agent/native-dawn.md`](../agent/native-dawn.md). Use this table as the **mapping spec** when translating `DawnWasiWebGpuHost`. Product claim (not CTS): [`../scheme/claim-010.md`](../scheme/claim-010.md).
 
 **Degree**
 
@@ -19,8 +19,8 @@ Living map for the **JNI / androidx leftover** (`dawn-jni`). Pin: `wasi:webgpu@0
 
 | Axis | Degree |
 |------|--------|
-| `[method]` names vs pin | **Shape** — all 224 pin resource methods registered in `native/src/cm.rs` (see [`../scheme/claim-010.md`](../scheme/claim-010.md)) |
-| S1–S5 (`queue`, `request-adapter` `option`, `request-device` `result`, `create-buffer`, `submit` list) | **Shape** + **Dawn** on the product path |
+| `[method]` names vs pin | **Shape** — all 224 pin resource methods registered in `native/src/cm.rs`. Product consume degree is Dawn C ([`../scheme/claim-010.md`](../scheme/claim-010.md)) |
+| S1–S5 (`queue`, `request-adapter` `option`, `request-device` `result`, `create-buffer`, `submit` list) | **Shape** + **Dawn** on the `dawn-jni` leftover path |
 | Leftover optional descriptors (F1–F9) | **Shape** into Kotlin records; Dawn copy where the AAR allows |
 | G1–G9 consume + WG-6 guest-drawn compute / 3D / canvas present | **Dawn** (see holes below) |
 | Unwired store | `gpu.request-adapter` → guest **`none`** (not a trap) |
@@ -53,7 +53,7 @@ Guest boundary is the pin. Dawn handles stay `u32` **reps** behind `own`/`borrow
 | `get-*` test constructors | not in product WIT | fixtures / instruments | **Fixture** |
 | `experimental:webgpu-cm` flats (`device-get-queue`, `queue-submit1`, …) | not pin product names | still registered | **Flat** |
 
-Cpu host (`CpuWasiWebGpuHost`) is a stand-in: VectorAdd shader-text match only. Product GPU path is Dawn.
+Cpu host (`CpuWasiWebGpuHost`) is a stand-in: VectorAdd shader-text match only. Product GPU path is NativeGpu / Dawn C; this page is the `dawn-jni` leftover.
 
 ## 4. Out of scope
 

@@ -33,8 +33,16 @@ object NativeBridge {
     @JvmStatic external fun nativeStoreSetHostAdd(store: Long, callback: HostU32U32ToU32)
     @JvmStatic
     external fun nativeStoreSetExperimentalHost(store: Long, callback: ExperimentalHostCallbacks)
+    @JvmStatic external fun nativeStoreSetNativeGpu(store: Long)
     @JvmStatic external fun nativeStorePostGfxVsync(store: Long, frameTimeNanos: Long)
     @JvmStatic external fun nativeStoreCloseGfxOnFrame(store: Long)
+    @JvmStatic
+    external fun nativeStoreBindCanvasNativeWindow(
+        store: Long,
+        nativeWindowHandle: Long,
+        width: Int,
+        height: Int,
+    )
 
     /**
      * H9: `NATIVE_WINDOW_SET_BUFFER_COUNT` before Dawn configure.
@@ -42,6 +50,13 @@ object NativeBridge {
      */
     @JvmStatic
     external fun nativeSetANativeWindowBufferCount(window: Long, count: Int): Int
+
+    /**
+     * `ANativeWindow*` from an Android `Surface` (`Any` — `:runtime-jni` is JVM).
+     * Does not load androidx `libwebgpu_c_bundled.so`.
+     */
+    @JvmStatic
+    external fun nativeWindowFromSurface(surface: Any): Long
 
     @JvmStatic external fun nativeComponentCompile(engine: Long, bytes: ByteArray): Long
     @JvmStatic external fun nativeComponentClose(handle: Long)
