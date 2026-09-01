@@ -1627,8 +1627,10 @@ pub(crate) fn define_host(
             |mut caller, (ctx,): (Resource<GfxWebGpuContext>,)| {
                 let ctx_rep = caller.data_mut().table.get(&ctx)?.canvas_rep;
                 if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                    let vsync = caller.data().gfx_on_frame.last_take_vsync_ns();
                     let handle = {
                         let gpu = caller.data_mut().require_native_gpu()?;
+                        gpu.note_consumed_vsync(vsync);
                         gpu.canvas_current_texture(ctx_rep)
                             .map_err(native_gpu_error)?
                     };
@@ -4516,8 +4518,10 @@ pub(crate) fn define_host(
                 |mut caller, (ctx,): (Resource<GpuCanvasContext>,)| {
                     let ctx_rep = caller.data_mut().table.get(&ctx)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let vsync = caller.data().gfx_on_frame.last_take_vsync_ns();
                         let handle = {
                             let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.note_consumed_vsync(vsync);
                             gpu.canvas_current_texture(ctx_rep)
                                 .map_err(native_gpu_error)?
                         };

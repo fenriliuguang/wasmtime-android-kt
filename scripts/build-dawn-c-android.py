@@ -275,6 +275,8 @@ def build_abi(ndk: Path, abi: str) -> Path:
     build_dir.mkdir(parents=True, exist_ok=True)
     cmake = [
         "cmake",
+        "-G",
+        "Ninja",
         "-S",
         str(src),
         "-B",
@@ -296,18 +298,19 @@ def build_abi(ndk: Path, abi: str) -> Path:
         "-DDAWN_ENABLE_DESKTOP_GL=OFF",
         "-DDAWN_ENABLE_VULKAN=ON",
         f"-DCMAKE_INSTALL_PREFIX={prefix}",
+        "-DCMAKE_SHARED_LINKER_FLAGS=-llog",
+        "-DCMAKE_EXE_LINKER_FLAGS=-llog",
     ]
     run(cmake)
     jobs = str(os.cpu_count() or 2)
     run(["cmake", "--build", str(build_dir), "-j", jobs, "--target", "webgpu_dawn"])
-    run(["cmake", "--install", str(build_dir)])
+    try:
+        run(["cmake", "--install", str(build_dir)])
+    except subprocess.CalledProcessError as exc:
+        print(f"cmake --install failed ({exc}); copy {C_API_SO} from the build tree")
     found: list[Path] = list(prefix.rglob(C_API_SO))
     if not found:
-        found = [
-            p
-            for p in prefix.rglob("*.so")
-            if p.name.startswith("libwebgpu") or p.name.startswith("libdawn")
-        ]
+        found = list(build_dir.rglob(C_API_SO))
     if not found:
         die(f"install prefix {prefix} has no Dawn shared library")
     so = found[0]

@@ -33,7 +33,7 @@ const STATUS_SUCCESS: WgpuEnum = 0x0000_0001;
 const SURFACE_OK_OPTIMAL: WgpuEnum = 0x0000_0001;
 const SURFACE_OK_SUBOPTIMAL: WgpuEnum = 0x0000_0002;
 const PRESENT_FIFO: WgpuEnum = 0x0000_0001;
-const ALPHA_AUTO: WgpuEnum = 0x0000_0000;
+pub const ALPHA_AUTO: WgpuEnum = 0x0000_0000;
 const FORMAT_RGBA8_UNORM: WgpuEnum = 0x0000_0016;
 const USAGE_RENDER_ATTACHMENT: WgpuFlags = 1 << 4;
 const COLOR_WRITE_ALL: WgpuFlags = 0xF;
@@ -604,7 +604,9 @@ fn load_once() -> Option<Api> {
             texture_height: std::mem::transmute(need(c"wgpuTextureGetHeight")),
             pass_set_pipeline: std::mem::transmute(need(c"wgpuRenderPassEncoderSetPipeline")),
             pass_set_bind_group: std::mem::transmute(need(c"wgpuRenderPassEncoderSetBindGroup")),
-            pass_set_vertex_buffer: std::mem::transmute(need(c"wgpuRenderPassEncoderSetVertexBuffer")),
+            pass_set_vertex_buffer: std::mem::transmute(need(
+                c"wgpuRenderPassEncoderSetVertexBuffer",
+            )),
             pass_draw: std::mem::transmute(need(c"wgpuRenderPassEncoderDraw")),
             pass_end: std::mem::transmute(need(c"wgpuRenderPassEncoderEnd")),
             release_adapter: std::mem::transmute(need(c"wgpuAdapterRelease")),
@@ -668,7 +670,12 @@ unsafe extern "C" fn on_device(
     }
 }
 
-fn wait_future(api: &Api, instance: WgpuObj, future: Future, out: &mut (WgpuEnum, WgpuObj)) -> bool {
+fn wait_future(
+    api: &Api,
+    instance: WgpuObj,
+    future: Future,
+    out: &mut (WgpuEnum, WgpuObj),
+) -> bool {
     unsafe {
         let mut wait = FutureWaitInfo {
             future,
@@ -816,7 +823,13 @@ pub fn device_queue(device: DawnSlot) -> DawnSlot {
     unsafe { from_ptr((api.device_get_queue)(as_ptr(device))) }
 }
 
-pub fn create_buffer(device: DawnSlot, size: u64, usage: u32, mapped: bool, label: &str) -> DawnSlot {
+pub fn create_buffer(
+    device: DawnSlot,
+    size: u64,
+    usage: u32,
+    mapped: bool,
+    label: &str,
+) -> DawnSlot {
     let Some(api) = api() else {
         return 0;
     };
@@ -1030,7 +1043,11 @@ pub fn create_render_pipeline(
     let layouts: Vec<VertexBufferLayout> = (0..n)
         .map(|i| VertexBufferLayout {
             next_in_chain: std::ptr::null_mut(),
-            step_mode: pack.step_modes.get(i).copied().unwrap_or(STEP_VERTEX as i32) as WgpuEnum,
+            step_mode: pack
+                .step_modes
+                .get(i)
+                .copied()
+                .unwrap_or(STEP_VERTEX as i32) as WgpuEnum,
             array_stride: pack.strides[i] as u64,
             attribute_count: attrs[i].len(),
             attributes: attrs[i].as_ptr(),
@@ -1038,7 +1055,11 @@ pub fn create_render_pipeline(
         .collect();
     let target = ColorTargetState {
         next_in_chain: std::ptr::null_mut(),
-        format: if format == 0 { FORMAT_RGBA8_UNORM } else { format },
+        format: if format == 0 {
+            FORMAT_RGBA8_UNORM
+        } else {
+            format
+        },
         blend: std::ptr::null(),
         write_mask: COLOR_WRITE_ALL,
     };
@@ -1075,7 +1096,10 @@ pub fn create_render_pipeline(
         },
         primitive: PrimitiveState {
             next_in_chain: std::ptr::null_mut(),
-            topology: primitive.first().copied().unwrap_or(TOPOLOGY_TRIANGLE_LIST as i32) as WgpuEnum,
+            topology: primitive
+                .first()
+                .copied()
+                .unwrap_or(TOPOLOGY_TRIANGLE_LIST as i32) as WgpuEnum,
             strip_index_format: primitive.get(1).copied().unwrap_or(0) as WgpuEnum,
             front_face: primitive.get(2).copied().unwrap_or(FRONT_CCW as i32) as WgpuEnum,
             cull_mode: primitive.get(3).copied().unwrap_or(CULL_BACK as i32) as WgpuEnum,
@@ -1140,7 +1164,11 @@ pub fn begin_render_pass(
             view: as_ptr(view),
             depth_slice: WGPU_DEPTH_SLICE_UNDEFINED,
             resolve_target: std::ptr::null_mut(),
-            load_op: loads.get(i).copied().filter(|&v| v > 0).unwrap_or(LOAD_CLEAR as i32) as WgpuEnum,
+            load_op: loads
+                .get(i)
+                .copied()
+                .filter(|&v| v > 0)
+                .unwrap_or(LOAD_CLEAR as i32) as WgpuEnum,
             store_op: stores
                 .get(i)
                 .copied()
@@ -1197,7 +1225,13 @@ pub fn write_buffer(queue: DawnSlot, buffer: DawnSlot, offset: u64, bytes: &[u8]
         return;
     }
     unsafe {
-        (api.write_buffer)(as_ptr(queue), as_ptr(buffer), offset, bytes.as_ptr(), bytes.len());
+        (api.write_buffer)(
+            as_ptr(queue),
+            as_ptr(buffer),
+            offset,
+            bytes.as_ptr(),
+            bytes.len(),
+        );
     }
 }
 
@@ -1208,7 +1242,11 @@ pub fn queue_submit(queue: DawnSlot, commands: &[DawnSlot]) {
     if queue == 0 {
         return;
     }
-    let objs: Vec<WgpuObj> = commands.iter().filter(|s| **s != 0).map(|&s| as_ptr(s)).collect();
+    let objs: Vec<WgpuObj> = commands
+        .iter()
+        .filter(|s| **s != 0)
+        .map(|&s| as_ptr(s))
+        .collect();
     unsafe {
         (api.queue_submit)(as_ptr(queue), objs.len(), objs.as_ptr());
     }
@@ -1264,12 +1302,58 @@ pub fn surface_preferred_format(surface: DawnSlot, adapter: DawnSlot) -> WgpuEnu
     }
 }
 
+/// Full surface capability lists (formats / present / alpha), copied out before
+/// `caps_free`. Mirrors androidx `getCapabilities` so the Dawn C path can pick
+/// the same `alphaModes[0]` / `formats[0]` as the smooth D24 control.
+pub fn surface_caps_detail(
+    surface: DawnSlot,
+    adapter: DawnSlot,
+) -> (Vec<WgpuEnum>, Vec<WgpuEnum>, Vec<WgpuEnum>) {
+    let empty = (Vec::new(), Vec::new(), Vec::new());
+    let Some(api) = api() else {
+        return empty;
+    };
+    if surface == 0 || adapter == 0 {
+        return empty;
+    }
+    let mut caps = SurfaceCaps {
+        next_in_chain: std::ptr::null_mut(),
+        usages: 0,
+        format_count: 0,
+        formats: std::ptr::null(),
+        present_mode_count: 0,
+        present_modes: std::ptr::null(),
+        alpha_mode_count: 0,
+        alpha_modes: std::ptr::null(),
+    };
+    unsafe {
+        let st = (api.surface_caps)(as_ptr(surface), as_ptr(adapter), &mut caps);
+        if st != STATUS_SUCCESS {
+            (api.caps_free)(caps);
+            return empty;
+        }
+        let copy = |count: usize, ptr: *const WgpuEnum| -> Vec<WgpuEnum> {
+            if count > 0 && !ptr.is_null() {
+                std::slice::from_raw_parts(ptr, count).to_vec()
+            } else {
+                Vec::new()
+            }
+        };
+        let formats = copy(caps.format_count, caps.formats);
+        let present = copy(caps.present_mode_count, caps.present_modes);
+        let alpha = copy(caps.alpha_mode_count, caps.alpha_modes);
+        (api.caps_free)(caps);
+        (formats, present, alpha)
+    }
+}
+
 pub fn surface_configure(
     surface: DawnSlot,
     device: DawnSlot,
     format: WgpuEnum,
     width: u32,
     height: u32,
+    alpha_mode: WgpuEnum,
 ) {
     let Some(api) = api() else {
         return;
@@ -1280,13 +1364,17 @@ pub fn surface_configure(
     let cfg = SurfaceConfig {
         next_in_chain: std::ptr::null_mut(),
         device: as_ptr(device),
-        format: if format == 0 { FORMAT_RGBA8_UNORM } else { format },
+        format: if format == 0 {
+            FORMAT_RGBA8_UNORM
+        } else {
+            format
+        },
         usage: USAGE_RENDER_ATTACHMENT,
         width,
         height,
         view_format_count: 0,
         view_formats: std::ptr::null(),
-        alpha_mode: ALPHA_AUTO,
+        alpha_mode,
         present_mode: PRESENT_FIFO,
     };
     unsafe {
@@ -1294,12 +1382,14 @@ pub fn surface_configure(
     }
 }
 
-pub fn surface_current_texture(surface: DawnSlot) -> DawnSlot {
+/// `(texture, WGPUSurfaceGetCurrentTextureStatus)`. Texture is `0` unless
+/// Optimal/Suboptimal. Status `0` means the call did not run.
+pub fn surface_current_texture(surface: DawnSlot) -> (DawnSlot, u32) {
     let Some(api) = api() else {
-        return 0;
+        return (0, 0);
     };
     if surface == 0 {
-        return 0;
+        return (0, 0);
     }
     let mut tex = SurfaceTexture {
         next_in_chain: std::ptr::null_mut(),
@@ -1310,10 +1400,13 @@ pub fn surface_current_texture(surface: DawnSlot) -> DawnSlot {
         (api.surface_get_current)(as_ptr(surface), &mut tex);
     }
     if tex.status != SURFACE_OK_OPTIMAL && tex.status != SURFACE_OK_SUBOPTIMAL {
-        log_android(false, &format!("wgpuSurfaceGetCurrentTexture status={}", tex.status));
-        return 0;
+        log_android(
+            false,
+            &format!("wgpuSurfaceGetCurrentTexture status={}", tex.status),
+        );
+        return (0, tex.status);
     }
-    from_ptr(tex.texture)
+    (from_ptr(tex.texture), tex.status)
 }
 
 pub fn surface_present(surface: DawnSlot) -> bool {
@@ -1333,7 +1426,12 @@ pub fn texture_size(texture: DawnSlot) -> (u32, u32) {
     if texture == 0 {
         return (1, 1);
     }
-    unsafe { ((api.texture_width)(as_ptr(texture)), (api.texture_height)(as_ptr(texture))) }
+    unsafe {
+        (
+            (api.texture_width)(as_ptr(texture)),
+            (api.texture_height)(as_ptr(texture)),
+        )
+    }
 }
 
 pub fn create_view(texture: DawnSlot) -> DawnSlot {
@@ -1385,10 +1483,24 @@ pub fn pass_set_vertex_buffer(pass: DawnSlot, slot: u32, buffer: DawnSlot, offse
     }
 }
 
-pub fn pass_draw(pass: DawnSlot, vertex_count: u32, instance_count: u32, first: u32, first_inst: u32) {
+pub fn pass_draw(
+    pass: DawnSlot,
+    vertex_count: u32,
+    instance_count: u32,
+    first: u32,
+    first_inst: u32,
+) {
     if let Some(api) = api() {
         if pass != 0 {
-            unsafe { (api.pass_draw)(as_ptr(pass), vertex_count, instance_count, first, first_inst) }
+            unsafe {
+                (api.pass_draw)(
+                    as_ptr(pass),
+                    vertex_count,
+                    instance_count,
+                    first,
+                    first_inst,
+                )
+            }
         }
     }
 }

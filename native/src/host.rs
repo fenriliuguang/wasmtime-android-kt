@@ -17,6 +17,56 @@ pub fn wasi_monotonic_now_ns() -> u64 {
         .as_nanos() as u64
 }
 
+/// D3 skip-present probe. `0`/`1` = off (product 1:1). Device:
+/// `adb shell setprop debug.wasmtime.gfx.skip_present_n 6` then restart the app.
+fn hitch_skip_present_n() -> u32 {
+    static N: OnceLock<u32> = OnceLock::new();
+    *N.get_or_init(|| {
+        if let Ok(s) = std::env::var("WASMTIME_GFX_SKIP_PRESENT_N") {
+            if let Ok(n) = s.parse::<u32>() {
+                return n;
+            }
+        }
+        #[cfg(target_os = "android")]
+        {
+            let mut buf = [0u8; 92];
+            unsafe extern "C" {
+                fn __system_property_get(name: *const i8, value: *mut i8) -> i32;
+            }
+            let n = unsafe {
+                __system_property_get(
+                    c"debug.wasmtime.gfx.skip_present_n".as_ptr() as *const i8,
+                    buf.as_mut_ptr() as *mut i8,
+                )
+            };
+            if n > 0 {
+                if let Ok(s) = std::str::from_utf8(&buf[..n as usize]) {
+                    if let Ok(v) = s.parse::<u32>() {
+                        return v;
+                    }
+                }
+            }
+        }
+        0
+    })
+}
+
+fn gfx_hitch_log(msg: &str) {
+    let _ = msg;
+    #[cfg(target_os = "android")]
+    unsafe {
+        extern "C" {
+            fn __android_log_write(prio: i32, tag: *const i8, text: *const i8) -> i32;
+        }
+        let c = std::ffi::CString::new(msg).unwrap_or_default();
+        let _ = __android_log_write(
+            4,
+            c"GfxHitch".as_ptr() as *const i8,
+            c.as_ptr() as *const i8,
+        );
+    }
+}
+
 #[derive(Debug)]
 pub struct Widget {
     pub rep: u32,
@@ -264,6 +314,9 @@ struct GfxOnFrameInner {
     last_take_vsync_ns: u64,
     /// WASI instant of that beat (vsync deltas after the first take).
     last_take_wasi_ns: u64,
+    /// D3 probe: skip every Nth take (`0`/`1` = off). Guest waits the next
+    /// vsync instead of presenting, so BLAST can drain. Not a product default.
+    skip_present_n: u32,
 }
 
 pub enum GfxOnFrameTake {
@@ -289,6 +342,7 @@ impl GfxOnFrameGate {
                 wait_epoch: 0,
                 last_take_vsync_ns: 0,
                 last_take_wasi_ns: 0,
+                skip_present_n: hitch_skip_present_n(),
             }),
             cv: Condvar::new(),
         })
@@ -360,17 +414,27 @@ impl GfxOnFrameGate {
         g.wait_epoch = g.wait_epoch.saturating_add(1);
         let need = Self::need_beats(g.period_ns);
         let start_gen = g.post_generation;
-        let target = match g.last_take_gen {
+        let mut target = match g.last_take_gen {
             Some(prev) => prev.saturating_add(need),
             None => start_gen.saturating_add(need),
         };
         loop {
             if g.post_generation >= target {
                 g.pending = false;
-                g.in_frame = true;
                 g.last_take_gen = Some(g.post_generation);
                 Self::note_take_vsync(&mut g);
                 g.consumed = g.consumed.saturating_add(1);
+                let n = g.skip_present_n;
+                if n >= 2 && g.consumed % n == 0 {
+                    // Consume this vsync without producing a BLAST image.
+                    g.in_frame = false;
+                    if g.consumed % n.saturating_mul(20) == 0 {
+                        gfx_hitch_log(&format!("skip-present n={n} consumed={}", g.consumed));
+                    }
+                    target = g.post_generation.saturating_add(need);
+                    continue;
+                }
+                g.in_frame = true;
                 return GfxOnFrameTake::Item;
             }
             if g.closed {
@@ -416,9 +480,16 @@ impl GfxOnFrameGate {
             return;
         }
         if g.last_take_vsync_ns > 0 && g.last_post_ns >= g.last_take_vsync_ns {
-            g.last_take_wasi_ns = g
-                .last_take_wasi_ns
-                .saturating_add(g.last_post_ns.saturating_sub(g.last_take_vsync_ns));
+            let dt = g.last_post_ns.saturating_sub(g.last_take_vsync_ns);
+            // P5: guest take interval. `dt` is how many Choreographer beats the
+            // guest's `now` advances this frame (it feeds the cube `angle`). A
+            // `dt` > 1 beat means the guest skipped a vsync, so `now` jumps a
+            // multi-beat step and the cube visibly fast-forwards for one frame.
+            if dt > 12_000_000 {
+                let beats = (dt + 4_166_666) / 8_333_333;
+                gfx_hitch_log(&format!("take-skip dt={dt}ns beats={beats}"));
+            }
+            g.last_take_wasi_ns = g.last_take_wasi_ns.saturating_add(dt);
         } else {
             g.last_take_wasi_ns = wasi_monotonic_now_ns().max(1);
         }
@@ -434,6 +505,12 @@ impl GfxOnFrameGate {
         } else {
             fallback
         }
+    }
+
+    /// Choreographer `frameTimeNanos` of the beat consumed by the last take
+    /// (`0` = none). NativeGpu hitch D2 compares this to `CLOCK_MONOTONIC`.
+    pub fn last_take_vsync_ns(&self) -> u64 {
+        self.lock().last_take_vsync_ns
     }
 }
 

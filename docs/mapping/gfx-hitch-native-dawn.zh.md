@@ -27,7 +27,7 @@ androidx + `host-dawn` JNI 表：[`gfx-hitch-checklist.zh.md`](gfx-hitch-checkli
 | `fullscreen-surface` + `host-dawn` | `ExperimentalHostCallbacks` → androidx JNI | 有 | **有**（约 5 s；Choreographer / acquire 仍 ~8.3 ms） |
 | `fullscreen-surface` + NativeGpu Dawn C | `dlopen` `libwebgpu_dawn.so` + `wgpu*`（立方体热路径无 androidx） | 有 | **有**（同一观感；Choreographer 120 Hz，0 `>20ms`） |
 
-**筛选。** 绕开 ART / Kotlin / androidx JNI **消不掉**这次弹出。native-dawn「Why」（ART 频繁穿越放大相位抖动）对**这次抖动**是 **Closed**。两边仍共享：guest + `GfxOnFrameGate` / `postGfxVsync` + 8MiB `wasmtime-cm-pump` + hitch 环（keep-3 / Fifo / H8）+ Dawn `present()` **没有** presentation timestamp + SurfaceView BLAST + OEM VRR。
+**筛选。** 绕开 ART / Kotlin / androidx JNI **消不掉**这次弹出。native-dawn「Why」（ART 频繁穿越放大相位抖动）对**这次抖动**是 **Closed**。两边仍共享：guest + `GfxOnFrameGate` / `postGfxVsync` + 8MiB `wasmtime-cm-pump` + hitch 环（keep-3 / Fifo / H8）+ SurfaceView BLAST + OEM VRR。Present 时间戳已落地（D3）。keep-6 **加重**了抖动频率（已撤回）。
 
 Dawn C 安装上 Choreographer 连续数分钟全是 `<11ms`（与 H23 同形）。这仍然 **关闭卡住型** 原因（CM trap、epoch、MoonBit GC、acquire 等待）。**关不掉**合成器回退积压 BLAST，也关不掉从不抬高 `lastDtNs` 的 vsync→present **相位**。
 
@@ -68,12 +68,12 @@ Dawn C 安装上 Choreographer 连续数分钟全是 `<11ms`（与 H23 同形）
 | ID | 假设 | androidx | Dawn C | 下一步 |
 |----|------|----------|--------|--------|
 | **N1** | ART / Kotlin / androidx JNI 热路径就是这次 5 s 弹出 | （playbook Why） | **Closed** | 不要再为这次抖动拆 JNI。 |
-| **D2** | vsync → `postGfxVsync` → 8MiB CM 泵 → Dawn present **相位**（`lastDtNs` 不冒尖） | 卡住型 Closed；playbook 仍点名相位 | **Open** / **Likely** | 共享。A/B 否掉了「ART 穿越放大器」。量 vsync→`wgpuSurfacePresent` ns。 |
-| **D3** / **D19** | `present()` 无 presentation timestamp；BLAST 塞满；SF 重播 *n−2* | Open / Likely | **Open** / **Likely** | 共享。`timestats` `presentToPresent`；Perfetto `BUFFER_STUFFING`。只有确认 stuffing 才 skip-present。不要 Mailbox。 |
-| **D13** | 立方体**看起来**往回走，但 `angle` 已经加过 | Likely（症状） | **Likely** | 用来区分 guest dt 和 D3。 |
-| **D20** | SF 等到同相位 + UID FPS 约数 | Open | **Open** | 共享。`dumpsys SurfaceFlinger` 图层 override。**不要** GameState。 |
-| **D21** | VSyncPredictor 周期性校正 | Open / Trace | **Open** / **Trace** | 共享。对着弹出采 Perfetto。 |
-| **D22** / **H27** | Vivo RMS / 智能刷新；app 投票会加重 | Open / Likely；app 投票 Closed | **Open** / **Likely** | 系统设置锁 120 Hz。不要再叠 DisplayManager 投票。 |
+| **D2** | vsync → `postGfxVsync` → 8MiB CM 泵 → Dawn present **相位**（`lastDtNs` 不冒尖） | 卡住型 Closed；hitch 分支 **Likely**（JNI 路径约 19% >8.3 ms） | **Open**（拍内游荡）/ **Closed**（本 25 s 跨拍） | NativeGpu `GfxHitch` 2026-09-01：`present n=2880` `>8.3ms=0`（JNI 路径是 19%）。`lastLatencyNs` 仍 0.8–6.9 ms，在拍内。跨拍相位不是 Dawn C 的故事。剩下 D3。**P2（2026-09-01，95 s / 12000 帧）：**`phase-crossing` **2**（margin −0.4 / −2.0 ms，**间隔 55.5 s**）= 极慢拍漂移（约 1.25 ns/拍），**不是** 约 5 s 周期。CM 泵锁相干净。 |
+| **D3** / **D19** | `present()` 无 presentation timestamp；BLAST 塞满；SF 重播 *n−2* | androidx `.so` 上 **Confirmed**（静态 + timestats） | **Mitigated**（时间戳 2 拍） | 共享。**2026-09-01：**`wgpuSurfacePresent` 前 `ANativeWindow_setBuffersTimestamp`（`rc=0`）。默认 2 拍。D22 锁着约 59 s：`desired2present` **5 ms=7072**（曾钉在约 29 ms）；FPS 125.062。skip `n=6` 仍是探针。 |
+| **D13** | 立方体**看起来**往回走，但 `angle` 已经加过 | Likely（症状） | **Closed**（keep-6）/ **Open**（肉眼） | 时间戳抽干了 `desired2present`，肉眼仍弹出。keep-6（BLAST+1）**提高**了抖动频率；gfxinfo SurfaceView BLAST 仍 **5**。已退回 keep-3。与 keep-8 抽干池 / H27 投票同类。**P4（2026-09-01，95 s / 12720 帧）：**guest 转角时钟逐帧差分 `angleDt 8-9ms=全部`、`9-17ms=0`、`>17ms=0`——**变换矩阵时间严格线性**。回退只能来自 SF 重播旧 BLAST。 | 不要再叠 keep。下一刀不是更多在途图。 |
+| **D20** | SF 等到同相位 + UID FPS 约数 | Open | **Closed**（2026-09-01） | 共享。`dumpsys SurfaceFlinger`（V2458A / Android 16）：`GameFrameRateOverrides=` 空；`setFrameRate UID=10504 → 120.00 Hz`；BLAST 层 `requestedFrameRate 120.00 Hz ExactOrMultiple`；`idleScreenConfig timeout:-1`；层 `FPS ring buffer` 稳定 120。SF 未降帧到 120 的约数。**不要** GameState。 |
+| **D21** | VSyncPredictor 周期性校正 | Open / Trace | **Closed**（这次抖动） | `vsync_predictor_recovery: false`。Dawn C 22 s Perfetto：**2155/2155** 显示帧 `NONE` / `ON_TIME` / `VALID`。0 `PREDICTION_ERROR`。SurfaceView BLAST **没有** surface-frame timeline（与 D3 同 n/a）。 |
+| **D22** / **H27** | Vivo RMS / 智能刷新；app 投票会加重 | Open / Likely；app 投票 Closed | **Closed**（Hz 掉档）/ **Mitigated**（系统锁） | **2026-09-01：**`min_refresh_rate=120` + `vivo_screen_refresh_rate_mode=120`。本约 60 s `present2presentDelta` 25 ms 2→0；`desired2present` 钉在约 29 ms（曾双峰）。BLAST 仍 5。不要再叠投票。 |
 | **D23** | 空闲降刷新超时 | Open（弱） | **Open**（弱） | 弹出时看刷新率叠加层。 |
 | **D24** | 无 Wasmtime 的 androidx 立方体同样抖 | **Closed**（并不抖） | 仍是对照 | 流畅基线，保留。 |
 | **D25** | Dawn C + Wasmtime 立方体流畅 | — | **Closed**（并不流畅；本页） | 抖动不是 androidx 门面。 |
@@ -88,30 +88,41 @@ Dawn C 安装上 Choreographer 连续数分钟全是 `<11ms`（与 H23 同形）
 | ID | 假设 | Check | 证据 | 下一步 |
 |----|------|-------|------|--------|
 | N1 | 立方体 GPU 路径去掉 androidx JNI / ART 就能消弹出 | **Closed** | host + guest + vsync 相同，只换消费；弹出仍在 | — |
-| N2 | `queue.submit` 上立刻 `mark_canvas_gpu_done()`；没有 `wgpuQueueOnSubmittedWorkDone` | **Open**（寿命） / **Closed**（5 s 周期） | `native_gpu.rs` 把整环标 `gpu_done` 再 keep-3 retire。androidx 在 poller 上等真 fence。 | 纹理 UAF 再接 C-API work-done。不是 5 s 定时器。 |
-| N3 | acquire 上的 `wgpuInstanceProcessEvents`（泵线程）vs androidx poller | **Open** / **Trace** | 与 present 同线程。可能加相位；不应抬高 Choreographer。 | 打 acquire ns + `GetCurrentTexture` 状态（JNI 时是 `GfxHitch`）。 |
-| N4 | Dawn C 没有 acquire / present 间隔直方图 | **Trace** | androidx 有 `GfxHitch`。Dawn C logcat 目前只有启动（`dlopen` / adapter / device）。 | NativeGpu 上复用 `<11 / 11–20 / >20ms` 桶。 |
-| N5 | `wgpuSurfacePresent` vs androidx `GPUSurface.present` 的 stuffing | **Open** | 都走 `ANativeWindow` → BLAST。Dawn C 尚未重采 gfxinfo。 | `dumpsys gfxinfo` BLAST 张数；对照 5。 |
+| N2 | `queue.submit` 上立刻 `mark_canvas_gpu_done()`；没有 `wgpuQueueOnSubmittedWorkDone` | **Open**（寿命） / **Closed**（5 s 定时器） | 整环标 `gpu_done` 再 keep-3 retire。keep-6 **加重**抖动频率（已撤回）。 | 不要再加 keep。仅 UAF 时再接 C-API work-done。**P3（2026-09-01，95 s / 12000 帧）：**retire 存活 `<8.3ms=0` 全程为 0；retire 落在 24–28 ms（约 3 拍）。无合成前回收 —— `gpu_done` 的「谎言」**没有**在 SF 下复用 buffer。 |
+| N3 | acquire 上的 `wgpuInstanceProcessEvents`（泵线程）vs androidx poller | **Closed**（本 25 s）/ **Open**（偶发警告） | 与 present 同线程。开局一次 acquire 警告 `2031693ns status=1`；之后 acquire `last` 0.07–0.8 ms，`>20ms=0`。 | — |
+| N4 | Dawn C acquire / present 间隔 + vsync→present 直方图 | **Closed**（卡住型） | 2026-09-01 V2458A，`fullscreen-surface` NativeGpu，约 25 s：Choreographer 3000 `<11ms` `>20ms=0`。Acquire n=3000 `<11ms=2998` `11-20ms=2` `>20ms=0` `status=1`。Present 间隔 n=2880 `<11ms=2867` `11-20ms=13` `>20ms=0`。 | 本窗口卡住型保持 Closed。 |
+| N5 | `wgpuSurfacePresent` vs androidx `GPUSurface.present` 的 stuffing | **Mitigated**（时间戳）/ Timeline **n/a** / skip **已抽干** | gfxinfo：SurfaceView **5** 张 BLAST Consumer（与 H9 同下限）+ 1 张 VRI。2026-09-01 1:1 TimeStats 约 45 s：`desired2present` 双峰约 18–19 vs 约 28–30 ms（约 41% 多一拍）；`present2presentDelta` 25 ms=2。skip `n=6`：FPS 104.194；28–30 ms 峰 **0**。**D22 锁：**钉在约 29 ms。**时间戳 2 拍：**`desired2present` **5 ms=7072**；FPS 125.062；25 ms 间隔 0。 | 默认时间戳开。skip 探针关。不要 Mailbox。 |
 | N6 | `preferred_canvas_format` → `resolve_device(0)` 第二套 adapter/device | **Closed** | 已复用 guest device（2026-09-01）。是启动 bug，不是 5 s 周期。 | — |
 | N8 | `webgpu.h` main 与 Dawn `.so` SHA ABI 不一致 | **Closed**（这次抖动） | adapter/device/present 能跑；立方体在屏上。 | 只有 present 开始报 Error 再重开。 |
+| N9 | Dawn C `wgpuSurfacePresent` vs androidx `GPUSurface.present` 的提交细节 | **Closed**（2026-09-01，非差异源） | `surface-caps formats=[22,23,40,30] present=[4,1] alpha=[4]` → RGBA8 为首、`Fifo(1)`+`Mailbox(4)`、`Inherit(4)`。`AlphaMode_Auto` 在 native 默认落到 `Inherit`，故把 configure 对齐到 `caps.alphaModes[0]` 是无操作。`PRESENT_FIFO=0x0001` 正确。Dawn pin = androidx AAR SHA（同 commit）。65 s / 7835 帧：`droppedFrames=0`、`jankyFrames=0`、`present2presentDelta 25ms=0`、`desired2present 5ms=7811`。 | 仅剩差异：D24 每帧真实 `onSubmittedWorkDone` fence vs NativeGpu 仅 mark+retire；NativeGpu 在 `queue.submit` 内自动 present（H8）。 |
 
 ## 3. 建议杀序（一次一个变量）
 
 **不要**再叠 DisplayManager / GameState / SurfaceControl 投票。**不要**把再拆一层 JNI 当成下一刀 hitch。
 
-1. **N4** — NativeGpu acquire + present 间隔直方图。若弹出时仍 `>20ms=0`（与 androidx 相同），卡住型保持 Closed。  
-2. **D3 / D19 / N5** — Dawn C 的 SurfaceView 上 `dumpsys SurfaceFlinger --timestats` + `gfxinfo` BLAST。  
-3. **D2** — vsync `frameTimeNanos` → `wgpuSurfacePresent` 返回（泵线程）。没有直方图空洞的相位。  
-4. **D21** — 对着弹出采约 20 s Perfetto FrameTimeline（`BUFFER_STUFFING` / `PREDICTION_ERROR`）。  
-5. **D22** — 系统设置锁 120 Hz（不改 app 投票）。  
-6. **每 N 帧 skip-present** — 仅当 timestats 显示 stuffing。不要 Mailbox。  
-7. **N2** — 仅当 Dawn C 回收时 UAF / SIGSEGV（崩溃车道，不是这次弹出）。
-
-D24 对照仍是无 Wasmtime 的 androidx 立方体。若 D2/D3 卡住，以后可以再做无 Wasmtime 的 **Dawn C** 立方体 A/B；不要 vendor。
+1. **N4 + D2** — **已做**（2026-09-01 约 25 s）：acquire `>20ms=0`；`vsync→present` `>8.3ms=0`（JNI 路径约 19%）。卡住型 Closed。本样本跨拍相位 Closed。  
+2. **D3 / D19 / N5** — timestats **已做**（2026-09-01）。BLAST **5**。Timeline 类 n/a；`desired2present` 双峰 = 队列里多一拍。  
+3. **skip-present `n=6` A/B** — **已做**：多一拍的峰被抽干；25 ms 回退间隔消失。属性默认 **关**（不是产品 100 fps）。不要 Mailbox。  
+4. **D21** — **已做**（2026-09-01 约 22 s）：显示 FrameTimeline 2155/2155 On-time + Valid prediction；预测器 recovery 关着；SurfaceView layer timeline n/a。  
+5. **D22** — **已做**（2026-09-01 系统设置锁，不改 app 投票）：本约 60 s 25 ms 回退类消失；stuffing 钉在约 29 ms。  
+6. **D3 时间戳** — **已做**（2026-09-01）：`ANativeWindow_setBuffersTimestamp` 默认 2 拍；`desired2present` 29 ms → 5 ms，仍 125 fps。  
+7. **N2** — 仅当 Dawn C 回收时 UAF / SIGSEGV（崩溃车道）。  
+8. **D13 / keep vs BLAST** — **Closed（加重）：**keep-6 提高抖动频率；BLAST 仍是 5。已退回 keep-3。不要再叠 keep。
 
 ## 4. 本路径已保持
 
-- H1 / C2 / H8 / Fifo / intern 一条 queue / keep-3（ND-SURF 不变量）。  
+- H1 / C2 / H8 / Fifo / intern 一条 queue / keep-3（ND-SURF；keep-6 已撤回）。  
 - 不抄 C7 AAR 泄漏 batch。  
 - `preferred_canvas_format` 复用 guest device（N6）。  
 - 仓外 host：峰值模式 + 同 Hz `setFrameRate`（H24 / H27）。不要再加投票。
+
+## 5. D25 之后的瓶颈（hitch 分支探针）
+
+不是毫秒热点。hitch 分支 JNI 路径工作量是 **约 7.1 ms / 8.33 ms 拍**。两级：
+
+1. **D2（链路中段）— 相位源。** CM 泵把 guest 串进 present deadline。`wakeA` condvar 稳定（0.5–1.3 ms）。15 次 androidx JNI import（约 3.3 ms）**不是**这次弹出的必要条件（D25）。**Dawn C 2026-09-01：** `vsync→wgpuSurfacePresent` 在 2880 次 present 上 `>8.3ms=0`（JNI 路径约 19%）。延迟仍在拍内游荡 0.8–6.9 ms。剩下的抖动不必跨过 vsync 边界。**P2/P3（95 s / 12000 帧，2026-09-01）：**present `phase-crossing` 2（间隔 55.5 s，极慢漂移）；retire 存活 `<8.3ms=0`。**P4（95 s / 12720 帧，2026-09-01）：**guest 转角时钟 `angleDt 8-9ms=全部`、`9-17ms=0`、`>17ms=0`——**变换矩阵时间严格线性**。**P5（约 12 min，2026-09-02）：**`take-skip` **0 次**——guest 的 `now`/`angle` 每拍 8.33 ms 步进，**与 present 相位解耦**。**相位补充（2026-09-02）：**重读完整 `phase-crossing` 序列发现 present 相位会**偶发失锁（snap）**——23:44 一次 `lat` 5→9.6 ms、`margin` +3→−1.3 ms 一拍内翻负、此后 `cross` 每秒 +2~5；但 30 分钟仅见一次，且 P5 证实 snap **不传递到 guest 内容**（take-skip 仍 0）。CM 泵 / `GfxOnFrameGate` 锁相与 host present/buffer 生命周期、guest 内容三条**都干净**——出阵路径不是抖动根因。
+2. **D3/D19（链路末端）— 眼睛看见的地方。** 无时间戳的 `present` + **5** 张 BLAST 把队列塞到约 29 ms（D22 锁下）。**时间戳 2 拍**（2026-09-01）：`wgpuSurfacePresent` 前 `ANativeWindow_setBuffersTimestamp`；`desired2present` **5 ms=7072**，FPS 125。显示 FrameTimeline 仍是 On-time。若还有画面回退，D13 是症状。**D20 Closed（2026-09-01）：**SF 无降帧。**N9（2026-09-01）：**present 提交路径本身是干净的 — configure 参数（format `caps.formats[0]`、`Fifo`、`alpha=caps.alphaModes[0]`）、Dawn commit（同 androidx AAR SHA）、以及 65 s SF 窗口（`droppedFrames=0`、`jankyFrames=0`、`present2presentDelta 25ms=0`、`desired2present 5ms=7811`）在 Dawn C 路径上**无 rewind/drop/jank**。
+
+**结论（2026-09-02，暂停验证）：** 三侧可观测层——guest 内容（P4/P5 线性、与相位解耦）、SF 计数器（`droppedFrames=0`、`jankyFrames=0`、无 rewind/drop）、present 提交（N9 干净）——**全部干净**。视觉「弹」因此落在**未被计量的层**：最可能是 SF 计数器之外的合成器/面板 BLAST 重播（D13/D19 的 rewind），或偶发 present-phase snap 的 host 侧瞬态——两者都**尚未在弹的瞬间被逐帧抓帧证实**。下一步需事件触发式抓帧（screenrecord 与 `sinceLast` 骤降联动，精确抽取 snap/弹 前后帧判定方向），或补真实 `onSubmittedWorkDone` fence 关闭 D24 最后一个结构差异。
+
+修复排序：present 时间戳 **已落地**。剩下 draw-present 解耦。不要再砍 JNI。本探针立方体 host：仓外 `hosts/fullscreen-surface` + `GpuBackends.dawn()` + `Store.bindCanvasNativeWindow`。
