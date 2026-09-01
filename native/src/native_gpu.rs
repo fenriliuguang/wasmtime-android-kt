@@ -395,6 +395,33 @@ struct GfxHitchLog {
     vsync_dt_gt17: u32,
     vsync_dt_last_jump_mono_ns: u64,
     vsync_dt_jumps: u32,
+    /// Issue 300 restart: last-beat hot-path stage costs (`Instant`, not vsync).
+    last_events_ns: u64,
+    last_acquire_cost_ns: u64,
+    last_write_ns: u64,
+    last_encode_gap_ns: u64,
+    last_submit_ns: u64,
+    last_present_cost_ns: u64,
+    last_retire_ns: u64,
+    max_events_ns: u64,
+    max_acquire_ns: u64,
+    max_write_ns: u64,
+    max_encode_gap_ns: u64,
+    max_submit_ns: u64,
+    max_present_ns: u64,
+    max_retire_ns: u64,
+    stage_spike_n: u32,
+}
+
+/// Stage spike: 2 ms for Dawn/host calls; encode-gap is guest+CM (6 ms).
+const HOT_SPIKE_NS: u64 = 2_000_000;
+const HOT_ENCODE_SPIKE_NS: u64 = 6_000_000;
+
+fn hitch_note_max(max: &mut u64, last: &mut u64, ns: u64) {
+    *last = ns;
+    if ns > *max {
+        *max = ns;
+    }
 }
 
 fn hitch_log(ok: bool, msg: &str) {
@@ -604,6 +631,10 @@ pub struct NativeGpuHost {
     /// `WGPUCompositeAlphaMode` chosen at configure (caps.alphaModes[0], matching D24).
     dawn_surface_alpha_mode: u32,
     hitch: GfxHitchLog,
+    /// After `get-current-texture`; encode-gap ends at `queue.submit`.
+    hot_after_acquire: Option<Instant>,
+    /// `write-buffer-with-copy` cost accumulated this beat.
+    hot_write_acc_ns: u64,
 }
 
 impl Default for NativeGpuHost {
@@ -656,6 +687,8 @@ impl NativeGpuHost {
             dawn_surface_configured: false,
             dawn_surface_alpha_mode: 0,
             hitch: GfxHitchLog::default(),
+            hot_after_acquire: None,
+            hot_write_acc_ns: 0,
         }
     }
 
@@ -854,6 +887,109 @@ impl NativeGpuHost {
                     self.hitch.vsync_dt_gt17,
                 ),
             );
+        }
+    }
+
+    fn reset_hot_window(&mut self) {
+        self.hitch.max_events_ns = 0;
+        self.hitch.max_acquire_ns = 0;
+        self.hitch.max_write_ns = 0;
+        self.hitch.max_encode_gap_ns = 0;
+        self.hitch.max_submit_ns = 0;
+        self.hitch.max_present_ns = 0;
+        self.hitch.max_retire_ns = 0;
+    }
+
+    fn finish_hotpath(&mut self, encode_gap_ns: u64, submit_ns: u64, retire_ns: u64) {
+        let events_ns = self.hitch.last_events_ns;
+        let acquire_ns = self.hitch.last_acquire_cost_ns;
+        let present_ns = self.hitch.last_present_cost_ns;
+        let write_ns = self.hot_write_acc_ns;
+        hitch_note_max(
+            &mut self.hitch.max_events_ns,
+            &mut self.hitch.last_events_ns,
+            events_ns,
+        );
+        hitch_note_max(
+            &mut self.hitch.max_acquire_ns,
+            &mut self.hitch.last_acquire_cost_ns,
+            acquire_ns,
+        );
+        hitch_note_max(
+            &mut self.hitch.max_write_ns,
+            &mut self.hitch.last_write_ns,
+            write_ns,
+        );
+        hitch_note_max(
+            &mut self.hitch.max_encode_gap_ns,
+            &mut self.hitch.last_encode_gap_ns,
+            encode_gap_ns,
+        );
+        hitch_note_max(
+            &mut self.hitch.max_submit_ns,
+            &mut self.hitch.last_submit_ns,
+            submit_ns,
+        );
+        hitch_note_max(
+            &mut self.hitch.max_present_ns,
+            &mut self.hitch.last_present_cost_ns,
+            present_ns,
+        );
+        hitch_note_max(
+            &mut self.hitch.max_retire_ns,
+            &mut self.hitch.last_retire_ns,
+            retire_ns,
+        );
+        self.hot_after_acquire = None;
+        self.hot_write_acc_ns = 0;
+        let spike = self.hitch.last_events_ns > HOT_SPIKE_NS
+            || self.hitch.last_acquire_cost_ns > HOT_SPIKE_NS
+            || self.hitch.last_write_ns > HOT_SPIKE_NS
+            || self.hitch.last_encode_gap_ns > HOT_ENCODE_SPIKE_NS
+            || self.hitch.last_submit_ns > HOT_SPIKE_NS
+            || self.hitch.last_present_cost_ns > HOT_SPIKE_NS
+            || self.hitch.last_retire_ns > HOT_SPIKE_NS;
+        if spike {
+            self.hitch.stage_spike_n = self.hitch.stage_spike_n.saturating_add(1);
+            hitch_log(
+                false,
+                &format!(
+                    "hotpath-spike ev={} acq={} write={} enc={} sub={} pres={} ret={} spike={}",
+                    self.hitch.last_events_ns,
+                    self.hitch.last_acquire_cost_ns,
+                    self.hitch.last_write_ns,
+                    self.hitch.last_encode_gap_ns,
+                    self.hitch.last_submit_ns,
+                    self.hitch.last_present_cost_ns,
+                    self.hitch.last_retire_ns,
+                    self.hitch.stage_spike_n,
+                ),
+            );
+        }
+        if self.hitch.present_n > 0 && self.hitch.present_n % 120 == 0 {
+            hitch_log(
+                true,
+                &format!(
+                    "hotpath n={} last ev={} acq={} write={} enc={} sub={} pres={} ret={} max ev={} acq={} write={} enc={} sub={} pres={} ret={} spike={}",
+                    self.hitch.present_n,
+                    self.hitch.last_events_ns,
+                    self.hitch.last_acquire_cost_ns,
+                    self.hitch.last_write_ns,
+                    self.hitch.last_encode_gap_ns,
+                    self.hitch.last_submit_ns,
+                    self.hitch.last_present_cost_ns,
+                    self.hitch.last_retire_ns,
+                    self.hitch.max_events_ns,
+                    self.hitch.max_acquire_ns,
+                    self.hitch.max_write_ns,
+                    self.hitch.max_encode_gap_ns,
+                    self.hitch.max_submit_ns,
+                    self.hitch.max_present_ns,
+                    self.hitch.max_retire_ns,
+                    self.hitch.stage_spike_n,
+                ),
+            );
+            self.reset_hot_window();
         }
     }
 
@@ -1887,12 +2023,21 @@ impl NativeGpuHost {
             dawn_cmds.push(self.dawn_of(cmd));
             resolved.push(cmd.raw());
         }
+        let encode_gap_ns = self
+            .hot_after_acquire
+            .map(|t| t.elapsed().as_nanos() as u64)
+            .unwrap_or(0);
+        let t_submit = Instant::now();
         dawn_c::queue_submit(self.dawn_of(queue), &dawn_cmds);
+        let submit_ns = t_submit.elapsed().as_nanos() as u64;
         self.last_submit = resolved;
         // H8: submit may auto-present; second guest present is a no-op.
         let _ = self.canvas_present();
+        let t_retire = Instant::now();
         self.mark_canvas_gpu_done();
         self.retire_canvas_frames();
+        let retire_ns = t_retire.elapsed().as_nanos() as u64;
+        self.finish_hotpath(encode_gap_ns, submit_ns, retire_ns);
         Ok(())
     }
 
@@ -1910,7 +2055,11 @@ impl NativeGpuHost {
     ) -> Result<(), NativeGpuError> {
         let queue = self.resolve_queue(queue_rep)?;
         let buffer = self.resolve_buffer(buffer_rep)?;
+        let t_write = Instant::now();
         dawn_c::write_buffer(self.dawn_of(queue), self.dawn_of(buffer), offset, &bytes);
+        self.hot_write_acc_ns = self
+            .hot_write_acc_ns
+            .saturating_add(t_write.elapsed().as_nanos() as u64);
         self.queue_writes.insert(
             queue.raw(),
             NativeQueueWrite {
@@ -2396,14 +2545,20 @@ impl NativeGpuHost {
             }
             _ => (1, 1, 0, 0),
         };
+        self.hot_write_acc_ns = 0;
+        let t_events = Instant::now();
         dawn_c::process_events(self.dawn_instance);
+        self.hitch.last_events_ns = t_events.elapsed().as_nanos() as u64;
         let t0 = Instant::now();
         let (dawn_tex, status) = if self.dawn_surface_configured {
             dawn_c::surface_current_texture(self.dawn_surface)
         } else {
             (0, 0)
         };
-        self.note_acquire_hitch(t0.elapsed().as_nanos() as u64, status);
+        let acquire_ns = t0.elapsed().as_nanos() as u64;
+        self.hitch.last_acquire_cost_ns = acquire_ns;
+        self.note_acquire_hitch(acquire_ns, status);
+        self.hot_after_acquire = Some(Instant::now());
         let (width, height) = if dawn_tex != 0 {
             dawn_c::texture_size(dawn_tex)
         } else {
@@ -2433,10 +2588,12 @@ impl NativeGpuHost {
         let Some(frame) = self.pending_present.take() else {
             return false;
         };
+        let t_present = Instant::now();
         self.stamp_desired_present();
         if self.dawn_surface != 0 {
             let _ = dawn_c::surface_present(self.dawn_surface);
         }
+        self.hitch.last_present_cost_ns = t_present.elapsed().as_nanos() as u64;
         self.note_present_hitch();
         // C2: do not close() the just-presented texture here.
         let present_mono = hitch_monotonic_ns();
@@ -2891,5 +3048,40 @@ mod tests {
         if beats >= 1 {
             assert!(gpu.hitch.last_desired_ns > expect);
         }
+    }
+
+    #[test]
+    fn hotpath_records_stage_costs_on_submit() {
+        let mut gpu = NativeGpuHost::new();
+        gpu.bind_canvas_native_window(0x1000, 64, 48)
+            .expect("bind window");
+        let device = gpu.resolve_device(0).expect("device");
+        let ctx = gpu
+            .canvas_configure(0, device.raw(), 0x16, 0x10, -1, -1, -1, &[])
+            .expect("configure");
+        gpu.note_consumed_vsync(1_000_000_000);
+        let _ = gpu.canvas_current_texture(ctx.raw()).expect("acquire");
+        let queue = gpu.device_queue(device).expect("queue");
+        let buffer = gpu.create_buffer(device, 4, 0x8, -1, "").expect("buffer");
+        gpu.write_buffer_with_copy(queue.raw(), buffer.raw(), 0, b"l2\0\0".to_vec())
+            .expect("write");
+        gpu.queue_submit(queue.raw(), &[]).expect("submit");
+        assert!(
+            gpu.hitch.last_encode_gap_ns < 1_000_000_000,
+            "encode-gap recorded, got {}",
+            gpu.hitch.last_encode_gap_ns
+        );
+        assert!(
+            gpu.hitch.last_submit_ns < 1_000_000_000,
+            "submit recorded, got {}",
+            gpu.hitch.last_submit_ns
+        );
+        assert!(
+            gpu.hitch.last_retire_ns < 1_000_000_000,
+            "retire recorded, got {}",
+            gpu.hitch.last_retire_ns
+        );
+        assert_eq!(gpu.canvas_present_count(), 1);
+        assert_eq!(gpu.hitch.stage_spike_n, 0, "table-backed stages stay quiet");
     }
 }

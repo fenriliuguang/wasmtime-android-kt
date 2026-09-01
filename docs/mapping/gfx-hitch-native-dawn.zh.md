@@ -126,3 +126,81 @@ Dawn C 安装上 Choreographer 连续数分钟全是 `<11ms`（与 H23 同形）
 **结论（2026-09-02，暂停验证）：** 三侧可观测层——guest 内容（P4/P5 线性、与相位解耦）、SF 计数器（`droppedFrames=0`、`jankyFrames=0`、无 rewind/drop）、present 提交（N9 干净）——**全部干净**。视觉「弹」因此落在**未被计量的层**：最可能是 SF 计数器之外的合成器/面板 BLAST 重播（D13/D19 的 rewind），或偶发 present-phase snap 的 host 侧瞬态——两者都**尚未在弹的瞬间被逐帧抓帧证实**。下一步需事件触发式抓帧（screenrecord 与 `sinceLast` 骤降联动，精确抽取 snap/弹 前后帧判定方向），或补真实 `onSubmittedWorkDone` fence 关闭 D24 最后一个结构差异。
 
 修复排序：present 时间戳 **已落地**。剩下 draw-present 解耦。不要再砍 JNI。本探针立方体 host：仓外 `hosts/fullscreen-surface` + `GpuBackends.dawn()` + `Store.bindCanvasNativeWindow`。
+
+## 6. 重开：跟踪热路径（issue 300）
+
+此前 Closed / Likely / Mitigated 行只作**档案**。这次重开**不把它们当前提**。一刀一个变量。不要给上游提 issue。
+
+要对上的症状（眼睛，不是计数器）：NativeGpu / Dawn C 旋转立方体在 Vivo V2458A（Android 16，设置锁 120 Hz）上仍会**肉眼弹出**（约 5 s 一档）。对照：`hosts/native-webgpu` androidx 立方体（D24）**不弹**。
+
+### 6.1 一拍序列（代码，不是结论）
+
+```text
+UI Choreographer.doFrame(frameTimeNanos)
+  → Store.postGfxVsync → JNI nativeStorePostGfxVsync
+  → GfxOnFrameGate.post          // in_frame || pending 则丢（1 槽）
+
+GpuThread / 8MiB wasmtime-cm-pump
+  wasi-gfx surface.on-frame  poll_produce
+    → wait_take                  // condvar；1:1；锁 last_take_gen
+    → note_take_vsync            // clocks.now / 立方体转角
+    → 写 frame-event {nothing}
+
+Guest（仓外 MoonBit 立方体）
+  clocks.now → angle += ω·dt
+  get-current-texture
+  create-view / encoder / begin-render-pass / set-* / draw / end / finish
+  write-buffer-with-copy         // mat4
+  queue.submit
+  context.present                // H8：自动 present 之后是空操作
+
+NativeGpuHost（同一泵线程）
+  canvas_current_texture:
+    丢掉未 present 的
+    wgpuInstanceProcessEvents
+    wgpuSurfaceGetCurrentTexture
+    pending_present = texture
+  write_buffer_with_copy:
+    wgpuQueueWriteBuffer         // 线性内存一拷
+  queue_submit:
+    wgpuQueueSubmit
+    canvas_present:              // H8 自动
+      ANativeWindow_setBuffersTimestamp（默认 2 拍）
+      wgpuSurfacePresent
+      presented_ring.push        // keep-3
+    mark_canvas_gpu_done()       // 整环立刻标完；没有 wgpuQueueOnSubmittedWorkDone
+    retire + wgpuTextureRelease
+
+SurfaceFlinger / BLAST / 面板
+```
+
+### 6.2 这次重开计量什么
+
+`GfxHitch` 的 `hotpath`（每 120 次 present）和 `hotpath-spike`（任一阶段超阈值）。`Instant` 分段耗时，不是「已关闭 ID」的直方图。
+
+| 阶段 | 代码 | 冒尖意味着 |
+|------|------|------------|
+| S3a events | acquire 上的 `wgpuInstanceProcessEvents` | Dawn 事件泵 |
+| S3b acquire | `wgpuSurfaceGetCurrentTexture` | BLAST / Dawn 阻塞 |
+| S0→S3 | Choreographer 时间戳 → acquire 起点 | 门 / CM 唤醒 + guest 开工 |
+| S5 write | `wgpuQueueWriteBuffer` | 拷贝 / 队列卡住 |
+| S4 encode gap | acquire 之后 → submit 起点 | guest WIT + 编码 |
+| S6a submit | `wgpuQueueSubmit` | GPU 队列 |
+| S6b present | 盖戳 + `wgpuSurfacePresent` | 合成器队列 |
+| S6c retire | `mark_canvas_gpu_done` + keep-3 释放 | CPU 回收 |
+| S0→S6 | 已有 `lastLatencyNs` | 进程内整拍 |
+
+### 6.3 砍刀顺序（先有数，再动一刀）
+
+0. 在 V2458A、设置锁 120 Hz 上收 ≥2 min 的 `hotpath` + `hotpath-spike`。把肉眼弹出绑到某个阶段冒尖，**或**绑到「弹出时进程内无冒尖」。
+1. S3 / S6b 冒尖 → 合成器 / acquire（BLAST、时间戳、Fifo）。只动一个旋钮。
+2. S4 encode-gap 冒尖 → guest / CM（不是 Dawn C）。只动一个旋钮。
+3. S6a 冒尖，或 CPU 不冒尖但眼睛在弹 → GPU / fence 寿命 vs D24 的 `onSubmittedWorkDone`。今天的 `dawn_c.rs` **没有**绑这个符号。
+4. 弹出时进程内无冒尖 → 进程外的合成器 / 面板。用 `hotpath-spike` 或 `phase-crossing` 做事件触发 `screenrecord`。
+
+在某个阶段认领这次弹出之前，**不要**再叠 keep / DisplayManager / GameState / 砍 JNI。
+
+### 6.4 相对 D24 的结构差异（代码事实）
+
+- D24 立方体：没有 Wasmtime；androidx `GPUSurface.present`；每 2 次 present 一次真 `onSubmittedWorkDone`（C7 batch）。
+- NativeGpu 立方体：Wasmtime CM 泵 + `GfxOnFrameGate`；`queue.submit` 自动 present（H8）；`mark_canvas_gpu_done` 是立刻标完。

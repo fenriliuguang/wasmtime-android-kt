@@ -126,3 +126,81 @@ Not a millisecond hotspot. Hitch-branch JNI-path work was **~7.1 ms / 8.33 ms be
 **Conclusion (2026-09-02, verification paused):** all three observable layers — guest content (P4/P5 linear, decoupled), SF counters (`droppedFrames=0`, `jankyFrames=0`, no rewind/drop), and present submission (N9 clean) — are **clean**. The visual pop therefore sits in an un-measured layer: most likely the compositor/panel BLAST re-show (D13/D19) outside SF's counters, or the rare present-phase snap's host-side transient — neither yet frame-captured at the exact pop instant. Next needs event-triggered capture (screenrecord keyed on `sinceLast` collapse to pull the frames around the pop) or the real `onSubmittedWorkDone` fence lane to close the last D24 structural gap.
 
 Fix ranking: present timestamp **landed**. Draw-present split is leftover. Do not recut JNI. Cube host for this probe: out-of-tree `hosts/fullscreen-surface` + `GpuBackends.dawn()` + `Store.bindCanvasNativeWindow`.
+
+## 6. Restart: track the hot path (issue 300)
+
+Previous Closed / Likely / Mitigated rows stay as **archive**. This restart does **not** inherit them as premises. One variable per cut. Do not file upstream issues.
+
+Symptom to bind (eye, not a counter): NativeGpu / Dawn C rotating cube still **visually pops** (~5 s class) on Vivo V2458A (Android 16, 120 Hz Settings lock). Control: `hosts/native-webgpu` androidx cube (D24) does **not** pop.
+
+### 6.1 One-beat sequence (code, not a conclusion)
+
+```text
+UI Choreographer.doFrame(frameTimeNanos)
+  → Store.postGfxVsync → JNI nativeStorePostGfxVsync
+  → GfxOnFrameGate.post          // drop if in_frame || pending (1-slot)
+
+GpuThread / 8MiB wasmtime-cm-pump
+  wasi-gfx surface.on-frame  poll_produce
+    → wait_take                  // condvar; 1:1; latch last_take_gen
+    → note_take_vsync            // clocks.now / cube angle
+    → write frame-event {nothing}
+
+Guest (out-of-tree MoonBit cube)
+  clocks.now → angle += ω·dt
+  get-current-texture
+  create-view / encoder / begin-render-pass / set-* / draw / end / finish
+  write-buffer-with-copy         // mat4
+  queue.submit
+  context.present                // H8 no-op after auto-present
+
+NativeGpuHost (same pump thread)
+  canvas_current_texture:
+    discard unpresented
+    wgpuInstanceProcessEvents
+    wgpuSurfaceGetCurrentTexture
+    pending_present = texture
+  write_buffer_with_copy:
+    wgpuQueueWriteBuffer         // one copy off linear memory
+  queue_submit:
+    wgpuQueueSubmit
+    canvas_present:              // H8 auto
+      ANativeWindow_setBuffersTimestamp (default beats=2)
+      wgpuSurfacePresent
+      presented_ring.push        // keep-3
+    mark_canvas_gpu_done()       // whole ring; no wgpuQueueOnSubmittedWorkDone
+    retire + wgpuTextureRelease
+
+SurfaceFlinger / BLAST / panel
+```
+
+### 6.2 What this restart measures
+
+`GfxHitch` `hotpath` (every 120 presents) and `hotpath-spike` (any stage over the threshold). `Instant` costs, not histograms of “already-closed” IDs.
+
+| Stage | Code | Spike means |
+|-------|------|-------------|
+| S3a events | `wgpuInstanceProcessEvents` on acquire | Dawn event pump |
+| S3b acquire | `wgpuSurfaceGetCurrentTexture` | BLAST / Dawn block |
+| S0→S3 | Choreographer ts → acquire start | gate / CM wake + guest start |
+| S5 write | `wgpuQueueWriteBuffer` | copy / queue stall |
+| S4 encode gap | after acquire → submit start | guest WIT + encode |
+| S6a submit | `wgpuQueueSubmit` | GPU queue |
+| S6b present | stamp + `wgpuSurfacePresent` | compositor queue |
+| S6c retire | `mark_canvas_gpu_done` + keep-3 release | CPU recycle |
+| S0→S6 | existing `lastLatencyNs` | whole in-process beat |
+
+### 6.3 Kill order (after numbers, one variable)
+
+0. Collect ≥2 min `hotpath` + `hotpath-spike` on V2458A with the 120 Hz Settings lock. Bind the eye-pop to a stage spike **or** to “no in-process spike at the pop”.
+1. S3 / S6b spike → compositor / acquire (BLAST, timestamp, Fifo). One knob.
+2. S4 encode-gap spike → guest / CM (not Dawn C). One knob.
+3. S6a spike, or no CPU spike while the eye pops → GPU / fence lifetime vs D24 `onSubmittedWorkDone`. `dawn_c.rs` does not bind that symbol today.
+4. No in-process spike at the pop → compositor / panel outside this process. Event-triggered `screenrecord` keyed on `hotpath-spike` or `phase-crossing`.
+
+Do **not** restack keep / DisplayManager / GameState / JNI removal until a stage owns the pop.
+
+### 6.4 Structural diffs vs D24 (code facts)
+
+- D24 cube: no Wasmtime; androidx `GPUSurface.present`; real `onSubmittedWorkDone` every 2 presents (C7 batch).
+- NativeGpu cube: Wasmtime CM pump + `GfxOnFrameGate`; `queue.submit` auto-presents (H8); `mark_canvas_gpu_done` is immediate.
