@@ -27,7 +27,7 @@ Cube / out-of-tree demo is **not** a consume needle.
 | ND-QUEUE | landed 2026-09-01 (native submit / write-buffer-with-copy / write-texture / work-done; one host copy; table-backed) |
 | ND-REST | landed 2026-09-01 (native remaining pin `[method]`s; `wasi_webgpu_method` green on NativeGpu; table-backed) |
 | ND-SURF | landed 2026-09-01 (NativeGpu Surface from Store/`bindCanvasNativeWindow`; configure / get-current-texture / present; hitch keep-3 + Fifo + H8; table-backed) |
-| ND-DEFAULT | `gap: nd default pending` |
+| ND-DEFAULT | landed 2026-09-01 (`GpuBackends.dawn()` / `:android-webgpu` is NativeGpu; `dawn-jni` leftover; one C API `.so`; `0.2.0`) |
 | ND-CLAIM | `gap: nd claim pending` |
 | ND-DEVICE | `gap: nd device pending` |
 

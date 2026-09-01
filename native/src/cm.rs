@@ -10975,7 +10975,23 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         }
     };
     let store = unsafe { from_handle::<HostStore>(store) };
-    store.data_mut().experimental_host_cb = Some(gref);
+    let data = store.data_mut();
+    data.disable_native_gpu();
+    data.experimental_host_cb = Some(gref);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStoreSetNativeGpu(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    let store = unsafe { from_handle::<HostStore>(store) };
+    store.data_mut().enable_native_gpu();
 }
 
 #[no_mangle]

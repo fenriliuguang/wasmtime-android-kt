@@ -56,19 +56,25 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
      * Attach a [WebGpuBackend] (explicit, preferred). Replaces any previous
      * experimental host callbacks **and** any ServiceLoader attach. Always
      * wins over [discoverWebGpuBackend] / [createWithDiscoveredBackend].
-     * The backend must implement the internal JNI attach
-     * (`GpuBackends.dawn()` / `cpu()`).
+     *
+     * `id == "dawn"` (`GpuBackends.dawn()`) selects in-process NativeGpu.
+     * `dawn-jni` / `cpu` attach the leftover JNI table
+     * ([WebGpuBackendHostAttach]).
      */
     fun setWebGpuBackend(backend: WebGpuBackend) {
         require(handle != 0L) { "store closed" }
-        val attach =
-            backend as? WebGpuBackendHostAttach
-                ?: throw IllegalArgumentException(
-                    "WebGpuBackend must implement WebGpuBackendHostAttach (use GpuBackends.dawn())",
-                )
         attachedBackend?.close()
         attachedBackend = backend
         backendKind = kindFor(backend.id)
+        if (backend.id == "dawn") {
+            NativeBridge.nativeStoreSetNativeGpu(handle)
+            return
+        }
+        val attach =
+            backend as? WebGpuBackendHostAttach
+                ?: throw IllegalArgumentException(
+                    "WebGpuBackend must implement WebGpuBackendHostAttach (use GpuBackends.dawnJni() or cpu())",
+                )
         NativeBridge.nativeStoreSetExperimentalHost(handle, attach.attachExperimentalHost())
     }
 

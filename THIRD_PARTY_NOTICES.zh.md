@@ -35,7 +35,7 @@ cargo license --manifest-path native/Cargo.toml --avoid-dev-deps --avoid-build-d
 |------|-----------|
 | AndroidX（`core-ktx`、`appcompat`、测试库） | Apache-2.0 |
 | `androidx.webgpu:webgpu:1.0.0-alpha05` | Dawn Java + 捆绑 `.so`。AndroidX 构件 Apache-2.0；Dawn 原生多为 BSD-3-Clause，见 AAR `NOTICE`。**不要把 `.so` 提交进 git。** |
-| Dawn C API（ND-SO，非默认 APK） | 与该 AAR 同一 Dawn SHA。配方 [`scripts/build-dawn-c-android.py`](scripts/build-dawn-c-android.py) 产出 `libwebgpu_dawn.so`（`webgpu.h`）。BSD-3-Clause：[`native/third_party/dawn-c/LICENSE`](native/third_party/dawn-c/LICENSE)。**不要提交 `.so`。** 不要与 androidx 捆绑件同时进默认 APK。 |
+| Dawn C API（ND-DEFAULT 产品 `.so`） | 与该 AAR 同一 Dawn SHA。配方 [`scripts/build-dawn-c-android.py`](scripts/build-dawn-c-android.py) 产出 `libwebgpu_dawn.so`（`webgpu.h`）。BSD-3-Clause：[`native/third_party/dawn-c/LICENSE`](native/third_party/dawn-c/LICENSE)。**不要提交 `.so`。** 默认 APK 排除 androidx `libwebgpu_c_bundled.so`。 |
 | Kotlin stdlib / Gradle 插件 | Apache-2.0 |
 | JUnit 4 | EPL-1.0 |
 | Vendor 的 Host Kotlin（`:host-dawn` `…experimental.host` / `dawn` / `abicm`） | MIT。拷自 `wasi-webgpu-jvm-mvp`（Copyright 焚日流光 2026）。全文：[`host-dawn/third_party/wasi-webgpu-jvm-mvp/LICENSE`](host-dawn/third_party/wasi-webgpu-jvm-mvp/LICENSE)。 |

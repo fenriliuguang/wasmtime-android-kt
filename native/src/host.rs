@@ -207,8 +207,8 @@ pub struct HostState {
     /// Kotlin [ExperimentalHostCallbacks] for experimental CM host (M3/M4)
     /// and leftover [`crate::gpu_dispatch::GpuBackend::JniBackend`].
     pub experimental_host_cb: Option<GlobalRef>,
-    /// In-process Dawn C consume ([`NativeGpuHost`]). Unset → JNI default
-    /// (`GpuBackend::JniBackend`).
+    /// In-process Dawn C consume ([`NativeGpuHost`]). Unset → JNI leftover
+    /// (`GpuBackend::JniBackend`; unwired or `dawn-jni`).
     pub native_gpu: Option<NativeGpuHost>,
     /// Store window handle (`ANativeWindow*`) until NativeGpu is selected.
     pub canvas_native_window: i64,

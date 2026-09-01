@@ -26,6 +26,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    packaging {
+        jniLibs {
+            excludes += "**/libwebgpu_c_bundled.so"
+        }
+    }
 }
 
 dependencies {

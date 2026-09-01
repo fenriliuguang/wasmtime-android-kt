@@ -4,7 +4,7 @@
 
 1. Stay on **`0.x.y`** until upstream 1.0 gates in [`rfc-l5-productization.md`](rfc-l5-productization.md) §6 (three.js-style: **break in MINOR**). This-repo **1.0.0** is not a calendar target.  
 2. SemVer 2.0 shape: `MAJOR.MINOR.PATCH[-prerelease]`.  
-3. Current coordinate: `0.1.0` (`gradle.properties` → `wasmtime.android.version`). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) (GitHub Packages + Maven Central, same GAV). Do not press when secrets or arm64 jniLibs are missing.  
+3. Current coordinate: `0.2.0` (`gradle.properties` → `wasmtime.android.version`). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) (GitHub Packages + Maven Central, same GAV). Do not press when secrets or arm64 jniLibs are missing.  
 4. No CTS / compliant wasi:webgpu claim ([`non-goals.md`](non-goals.md) NG-5).  
 5. **P010-SPI landed:** `ExperimentalHostCallbacks` is **not** `runtime-api` public SPI (lives in `:runtime-jni` `internal`). Attach with `Store.setWebGpuBackend`; no `WebGpuBackend.hostCallbacks()`.
 6. **P010-DISC landed:** dual-track attach — `Store.setWebGpuBackend` is the stable contract; `Store.createWithDiscoveredBackend` is default-bundle ServiceLoader convenience (`Store.create` still defaults to no discover).
@@ -19,7 +19,7 @@
 15. **P010-GFXL landed:** product guest loops `on-frame` → `get-current-texture` → submit → `context.present`. **P010-GFXB:** GPU bootstrap is pin `get-gpu` → `request-adapter` → `request-device`. **P010-GFXV:** Choreographer vsync 1-slot into `on-frame`; unconsumed beats drop; `surfaceDestroyed` closes the stream. Last auto cut: **P010-DEMO**. WG-6 one-shot stays.
 16. **P010-CLAIM landed:** release-notes claim table [`claim-010.md`](claim-010.md) — all 224 pin `[method]` names instantiate; androidx holes listed; WASI subset vs named-only. **Not** CTS.
 17. **P010-PUB landed:** version `0.1.0`; consumer GAV `android-webgpu` / `runtime` / `host-dawn`. `runtime-api` / `runtime-jni` are Maven transitives only.
-18. **Native Dawn host (living):** [`../agent/native-dawn.md`](../agent/native-dawn.md). Guest pin and Kotlin `Store` / `WebGpuBackend` stay. Default consume moves to Dawn C (`ND-DEFAULT` is a `0.x` MINOR). `ExperimentalHostCallbacks` remains the `dawn-jni` leftover, not public SPI. Cube is not a consume gate.
+18. **Native Dawn host (ND-DEFAULT):** [`../agent/native-dawn.md`](../agent/native-dawn.md). Guest pin and Kotlin `Store` / `WebGpuBackend` stay. Product `GpuBackends.dawn()` is NativeGpu (`0.2.0` MINOR). `ExperimentalHostCallbacks` remains the `dawn-jni` leftover, not public SPI. Cube is not a consume gate.
 
 ## `0.x` rules
 

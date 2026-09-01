@@ -408,6 +408,26 @@ impl Default for NativeGpuHost {
 }
 
 impl NativeGpuHost {
+    /// Best-effort `dlopen` of the ND-SO `libwebgpu_dawn.so`. Missing `.so`
+    /// (Cloud / recipe not run) is not an error; Dawn C slots stay 0.
+    pub fn try_load_dawn_c() -> bool {
+        #[cfg(target_os = "android")]
+        {
+            unsafe {
+                extern "C" {
+                    fn dlopen(filename: *const i8, flags: i32) -> *mut std::ffi::c_void;
+                }
+                const RTLD_NOW: i32 = 2;
+                let lib = dlopen(c"libwebgpu_dawn.so".as_ptr() as *const i8, RTLD_NOW);
+                !lib.is_null()
+            }
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            false
+        }
+    }
+
     pub fn new() -> Self {
         Self {
             table: HandleTable::new(),
@@ -1712,6 +1732,12 @@ mod tests {
         // Compile-time: this file has no `use jni`. Runtime smoke: insert/drop
         // never constructs a GlobalRef / JVM attach.
         let _gpu: NativeGpuHost = NativeGpuHost::new();
+    }
+
+    #[test]
+    fn try_load_dawn_c_is_best_effort_no_jni() {
+        // Host/Cloud: Android `.so` is absent; must not panic or JNI.
+        assert!(!NativeGpuHost::try_load_dawn_c());
     }
 
     #[test]

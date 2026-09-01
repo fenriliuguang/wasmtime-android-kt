@@ -1,12 +1,10 @@
 //! Product `wasi:webgpu` consume backend: [`GpuBackend::NativeGpu`] or
 //! [`GpuBackend::JniBackend`].
 //!
-//! ND-DISP: dispatch only. Default is JNI so existing tests stay green.
-//! ND-HOST: NativeGpu trait + handle table. ND-BOOT: request-adapter /
-//! request-device / queue / boot info. ND-REST: remaining pin `[method]`s.
-//! Canvas surface / present: ND-SURF. ND-SO: Dawn C
-//! API `.so` recipe `scripts/build-dawn-c-android.py` (not loaded until
-//! ND-DEFAULT). Do not reimplement `jvm::exp_*` here.
+//! ND-DEFAULT: `GpuBackends.dawn()` / `id == "dawn"` selects NativeGpu.
+//! Unwired `Store.create` still leaves the slot unset (`request-adapter`
+//! `none` via JNI leftover). `dawn-jni` / `setExperimentalHost` keep
+//! [`GpuBackend::JniBackend`]. Do not reimplement `jvm::exp_*` here.
 
 use crate::host::HostState;
 use crate::native_gpu::NativeGpuHost;
@@ -20,7 +18,7 @@ pub enum GpuBackend {
 }
 
 impl HostState {
-    /// [`GpuBackend::NativeGpu`] when the slot is set, else JNI (product default).
+    /// [`GpuBackend::NativeGpu`] when the slot is set, else JNI leftover.
     pub fn webgpu_backend(&self) -> GpuBackend {
         match self.native_gpu {
             Some(_) => GpuBackend::NativeGpu,
@@ -41,7 +39,7 @@ impl HostState {
     pub fn require_webgpu_jni_cb(&self) -> wasmtime::Result<GlobalRef> {
         match self.webgpu_backend() {
             GpuBackend::NativeGpu => Err(wasmtime::Error::msg(
-                "NativeGpu selected; JNI leftover until ND-DEFAULT",
+                "NativeGpu selected; JNI leftover is GpuBackends.dawnJni()",
             )),
             GpuBackend::JniBackend => self
                 .experimental_host_cb
@@ -71,6 +69,26 @@ impl HostState {
         if let Some(gpu) = self.native_gpu.as_mut() {
             let _ = gpu.bind_canvas_native_window(window, width, height);
         }
+    }
+
+    /// Product `GpuBackends.dawn()` / `id == "dawn"`.
+    pub fn enable_native_gpu(&mut self) {
+        let mut gpu = NativeGpuHost::new();
+        if self.canvas_native_window != 0 && self.canvas_width > 0 && self.canvas_height > 0 {
+            let _ = gpu.bind_canvas_native_window(
+                self.canvas_native_window,
+                self.canvas_width,
+                self.canvas_height,
+            );
+        }
+        let _ = NativeGpuHost::try_load_dawn_c();
+        self.native_gpu = Some(gpu);
+        self.experimental_host_cb = None;
+    }
+
+    /// Leftover `dawn-jni` / `setExperimentalHost` clears the NativeGpu slot.
+    pub fn disable_native_gpu(&mut self) {
+        self.native_gpu = None;
     }
 }
 
@@ -109,5 +127,22 @@ mod tests {
         assert_eq!(win.native_window, 0x2000);
         assert_eq!(win.height, 16);
         assert_eq!(win.buffer_count, crate::native_gpu::SWAPCHAIN_BUFFER_COUNT);
+    }
+
+    #[test]
+    fn enable_native_gpu_selects_product_default() {
+        let mut host = HostState::default();
+        host.bind_canvas_native_window(0x3000, 8, 8);
+        host.enable_native_gpu();
+        assert_eq!(host.webgpu_backend(), GpuBackend::NativeGpu);
+        assert!(host.webgpu_jni_cb().is_none());
+        let win = host
+            .native_gpu
+            .as_ref()
+            .and_then(|g| g.canvas_window())
+            .expect("rebound");
+        assert_eq!(win.native_window, 0x3000);
+        host.disable_native_gpu();
+        assert_eq!(host.webgpu_backend(), GpuBackend::JniBackend);
     }
 }
