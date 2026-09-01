@@ -14,9 +14,10 @@ Dawn C `u64` slots stay **0** until `libwebgpu_dawn.so` is present (ND-DEFAULT `
 | **Dawn** | Guest value reaches Dawn C (`webgpu.h`) |
 | **Record** | Packed on the host record; Dawn C has no slot |
 | **Pending** | Later native-dawn lane |
+| **Named** | Device instrument listed; Cloud has no device this cut |
 | **JNI** | `JniBackend` leftover (`GpuBackends.dawnJni()` / `setExperimentalHost`) |
 
-## 1. Coverage (updated ND-DEFAULT)
+## 1. Coverage (updated ND-DEVICE)
 
 | Family | Degree |
 |--------|--------|
@@ -37,6 +38,6 @@ Dawn C `u64` slots stay **0** until `libwebgpu_dawn.so` is present (ND-DEFAULT `
 | `gpu-canvas-configuration.color-space` | **Record** on `NativeCanvasContext` | no color-space on `WGPUSurfaceConfiguration` at androidx `1.0.0-alpha05` pin |
 | `gpu-canvas-configuration.tone-mapping` | **Record** on `NativeCanvasContext` | no tone-mapping slot |
 | `gpu-canvas-context` configure / get-current-texture / present | **Table** (window handle + hitch ring; Dawn C slot 0) | `wgpuInstanceCreateSurface` when `libwebgpu_dawn.so` is loaded |
-| Device instruments on native default | **Pending** ND-DEVICE | Cloud has no device |
+| Device instruments on native default | **Named** | `WasiGfxFrameLoopInstrumentedTest`, WG-6 guest compute/render/canvas present, `WasiWebGpuMethodCanvasContextPresentInstrumentedTest`; Cpu lifetime twin. Cube is demo only. Cloud has no device |
 
 Unwired store is unchanged: `gpu.request-adapter` → guest **`none`**. `GpuBackends.dawn()` / NativeGpu selected → table-backed adapter (not `none`). `dawn-jni` is explicit leftover.

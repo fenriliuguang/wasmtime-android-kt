@@ -12,12 +12,11 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import androidx.webgpu.helper.Util
-import io.github.fenriliuguang.wasi.webgpu.experimental.dawn.DawnWasiWebGpuHost
 import io.github.fenriliuguang.wasmtime.android.Component
 import io.github.fenriliuguang.wasmtime.android.Engine
 import io.github.fenriliuguang.wasmtime.android.Linker
 import io.github.fenriliuguang.wasmtime.android.Store
-import io.github.fenriliuguang.wasmtime.android.webgpu.ExperimentalWebGpuBridge
+import io.github.fenriliuguang.wasmtime.android.host.dawn.GpuBackends
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,8 +29,8 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * WG-6: host-owned Android window behind product `gpu-canvas-context`
  * (`configure` / `get-current-texture`). No product `surface-*` guest names.
- * Dawn objects stay on one GpuThread ([docs/mapping/threading-android.md]).
- * Not CTS / not a compliant product.
+ * Native default ([GpuBackends.dawn] / NativeGpu). Consume stays on one
+ * GpuThread ([docs/mapping/threading-android.md]). Not CTS.
  */
 @RunWith(AndroidJUnit4::class)
 class WasiWebGpuMethodCanvasContextPresentInstrumentedTest {
@@ -39,41 +38,36 @@ class WasiWebGpuMethodCanvasContextPresentInstrumentedTest {
     fun guestCanvasContextPresentsViaHostOwnedWindow() {
         withReadySurface { ctx ->
             runOnGpuThread("wg6-canvas-present", timeoutSec = 90) {
-                Log.i(TAG, "GpuThread: create Dawn host")
-                DawnWasiWebGpuHost.create().use { host ->
-                    Log.i(TAG, "GpuThread: bindCanvasNativeWindow ${ctx.width}x${ctx.height}")
-                    host.bindCanvasNativeWindow(
-                        Util.windowFromSurface(ctx.surface),
-                        ctx.width,
-                        ctx.height,
-                    )
-                    val bytes =
-                        InstrumentationRegistry.getInstrumentation()
-                            .context
-                            .assets
-                            .open("w1/webgpu_method_canvas_context_present.wasm")
-                            .use { it.readBytes() }
-                    Engine.create().use { engine ->
-                        Component.compile(engine, bytes).use { component ->
-                            Linker.createWithFixtureConstructors(engine).use { linker ->
-                                Store.create(engine).use { store ->
-                                    ExperimentalWebGpuBridge.attachCanvasContext(store, host)
-                                    linker.instantiate(store, component).use { instance ->
-                                        val harness = instance.callRunConcurrent(store)
-                                        assertEquals(
-                                            "guest must configure + get-current-texture and return harness 1",
-                                            1,
-                                            harness,
-                                        )
-                                    }
+                Log.i(TAG, "GpuThread: NativeGpu + bindCanvasNativeWindow ${ctx.width}x${ctx.height}")
+                val bytes =
+                    InstrumentationRegistry.getInstrumentation()
+                        .context
+                        .assets
+                        .open("w1/webgpu_method_canvas_context_present.wasm")
+                        .use { it.readBytes() }
+                Engine.create().use { engine ->
+                    Component.compile(engine, bytes).use { component ->
+                        Linker.createWithFixtureConstructors(engine).use { linker ->
+                            Store.create(engine).use { store ->
+                                store.setWebGpuBackend(GpuBackends.dawn())
+                                store.bindCanvasNativeWindow(
+                                    Util.windowFromSurface(ctx.surface),
+                                    ctx.width,
+                                    ctx.height,
+                                )
+                                linker.instantiate(store, component).use { instance ->
+                                    val harness = instance.callRunConcurrent(store)
+                                    assertEquals(
+                                        "guest must configure + get-current-texture and return harness 1",
+                                        1,
+                                        harness,
+                                    )
                                 }
                             }
                         }
                     }
-                    runCatching { host.releaseAllGpuObjects() }
-                    host.flushEvents()
-                    Thread.sleep(SURFACE_RELEASE_SETTLE_MS)
                 }
+                Thread.sleep(SURFACE_RELEASE_SETTLE_MS)
             }
         }
     }

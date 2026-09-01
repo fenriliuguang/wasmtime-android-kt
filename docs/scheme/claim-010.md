@@ -18,14 +18,14 @@ Pin: [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_pa
 |-------|--------|-------|
 | Pin resource `[method]` names (224 in WIT) | **Dawn C** (NativeGpu) | All 224 reconstructed `[method]resource.name` strings are registered in `native/src/cm.rs`. Default `GpuBackends.dawn()` consumes in-process (table-backed until `libwebgpu_dawn.so` binds slots). JNI leftover is `dawn-jni`. Not CTS. |
 | `gpu.request-adapter` / `gpu-adapter.request-device` | **Dawn C** on `dawn()`; **`none` / err** if unwired | Product `Linker.create` exports pin `get-gpu`. Fixture `get-device` omitted. Unwired store → adapter **`none`**, not a trap. P010-GFXB: frame-loop guest uses this chain. |
-| Compute submit / guest-drawn 3D / one-shot canvas | **Dawn C** (table) | WG-6 instruments stay as regressions; **ND-DEVICE** lists them on the native default. |
+| Compute submit / guest-drawn 3D / one-shot canvas | **Dawn C** (table) | WG-6 instruments on **native default** (`GpuBackends.dawn()`): `WasiWebGpuDawnGuestComputeInstrumentedTest`, `WasiWebGpuDawnGuestRenderInstrumentedTest`, `WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`, `WasiWebGpuMethodCanvasContextPresentInstrumentedTest`. |
 | Continuous on-screen loop | **Host vsync** | P010-GFXB: product `request-adapter` / `request-device`. P010-GFXV: Choreographer vsync into `on-frame` (drop unconsumed; `surfaceDestroyed` closes). Named device row is §6. [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md). |
 | Out-of-tree demo + device-verified | **Smoke** | README **Demo** links [wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples) (pack guest wasm → this Android runtime → present). Linking is existence; not vendored. Named row in §6. |
 | Dawn C / androidx missing ctor slots | **Record** (not Dawn C) | Same three: shader `compilation-hints`; canvas `color-space`; canvas `tone-mapping`. Native: [`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md) §2. JNI leftover: androidx gap §2. |
 | Fixture `get-*` constructors | **Not product** | `get-device` / `get-gpu-error` / `get-device-lost-info` stay on `Linker.createWithFixtureConstructors`. Pin `get-gpu` is product (WIT). |
 | `experimental:webgpu-cm` flat `u32` names | **Not pin product** | Frozen dual-register; do not extend. |
 
-**Dawn C** ≠ every field reaches `webgpu.h`. Record leftovers keep the guest value on `NativeGpuHost` (and on the JNI leftover record) when Dawn C / the AAR has no slot. Do not silently drop pin methods. The rotating cube is **demo** evidence, not this table’s consume degree. Device instruments on the native default are **ND-DEVICE**.
+**Dawn C** ≠ every field reaches `webgpu.h`. Record leftovers keep the guest value on `NativeGpuHost` (and on the JNI leftover record) when Dawn C / the AAR has no slot. Do not silently drop pin methods. The rotating cube is **demo** evidence, not this table’s consume degree. Named instruments on the native default are §6.
 
 ## 3. WASI 0.3 product subset vs named-only
 
@@ -57,10 +57,26 @@ Sandbox (documented promise, not a proof): FS = app-private; TCP = outbound + IN
 | JS-style `start(callback)` frame scheduler | gfx RFC |
 | Maven Central / GitHub Packages at this coordinate | **P010-PUB landed.** Workflow + `0.1.0` GAV. First press still needs Portal token, in-memory GPG, and arm64 `libwasmtime_android_kt.so` |
 
-## 6. Device-verified on-screen (P010-DEMO)
+## 6. Device-verified on-screen
+
+### 6.1 Instruments on native default (ND-DEVICE)
+
+These attach `GpuBackends.dawn()` (NativeGpu), not `dawn-jni`. Cloud has **no** device this cut: **named**, not a re-run matrix. Not CTS. Do not treat the cube as a substitute.
+
+| Instrument | Role |
+|------------|------|
+| `WasiGfxFrameLoopInstrumentedTest` | vsync-paced `on-frame` present |
+| `WasiWebGpuDawnGuestComputeInstrumentedTest` | WG-6 guest compute |
+| `WasiWebGpuDawnGuestRenderInstrumentedTest` | WG-6 guest 3D |
+| `WasiWebGpuDawnGuestCanvasPresentInstrumentedTest` | WG-6 guest-drawn canvas |
+| `WasiWebGpuMethodCanvasContextPresentInstrumentedTest` | host-owned window configure / get-current-texture |
+| `WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest` | Cpu hitch recycle twin; NativeGpu keep-3 is `native_gpu.rs` |
+
+### 6.2 Named physical device / demo (P010-DEMO)
 
 | Device | ABI | Android | Path | Date |
 |--------|-----|---------|------|------|
 | Vivo V2458A (PD2415M) | arm64-v8a | 16 | `WasiGfxFrameLoopInstrumentedTest` (P010-GFXV vsync-paced present) | 2026-08-27 |
+| Vivo V2458A (PD2415M) | arm64-v8a | 16 | Out-of-tree rotating cube ([wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)) — **demo** evidence only | 2026-08-27 |
 
-Cloud has **no** device. This is one named pass, not a device matrix. Not CTS. Out-of-tree demo: [wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples).
+Cloud has **no** device. One named pass + one demo row, not a device matrix. The app is not vendored here. README **Demo** links the same repo.

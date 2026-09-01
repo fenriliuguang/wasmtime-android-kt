@@ -25,10 +25,13 @@ L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8 的发布说
 
 不宣称 `wasmtime-wasi`、不宣称本仓 1.0。发布 workflow 已落地（P010-PUB）；secrets 缺失时不要强发 Central。
 
-## 真机上屏（P010-DEMO）
+## 真机上屏
+
+原生默认仪器（ND-DEVICE，`GpuBackends.dawn()`）：`WasiGfxFrameLoopInstrumentedTest`、WG-6 guest compute/render/canvas present、`WasiWebGpuMethodCanvasContextPresentInstrumentedTest`；Cpu 寿命孪生 `WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest`。Cloud 无真机，仅点名。立方体是演示行，不是 consume DoD。
 
 | 设备 | ABI | Android | 路径 | 日期 |
 |------|-----|---------|------|------|
 | Vivo V2458A（PD2415M） | arm64-v8a | 16 | `WasiGfxFrameLoopInstrumentedTest`（P010-GFXV vsync 上屏） | 2026-08-27 |
+| Vivo V2458A（PD2415M） | arm64-v8a | 16 | 仓外旋转立方体（[wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)）— 仅演示 | 2026-08-27 |
 
-Cloud 无真机。不是 CTS。仓外 demo：[wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)。
+Cloud 无真机。不是 CTS。app 不 vendor 进本仓。
