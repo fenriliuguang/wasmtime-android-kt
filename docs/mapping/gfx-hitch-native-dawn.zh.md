@@ -2,7 +2,7 @@
 
 [English](gfx-hitch-native-dawn.md) | **中文**
 
-不是切刀队列。不是 native-dawn 消费车道。NativeGpu 接上 `wgpu*` 之后的真机 A/B（2026-09-01）。不要 vendor demo。不要给上游提 GitHub issue。具名 hitch 活（D3 present timestamp / skip-present）仍是具名 —— 见 [`../agent/native-dawn.zh.md`](../agent/native-dawn.zh.md)。
+不是切刀队列。NativeGpu 接上 `wgpu*` 之后的真机 A/B（2026-09-01）。不要 vendor demo。不要给上游提 GitHub issue。现行收口：[`../agent/remaining.md`](../agent/remaining.md)。
 
 androidx + `host-dawn` JNI 表：[`gfx-hitch-checklist.zh.md`](gfx-hitch-checklist.zh.md)。**C / H / D** 编号沿用，避免重排。Dawn C 新行是 **N\***。下列 **Check** 以本页中文表为准。
 

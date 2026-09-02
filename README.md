@@ -6,20 +6,18 @@
 
 An **upstream Wasmtime** embedding for Android (JNI / ART) that hosts [Component Model](https://component-model.bytecodealliance.org/) guests, including **true CM async**, with **canonical [`wasi:webgpu`](https://github.com/WebAssembly/wasi-webgpu)** as the first proposal world.
 
-This repository is meant to be a **citable Android host** on the Wasm component chain — not a UI toolkit, not a **rewritten** Dawn, and not a production WASI distro. The **default product/test artifact includes Dawn**; the core runtime AAR does not. See [`rfc-pluggable-gpu-backend.md`](docs/scheme/rfc-pluggable-gpu-backend.md).
+This repository is meant to be a **citable Android host** on the Wasm component chain — not a UI toolkit, not a **rewritten** Dawn, and not a production WASI distro. The **default product/test artifact includes Dawn**; the core runtime AAR does not. See [`rfc.md`](docs/scheme/rfc.md).
 
-Status: **experimental `0.x`**. No compliant wasi:webgpu / CTS claim. Coordinate **`0.1.0`**. Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) ([`rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)).
+Status: **experimental `0.x`**. No compliant wasi:webgpu / CTS claim. Coordinate **`0.1.0`** (not pressed). Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml).
 
 ## Current plan
 
 | Priority | What |
 |----------|------|
-| **P0** | Canonical `wasi:webgpu@0.3.0-rc.2` guest shape + true CM async — **closed** 2026-08-22 ([`guest-shape.md`](docs/scheme/guest-shape.md)) |
-| **P1** | Ratified WASI 0.3 official package shapes + device instruments — **closed** 2026-08-26 ([`p1-wasi-p3.md`](docs/archive/p1-wasi-p3.md)) |
-| **P2** | Wasmtime pin — **named** ([`wasmtime-p2.md`](docs/agent/wasmtime-p2.md), [`wasmtime-tracking.md`](docs/scheme/wasmtime-tracking.md)) |
-| **L5 / 0.1.0** | Product subset + **complete** gfx loop + out-of-tree demo — **closed** 2026-08-27 ([`product-010.md`](docs/agent/product-010.md)) |
+| **Remaining** | Dawn C full bind → wasi-gfx size/resize → remaining pin input streams — [`remaining.md`](docs/agent/remaining.md) |
+| **P2** | Wasmtime pin — **named** ([`wasmtime-p2.md`](docs/agent/wasmtime-p2.md)) |
 
-Success criteria (2026-08-17, amended 2026-08-21): [`rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) — reproducible, citable; **do not** file upstream GitHub issues. **P0, P1, and `0.1.0` auto gates are closed.** P2 Wasmtime pin is **named**.
+Do **not** file upstream GitHub issues. Non-urgent (never auto): `context.unconfigure`, timestamped `frame-event`, Lost/Outdated `result`, multi-window.
 
 ## Quick start
 
@@ -38,7 +36,7 @@ Pinned versions: [`docs/build.md`](docs/build.md) (NDK `28.2.13676358`, Rust `1.
 
 ## Demo
 
-Pack a guest wasm, load it with this Android runtime (`android-webgpu` or a source composite), and present on a Surface: [wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples). Linking that out-of-tree repo is the `0.1.0` demo gate; this repository does **not** vendor the app. `:smoke-app` here is instruments, not that demo.
+Pack a guest wasm, load it with this Android runtime (`android-webgpu` or a source composite), and present on a Surface: [wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples). This repository does **not** vendor the app. `:smoke-app` here is instruments, not that demo.
 
 ## Consume `0.1.0`
 
@@ -76,24 +74,17 @@ English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)). Chinese siblings 
 | Doc | Notes |
 |-----|--------|
 | [Contributing](CONTRIBUTING.md) | PR / CI / hub freeze |
-| [Scheme index](docs/scheme/README.md) | Living plan only |
-| [Ecosystem RFC](docs/scheme/rfc-ecosystem-contribution.md) | **Accepted:** citable host; old L4 dropped |
-| [Pluggable GPU backend](docs/scheme/rfc-pluggable-gpu-backend.md) | **Accepted:** Dawn default bundle; core without Dawn |
-| [L5 productization](docs/scheme/rfc-l5-productization.md) | **Accepted:** 0.x class B; Central at `0.1.0` |
-| [wasi-gfx frame loop](docs/scheme/rfc-wasi-gfx-frame-loop.md) | **Accepted intent:** `0.1.0` present loop (not P0) |
-| [Long-term plan](docs/scheme/long-term-plan.md) | L0–L5 |
-| [Guest shape](docs/scheme/guest-shape.md) | WIT acceptance rules (S-series) |
-| [wasi:webgpu roadmap](docs/scheme/roadmap-wasi-webgpu.md) | P0 slices |
-| [WASI 0.3 surface](docs/scheme/wasi-p3-surface.md) | P1 cuts (archived; stub → [`p1-wasi-p3-surface.md`](docs/archive/p1-wasi-p3-surface.md)) |
+| [Scheme index](docs/scheme/README.md) | Living plan |
+| [RFC](docs/scheme/rfc.md) | Product / GPU host / gfx loop |
+| [Remaining](docs/agent/remaining.md) | Living close-out |
+| [Guest shape](docs/scheme/guest-shape.md) | WIT acceptance rules |
 | [P2 playbook](docs/agent/wasmtime-p2.md) | Named: Wasmtime pin |
-| [0.1.0 playbook](docs/agent/product-010.md) | L5 product gates (auto queue empty) |
 | [Threading](docs/mapping/threading-android.md) | Android / Dawn / CM pump |
 | [Build](docs/build.md) | NDK / cargo-ndk / Gradle |
-| [Archive](docs/archive/README.md) | Historical dual-product docs — do not implement from these |
 
 Slice progress: GitHub Project and [`changelog/unreleased/`](changelog/unreleased/). Do not add a README row per slice.
 
 ## License
 
-**Apache License 2.0** — [`LICENSE`](LICENSE), [`NOTICE`](NOTICE).  
+**Apache License 2.0** — [`LICENSE`](LICENSE), [`NOTICE`](NOTICE).
 Third-party: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) (Wasmtime is Apache-2.0 WITH LLVM-exception).

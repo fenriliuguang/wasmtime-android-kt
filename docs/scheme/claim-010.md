@@ -2,49 +2,48 @@
 
 **English** | [中文](claim-010.zh.md)
 
-Release-notes-shaped **product subset** for L5 [`rfc-l5-productization.md`](rfc-l5-productization.md) §7–§8. `0.1.0` playbook: [`../agent/product-010.md`](../agent/product-010.md) (empty). Living consume rewrite: [`../agent/native-dawn.md`](../agent/native-dawn.md). Counted 2026-08-27 against pin WIT + `native/src/cm.rs`.
+Release-notes-shaped **product subset**. Policy: [`rfc.md`](rfc.md). Remaining close-out: [`../agent/remaining.md`](../agent/remaining.md).
 
-**This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md) NG-4 / NG-5. L5 subset landed at **`0.1.0`**; default consume is Dawn C at **`0.2.0`**. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) (do not press when secrets / arm64 `.so` are missing).
+**This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md). Coordinate **`0.1.0`** (not pressed). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml).
 
 ## 1. One-line claim
 
-A third party can depend on this host for **most of pinned `wasi:webgpu@0.3.0-rc.2`** (guest `[method]` names consume on **Dawn C** / NativeGpu, not “instantiate via JNI”) plus the **WASI 0.3 IO/network subset webgpu apps need** and a **complete `wasi-gfx` present loop** (product adapter/device + vsync `on-frame`). **P010-GFXV** landed Choreographer vsync (1-slot; close on `surfaceDestroyed`). **P010-DEMO** links an out-of-tree wasm→runtime→present repo and names one physical-device on-screen row in §6. Record holes and named-only WASI leftovers are listed, not silent.
+A third party can depend on this host for **most of pinned `wasi:webgpu@0.3.0-rc.2`** (guest `[method]` names on **NativeGpu**) plus the **WASI 0.3 IO/network subset webgpu apps need** and a **wasi-gfx present loop** (product adapter/device + vsync `on-frame`). Record holes and named leftovers are listed, not silent.
+
+Default consume is Dawn C / NativeGpu. Many methods still stay **table-backed** until BIND ([`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md)). Cube is demo evidence only.
 
 ## 2. `wasi:webgpu` (pin `0.3.0-rc.2`)
 
-Pin: [`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit). Shape rules: [`guest-shape.md`](guest-shape.md). Living NativeGpu holes: [`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md). JNI leftover map: [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md).
-
 | Claim | Degree | Notes |
 |-------|--------|-------|
-| Pin resource `[method]` names (224 in WIT) | **Dawn C** (NativeGpu) | All 224 reconstructed `[method]resource.name` strings are registered in `native/src/cm.rs`. Default `GpuBackends.dawn()` consumes in-process (table-backed until `libwebgpu_dawn.so` binds slots). JNI leftover is `dawn-jni`. Not CTS. |
-| `gpu.request-adapter` / `gpu-adapter.request-device` | **Dawn C** on `dawn()`; **`none` / err** if unwired | Product `Linker.create` exports pin `get-gpu`. Fixture `get-device` omitted. Unwired store → adapter **`none`**, not a trap. P010-GFXB: frame-loop guest uses this chain. |
-| Compute submit / guest-drawn 3D / one-shot canvas | **Dawn C** (table) | WG-6 instruments on **native default** (`GpuBackends.dawn()`): `WasiWebGpuDawnGuestComputeInstrumentedTest`, `WasiWebGpuDawnGuestRenderInstrumentedTest`, `WasiWebGpuDawnGuestCanvasPresentInstrumentedTest`, `WasiWebGpuMethodCanvasContextPresentInstrumentedTest`. |
-| Continuous on-screen loop | **Host vsync** | P010-GFXB: product `request-adapter` / `request-device`. P010-GFXV: Choreographer vsync into `on-frame` (drop unconsumed; `surfaceDestroyed` closes). Named device row is §6. [`rfc-wasi-gfx-frame-loop.md`](rfc-wasi-gfx-frame-loop.md). |
-| Out-of-tree demo + device-verified | **Smoke** | README **Demo** links [wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples) (pack guest wasm → this Android runtime → present). Linking is existence; not vendored. Named row in §6. |
-| Dawn C / androidx missing ctor slots | **Record** (not Dawn C) | Same three: shader `compilation-hints`; canvas `color-space`; canvas `tone-mapping`. Native: [`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md) §2. JNI leftover: androidx gap §2. |
-| Fixture `get-*` constructors | **Not product** | `get-device` / `get-gpu-error` / `get-device-lost-info` stay on `Linker.createWithFixtureConstructors`. Pin `get-gpu` is product (WIT). |
-| `experimental:webgpu-cm` flat `u32` names | **Not pin product** | Frozen dual-register; do not extend. |
-
-**Dawn C** ≠ every field reaches `webgpu.h`. Record leftovers keep the guest value on `NativeGpuHost` (and on the JNI leftover record) when Dawn C / the AAR has no slot. Do not silently drop pin methods. The rotating cube is **demo** evidence, not this table’s consume degree. Named instruments on the native default are §6.
+| Pin resource `[method]` names (224) | **Shape** + NativeGpu | All 224 names registered in `native/src/cm.rs`. Unwired store → `request-adapter` **`none`**. JNI leftover is `dawn-jni`. |
+| Boot / cube hot path | **Dawn C** when `.so` loads | `request-adapter` / `request-device` / queue / buffer / WGSL / render pipeline / encoder / draw / submit / write-buffer / Android surface present. Guest options (features/limits/power) ignored on the C call. |
+| Remaining pin methods | **Table** until BIND | texture / sampler / compute / copies / map / query / bundle / error / depth-blend / indexed-indirect / viewport / `write-texture` / work-done / … |
+| Dawn C / AAR missing ctor slots | **Record** | shader `compilation-hints`; canvas `color-space`; canvas `tone-mapping` |
+| Fixture `get-*` / `experimental:webgpu-cm` flats | **Not product** | Frozen; do not extend |
 
 ## 3. WASI 0.3 product subset vs named-only
 
-Leftover WIT: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Default host is the in-tree thin host (**not** `wasmtime-wasi`).
+Leftovers: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Host is the in-tree thin host (**not** `wasmtime-wasi`).
 
-| Package | Product (`0.1.0`) | Named-only (not this gate) |
-|---------|-------------------|----------------------------|
-| CM stream / future, `wasi:clocks` instant, `wasi:random` | Landed functions | — |
-| `wasi:cli` | stdio + `run`; guest-visible `illegal-byte-sequence` on NUL stdout/stderr; `error-code` includes `io` / `pipe` / `unknown` | Full enum dump (**G-err**); full `command` world (**G-cmd**) |
-| `wasi:filesystem` | Preopen directory + `open-at` + read/write; `..` / absolute / NUL → `access` | `stat` / dir stream / append / dates (**G-fs-full**) |
-| `wasi:sockets` | Outbound TCP `connect(ip-socket-address)` dials guest non-loopback IPv4 | listen, UDP, DNS (**G-sock-rest**) |
-| `wasi:http` | Body `stream<u8>`; outbound `client#send` HTTP/1.1 GET; product linker omits `[constructor]request` / `[constructor]response` | `service` world, trailers, TLS crate / https |
-| `wasi-gfx` | `surface@0.2.0` + `on-frame` stream + `surface-webgpu` present. **P010-GFXB** product adapter/device. **P010-GFXV** Choreographer vsync (1-slot; close on `surfaceDestroyed`). **P010-DEMO** README out-of-tree demo + this table’s device row | Full desktop gfx / multi-window (DG-6) |
+| Package | Product (`0.1.0`) | Named-only |
+|---------|-------------------|------------|
+| CM stream / future, clocks, random | Landed functions | — |
+| `wasi:cli` | stdio + `run`; NUL → `illegal-byte-sequence` | Full enum / `command` world |
+| `wasi:filesystem` | Directory preopen + `open-at` + r/w; `..` → `access` | `stat` / dir stream / append |
+| `wasi:sockets` | Outbound TCP IPv4 | listen, UDP, DNS |
+| `wasi:http` | Body `stream<u8>`; outbound GET; no product request/response constructors | `service` world, trailers, TLS |
+| `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `configure` / `get-current-texture` / `present` | See remaining + non-urgent below |
 
-Sandbox (documented promise, not a proof): FS = app-private; TCP = outbound + INTERNET, no listen by default; HTTP = system trust, no bundled CA this cut.
+**Remaining (auto):** Dawn C full bind; surface size/resize; pin pointer/key streams.
 
-## 4. Public SPI (already landed)
+**Non-urgent:** `context.unconfigure`; timestamped `frame-event`; Lost/Outdated `result`; multi-window.
 
-[`api-stability.md`](api-stability.md). Product: `Engine` / `Store` / `Linker` / `Component` / `Instance`. `ExperimentalHostCallbacks` is not `runtime-api` public SPI. Dual-track: `Store.setWebGpuBackend` wins; `Store.createWithDiscoveredBackend` is discover convenience.
+Sandbox (documented promise, not a proof): FS = app-private; TCP = outbound + INTERNET, no listen by default; HTTP = system trust.
+
+## 4. Public SPI
+
+[`api-stability.md`](api-stability.md). Product: `Engine` / `Store` / `Linker` / `Component` / `Instance`. `ExperimentalHostCallbacks` is not public SPI. `Store.setWebGpuBackend` wins; `Store.createWithDiscoveredBackend` is discover convenience.
 
 ## 5. Explicitly not claimed
 
@@ -52,31 +51,25 @@ Sandbox (documented promise, not a proof): FS = app-private; TCP = outbound + IN
 |------|-----|
 | WebGPU CTS / “compliant wasi:webgpu” | NG-5 |
 | Full wasi-testsuite P3 | NG-4 |
-| This-repo **1.0.0** / WASI 1.0 distro | Upstream gates in L5 §6 first |
-| `wasmtime-wasi` crate | Size + Android thread review, named-only |
-| JS-style `start(callback)` frame scheduler | gfx RFC |
-| Maven Central / GitHub Packages at this coordinate | **P010-PUB landed.** Workflow + `0.1.0` GAV. First press still needs Portal token, in-memory GPG, and arm64 `libwasmtime_android_kt.so` |
+| This-repo **1.0.0** | Upstream gates in [`rfc.md`](rfc.md) §6 |
+| `wasmtime-wasi` crate | Size + Android thread review |
+| JS-style `start(callback)` | gfx loop is pull-stream |
+| Maven press at this coordinate | Workflow exists; first press still needs secrets + arm64 `.so` |
 
 ## 6. Device-verified on-screen
 
-### 6.1 Instruments on native default (ND-DEVICE)
+Cloud has **no** device. Named, not a matrix. Cube is demo only.
 
-These attach `GpuBackends.dawn()` (NativeGpu), not `dawn-jni`. Cloud has **no** device this cut: **named**, not a re-run matrix. Not CTS. Do not treat the cube as a substitute.
-
-| Instrument | Role |
-|------------|------|
+| Instrument / path | Role |
+|-------------------|------|
 | `WasiGfxFrameLoopInstrumentedTest` | vsync-paced `on-frame` present |
-| `WasiWebGpuDawnGuestComputeInstrumentedTest` | WG-6 guest compute |
-| `WasiWebGpuDawnGuestRenderInstrumentedTest` | WG-6 guest 3D |
-| `WasiWebGpuDawnGuestCanvasPresentInstrumentedTest` | WG-6 guest-drawn canvas |
-| `WasiWebGpuMethodCanvasContextPresentInstrumentedTest` | host-owned window configure / get-current-texture |
-| `WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest` | Cpu hitch recycle twin; NativeGpu keep-3 is `native_gpu.rs` |
-
-### 6.2 Named physical device / demo (P010-DEMO)
+| `WasiWebGpuDawnGuestComputeInstrumentedTest` | guest compute |
+| `WasiWebGpuDawnGuestRenderInstrumentedTest` | guest 3D |
+| `WasiWebGpuDawnGuestCanvasPresentInstrumentedTest` | guest-drawn canvas |
+| `WasiWebGpuMethodCanvasContextPresentInstrumentedTest` | host-owned window |
+| `WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest` | hitch recycle twin |
 
 | Device | ABI | Android | Path | Date |
 |--------|-----|---------|------|------|
-| Vivo V2458A (PD2415M) | arm64-v8a | 16 | `WasiGfxFrameLoopInstrumentedTest` (P010-GFXV vsync-paced present) | 2026-08-27 |
-| Vivo V2458A (PD2415M) | arm64-v8a | 16 | Out-of-tree rotating cube ([wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)) — **demo** evidence only | 2026-08-27 |
-
-Cloud has **no** device. One named pass + one demo row, not a device matrix. The app is not vendored here. README **Demo** links the same repo.
+| Vivo V2458A (PD2415M) | arm64-v8a | 16 | `WasiGfxFrameLoopInstrumentedTest` | 2026-08-27 |
+| Vivo V2458A (PD2415M) | arm64-v8a | 16 | Out-of-tree cube ([examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)) — demo | 2026-08-27 |

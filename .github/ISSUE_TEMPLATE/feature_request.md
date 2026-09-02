@@ -19,7 +19,7 @@ Which guest / demo / docs gap is blocked?
 
 ## Relation to the living plan
 
-Check [`docs/scheme/long-term-plan.md`](../../docs/scheme/long-term-plan.md) / [`non-goals.md`](../../docs/scheme/non-goals.md): does this touch a non-goal?
+Check [`docs/scheme/rfc.md`](../../docs/scheme/rfc.md) / [`non-goals.md`](../../docs/scheme/non-goals.md): does this touch a non-goal?
 
 GPU host Gradle coordinates are **blocked** until an explicit decision: [`docs/blocked-gpu-host.md`](../../docs/blocked-gpu-host.md).
 

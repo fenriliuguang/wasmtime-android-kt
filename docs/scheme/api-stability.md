@@ -2,24 +2,14 @@
 
 **English** | [中文](api-stability.zh.md)
 
-1. Stay on **`0.x.y`** until upstream 1.0 gates in [`rfc-l5-productization.md`](rfc-l5-productization.md) §6 (three.js-style: **break in MINOR**). This-repo **1.0.0** is not a calendar target.  
-2. SemVer 2.0 shape: `MAJOR.MINOR.PATCH[-prerelease]`.  
-3. Current coordinate: `0.2.0` (`gradle.properties` → `wasmtime.android.version`). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) (GitHub Packages + Maven Central, same GAV). Do not press when secrets or arm64 jniLibs are missing.  
-4. No CTS / compliant wasi:webgpu claim ([`non-goals.md`](non-goals.md) NG-5).  
-5. **P010-SPI landed:** `ExperimentalHostCallbacks` is **not** `runtime-api` public SPI (lives in `:runtime-jni` `internal`). Attach with `Store.setWebGpuBackend`; no `WebGpuBackend.hostCallbacks()`.
-6. **P010-DISC landed:** dual-track attach — `Store.setWebGpuBackend` is the stable contract; `Store.createWithDiscoveredBackend` is default-bundle ServiceLoader convenience (`Store.create` still defaults to no discover).
-7. **P010-FIX landed:** product `Linker.create` omits fixture constructors `get-device` / `get-gpu-error` / `get-device-lost-info`. Pin `get-gpu` is product (P010-GFXB). Instruments that still need `get-device` use `Linker.createWithFixtureConstructors`.
-8. **P010-CLIERR landed:** product cli `error-code` includes `io` / `illegal-byte-sequence` / `pipe`; stdout/stderr NUL write is guest-visible `illegal-byte-sequence`.
-9. **P010-TCP landed:** product `tcp-socket.connect` dials guest non-loopback IPv4; no listen / UDP by default.
-10. **P010-HBODY landed:** product http types expose body `stream<u8>` (`consume-body` / `response.new`); still in-process, not wire.
-11. **P010-HOUT landed:** product `wasi:http/client#send` does HTTP/1.1 GET on the wire; https / extra TLS crate not this cut.
-12. **P010-HCTOR landed:** product `Linker.create` omits `[constructor]request` / `[constructor]response`. Host supplies `request` when calling `handle`. Test linker keeps the constructors.
-13. **P010-GFXP landed:** guest gfx pin is `wasi-gfx:surface@0.2.0` (tag `v0.2.0` under `third_party/wasi-gfx/`). Host `on-frame` is P010-GFXH.
-14. **P010-GFXH landed:** product `wasi-gfx:surface` constructor + `on-frame` CM stream. Vsync payload is produced on a helper thread named `GpuThread`. Guest pulls; no JS callback. Present loop is P010-GFXL.
-15. **P010-GFXL landed:** product guest loops `on-frame` → `get-current-texture` → submit → `context.present`. **P010-GFXB:** GPU bootstrap is pin `get-gpu` → `request-adapter` → `request-device`. **P010-GFXV:** Choreographer vsync 1-slot into `on-frame`; unconsumed beats drop; `surfaceDestroyed` closes the stream. Last auto cut: **P010-DEMO**. WG-6 one-shot stays.
-16. **P010-CLAIM landed:** release-notes claim table [`claim-010.md`](claim-010.md) — all 224 pin `[method]` names instantiate; androidx holes listed; WASI subset vs named-only. **Not** CTS.
-17. **P010-PUB landed:** version `0.1.0`; consumer GAV `android-webgpu` / `runtime` / `host-dawn`. `runtime-api` / `runtime-jni` are Maven transitives only.
-18. **Native Dawn host (ND-DEFAULT):** [`../agent/native-dawn.md`](../agent/native-dawn.md). Guest pin and Kotlin `Store` / `WebGpuBackend` stay. Product `GpuBackends.dawn()` is NativeGpu (`0.2.0` MINOR). `ExperimentalHostCallbacks` remains the `dawn-jni` leftover, not public SPI. Cube is not a consume gate.
+1. Stay on **`0.x.y`** until upstream 1.0 gates in [`rfc.md`](rfc.md) §6 (break in MINOR). This-repo **1.0.0** is not a calendar target.
+2. SemVer 2.0 shape: `MAJOR.MINOR.PATCH[-prerelease]`.
+3. Current coordinate: **`0.1.0`** (`gradle.properties` → `wasmtime.android.version`). **Not released.** Do not bump the GAV for a consume-path change. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). Do not press when secrets or arm64 jniLibs are missing.
+4. No CTS / compliant wasi:webgpu claim ([`non-goals.md`](non-goals.md) NG-5).
+5. `ExperimentalHostCallbacks` is **not** `runtime-api` public SPI. Attach with `Store.setWebGpuBackend`.
+6. Dual-track: `Store.setWebGpuBackend` is the stable contract; `Store.createWithDiscoveredBackend` is default-bundle convenience.
+7. Product `Linker.create` omits fixture constructors (`get-device` / `get-gpu-error` / `get-device-lost-info`) and HTTP `[constructor]request` / `[constructor]response`. Pin `get-gpu` is product.
+8. Guest pins: `wasi:webgpu@0.3.0-rc.2`, `wasi-gfx:surface@0.2.0`. Product `GpuBackends.dawn()` is NativeGpu. `dawn-jni` is leftover.
 
 ## `0.x` rules
 
@@ -29,7 +19,5 @@ Breaking public Kotlin/JNI/error semantics: at least `0.MINOR+1.0` **and** a cha
 |-------|-----------|
 | Public Kotlin (`Engine` / `Store` / …) | Breakable; bump MINOR |
 | JNI `external` signatures | Same as public API |
-| `ExperimentalWebGpuBridge` / leftover flat imports | Most unstable |
+| Leftover flat imports | Most unstable |
 | Guest fixtures / instruments | Not library API |
-
-Guest product pin: `wasi:webgpu@0.3.0-rc.2`. Gfx pin: `wasi-gfx:surface@0.2.0`. Public GPU SPI lives in `runtime-api` (`WebGpuBackend`). Product Maven coordinates are in [`rfc-l5-productization.md`](rfc-l5-productization.md) §4 (`:host-dawn` / `:android-webgpu` / `runtime`). Dawn pin bumps must be named in the changelog.

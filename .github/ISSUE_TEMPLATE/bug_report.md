@@ -29,4 +29,4 @@ labels: ["bug"]
 
 ## Extra
 
-- Does this block a long-term-plan slice (stream / wasi:webgpu / …)?
+- Does this block remaining close-out (Dawn C bind / gfx size / pin streams)?

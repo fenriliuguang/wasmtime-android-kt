@@ -12,6 +12,4 @@ Chinese is secondary. When a Chinese file exists, it uses the `.zh.md` suffix ne
 
 If the two disagree, **English wins**.
 
-Do not add a Chinese translation for every archive note. Archive material may stay in the language it was written in.
-
-New RFCs and living scheme docs must ship in English. A `.zh.md` sibling is optional and should be a faithful summary, not a second source of truth.
+New RFCs and living scheme docs must ship in English. A `.zh.md` sibling is optional and should be a faithful summary, not a second source of truth. One RFC file: [`scheme/rfc.md`](scheme/rfc.md).

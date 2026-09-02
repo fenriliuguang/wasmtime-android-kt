@@ -8,7 +8,7 @@
 
 **ND-SO pin:** same Dawn SHA as `androidx.webgpu:webgpu:1.0.0-alpha05` AAR `assets/dawn_build_metadata.json` (`9d41fdf36977cca92361c6ae2769129bbaaafd9b`). Recipe: [`../scripts/build-dawn-c-android.py`](../scripts/build-dawn-c-android.py) / [`ORIGIN.txt`](../native/third_party/dawn-c/ORIGIN.txt). Output `libwebgpu_dawn.so` is **gitignored**.
 
-Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. Maven coordinates (`0.2.0`): `runtime` / `host-dawn` / **`android-webgpu`**. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
+Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. Maven coordinates (`0.1.0`, not pressed): `runtime` / `host-dawn` / **`android-webgpu`**. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
 
 ## 1. In-tree layout
 
@@ -39,4 +39,4 @@ Recorded in [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md): vendored Host
 
 ## 4. Module graph
 
-[`scheme/rfc-pluggable-gpu-backend.md`](scheme/rfc-pluggable-gpu-backend.md): L1 has no Dawn; `:host-dawn` + bundle `:android-webgpu`; unwired `request-adapter` → `none`. SPI in `runtime-api`.
+[`scheme/rfc.md`](scheme/rfc.md) §2: L1 has no Dawn; `:host-dawn` + bundle `:android-webgpu`; unwired `request-adapter` → `none`. SPI in `runtime-api`.

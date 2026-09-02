@@ -463,7 +463,7 @@ def main() -> None:
         ap.print_help()
         print()
         die("pass --probe-aar and/or --build and/or --prebuilt")
-    print(f"Playbook: docs/agent/native-dawn.md  ND-SO")
+    print(f"Playbook: docs/agent/remaining.md")
     print(f"Dawn pin: {DAWN_COMMIT}  androidx.webgpu:{ANDROIDX_WEBGPU}")
     print(f"Output (gitignored): {OUT}/<abi>/{C_API_SO}")
     if args.probe_aar:

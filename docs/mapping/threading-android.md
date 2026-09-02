@@ -4,7 +4,7 @@
 
 Draft 2026-08-10; M4 pins 2026-08-11. True Component Model async on ART + a GPU backend.
 
-GPU objects today come from in-tree `:host-dawn` plus `androidx.webgpu` ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)). Dawn is the **default** backend for the product/test bundle ([`../scheme/rfc-pluggable-gpu-backend.md`](../scheme/rfc-pluggable-gpu-backend.md)). The thread rules below still apply to whatever backend owns Dawn / `ANativeWindow`.
+GPU objects today come from in-tree `:host-dawn` plus `androidx.webgpu` ([`../blocked-gpu-host.md`](../blocked-gpu-host.md)). Dawn C is the **default** backend ([`../scheme/rfc.md`](../scheme/rfc.md) §2). The thread rules below still apply to whatever backend owns Dawn / `ANativeWindow`.
 
 ## 1. Why a dedicated page
 
@@ -51,7 +51,7 @@ If a later slice proves “CM loop must share GpuThread”, merge them and revis
 | Waiting for GPU | Latch + `processEvents` in the callback | Non-blocking request → GpuThread finishes → complete future |
 | Acceptance | Historical on-screen smoke | Prove the model first, then frame loops |
 
-A **shape-notes** page for the accepted gfx `on-frame` stream loop (MoonBit guest / Kotlin vsync wiring): [`frame-loop-suggestion.md`](frame-loop-suggestion.md). **`0.1.0` gate** is [`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md). Not a P2 lane; NG-9 still forbids a P0 re-queue.
+Gfx loop shape: [`../scheme/rfc.md`](../scheme/rfc.md) §3. Remaining size/resize: [`../agent/remaining.md`](../agent/remaining.md). Not a P2 lane.
 
 ## 5. WASI 0.3 filesystem sandbox (W6)
 

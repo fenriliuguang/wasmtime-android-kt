@@ -47,7 +47,7 @@ JUnit 仅用于测试，不进入发布 AAR 运行时。
 | 树 | 许可 |
 |----|------|
 | `wasi-webgpu` 标签 `v0.3.0-rc.2` | W3C Community CLA。见 [`third_party/wasi-webgpu/v0.3.0-rc.2/LICENSE.md`](third_party/wasi-webgpu/v0.3.0-rc.2/LICENSE.md)。 |
-| `wasi-gfx` 标签 `v0.2.0` | 该 tag **无 LICENSE 文件**。来源：[`ORIGIN.txt`](third_party/wasi-gfx/v0.2.0/ORIGIN.txt)。钉版见 gfx RFC。 |
+| `wasi-gfx` 标签 `v0.2.0` | 该 tag **无 LICENSE 文件**。来源：[`ORIGIN.txt`](third_party/wasi-gfx/v0.2.0/ORIGIN.txt)。钉版见 [`docs/scheme/rfc.md`](docs/scheme/rfc.md)。 |
 
 钉版变更时才刷新。正文以[英文](THIRD_PARTY_NOTICES.md)为准。
 

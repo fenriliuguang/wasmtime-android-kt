@@ -2,7 +2,7 @@
 
 **English** | [中文](gap-webgpu-wit-androidx.zh.md)
 
-Living map for the **JNI / androidx leftover** (`GpuBackends.dawnJni()`, `id = "dawn-jni"`). Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. P0 close-out: [`../archive/p0-wasi-webgpu.md`](../archive/p0-wasi-webgpu.md). **Product default** is NativeGpu / Dawn C: [`gap-webgpu-native-dawn.md`](gap-webgpu-native-dawn.md). Playbook: [`../agent/native-dawn.md`](../agent/native-dawn.md). Use this table as the **mapping spec** when translating `DawnWasiWebGpuHost`. Product claim (not CTS): [`../scheme/claim-010.md`](../scheme/claim-010.md).
+Living map for the **JNI / androidx leftover** (`GpuBackends.dawnJni()`, `id = "dawn-jni"`). Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. **Product default** is NativeGpu / Dawn C: [`gap-webgpu-native-dawn.md`](gap-webgpu-native-dawn.md). Close-out: [`../agent/remaining.md`](../agent/remaining.md). Use this table as the **mapping spec** when translating `DawnWasiWebGpuHost`. Product claim (not CTS): [`../scheme/claim-010.md`](../scheme/claim-010.md).
 
 **Degree**
 
@@ -60,7 +60,7 @@ Cpu host (`CpuWasiWebGpuHost`) is a stand-in: VectorAdd shader-text match only. 
 | Item | Tag |
 |------|-----|
 | WebGPU CTS / “compliant wasi:webgpu” | **Out** (NG-5) |
-| Product `surface-*` / wasi-gfx as a **P0** re-queue | **Out** (NG-9). Minimal present loop is **`0.1.0`**: [`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md) |
+| Product `surface-*` / wasi-gfx as a **P0** re-queue | **Out** (NG-9). Loop shape: [`../scheme/rfc.md`](../scheme/rfc.md) §3 |
 | Second Dawn renderer | **Out** (NG-7) |
 | `wasmtime-wasi` as the WebGPU host | **Out** — GPU is `:host-dawn` |
 

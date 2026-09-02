@@ -4,7 +4,7 @@
 
 短命分支 + PR；不要直推 `main`。英文为正文。
 
-必读：[`docs/scheme/vcs-workflow.md`](docs/scheme/vcs-workflow.md)、[`docs/agent/product-010.md`](docs/agent/product-010.md)、[`docs/scheme/rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)、[`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md)、[`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md)。
+必读：[`docs/scheme/vcs-workflow.md`](docs/scheme/vcs-workflow.md)、[`docs/agent/remaining.md`](docs/agent/remaining.md)、[`docs/scheme/rfc.md`](docs/scheme/rfc.md)、[`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md)、[`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md)。
 
 用户可见变更只新增 `changelog/unreleased/<date>-<slug>.md`。禁止改根 `CHANGELOG.md`。新测试只加 `native/tests/*.rs`。发布用 maintainer `workflow_dispatch`（`.github/workflows/publish.yml`）；secrets 缺失时不要强发。
 

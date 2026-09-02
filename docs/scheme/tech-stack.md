@@ -30,7 +30,7 @@ Pointers: treat as unsigned where TBI/PAC apply.
 
 ## GPU backend
 
-Target: [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md).
+Target: [`rfc.md`](rfc.md) §2.
 
 | Artifact | Dawn `.so` |
 |----------|------------|
@@ -40,7 +40,7 @@ Target: [`rfc-pluggable-gpu-backend.md`](rfc-pluggable-gpu-backend.md).
 
 SPI lives in `runtime-api`. Do not leak foreign `WasiWebGpuHost` types into L1. Canonical guests: `wasi:webgpu@0.3.0-rc.2`. Do not add new `experimental:webgpu-cm` exports.
 
-**Today:** Host Kotlin lives in `:host-dawn`; Dawn `.so` is `androidx.webgpu` (not git). Living rewrite: Dawn C default ([`../agent/native-dawn.md`](../agent/native-dawn.md)). See [`../blocked-gpu-host.md`](../blocked-gpu-host.md). `:runtime-jni` does not depend on Dawn types.
+**Today:** Host Kotlin lives in `:host-dawn`; Dawn `.so` is `androidx.webgpu` (not git) plus optional `libwebgpu_dawn.so` for NativeGpu. Default consume is Dawn C ([`../agent/remaining.md`](../agent/remaining.md)). See [`../blocked-gpu-host.md`](../blocked-gpu-host.md). `:runtime-jni` does not depend on Dawn types.
 
 ## Build
 

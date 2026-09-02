@@ -12,14 +12,10 @@ Language: English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)).
 |-----|---------|
 | [`docs/scheme/vcs-workflow.md`](docs/scheme/vcs-workflow.md) | Branch names, PR rules, hub freeze |
 | [`docs/contribute.md`](docs/contribute.md) | Local build, optional desktop shell |
-| [`docs/scheme/rfc-ecosystem-contribution.md`](docs/scheme/rfc-ecosystem-contribution.md) | Citable host; P0 unchanged |
-| [`docs/scheme/rfc-pluggable-gpu-backend.md`](docs/scheme/rfc-pluggable-gpu-backend.md) | Dawn default bundle; SPI |
-| [`docs/scheme/rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md) | Product class B; `0.x`; `0.1.0` coordinates |
-| [`docs/scheme/rfc-wasi-gfx-frame-loop.md`](docs/scheme/rfc-wasi-gfx-frame-loop.md) | `0.1.0` gfx present loop (not P0) |
-| [`docs/agent/product-010.md`](docs/agent/product-010.md) | `0.1.0` remaining queue (complete gfx loop: GFXB → GFXV; last: DEMO) |
+| [`docs/scheme/rfc.md`](docs/scheme/rfc.md) | Product / GPU host / gfx loop |
+| [`docs/agent/remaining.md`](docs/agent/remaining.md) | Living close-out (BIND → GFX-SIZE → GFX-PIN) |
 | [`docs/agent/wasmtime-p2.md`](docs/agent/wasmtime-p2.md) | P2 Wasmtime pin (named) |
 | [`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md) | wasi:webgpu WIT gates |
-| [`docs/agent/wasmtime-p2.md`](docs/agent/wasmtime-p2.md) | P2 Wasmtime pin (named) |
 | [`docs/scheme/non-goals.md`](docs/scheme/non-goals.md) | Hard no |
 | [`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md) | GPU host — **vendor path** (Host Kotlin in-tree) |
 

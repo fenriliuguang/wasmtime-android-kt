@@ -47,7 +47,7 @@ JUnit is test-only and does not enter a published AAR runtime.
 | Tree | License |
 |------|---------|
 | `wasi-webgpu` tag `v0.3.0-rc.2` (`wit/webgpu.wit`, `wit/imports.wit`) | W3C Community CLA. Text: [`third_party/wasi-webgpu/v0.3.0-rc.2/LICENSE.md`](third_party/wasi-webgpu/v0.3.0-rc.2/LICENSE.md). Origin: [`ORIGIN.txt`](third_party/wasi-webgpu/v0.3.0-rc.2/ORIGIN.txt). |
-| `wasi-gfx` tag `v0.2.0` (`wit/surface.wit`, `wit/surface-webgpu.wit`) | Upstream tree at this tag has **no LICENSE file**. Origin: [`ORIGIN.txt`](third_party/wasi-gfx/v0.2.0/ORIGIN.txt). Do not refresh unless [`docs/scheme/rfc-wasi-gfx-frame-loop.md`](docs/scheme/rfc-wasi-gfx-frame-loop.md) changes the pin. |
+| `wasi-gfx` tag `v0.2.0` (`wit/surface.wit`, `wit/surface-webgpu.wit`) | Upstream tree at this tag has **no LICENSE file**. Origin: [`ORIGIN.txt`](third_party/wasi-gfx/v0.2.0/ORIGIN.txt). Do not refresh unless [`docs/scheme/rfc.md`](docs/scheme/rfc.md) changes the pin. |
 
 Do not refresh the webgpu tree unless [`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md) changes the pin.
 

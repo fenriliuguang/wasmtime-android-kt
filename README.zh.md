@@ -6,9 +6,9 @@
 
 基于 **官方 Wasmtime** 的 Android（JNI / ART）嵌入，托管 [Component Model](https://component-model.bytecodealliance.org/) Guest（含 **真 CM async**），首发提案世界为规范形状的 [`wasi:webgpu`](https://github.com/WebAssembly/wasi-webgpu)。
 
-本仓目标是成为 Wasm 组件链上 **可引用的 Android Host**——不是 UI 框架、不是重写的 Dawn、也不是生产级 WASI 发行版。**默认产品/测试构件包含 Dawn**；核心 AAR 不含。见 [`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。
+本仓目标是成为 Wasm 组件链上 **可引用的 Android Host**——不是 UI 框架、不是重写的 Dawn、也不是生产级 WASI 发行版。**默认产品/测试构件包含 Dawn**；核心 AAR 不含。见 [`rfc.md`](docs/scheme/rfc.md)。
 
-状态：**experimental `0.x`**。不宣称合规 wasi:webgpu / CTS。坐标 **`0.1.0`**。发布：[`.github/workflows/publish.yml`](.github/workflows/publish.yml)（[`rfc-l5-productization.md`](docs/scheme/rfc-l5-productization.md)）。
+状态：**experimental `0.x`**。不宣称合规 wasi:webgpu / CTS。坐标 **`0.1.0`**（未发布）。
 
 若与英文冲突，**以 [README.md](README.md) 为准**。
 
@@ -16,12 +16,10 @@
 
 | 优先级 | 内容 |
 |--------|------|
-| **P0** | 钉版 `wasi:webgpu@0.3.0-rc.2` Guest 形状 + 真 CM async — **2026-08-22 关闭** |
-| **P1** | 已批准 WASI 0.3 官方形状 + 真机仪器 — **2026-08-26 关闭**（[`p1-wasi-p3.zh.md`](docs/archive/p1-wasi-p3.zh.md)） |
+| **收口** | Dawn C 全绑定 → wasi-gfx 尺寸/resize → 其余 pin 输入流 — [`remaining.md`](docs/agent/remaining.md) |
 | **P2** | Wasmtime 钉 — **点名**（[`wasmtime-p2.md`](docs/agent/wasmtime-p2.md)） |
-| **L5 / 0.1.0** | 产品子集 + **完整** gfx 循环 + 仓外 demo — **2026-08-27 关闭**（[`product-010.md`](docs/agent/product-010.md)） |
 
-成功标准：[`rfc-ecosystem-contribution.zh.md`](docs/scheme/rfc-ecosystem-contribution.zh.md) — 可复现、可引用；**禁止**向上游开 GitHub issue。GPU 接线：[`rfc-pluggable-gpu-backend.zh.md`](docs/scheme/rfc-pluggable-gpu-backend.zh.md)。**P0、P1 与 `0.1.0` 自动门禁已关闭。** P2 Wasmtime 钉为点名。
+禁止向上游开 GitHub issue。非紧急：`unconfigure`、带时间戳的 frame-event、Lost/Outdated `result`、多窗口。
 
 ## 快速开始
 
@@ -35,16 +33,14 @@
 
 ## 演示
 
-打包 guest wasm，用本 Android 运行时（`android-webgpu` 或源码组合）加载并上屏：[wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)。引入该仓外链接即 `0.1.0` demo 门禁；本仓不内嵌该 app。此处 `:smoke-app` 是仪器，不是该 demo。
+打包 guest wasm，用本 Android 运行时加载并上屏：[wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)。本仓不内嵌该 app。
 
-推荐消费坐标（0.x 默认 bundle）：
+推荐消费坐标（未发布）：
 
 ```kotlin
 implementation("io.github.fenriliuguang.wasmtime.android:android-webgpu:0.1.0")
 ```
 
-不要直接依赖 `runtime-api` / `runtime-jni`。首次 Central 按下仍需要 secrets + arm64 `.so`；此前请源码检出本仓。GPU 仪器走仓内 `:host-dawn` + `androidx.webgpu`，见 [`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md)。
-
 ## 文档
 
-英文为正文；中文为副文档（`.zh.md`）。史实见 [`docs/archive/README.md`](docs/archive/README.md)。
+英文为正文；中文为副文档（`.zh.md`）。
