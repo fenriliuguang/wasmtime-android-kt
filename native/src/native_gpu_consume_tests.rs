@@ -334,7 +334,10 @@ fn gfx_surface_size_against_bound_window() -> wasmtime::Result<()> {
             })
             .await?
     })?;
-    assert_eq!(v, 1, "guest height/width/request-set-size/on-resize, got {v}");
+    assert_eq!(
+        v, 1,
+        "guest height/width/request-set-size/on-resize, got {v}"
+    );
     let win = store
         .data()
         .native_gpu
@@ -344,5 +347,35 @@ fn gfx_surface_size_against_bound_window() -> wasmtime::Result<()> {
     assert_eq!(win.native_window, 0x1000);
     assert_eq!(win.width, 80);
     assert_eq!(win.height, 96);
+    Ok(())
+}
+
+#[test]
+fn gfx_pin_pointer_key_streams_on_product_linker() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let path = format!(
+        "{}/../fixtures/wasi/gfx_pin.wasm",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let bytes = std::fs::read(&path)?;
+    let component = Component::new(&engine, bytes)?;
+    let mut linker: Linker<HostState> = Linker::new(&engine);
+    define_host(&mut linker, false).map_err(wasmtime::Error::msg)?;
+    let mut store = Store::new(&engine, native_host());
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let v = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })?;
+    assert_eq!(v, 1, "guest opened and dropped on-pointer-* / on-key-*");
     Ok(())
 }

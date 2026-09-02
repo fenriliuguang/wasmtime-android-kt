@@ -282,6 +282,16 @@ wasm-tools parse fixtures/wasi/gfx_size.wat -o fixtures/wasi/gfx_size.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_size.wasm
 ```
 
+## `wasi-gfx` — remaining pin streams（GFX-PIN）
+
+Guest export: `run: async func() -> u32`（构造 surface → 打开 `on-pointer-up/down/move` 与 `on-key-up/down` → drop 各 stream → 返回 1）  
+Host: 产品 `define_host` 注册上述五个 import。stream 在接线输入前为空。无 JS callback。
+
+```powershell
+wasm-tools parse fixtures/wasi/gfx_pin.wat -o fixtures/wasi/gfx_pin.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_pin.wasm
+```
+
 ## `wasi-gfx` — product frame loop（P010-GFXL / P010-GFXB / P010-GFXV）
 
 Guest export: `run: async func() -> u32`（pin `get-gpu` → `request-adapter` → `request-device` → surface + `surface-webgpu` context → configure → `on-frame` 循环：`get-current-texture` → `queue.submit` → `context.present`，直到 host 关闭 stream）  
