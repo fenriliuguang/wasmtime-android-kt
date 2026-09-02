@@ -2,7 +2,7 @@
 
 **English** | [中文](gap-wasi-p3-wit.zh.md)
 
-Named leftovers only. Do **not** auto-cut these. Product subset: [`../scheme/claim-010.md`](../scheme/claim-010.md). Living close-out is webgpu/gfx ([`../agent/remaining.md`](../agent/remaining.md)), not this page.
+Named leftovers only. Do **not** auto-cut these. Product subset: [`../scheme/claim-010.md`](../scheme/claim-010.md).
 
 Pin: [WASI 0.3.0](https://github.com/WebAssembly/WASI/releases/tag/v0.3.0).
 

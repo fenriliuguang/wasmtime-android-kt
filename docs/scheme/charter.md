@@ -27,7 +27,7 @@ Product class **B**, perpetual **`0.x`**, coordinate **`0.1.0`** until that rele
 
 ## Now
 
-Remaining close-out: [`../agent/remaining.md`](../agent/remaining.md) (Dawn C full bind → gfx size/resize → remaining pin streams). P2 Wasmtime pin is **named**.
+Product subset: [`claim-010.md`](claim-010.md). Wasmtime major bumps stay **named**.
 
 ## Claims
 

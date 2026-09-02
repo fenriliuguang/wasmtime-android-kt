@@ -1,6 +1,6 @@
 # jniLibs
 
-Official layout: [`docs/mapping/artifacts.md`](../../docs/mapping/artifacts.md).
+Cross-compile into this tree:
 
 ```powershell
 .\scripts\build-native-android.ps1

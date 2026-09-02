@@ -956,21 +956,20 @@ impl<D> StreamProducer<D> for GfxOnFrameProducer {
         finish: bool,
     ) -> Poll<wasmtime::Result<StreamResult>> {
         let _ = cx;
+        // remaining==0 is a readiness poll. Returning Dropped here marks the
+        // writable end closed *before* the guest's first stream.read, which
+        // traps (`cannot read after being notified that the writable end dropped`).
+        // SurfaceDestroyed / closeGfxOnFrame during configure used to hit that.
         if destination.remaining(&mut store) == Some(0) {
             return Poll::Ready(Ok(match self.gate.wait_ready(finish) {
-                GfxOnFrameTake::Item => StreamResult::Completed,
-                GfxOnFrameTake::Eof => StreamResult::Dropped,
+                GfxOnFrameTake::Item | GfxOnFrameTake::Eof => StreamResult::Completed,
                 GfxOnFrameTake::Cancelled => StreamResult::Cancelled,
             }));
         }
         match self.gate.wait_take(finish) {
             GfxOnFrameTake::Item => {
                 destination.set_buffer(Some(GfxFrameEvent { nothing: true }));
-                if self.gate.is_closed() {
-                    Poll::Ready(Ok(StreamResult::Dropped))
-                } else {
-                    Poll::Ready(Ok(StreamResult::Completed))
-                }
+                Poll::Ready(Ok(StreamResult::Completed))
             }
             GfxOnFrameTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
             GfxOnFrameTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),
@@ -997,8 +996,7 @@ impl<D> StreamProducer<D> for GfxOnResizeProducer {
         let _ = cx;
         if destination.remaining(&mut store) == Some(0) {
             return Poll::Ready(Ok(match self.gate.wait_ready(finish) {
-                GfxOnResizeTake::Item(_) => StreamResult::Completed,
-                GfxOnResizeTake::Eof => StreamResult::Dropped,
+                GfxOnResizeTake::Item(_) | GfxOnResizeTake::Eof => StreamResult::Completed,
                 GfxOnResizeTake::Cancelled => StreamResult::Cancelled,
             }));
         }
@@ -1008,11 +1006,7 @@ impl<D> StreamProducer<D> for GfxOnResizeProducer {
                     height: sz.height,
                     width: sz.width,
                 }));
-                if self.gate.is_closed() {
-                    Poll::Ready(Ok(StreamResult::Dropped))
-                } else {
-                    Poll::Ready(Ok(StreamResult::Completed))
-                }
+                Poll::Ready(Ok(StreamResult::Completed))
             }
             GfxOnResizeTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
             GfxOnResizeTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),
@@ -1038,19 +1032,14 @@ impl<D> StreamProducer<D> for GfxPointerProducer {
         let _ = cx;
         if destination.remaining(&mut store) == Some(0) {
             return Poll::Ready(Ok(match self.gate.wait_ready(finish) {
-                GfxInputTake::Item(_) => StreamResult::Completed,
-                GfxInputTake::Eof => StreamResult::Dropped,
+                GfxInputTake::Item(_) | GfxInputTake::Eof => StreamResult::Completed,
                 GfxInputTake::Cancelled => StreamResult::Cancelled,
             }));
         }
         match self.gate.wait_take(finish) {
             GfxInputTake::Item(ev) => {
                 destination.set_buffer(Some(GfxPointerEvent { x: ev.x, y: ev.y }));
-                if self.gate.is_closed() {
-                    Poll::Ready(Ok(StreamResult::Dropped))
-                } else {
-                    Poll::Ready(Ok(StreamResult::Completed))
-                }
+                Poll::Ready(Ok(StreamResult::Completed))
             }
             GfxInputTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
             GfxInputTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),
@@ -1076,8 +1065,7 @@ impl<D> StreamProducer<D> for GfxKeyProducer {
         let _ = cx;
         if destination.remaining(&mut store) == Some(0) {
             return Poll::Ready(Ok(match self.gate.wait_ready(finish) {
-                GfxInputTake::Item(_) => StreamResult::Completed,
-                GfxInputTake::Eof => StreamResult::Dropped,
+                GfxInputTake::Item(_) | GfxInputTake::Eof => StreamResult::Completed,
                 GfxInputTake::Cancelled => StreamResult::Cancelled,
             }));
         }
@@ -1091,11 +1079,7 @@ impl<D> StreamProducer<D> for GfxKeyProducer {
                     meta_key: ev.meta_key,
                     shift_key: ev.shift_key,
                 }));
-                if self.gate.is_closed() {
-                    Poll::Ready(Ok(StreamResult::Dropped))
-                } else {
-                    Poll::Ready(Ok(StreamResult::Completed))
-                }
+                Poll::Ready(Ok(StreamResult::Completed))
             }
             GfxInputTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
             GfxInputTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),

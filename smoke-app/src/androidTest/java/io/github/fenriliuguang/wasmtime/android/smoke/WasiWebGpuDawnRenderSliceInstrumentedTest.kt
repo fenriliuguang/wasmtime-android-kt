@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReference
 class WasiWebGpuDawnRenderSliceInstrumentedTest {
     @Test
     fun guestRenderSliceViaDawnDescribedMethods() {
+        DawnJniLeftover.assumeBundledLibrary()
         runOnGpuThread("d-dawn-render-slice", timeoutSec = 90) {
             DawnWasiWebGpuHost.create().use { host ->
                 val bytes =

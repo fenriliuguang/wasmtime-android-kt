@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicReference
 class DawnRenderSmokeInstrumentedTest {
     @Test
     fun guestClearPresentViaDawnL2() {
+        DawnJniLeftover.assumeBundledLibrary()
         withReadySurface { ctx ->
             runOnGpuThread("m4-dawn-render-smoke", timeoutSec = 90) {
                 Log.i(TAG, "GpuThread: create Dawn host")

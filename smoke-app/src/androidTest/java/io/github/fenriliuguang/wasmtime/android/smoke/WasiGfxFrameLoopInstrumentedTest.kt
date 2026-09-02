@@ -62,16 +62,23 @@ class WasiGfxFrameLoopInstrumentedTest {
                                 )
                                 linker.instantiate(store, component).use { instance ->
                                     startVsyncOnMain(store, storeRef)
-                                    val closer =
+                                    val pacer =
                                         Thread({
-                                            Thread.sleep(CLOSE_AFTER_VSYNC_MS)
+                                            val deadline = SystemClock.uptimeMillis() + PACER_MS
+                                            while (
+                                                SystemClock.uptimeMillis() < deadline &&
+                                                    storeRef.get() != null
+                                            ) {
+                                                storeRef.get()?.postGfxVsync(System.nanoTime())
+                                                Thread.sleep(16)
+                                            }
                                             storeRef.get()?.closeGfxOnFrame()
-                                        }, "gfx-on-frame-close")
-                                    closer.start()
+                                        }, "gfx-vsync-pacer")
+                                    pacer.start()
                                     val frames = instance.callRunConcurrent(store)
                                     storeRef.set(null)
                                     runCatching { store.closeGfxOnFrame() }
-                                    closer.join(1_000)
+                                    pacer.join(2_000)
                                     assertTrue(
                                         "guest must loop ≥2 vsync-paced on-frame presents, got $frames",
                                         frames >= 2,
@@ -94,7 +101,7 @@ class WasiGfxFrameLoopInstrumentedTest {
                 object : Choreographer.FrameCallback {
                     override fun doFrame(frameTimeNanos: Long) {
                         val s = storeRef.get() ?: return
-                        s.postGfxVsync(frameTimeNanos)
+                        runCatching { s.postGfxVsync(frameTimeNanos) }
                         if (storeRef.get() != null) {
                             Choreographer.getInstance().postFrameCallback(this)
                         }
@@ -186,7 +193,9 @@ class WasiGfxFrameLoopInstrumentedTest {
                     }
 
                     override fun surfaceDestroyed(holder: SurfaceHolder) {
-                        storeRef.get()?.closeGfxOnFrame()
+                        // Do not close on-frame here: a recreate during
+                        // configure would drop the stream before the guest
+                        // stream.read and trap.
                     }
                 },
             )
@@ -264,7 +273,7 @@ class WasiGfxFrameLoopInstrumentedTest {
 
     companion object {
         private const val TAG = "P010GfxFrameLoop"
-        private const val CLOSE_AFTER_VSYNC_MS = 500L
+        private const val PACER_MS = 5_000L
         private const val SURFACE_RELEASE_SETTLE_MS = 400L
         private const val SURFACE_READY_SETTLE_MS = 300L
         private const val ACTIVITY_TEARDOWN_SETTLE_MS = 500L

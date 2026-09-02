@@ -8,16 +8,9 @@ An **upstream Wasmtime** embedding for Android (JNI / ART) that hosts [Component
 
 This repository is meant to be a **citable Android host** on the Wasm component chain — not a UI toolkit, not a **rewritten** Dawn, and not a production WASI distro. The **default product/test artifact includes Dawn**; the core runtime AAR does not. See [`rfc.md`](docs/scheme/rfc.md).
 
-Status: **experimental `0.x`**. No compliant wasi:webgpu / CTS claim. Coordinate **`0.1.0`** (not pressed). Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml).
+Status: **experimental `0.x`**. No compliant wasi:webgpu / CTS claim. Coordinate **`0.1.0`** (not pressed). Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) (tag `v*` on `main` or `workflow_dispatch` from `main`, GitHub Environment `release`).
 
-## Current plan
-
-| Priority | What |
-|----------|------|
-| **Remaining** | Dawn C full bind → wasi-gfx size/resize → remaining pin input streams — [`remaining.md`](docs/agent/remaining.md) |
-| **P2** | Wasmtime pin — **named** ([`wasmtime-p2.md`](docs/agent/wasmtime-p2.md)) |
-
-Do **not** file upstream GitHub issues. Non-urgent (never auto): `context.unconfigure`, timestamped `frame-event`, Lost/Outdated `result`, multi-window.
+Do **not** file upstream GitHub issues. Non-urgent: `context.unconfigure`, timestamped `frame-event`, Lost/Outdated `result`, multi-window.
 
 ## Quick start
 
@@ -32,11 +25,17 @@ Do **not** file upstream GitHub issues. Non-urgent (never auto): `context.unconf
 .\gradlew.bat :smoke-app:connectedDebugAndroidTest
 ```
 
-Pinned versions: [`docs/build.md`](docs/build.md) (NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1`).
+NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1` — [`tech-stack.md`](docs/scheme/tech-stack.md). Workflow: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Demo
 
 Pack a guest wasm, load it with this Android runtime (`android-webgpu` or a source composite), and present on a Surface: [wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples). This repository does **not** vendor the app. `:smoke-app` here is instruments, not that demo.
+
+Out-of-tree gate (includeBuild, no mavenLocal):
+
+```powershell
+.\scripts\verify-examples-gate.ps1
+```
 
 ## Consume `0.1.0`
 
@@ -50,7 +49,7 @@ dependencies {
 
 BYO / no GPU: `…:runtime:0.1.0`. Dawn host only: `…:host-dawn:0.1.0`. Do **not** depend on `runtime-api` / `runtime-jni` directly (Maven transitives of `runtime`). Never depend on `:smoke-app`.
 
-Artifacts appear on Maven Central / GitHub Packages after a maintainer runs [`.github/workflows/publish.yml`](.github/workflows/publish.yml) with arm64 `android/jniLibs/` and (for Central) Portal + GPG secrets. Until that press, use this repo as a source checkout. Minify must consume the AAR `consumer-rules.pro`. Rebuild natives: [`scripts/build-native-android.ps1`](scripts/build-native-android.ps1).
+Artifacts appear on Maven Central / GitHub Packages after a maintainer presses `v0.1.0` on `main` (Environment `release`: full device instruments + examples cube). Until that press, use this repo as a source checkout. Minify must consume the AAR `consumer-rules.pro`. Rebuild natives: [`scripts/build-native-android.ps1`](scripts/build-native-android.ps1).
 
 GPU-backed instruments use in-tree `:host-dawn` plus published `androidx.webgpu` — [`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md).
 
@@ -73,14 +72,12 @@ English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)). Chinese siblings 
 
 | Doc | Notes |
 |-----|--------|
-| [Contributing](CONTRIBUTING.md) | PR / CI / hub freeze |
-| [Scheme index](docs/scheme/README.md) | Living plan |
+| [Contributing](CONTRIBUTING.md) | PR / CI / press |
+| [Scheme index](docs/scheme/README.md) | RFC and shape docs |
 | [RFC](docs/scheme/rfc.md) | Product / GPU host / gfx loop |
-| [Remaining](docs/agent/remaining.md) | Living close-out |
 | [Guest shape](docs/scheme/guest-shape.md) | WIT acceptance rules |
-| [P2 playbook](docs/agent/wasmtime-p2.md) | Named: Wasmtime pin |
+| [Claim table](docs/scheme/claim-010.md) | `0.1.0` product subset |
 | [Threading](docs/mapping/threading-android.md) | Android / Dawn / CM pump |
-| [Build](docs/build.md) | NDK / cargo-ndk / Gradle |
 
 Slice progress: GitHub Project and [`changelog/unreleased/`](changelog/unreleased/). Do not add a README row per slice.
 

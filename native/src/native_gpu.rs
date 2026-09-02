@@ -343,10 +343,12 @@ pub struct NativeCanvasContext {
 }
 
 /// Swapchain frame: present then recycle after GPU done + keep-3 (never same-present close).
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeCanvasFrame {
     pub surface: u32,
     pub texture: u32,
+    pub views: Vec<u32>,
+    pub command_buffers: Vec<u32>,
     pub gpu_done: bool,
 }
 
@@ -704,7 +706,9 @@ impl NativeGpuHost {
     /// C2: do not `wgpuTextureRelease` a just-presented swapchain image.
     fn is_live_swapchain_texture(&self, handle: GpuHandle) -> bool {
         let raw = handle.raw();
-        self.pending_present.is_some_and(|f| f.texture == raw)
+        self.pending_present
+            .as_ref()
+            .is_some_and(|f| f.texture == raw)
             || self.presented_ring.iter().any(|f| f.texture == raw)
     }
 
@@ -895,6 +899,35 @@ impl NativeGpuHost {
             view_formats,
             label,
         );
+        Ok(self.insert_texture(
+            dawn,
+            width,
+            height,
+            depth,
+            format,
+            usage,
+            mip,
+            sample,
+            dimension,
+            label,
+        ))
+    }
+
+    /// Insert a texture handle. Callers that already hold a Dawn slot (swapchain
+    /// acquire) must pass it here — never `create_texture` then `set_dawn`.
+    fn insert_texture(
+        &mut self,
+        dawn: DawnSlot,
+        width: u32,
+        height: u32,
+        depth: u32,
+        format: u32,
+        usage: u32,
+        mip: u32,
+        sample: u32,
+        dimension: u32,
+        label: &str,
+    ) -> GpuHandle {
         let handle = self.table.insert(ResourceKind::Texture, dawn);
         if !label.is_empty() {
             self.labels.insert(handle.raw(), label.to_string());
@@ -912,7 +945,7 @@ impl NativeGpuHost {
                 dimension,
             },
         );
-        Ok(handle)
+        handle
     }
 
     pub fn create_sampler(
@@ -1007,7 +1040,13 @@ impl NativeGpuHost {
         } else {
             0
         };
-        Ok(self.table.insert(ResourceKind::TextureView, dawn))
+        let view = self.table.insert(ResourceKind::TextureView, dawn);
+        if let Some(pending) = self.pending_present.as_mut() {
+            if pending.texture == texture.raw() {
+                pending.views.push(view.raw());
+            }
+        }
+        Ok(view)
     }
 
     pub fn resolve_shader(&mut self, shader_rep: u32) -> Result<GpuHandle, NativeGpuError> {
@@ -2076,7 +2115,10 @@ impl NativeGpuHost {
             resolved.push(cmd.raw());
         }
         dawn_c::queue_submit(self.dawn_of(queue), &dawn_cmds);
-        self.last_submit = resolved;
+        self.last_submit = resolved.clone();
+        if let Some(pending) = self.pending_present.as_mut() {
+            pending.command_buffers.extend(resolved.iter().copied());
+        }
         // H8: submit may auto-present; second guest present is a no-op.
         let _ = self.canvas_present();
         self.mark_canvas_gpu_done();
@@ -2409,7 +2451,7 @@ impl NativeGpuHost {
     }
 
     pub fn canvas_pending(&self) -> Option<NativeCanvasFrame> {
-        self.pending_present
+        self.pending_present.clone()
     }
 
     fn mark_canvas_gpu_done(&mut self) {
@@ -2418,20 +2460,31 @@ impl NativeGpuHost {
         }
     }
 
+    /// Caller has already taken `frame` out of pending / the ring (C2).
+    fn drop_canvas_frame_resources(&mut self, frame: NativeCanvasFrame) {
+        for view in frame.views {
+            if let Ok(handle) = GpuHandle::from_raw(view) {
+                let _ = NativeGpu::try_drop(self, handle);
+            }
+        }
+        if let Ok(tex) = GpuHandle::from_raw(frame.texture) {
+            let _ = NativeGpu::try_drop(self, tex);
+        }
+        for cb in frame.command_buffers {
+            if let Ok(handle) = GpuHandle::from_raw(cb) {
+                let _ = NativeGpu::try_drop(self, handle);
+            }
+        }
+    }
+
     /// Recycle only GPU-done frames older than keep-3. Never close the just-presented image.
     fn retire_canvas_frames(&mut self) {
         while self.presented_ring.len() > CANVAS_FRAMES_TO_KEEP {
-            let oldest = self.presented_ring.front().copied();
+            let oldest = self.presented_ring.front().cloned();
             match oldest {
                 Some(frame) if frame.gpu_done => {
-                    self.presented_ring.pop_front();
-                    if let Ok(tex) = GpuHandle::from_raw(frame.texture) {
-                        let slot = self.dawn_of(tex);
-                        if slot != 0 {
-                            dawn_c::release(ResourceKind::Texture, slot);
-                            self.table.set_dawn(tex, 0);
-                        }
-                    }
+                    let frame = self.presented_ring.pop_front().expect("front after peek");
+                    self.drop_canvas_frame_resources(frame);
                 }
                 _ => break,
             }
@@ -2440,13 +2493,7 @@ impl NativeGpuHost {
 
     fn discard_unpresented_canvas_frame(&mut self) {
         if let Some(frame) = self.pending_present.take() {
-            if let Ok(tex) = GpuHandle::from_raw(frame.texture) {
-                let slot = self.dawn_of(tex);
-                if slot != 0 {
-                    dawn_c::release(ResourceKind::Texture, slot);
-                    self.table.set_dawn(tex, 0);
-                }
-            }
+            self.drop_canvas_frame_resources(frame);
         }
     }
 
@@ -2615,11 +2662,13 @@ impl NativeGpuHost {
         } else {
             (width, height)
         };
-        let texture =
-            self.create_texture(device, width, height, 1, format, usage, 1, 1, 2, &[], "")?;
-        if dawn_tex != 0 {
-            self.table.set_dawn(texture, dawn_tex);
-        }
+        // Surface acquire already owns a BLAST image. `create_texture` would
+        // allocate a second full-size Dawn texture that `set_dawn` then leaked.
+        let texture = if dawn_tex != 0 {
+            self.insert_texture(dawn_tex, width, height, 1, format, usage, 1, 1, 2, "")
+        } else {
+            self.create_texture(device, width, height, 1, format, usage, 1, 1, 2, &[], "")?
+        };
         let surface = self
             .canvas_contexts
             .get(&ctx_rep)
@@ -2628,6 +2677,8 @@ impl NativeGpuHost {
         self.pending_present = Some(NativeCanvasFrame {
             surface,
             texture: texture.raw(),
+            views: Vec::new(),
+            command_buffers: Vec::new(),
             gpu_done: false,
         });
         Ok(texture)
@@ -3101,8 +3152,47 @@ mod tests {
             "keep-3 after GPU done, ring={}",
             gpu.canvas_ring_len()
         );
+        assert!(
+            gpu.handles_of_kind(ResourceKind::Texture).len() <= CANVAS_FRAMES_TO_KEEP,
+            "retired swapchain textures must leave the table, n={}",
+            gpu.handles_of_kind(ResourceKind::Texture).len()
+        );
         gpu.canvas_unconfigure(ctx.raw());
         assert!(gpu.canvas_configuration(ctx.raw()).is_none());
+    }
+
+    #[test]
+    fn canvas_view_and_command_buffer_retire_with_keep_three() {
+        let mut gpu = NativeGpuHost::new();
+        gpu.bind_canvas_native_window(0x1000, 64, 48)
+            .expect("bind window");
+        let device = gpu.resolve_device(0).expect("device");
+        let ctx = gpu
+            .canvas_configure(0, device.raw(), 0x16, 0x10, -1, -1, -1, &[])
+            .expect("configure");
+        let queue = gpu.device_queue(device).expect("interned queue");
+        for _ in 0..12 {
+            let tex = gpu.canvas_current_texture(ctx.raw()).expect("acquire");
+            let _ = gpu
+                .create_texture_view(tex, 0, 0, 0, 0, 1, 0, 1)
+                .expect("view");
+            gpu.queue_submit(queue.raw(), &[0]).expect("submit");
+        }
+        assert!(
+            gpu.handles_of_kind(ResourceKind::Texture).len() <= CANVAS_FRAMES_TO_KEEP,
+            "textures n={}",
+            gpu.handles_of_kind(ResourceKind::Texture).len()
+        );
+        assert!(
+            gpu.handles_of_kind(ResourceKind::TextureView).len() <= CANVAS_FRAMES_TO_KEEP,
+            "views n={}",
+            gpu.handles_of_kind(ResourceKind::TextureView).len()
+        );
+        assert!(
+            gpu.handles_of_kind(ResourceKind::CommandBuffer).len() <= CANVAS_FRAMES_TO_KEEP,
+            "command buffers n={}",
+            gpu.handles_of_kind(ResourceKind::CommandBuffer).len()
+        );
     }
 
     #[test]

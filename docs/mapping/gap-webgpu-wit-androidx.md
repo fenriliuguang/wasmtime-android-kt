@@ -2,7 +2,7 @@
 
 **English** | [中文](gap-webgpu-wit-androidx.zh.md)
 
-Living map for the **JNI / androidx leftover** (`GpuBackends.dawnJni()`, `id = "dawn-jni"`). Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. **Product default** is NativeGpu / Dawn C: [`gap-webgpu-native-dawn.md`](gap-webgpu-native-dawn.md). Close-out: [`../agent/remaining.md`](../agent/remaining.md). Use this table as the **mapping spec** when translating `DawnWasiWebGpuHost`. Product claim (not CTS): [`../scheme/claim-010.md`](../scheme/claim-010.md).
+Living map for the **JNI / androidx leftover** (`GpuBackends.dawnJni()`, `id = "dawn-jni"`). Pin: `wasi:webgpu@0.3.0-rc.2` ([`../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit`](../../third_party/wasi-webgpu/v0.3.0-rc.2/wit/webgpu.wit)). Dawn AAR: `androidx.webgpu:webgpu:1.0.0-alpha05`. Do not treat this page as a cut queue. **Product default** is NativeGpu / Dawn C: [`gap-webgpu-native-dawn.md`](gap-webgpu-native-dawn.md). Use this table as the **mapping spec** when translating `DawnWasiWebGpuHost`. Product claim (not CTS): [`../scheme/claim-010.md`](../scheme/claim-010.md).
 
 **Degree**
 
@@ -75,6 +75,6 @@ Recorded on Vivo V2458A (Android 16, `arm64-v8a`, Mali-G925-Immortalis MC12) wit
 | `CompositeAlphaMode::Opaque` rejected for this window | Guest should leave canvas `alpha-mode` unset (host picks a capability). Not an androidx hole in §2. |
 | `create-texture` `depth24plus` observed as `RGBA8Unorm` on this path | Guest may skip depth; mapping hole vs pin, not a P0 re-cut. |
 | GFXV instrument did not catch this | `CLOSE_AFTER_VSYNC_MS = 500`. Leak needs seconds of present. Cpu recycle: `WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest`. |
-| Cube **still hitches** after recycle / no 60 Hz cap / clocks dt / in-frame vsync drop | Host beat is 1:1 ([`gfx-hitch-checklist.md`](gfx-hitch-checklist.md)). Guest-side trig lives in the out-of-tree examples repo. |
+| Cube **still hitches** after recycle / no 60 Hz cap / clocks dt / in-frame vsync drop | Host beat is 1:1 with Choreographer. Guest-side trig lives in the out-of-tree examples repo. `#303` `create_texture`+`set_dawn` leak is closed (2026-09-02; cube >3 min at ~8.33 ms). |
 
 When androidx grows a hole’s ctor argument: copy the existing Kotlin field into Dawn in that pin-bump PR, and update this table. Do not reopen G1–G9 or F1–F9 as queues.

@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $Native = Join-Path $Root "native"
-$Out = Join-Path $Root "android\jniLibs"
+$Out = Join-Path (Join-Path $Root "android") "jniLibs"
 $Stubs = Join-Path $Native "link-stubs"
 $LibFile = "libwasmtime_android_kt.so"
 $LoadLibrary = "wasmtime_android_kt"
@@ -24,7 +24,7 @@ $Sdk = if ($env:ANDROID_SDK_ROOT) {
 } else {
     Join-Path $env:LOCALAPPDATA "Android\Sdk"
 }
-$Ndk = Join-Path $Sdk "ndk\$NdkVersion"
+$Ndk = Join-Path (Join-Path $Sdk "ndk") $NdkVersion
 if (-not (Test-Path $Ndk)) {
     throw "Android NDK not found at $Ndk. Install with: sdkmanager --install `"ndk;$NdkVersion`"."
 }
@@ -73,9 +73,20 @@ try {
 Write-Host "Installed Android natives under $Out"
 $strip = $null
 if (-not $SkipStrip) {
-    $strip = Join-Path $Ndk "toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-strip.exe"
-    if (-not (Test-Path $strip)) {
-        $strip = Get-ChildItem -Path (Join-Path $Ndk "toolchains\llvm\prebuilt") -Recurse -Filter "llvm-strip*" -ErrorAction SilentlyContinue |
+    $prebuilt = Join-Path (Join-Path $Ndk "toolchains") "llvm/prebuilt"
+    foreach ($rel in @(
+            "windows-x86_64/bin/llvm-strip.exe",
+            "linux-x86_64/bin/llvm-strip",
+            "darwin-x86_64/bin/llvm-strip"
+        )) {
+        $candidate = Join-Path $prebuilt $rel
+        if (Test-Path $candidate) {
+            $strip = $candidate
+            break
+        }
+    }
+    if (-not $strip) {
+        $strip = Get-ChildItem -Path $prebuilt -Recurse -Filter "llvm-strip*" -ErrorAction SilentlyContinue |
             Select-Object -First 1 -ExpandProperty FullName
     }
 }

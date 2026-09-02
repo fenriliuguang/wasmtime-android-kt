@@ -4,7 +4,7 @@
 
 English is canonical. Short Chinese: [`rfc.zh.md`](rfc.zh.md).
 
-This is the only product RFC. Guest ABI rules stay in [`guest-shape.md`](guest-shape.md). Remaining close-out: [`../agent/remaining.md`](../agent/remaining.md).
+This is the only product RFC. Guest ABI rules stay in [`guest-shape.md`](guest-shape.md).
 
 ## 1. Product
 
@@ -32,21 +32,21 @@ Default consume is **in-process Dawn C** (`NativeGpu`, `GpuBackends.dawn()`, id 
 | SPI | Kotlin `WebGpuBackend` stays BYO / discover. Do not grow it into a 224-method Kotlin WebGPU client (NG-3). |
 | Guest shape | Pin `[method]` names, `own`/`borrow`, `async` wraps. No new host-fixed `u32` (NG-12). No JS-style `start(callback)`. |
 
-`libwebgpu_dawn.so` is optional (Cloud / missing recipe). Table-backed NativeGpu is still NativeGpu (no ART/JNI). **Remaining:** pin methods that Dawn C can implement must call `webgpu.h` when the `.so` is loaded — [`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md).
+`libwebgpu_dawn.so` is optional (Cloud / missing recipe). Table-backed NativeGpu is still NativeGpu (no ART/JNI). Pin methods that Dawn C can implement call `webgpu.h` when the `.so` is loaded — [`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md).
 
 ## 3. Frame loop (`wasi-gfx`)
 
 Continuous present uses **`wasi-gfx:surface@0.2.0`** (vendored [`../../third_party/wasi-gfx/v0.2.0/wit/surface.wit`](../../third_party/wasi-gfx/v0.2.0/wit/surface.wit)), not a scheduler inside `wasi:webgpu`. Guest **pulls** `on-frame` as a CM `stream`. Host writes vsync on GpuThread (Choreographer 1-slot; unconsumed beats drop; `surfaceDestroyed` closes). `run` stays async. Thread contract: [`../mapping/threading-android.md`](../mapping/threading-android.md).
 
-Landed product loop: constructor + `on-frame` + `surface-webgpu` `configure` / `get-current-texture` / `present`. Hitch invariants: keep-3, Fifo, H8 no-op present.
+Landed product loop: constructor + `on-frame` + `height` / `width` / `request-set-size` / `on-resize` + `on-pointer-*` / `on-key-*` + `surface-webgpu` `configure` / `get-current-texture` / `present`. Hitch invariants: keep-3, Fifo, H8 no-op present.
 
-**Remaining (auto):** surface **size / resize** (`height`, `width`, `request-set-size`, `on-resize`) and the rest of the pin surface methods that a complete gfx guest imports (`on-pointer-*`, `on-key-*`).
+**Remaining (auto):** none.
 
 **Non-urgent (named, never auto):** `context.unconfigure`; timestamped `frame-event`; Lost/Outdated as `result`; multi-window / desktop gfx.
 
 ## 4. `0.1.0` subset (not testsuite)
 
-Claim table: [`claim-010.md`](claim-010.md). Close-out before press: [`../agent/remaining.md`](../agent/remaining.md).
+Claim table: [`claim-010.md`](claim-010.md).
 
 Must: most pin `[method]` names; Dawn path for compute / 3D / present when the `.so` is present; documented Record holes; product cli/fs/outbound TCP/HTTP body+send; gfx pull-stream loop; out-of-tree demo link + one named device row.
 
