@@ -6,7 +6,7 @@ P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do **n
 
 This queue landed the **L5 `0.1.0` product subset** ([`../scheme/rfc-l5-productization.md`](../scheme/rfc-l5-productization.md) §7–§8) plus the gfx present loop ([`../scheme/rfc-wasi-gfx-frame-loop.md`](../scheme/rfc-wasi-gfx-frame-loop.md)). Tracking needles: [`../scheme/product-010.md`](../scheme/product-010.md) (**empty**). One lane, one PR.
 
-Living auto queue is **native Dawn host** ([`native-dawn.md`](native-dawn.md)). P2 Wasmtime pin stays **named** ([`wasmtime-p2.md`](wasmtime-p2.md)). Neither is this script’s `Next:` once leftover is empty.
+Living leftover is **empty**. Native Dawn consume is **empty** ([`native-dawn.md`](native-dawn.md)). P2 Wasmtime pin stays **named** ([`wasmtime-p2.md`](wasmtime-p2.md)). Neither is this script’s `Next:` once leftover is empty.
 
 ## Goal
 
@@ -14,13 +14,7 @@ A third party can depend on the **product subset** (webgpu most-of-pin + IO/netw
 
 ## Select the cut
 
-If the user named a `P010-*` lane, keep **one** family and use this script. If they said `下一刀` / `0.1.0` and this queue is **empty**, follow [`native-dawn.md`](native-dawn.md):
-
-```powershell
-.\scripts\native-dawn-remaining.ps1
-```
-
-Otherwise:
+If the user named a `P010-*` lane, keep **one** family and use this script. If they said `下一刀` / `0.1.0` and this queue is **empty**, leftover is empty (beat sync: [`../mapping/gfx-hitch-checklist.md`](../mapping/gfx-hitch-checklist.md)). Otherwise:
 
 ```powershell
 .\scripts\product-010-remaining.ps1
@@ -28,7 +22,7 @@ Otherwise:
 
 No `pwsh`: `python3 ./scripts/product-010-remaining.py` (same flags: `--all`).
 
-Do the printed **Next:** line only. Empty leftover prints a pointer to `native-dawn-remaining`.
+Do the printed **Next:** line only. Empty leftover prints named-only queues, not a hitch playbook.
 
 ## Hard bans
 

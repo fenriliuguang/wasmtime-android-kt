@@ -7,12 +7,12 @@ Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 
 ## Now
 
-P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 is **closed**. `0.1.0` gates are **empty**. Current queue: [`../agent/native-dawn.md`](../agent/native-dawn.md) (full-pin Dawn C host) on long branch **`cursor/native-dawn-rewrite-1355`** (one commit per lane; one PR when empty). P2 Wasmtime pin is **named**. **L5 is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
+P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 is **closed**. `0.1.0` gates are **empty**. Native-dawn **consume** leftover is **empty**. Living leftover is **empty**. Beat sync: [`../mapping/gfx-hitch-checklist.md`](../mapping/gfx-hitch-checklist.md). P2 Wasmtime pin is **named**. **L5 is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
 
 | Doc | Role |
 |-----|------|
-| [`../agent/native-dawn.md`](../agent/native-dawn.md) | **Living auto:** native Dawn host (full pin) |
-| [`native-dawn.md`](native-dawn.md) | Native-dawn needles |
+| [`../agent/native-dawn.md`](../agent/native-dawn.md) | Native Dawn consume playbook (**empty**) |
+| [`native-dawn.md`](native-dawn.md) | Native-dawn needles (all landed) |
 | [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` playbook** (empty) |
 | [`claim-010.md`](claim-010.md) | **`0.1.0` claim table** (not CTS) |
 | [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | P2 playbook (named) |

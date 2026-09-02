@@ -123,11 +123,10 @@ def main() -> None:
         print("Next: (native-dawn host queue empty)")
         print("Tracking: docs/scheme/native-dawn.md")
         print(
-            "Open one PR: cursor/native-dawn-rewrite-1355 → main "
-            "(keep lane commits)."
+            "Living leftover: empty. Beat sync: docs/mapping/gfx-hitch-checklist.md."
         )
         print(
-            "Named-only: P2 Wasmtime pin, cube-only path, hitch D3, "
+            "Named-only: P2 Wasmtime pin, cube-only path, "
             "G-cmd, G-fs-full, listen/UDP, wasi-testsuite, wasmtime-wasi, "
             "this-repo 1.0 — do not auto-cut; never file upstream issues."
         )

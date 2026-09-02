@@ -3,12 +3,11 @@ name: wasmtime-p2
 description: >-
   Named Wasmtime pin queue (knowable, upgradeable, rollback-able). Use only when
   the user names P2, Wasmtime pin, wasmtime tracking, or wasmtime-p2-remaining.
-  For 下一刀 follow docs/agent/native-dawn.md.
 ---
 
 # Wasmtime pin (P2)
 
-Living auto queue is **native-dawn**: [`docs/agent/native-dawn.md`](docs/agent/native-dawn.md). This skill is **named-only**.
+This skill is **named-only**. Living leftover is **empty**.
 
 If the user named P2 / Wasmtime pin:
 

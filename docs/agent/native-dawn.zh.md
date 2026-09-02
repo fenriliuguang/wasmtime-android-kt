@@ -10,6 +10,8 @@ P0 **形状**与 P1、`0.1.0` 自动刀已关闭。本队列在**同一钉**后�
 
 下一刀：`python3 ./scripts/native-dawn-remaining.py`。只做打印的 **Next:**（一次 commit）。针在 [`../scheme/native-dawn.md`](../scheme/native-dawn.md)。
 
+consume 已打空（`ND-DEVICE` / `#299`）。立方体抖动**不是** consume 针。现行剩余：**空**。节拍同步：[`../mapping/gfx-hitch-checklist.zh.md`](../mapping/gfx-hitch-checklist.zh.md)。
+
 ## 目标
 
 默认产品路径：guest 仍见 `wasi:webgpu@0.3.0-rc.2` + `wasi-gfx`；Kotlin `Store` / `Linker` / `WebGpuBackend` 仍是壳与 BYO；热路径 **不**再 `ExperimentalHostCallbacks` → androidx JNI。

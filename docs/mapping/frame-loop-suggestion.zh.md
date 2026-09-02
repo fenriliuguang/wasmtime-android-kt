@@ -50,7 +50,7 @@ world windowed-webgpu {
 }
 ```
 
-`run` 必须 **async**。Host `on-frame`（P010-GFXH）返回 CM `stream<frame-event>`；vsync 载荷在名为 `GpuThread` 的 helper 线程上产生。钉里 `on-frame` 是同步 `func`（不是 `async func`）；本仓未开 Wasmtime stackful CM async。present / `surface-webgpu` 已 P010-GFXL（两帧预缓冲，非 vsync 节拍）。立方体抖动排查：[`gfx-hitch-checklist.zh.md`](gfx-hitch-checklist.zh.md)。
+`run` 必须 **async**。Host `on-frame`（P010-GFXH）返回 CM `stream<frame-event>`；vsync 载荷在名为 `GpuThread` 的 helper 线程上产生。钉里 `on-frame` 是同步 `func`（不是 `async func`）；本仓未开 Wasmtime stackful CM async。present / `surface-webgpu` 已 P010-GFXL（两帧预缓冲，非 vsync 节拍）。节拍同步：[`gfx-hitch-checklist.zh.md`](gfx-hitch-checklist.zh.md)。
 
 ## 4. MoonBit guest（示意）
 

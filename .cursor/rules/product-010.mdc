@@ -1,14 +1,14 @@
 ---
-description: CLOSED 0.1.0 product subset — redirect 下一刀 to native-dawn
+description: CLOSED 0.1.0 product subset — leftover empty
 alwaysApply: true
 ---
 
 # `0.1.0` product gates (empty)
 
-`0.1.0` / P010 leftover named as that playbook only. For 下一刀 / GPU host / Dawn consume rewrite, stay on `cursor/native-dawn-rewrite-1355`, read `docs/agent/native-dawn.md`, and run `python3 ./scripts/native-dawn-remaining.py` (one commit; no PR until the queue is empty).
+`0.1.0` / P010 leftover named as that playbook only. Living auto leftover is **empty**. Native-dawn consume leftover is empty. Beat sync has **no leftover** in this repo (`docs/mapping/gfx-hitch-checklist.md`).
 
 P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, G-dev, or wasi:webgpu G1–G9 / F1–F9 / guest-pipeline / WG-6.
 
-- `0.1.0` remaining is empty: `python3 ./scripts/product-010-remaining.py` prints a pointer to native-dawn.
+- `0.1.0` remaining is empty: `python3 ./scripts/product-010-remaining.py`.
 - Do not invent extra `0.1.0` gates. Do not add `wasmtime-wasi` without a size + Android thread note.
 - Never file GitHub issues (or Discussions-as-issues) on Wasmtime, WASI, or any other upstream. No `gh issue create`.
