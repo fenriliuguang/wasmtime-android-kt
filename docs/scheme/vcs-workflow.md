@@ -2,7 +2,7 @@
 
 **English** | [中文](vcs-workflow.zh.md)
 
-Companion: [`long-term-plan.md`](long-term-plan.md) · [`../contribute.md`](../contribute.md).  
+Companion: [`charter.md`](charter.md) · [`../contribute.md`](../contribute.md).  
 Goal: reviewable, revertible, CI-backed; ready for external PRs.
 
 Drafted 2026-08-11.
@@ -12,7 +12,7 @@ Drafted 2026-08-11.
 | Question | Decision |
 |----------|----------|
 | Default integration | **`main` + short-lived feature branches + PR** |
-| Long-lived parallel lines (`feature/stream`, `feature/webgpu`, …) | **No**, except the **native-dawn rewrite** branch in §3 |
+| Long-lived parallel lines (`feature/stream`, `feature/webgpu`, …) | **No** |
 | What “parallel” means | A **few** short-lived PRs at once (usually ≤2–3), each with its own DoD, merging often |
 | Merge unit | One PR, one thing; independently revertible |
 | `main` | Always buildable; unfinished work is not hidden on a long fork |
@@ -37,13 +37,11 @@ Strategic parallelism (webgpu / stream / clocks) maps to **scheduled short PRs**
 | `fix/<issue>` | Bug | Delete on merge |
 | `chore/<topic>` | Tooling / tracking refresh | Delete on merge |
 
-**Exception (native Dawn host, 2026-08-31):** one named long-lived line **`cursor/native-dawn-rewrite-1355`**. Playbook [`../agent/native-dawn.md`](../agent/native-dawn.md): one lane = one commit; **no PR until** `native-dawn-remaining.py` is empty; then **one** PR to `main` that **keeps** those commits. Not a second trunk for other work. Do not open per-lane PRs on this queue.
-
 Forbidden:
 
-- Ownerless standing `feature/*` as a second trunk (the native-dawn exception is the named branch above only)  
-- Wasmtime **major** bumps on a feature branch (own PR + [`wasmtime-tracking.md`](wasmtime-tracking.md) RFC)  
-- Using a branch instead of a feature flag to hide a breaking half-product for a long time (`0.x` may break APIs, but must be reviewable and changelog’d) — native-dawn is an explicit full-pin rewrite, not a hidden product
+- Ownerless standing `feature/*` as a second trunk
+- Wasmtime **major** bumps on a feature branch (own PR + [`wasmtime-tracking.md`](wasmtime-tracking.md) RFC)
+- Using a branch instead of a feature flag to hide a breaking half-product for a long time (`0.x` may break APIs, but must be reviewable and changelog’d)
 
 ## 4. PR rules
 
@@ -100,12 +98,11 @@ After merging the PR that lands this checklist: enable **Require status checks �
 
 | Action | Decision |
 |--------|----------|
-| Create standing `feature/stream`, `feature/webgpu`, `feature/clocks` | **Do not** (native-dawn uses **`cursor/native-dawn-rewrite-1355` only**) |
-| Landed slices / next cut | **Do not append lists here.** Live: [Project](https://github.com/users/fenriliuguang/projects/1); playbook: [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md); P1 surface (archived): [`../archive/p1-wasi-p3-surface.md`](../archive/p1-wasi-p3-surface.md); shipped behavior: [`changelog/unreleased/`](../../changelog/unreleased/) |
+| Create standing `feature/stream`, `feature/webgpu`, `feature/clocks` | **Do not** |
+| Landed slices / next cut | **Do not append lists here.** Live: [`../agent/remaining.md`](../agent/remaining.md); P2 (named): [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md); shipped behavior: [`changelog/unreleased/`](../../changelog/unreleased/) |
 | Hot files | Still avoid two uncoordinated PRs editing the same `native/` source (especially linker registration); freeze docs/CI hubs per §4 |
 
 ## 8. Revisions
 
 - Small: PR + `changelog/unreleased/` fragment.  
-- Changing “no long-lived parallel lines”, hub freeze, or merge policy: update this page and leave a link from the long-term plan map.  
-- 2026-08-31: native-dawn rewrite is one long-lived branch + one final PR ([`../agent/native-dawn.md`](../agent/native-dawn.md)).
+- Changing “no long-lived parallel lines”, hub freeze, or merge policy: update this page.

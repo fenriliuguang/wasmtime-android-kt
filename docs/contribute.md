@@ -75,7 +75,7 @@ Constraints:
 | Toolchain / ABI pins | `docs/build.md`, `scheme/tech-stack.md`, `changelog/unreleased/` fragment |
 | Public API / error types | `scheme/api-stability.md`, `mapping/errors.md`, fragment |
 | GPU host | [`blocked-gpu-host.md`](blocked-gpu-host.md) — vendor Host Kotlin; Dawn via `androidx.webgpu` |
-| WASI / webgpu scope | [`agent/product-010.md`](agent/product-010.md); P0 closed: [`archive/p0-wasi-webgpu.md`](archive/p0-wasi-webgpu.md); P1 closed: [`archive/p1-wasi-p3.md`](archive/p1-wasi-p3.md); leftovers: [`mapping/gap-wasi-p3-wit.md`](mapping/gap-wasi-p3-wit.md); L5: [`scheme/rfc-l5-productization.md`](scheme/rfc-l5-productization.md) |
+| WASI / webgpu scope | [`agent/remaining.md`](agent/remaining.md); leftovers: [`mapping/gap-wasi-p3-wit.md`](mapping/gap-wasi-p3-wit.md); policy: [`scheme/rfc.md`](scheme/rfc.md) |
 
 ## 5. PR summary
 
@@ -89,13 +89,12 @@ Full rules: [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md).
 
 ## 6. Links
 
-- [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md) — branches / PRs  
-- [`scheme/long-term-plan.md`](scheme/long-term-plan.md)  
-- [`build.md`](build.md)  
-- [`mapping/artifacts.md`](mapping/artifacts.md)  
-- [`agent/wasmtime-p2.md`](agent/wasmtime-p2.md) — P2 Wasmtime pin  
-- [`mapping/gap-webgpu-wit-androidx.md`](mapping/gap-webgpu-wit-androidx.md) — P0 WIT ↔ androidx holes  
-- [`mapping/gap-wasi-p3-wit.md`](mapping/gap-wasi-p3-wit.md) — P1 leftover WIT shapes (named-only)  
-- [`archive/p0-wasi-webgpu.md`](archive/p0-wasi-webgpu.md) — P0 close-out  
-- [`archive/p1-wasi-p3.md`](archive/p1-wasi-p3.md) — P1 close-out  
-- [`../archive/README.md`](archive/README.md) — historical M0–M5 / P0 playbooks  
+- [`scheme/vcs-workflow.md`](scheme/vcs-workflow.md) — branches / PRs
+- [`scheme/charter.md`](scheme/charter.md)
+- [`scheme/rfc.md`](scheme/rfc.md)
+- [`build.md`](build.md)
+- [`mapping/artifacts.md`](mapping/artifacts.md)
+- [`agent/remaining.md`](agent/remaining.md) — living close-out
+- [`agent/wasmtime-p2.md`](agent/wasmtime-p2.md) — P2 Wasmtime pin (named)
+- [`mapping/gap-webgpu-native-dawn.md`](mapping/gap-webgpu-native-dawn.md)
+- [`mapping/gap-wasi-p3-wit.md`](mapping/gap-wasi-p3-wit.md) — WASI named leftovers  

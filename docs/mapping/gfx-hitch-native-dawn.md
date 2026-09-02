@@ -2,7 +2,7 @@
 
 **English** | [中文](gfx-hitch-native-dawn.zh.md)
 
-Not a cut queue. Not a native-dawn consume lane. Device A/B after NativeGpu wired `wgpu*` (2026-09-01). Do not vendor the demo. Do not file upstream GitHub issues. Named-only hitch work (D3 present timestamp / skip-present) stays named — see [`../agent/native-dawn.md`](../agent/native-dawn.md).
+Not a cut queue. Device A/B after NativeGpu wired `wgpu*` (2026-09-01). Do not vendor the demo. Do not file upstream GitHub issues. Named-only hitch work stays named. Living leftover: [`../agent/remaining.md`](../agent/remaining.md).
 
 androidx + `host-dawn` JNI table: [`gfx-hitch-checklist.md`](gfx-hitch-checklist.md). IDs **C / H / D** are reused so we do not renumber. New Dawn C rows are **N\***.
 

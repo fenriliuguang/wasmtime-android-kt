@@ -2,4 +2,4 @@
 
 [English](gap-webgpu-native-dawn.md) | **中文**
 
-NativeGpu（进程内 Dawn C）消费路径的活表。与英文冲突时以英文为准。JNI 遗留：[`gap-webgpu-wit-androidx.zh.md`](gap-webgpu-wit-androidx.zh.md)。手册：[`../agent/native-dawn.zh.md`](../agent/native-dawn.zh.md)。ND-DEVICE：具名仪器走 `GpuBackends.dawn()`；立方体只是演示行。Cloud 无真机。节拍同步：[`gfx-hitch-checklist.zh.md`](gfx-hitch-checklist.zh.md)。
+与英文冲突时以英文为准。`.so` 在时：boot + cube 热路径为 **Dawn**。其余 pin 方法（texture / compute / copy / map / query / bundle / error / 深度混合 / 索引绘制等）仍是 **Table**，收口见 BIND。Record 洞：compilation-hints、color-space、tone-mapping。

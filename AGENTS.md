@@ -1,18 +1,13 @@
 # Agent notes
 
-**Living auto leftover:** **empty**. Native-dawn consume leftover is **empty**. `0.1.0` product gates are **empty**. P2 Wasmtime pin is **named-only**. Beat sync (`postGfxVsync` → NativeGpu present) has **no leftover** in this repo ([`docs/mapping/gfx-hitch-checklist.md`](docs/mapping/gfx-hitch-checklist.md)).
+**Living leftover:** Dawn C full bind → wasi-gfx size/resize → remaining pin input streams — [`docs/agent/remaining.md`](docs/agent/remaining.md). Run `python3 ./scripts/remaining.py` (one printed **Next:** only).
 
-**Native Dawn consume** leftover is **empty** ([`docs/agent/native-dawn.md`](docs/agent/native-dawn.md); skill `native-dawn` only if the user names `ND-*`). Cube / out-of-tree demo is evidence only, not consume DoD.
+Product coordinate is **`0.1.0`** (not pressed). Do not bump the GAV for a consume-path change.
 
-**`0.1.0` product gates** are **empty** ([`docs/agent/product-010.md`](docs/agent/product-010.md); skill `product-010` only if the user names `P010-*`).
+P2 Wasmtime pin is **named-only** ([`docs/agent/wasmtime-p2.md`](docs/agent/wasmtime-p2.md)). Do not run it for 下一刀.
 
-P2 Wasmtime pin is **named-only** ([`docs/agent/wasmtime-p2.md`](docs/agent/wasmtime-p2.md); skill `wasmtime-p2`). Do not run it for 下一刀.
-
-P0 `wasi:webgpu` **shape** is **closed**. Do not re-cut guest-pipeline P1–P5, leftover F1–F9, Dawn consume G1–G9, or WG-6 **as those queues**. Default consume rewrite is **native-dawn** (same pin, Dawn C). Close-out: [`docs/archive/p0-wasi-webgpu.md`](docs/archive/p0-wasi-webgpu.md). WIT ↔ androidx (JNI leftover): [`docs/mapping/gap-webgpu-wit-androidx.md`](docs/mapping/gap-webgpu-wit-androidx.md).
-
-P1 WASI 0.3 official-shape is **closed**. Do not re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, or G-dev. Close-out: [`docs/archive/p1-wasi-p3.md`](docs/archive/p1-wasi-p3.md). `0.1.0` backlog vs named-only: [`docs/mapping/gap-wasi-p3-wit.md`](docs/mapping/gap-wasi-p3-wit.md).
-
-- Hub freeze, narrow tests, and file whitelist are in the empty native-dawn / 0.1.0 playbooks (named `ND-*` / `P010-*` only) — do not rediscover them from RFCs or by reading `cm.rs` whole.
+- Guest WIT names stay. Reuse `cm.rs` lowering. Grep then Read ~80 lines. Do not reimplement `exp_*` JNI.
+- Named-only (never auto): `context.unconfigure`, timestamped `frame-event`, Lost/Outdated `result`, multi-window, G-cmd, G-fs-full, listen/UDP, wasi-testsuite, `wasmtime-wasi`, CTS, this-repo 1.0.
 - **Never file upstream GitHub issues** (or Discussions used as an issue tracker) on WASI, Wasmtime, wasi-webgpu, or any other upstream. No `gh issue create`. Record Android facts only in this repo.
 
 ## Cursor Cloud specific instructions

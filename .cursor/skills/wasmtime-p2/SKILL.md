@@ -7,7 +7,7 @@ description: >-
 
 # Wasmtime pin (P2)
 
-This skill is **named-only**. Living leftover is **empty**.
+This skill is **named-only**. Living leftover: [`docs/agent/remaining.md`](docs/agent/remaining.md).
 
 If the user named P2 / Wasmtime pin:
 
