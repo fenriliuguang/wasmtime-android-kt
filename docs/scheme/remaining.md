@@ -10,7 +10,6 @@ Needles stay in **this file**. `python3 ./scripts/remaining.py` prints the next 
 
 | Lane | Needle (delete when landed) |
 |------|-----------------------------|
-| BIND | `gap: remaining bind pending` |
 | GFX-SIZE | `gap: remaining gfx-size pending` |
 | GFX-PIN | `gap: remaining gfx-pin pending` |
 

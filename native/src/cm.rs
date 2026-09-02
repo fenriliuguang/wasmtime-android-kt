@@ -3613,6 +3613,11 @@ pub(crate) fn define_host(
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .destroy_rep(crate::native_gpu::ResourceKind::Device, device_rep)
+                            .map_err(native_gpu_error)?;
                         return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -3914,7 +3919,11 @@ pub(crate) fn define_host(
                 |mut caller, (device, filter): (Resource<GpuDevice>, GpuErrorFilter)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = filter;
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .push_error_scope(device_rep, filter.to_host_u32() + 1)
+                            .map_err(native_gpu_error)?;
                         return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -3946,11 +3955,15 @@ pub(crate) fn define_host(
                             Ok(access.data_mut().webgpu_backend() == GpuBackend::NativeGpu)
                         })?;
                         if native {
-                            let (tx, rx) = oneshot::channel::<()>();
-                            std::thread::spawn(move || {
-                                let _ = tx.send(());
-                            });
-                            let _ = rx.await;
+                            accessor.with(|mut access| -> wasmtime::Result<()> {
+                                let device_rep = access.data_mut().table.get(&device)?.rep;
+                                access
+                                    .data_mut()
+                                    .require_native_gpu()?
+                                    .pop_error_scope(device_rep)
+                                    .map_err(native_gpu_error)?;
+                                Ok(())
+                            })?;
                             return Ok((Ok::<Option<Resource<GpuError>>, PopErrorScopeError>(
                                 None,
                             ),));
@@ -4730,6 +4743,11 @@ pub(crate) fn define_host(
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .destroy_rep(crate::native_gpu::ResourceKind::Texture, texture_rep)
+                            .map_err(native_gpu_error)?;
                         return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -4754,7 +4772,13 @@ pub(crate) fn define_host(
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((1u32,));
+                        let w = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .texture_meta(texture_rep)
+                            .map_err(native_gpu_error)?
+                            .width;
+                        return Ok((w,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
@@ -4778,7 +4802,13 @@ pub(crate) fn define_host(
                 |mut caller, (texture,): (Resource<GpuTexture>,)| {
                     let texture_rep = caller.data_mut().table.get(&texture)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((1u32,));
+                        let h = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .texture_meta(texture_rep)
+                            .map_err(native_gpu_error)?
+                            .height;
+                        return Ok((h,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_texture = if texture_rep == 0 {
@@ -5191,8 +5221,13 @@ pub(crate) fn define_host(
                             accessor.with(|mut access| -> wasmtime::Result<()> {
                                 let buffer_rep = access.data_mut().table.get(&buffer)?.rep;
                                 let gpu = access.data_mut().require_native_gpu()?;
-                                let _ = (mode, offset, size);
-                                gpu.buffer_map_async(buffer_rep).map_err(native_gpu_error)?;
+                                gpu.buffer_map_async_range(
+                                    buffer_rep,
+                                    mode.to_webgpu_u32(),
+                                    offset.unwrap_or(0),
+                                    size.unwrap_or(0),
+                                )
+                                .map_err(native_gpu_error)?;
                                 Ok(())
                             })?;
                             return Ok((Ok::<(), MapAsyncError>(()),));
@@ -5344,6 +5379,11 @@ pub(crate) fn define_host(
                 |mut caller, (buffer,): (Resource<GpuBuffer>,)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .destroy_rep(crate::native_gpu::ResourceKind::Buffer, buffer_rep)
+                            .map_err(native_gpu_error)?;
                         return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -7652,7 +7692,19 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .encoder_copy(encoder_rep, Some(source_rep), Some(dest_rep), None, None)
+                            .encoder_copy_sized(
+                                encoder_rep,
+                                Some(source_rep),
+                                Some(dest_rep),
+                                None,
+                                None,
+                                source_offset.unwrap_or(0),
+                                destination_offset.unwrap_or(0),
+                                size.unwrap_or(0),
+                                1,
+                                1,
+                                1,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -7698,7 +7750,19 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .encoder_copy(encoder_rep, Some(source_rep), None, None, Some(dest_rep))
+                            .encoder_copy_sized(
+                                encoder_rep,
+                                Some(source_rep),
+                                None,
+                                None,
+                                Some(dest_rep),
+                                0,
+                                0,
+                                0,
+                                copy_size.width,
+                                copy_size.height.unwrap_or(1),
+                                copy_size.depth_or_array_layers.unwrap_or(1),
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -7744,7 +7808,19 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .encoder_copy(encoder_rep, None, Some(dest_rep), Some(source_rep), None)
+                            .encoder_copy_sized(
+                                encoder_rep,
+                                None,
+                                Some(dest_rep),
+                                Some(source_rep),
+                                None,
+                                0,
+                                0,
+                                0,
+                                copy_size.width,
+                                copy_size.height.unwrap_or(1),
+                                copy_size.depth_or_array_layers.unwrap_or(1),
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -7790,7 +7866,19 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .encoder_copy(encoder_rep, None, None, Some(source_rep), Some(dest_rep))
+                            .encoder_copy_sized(
+                                encoder_rep,
+                                None,
+                                None,
+                                Some(source_rep),
+                                Some(dest_rep),
+                                0,
+                                0,
+                                0,
+                                copy_size.width,
+                                copy_size.height.unwrap_or(1),
+                                copy_size.depth_or_array_layers.unwrap_or(1),
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -7835,7 +7923,12 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .encoder_clear_buffer(encoder_rep, buffer_rep)
+                            .encoder_clear_buffer_range(
+                                encoder_rep,
+                                buffer_rep,
+                                offset.unwrap_or(0),
+                                size.unwrap_or(0),
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -7888,7 +7981,14 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .encoder_resolve_query_set(encoder_rep, query_rep, dest_rep)
+                            .encoder_resolve_query_set_range(
+                                encoder_rep,
+                                query_rep,
+                                first_query,
+                                query_count,
+                                dest_rep,
+                                destination_offset,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -8657,7 +8757,15 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .write_texture_with_copy(queue_rep, texture_rep, payload)
+                            .write_texture_described(
+                                queue_rep,
+                                texture_rep,
+                                payload,
+                                bytes_per_row,
+                                width,
+                                height,
+                                size.depth_or_array_layers.unwrap_or(1).max(1),
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -8950,7 +9058,9 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_render_pass(pass_rep)
+                            .render_pass_set_viewport(
+                                pass_rep, x, y, width, height, min_depth, max_depth,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -8991,7 +9101,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_render_pass(pass_rep)
+                            .render_pass_set_scissor(pass_rep, x, y, width, height)
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -9025,7 +9135,9 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_render_pass(pass_rep)
+                            .render_pass_set_blend_constant(
+                                pass_rep, color.r, color.g, color.b, color.a,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -9059,7 +9171,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_render_pass(pass_rep)
+                            .render_pass_set_stencil_reference(pass_rep, reference)
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -9103,7 +9215,13 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_render_pass(pass_rep)
+                            .render_pass_set_index_buffer(
+                                pass_rep,
+                                buffer_rep,
+                                format_u32,
+                                offset.unwrap_or(0),
+                                size.unwrap_or(0),
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -9157,7 +9275,14 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .render_pass_draw(pass_rep)
+                            .render_pass_draw_indexed(
+                                pass_rep,
+                                index_count,
+                                instance_count.unwrap_or(1),
+                                first_index.unwrap_or(0),
+                                base_vertex.unwrap_or(0),
+                                first_instance.unwrap_or(0),
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -9203,7 +9328,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .render_pass_draw(pass_rep)
+                            .render_pass_draw_indirect(pass_rep, buffer_rep, offset)
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -9241,7 +9366,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .render_pass_draw(pass_rep)
+                            .render_pass_draw_indexed_indirect(pass_rep, buffer_rep, offset)
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -10466,7 +10591,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_compute_pass(pass_rep)
+                            .compute_pass_set_pipeline(pass_rep, pipeline_rep)
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -10510,7 +10635,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_compute_pass(pass_rep)
+                            .compute_pass_set_bind_group(pass_rep, index, bind_group_rep)
                             .map_err(native_gpu_error)?;
                         return Ok((Ok::<(), SetBindGroupError>(()),));
                     }
@@ -10553,7 +10678,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .compute_pass_dispatch(pass_rep)
+                            .compute_pass_dispatch_xyz(pass_rep, x, y.unwrap_or(1), z.unwrap_or(1))
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -10597,7 +10722,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .compute_pass_dispatch(pass_rep)
+                            .compute_pass_dispatch_indirect(pass_rep, buffer_rep, offset)
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }

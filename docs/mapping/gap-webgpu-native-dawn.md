@@ -21,9 +21,9 @@ Living map for the **in-process Dawn C** path (`NativeGpu`). Pin: `wasi:webgpu@0
 |--------|-------------------|-----------|
 | `request-adapter` / `request-device` / `queue` | **Dawn** (Vulkan adapter; guest features/limits/power ignored) | **Table** |
 | create-buffer / shader-module / bind-group / layouts / render-pipeline | **Dawn** (BGL buffer types only; no blend / depth-stencil / MSAA / constants on the C ctor) | **Table** |
-| command encoder / begin-render-pass (color) / draw / set-pipeline / set-bind-group / set-vertex-buffer / finish / submit / write-buffer | **Dawn** | **Table** |
+| command encoder / begin-render-pass (color + optional depth) / draw / set-pipeline / set-bind-group / set-vertex-buffer / finish / submit / write-buffer | **Dawn** | **Table** |
+| create-texture / sampler / compute pipeline / compute pass / copies / clear / query-set / render-bundle / map-async / write-texture / work-done / indexed-indirect / viewport / scissor / blend / stencil / error scopes / adapter features / destroy | **Dawn** | **Table** |
 | Android `ANativeWindow` surface / configure / get-current-texture / present | **Dawn** (Fifo; color-space / tone-mapping **Record**) | **Table** (keep-3 / H8 still) |
-| create-texture / sampler / compute pipeline / compute pass / copies / clear / query-set / render-bundle / map-async / write-texture / work-done / indexed-indirect / viewport / error scopes / lost / compilation-info / adapter features | **Table** (BIND leftover) | **Table** |
 
 ## 2. Record holes (not BIND)
 

@@ -1,4 +1,4 @@
-//! Dawn C `webgpu.h` loader + cube-path wrappers.
+//! Dawn C `webgpu.h` loader + pin-method wrappers.
 //!
 //! `libwebgpu_dawn.so` is optional (Cloud / missing recipe). Desktop tests stay
 //! table-backed. This module must not import `jni`.
@@ -37,6 +37,16 @@ pub const ALPHA_AUTO: WgpuEnum = 0x0000_0000;
 const FORMAT_RGBA8_UNORM: WgpuEnum = 0x0000_0016;
 const USAGE_RENDER_ATTACHMENT: WgpuFlags = 1 << 4;
 const COLOR_WRITE_ALL: WgpuFlags = 0xF;
+const WGPU_COPY_STRIDE_UNDEFINED: u32 = u32::MAX;
+const WGPU_QUERY_INDEX_UNDEFINED: u32 = u32::MAX;
+const SAMPLER_FILTERING: WgpuEnum = 0x0000_0001;
+const SAMPLER_NON_FILTERING: WgpuEnum = 0x0000_0002;
+const SAMPLER_COMPARISON: WgpuEnum = 0x0000_0003;
+const TEX_SAMPLE_FLOAT: WgpuEnum = 0x0000_0001;
+const TEX_SAMPLE_UNFILTERABLE: WgpuEnum = 0x0000_0002;
+const TEX_SAMPLE_DEPTH: WgpuEnum = 0x0000_0003;
+const TEX_SAMPLE_SINT: WgpuEnum = 0x0000_0004;
+const TEX_SAMPLE_UINT: WgpuEnum = 0x0000_0005;
 const BINDING_UNIFORM: WgpuEnum = 0x0000_0002;
 const BINDING_STORAGE: WgpuEnum = 0x0000_0003;
 const BINDING_RO_STORAGE: WgpuEnum = 0x0000_0004;
@@ -423,6 +433,145 @@ struct TextureViewDesc {
     usage: WgpuFlags,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct Extent3D {
+    width: u32,
+    height: u32,
+    depth: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct Origin3D {
+    x: u32,
+    y: u32,
+    z: u32,
+}
+
+#[repr(C)]
+struct TextureDesc {
+    next_in_chain: *mut Chained,
+    label: StringView,
+    usage: WgpuFlags,
+    dimension: WgpuEnum,
+    size: Extent3D,
+    format: WgpuEnum,
+    mip_level_count: u32,
+    sample_count: u32,
+    view_format_count: usize,
+    view_formats: *const WgpuEnum,
+}
+
+#[repr(C)]
+struct SamplerDesc {
+    next_in_chain: *mut Chained,
+    label: StringView,
+    address_mode_u: WgpuEnum,
+    address_mode_v: WgpuEnum,
+    address_mode_w: WgpuEnum,
+    mag_filter: WgpuEnum,
+    min_filter: WgpuEnum,
+    mipmap_filter: WgpuEnum,
+    lod_min_clamp: f32,
+    lod_max_clamp: f32,
+    compare: WgpuEnum,
+    max_anisotropy: u16,
+}
+
+#[repr(C)]
+struct ComputeState {
+    next_in_chain: *mut Chained,
+    module: WgpuObj,
+    entry_point: StringView,
+    constant_count: usize,
+    constants: *const c_void,
+}
+
+#[repr(C)]
+struct ComputePipelineDesc {
+    next_in_chain: *mut Chained,
+    label: StringView,
+    layout: WgpuObj,
+    compute: ComputeState,
+}
+
+#[repr(C)]
+struct QuerySetDesc {
+    next_in_chain: *mut Chained,
+    label: StringView,
+    ty: WgpuEnum,
+    count: u32,
+}
+
+#[repr(C)]
+struct TimestampWrites {
+    next_in_chain: *mut Chained,
+    query_set: WgpuObj,
+    beginning: u32,
+    end: u32,
+}
+
+#[repr(C)]
+struct ComputePassDesc {
+    next_in_chain: *mut Chained,
+    label: StringView,
+    timestamp_writes: *const TimestampWrites,
+}
+
+#[repr(C)]
+struct TexelCopyBufferLayout {
+    offset: u64,
+    bytes_per_row: u32,
+    rows_per_image: u32,
+}
+
+#[repr(C)]
+struct TexelCopyBufferInfo {
+    layout: TexelCopyBufferLayout,
+    buffer: WgpuObj,
+}
+
+#[repr(C)]
+struct TexelCopyTextureInfo {
+    texture: WgpuObj,
+    mip_level: u32,
+    origin: Origin3D,
+    aspect: WgpuEnum,
+}
+
+#[repr(C)]
+struct RenderBundleEncDesc {
+    next_in_chain: *mut Chained,
+    label: StringView,
+    color_format_count: usize,
+    color_formats: *const WgpuEnum,
+    depth_stencil_format: WgpuEnum,
+    sample_count: u32,
+    depth_read_only: WgpuBool,
+    stencil_read_only: WgpuBool,
+}
+
+#[repr(C)]
+struct RenderBundleDesc {
+    next_in_chain: *mut Chained,
+    label: StringView,
+}
+
+#[repr(C)]
+struct DepthStencilAtt {
+    next_in_chain: *mut Chained,
+    view: WgpuObj,
+    depth_load_op: WgpuEnum,
+    depth_store_op: WgpuEnum,
+    depth_clear: f32,
+    depth_read_only: WgpuBool,
+    stencil_load_op: WgpuEnum,
+    stencil_store_op: WgpuEnum,
+    stencil_clear: u32,
+    stencil_read_only: WgpuBool,
+}
+
 macro_rules! procs {
     ($($name:ident : $ty:ty),+ $(,)?) => {
         pub struct Api {
@@ -464,6 +613,61 @@ type FnPassSetVb = unsafe extern "C" fn(WgpuObj, u32, WgpuObj, u64, u64);
 type FnPassDraw = unsafe extern "C" fn(WgpuObj, u32, u32, u32, u32);
 type FnPassEnd = unsafe extern "C" fn(WgpuObj);
 type FnRelease = unsafe extern "C" fn(WgpuObj);
+type FnCreateTexture = unsafe extern "C" fn(WgpuObj, *const TextureDesc) -> WgpuObj;
+type FnCreateSampler = unsafe extern "C" fn(WgpuObj, *const SamplerDesc) -> WgpuObj;
+type FnCreateCp = unsafe extern "C" fn(WgpuObj, *const ComputePipelineDesc) -> WgpuObj;
+type FnCreateQs = unsafe extern "C" fn(WgpuObj, *const QuerySetDesc) -> WgpuObj;
+type FnCreateBundleEnc = unsafe extern "C" fn(WgpuObj, *const RenderBundleEncDesc) -> WgpuObj;
+type FnBeginCp = unsafe extern "C" fn(WgpuObj, *const ComputePassDesc) -> WgpuObj;
+type FnCopyB2B = unsafe extern "C" fn(WgpuObj, WgpuObj, u64, WgpuObj, u64, u64);
+type FnCopyB2T = unsafe extern "C" fn(
+    WgpuObj,
+    *const TexelCopyBufferInfo,
+    *const TexelCopyTextureInfo,
+    *const Extent3D,
+);
+type FnCopyT2B = unsafe extern "C" fn(
+    WgpuObj,
+    *const TexelCopyTextureInfo,
+    *const TexelCopyBufferInfo,
+    *const Extent3D,
+);
+type FnCopyT2T = unsafe extern "C" fn(
+    WgpuObj,
+    *const TexelCopyTextureInfo,
+    *const TexelCopyTextureInfo,
+    *const Extent3D,
+);
+type FnClearBuf = unsafe extern "C" fn(WgpuObj, WgpuObj, u64, u64);
+type FnResolveQs = unsafe extern "C" fn(WgpuObj, WgpuObj, u32, u32, WgpuObj, u64);
+type FnWriteTex = unsafe extern "C" fn(
+    WgpuObj,
+    *const TexelCopyTextureInfo,
+    *const u8,
+    usize,
+    *const TexelCopyBufferLayout,
+    *const Extent3D,
+);
+type FnWorkDone = unsafe extern "C" fn(WgpuObj, CallbackInfo) -> Future;
+type FnMapAsync = unsafe extern "C" fn(WgpuObj, WgpuFlags, usize, usize, CallbackInfo) -> Future;
+type FnUnmap = unsafe extern "C" fn(WgpuObj);
+type FnMappedRange = unsafe extern "C" fn(WgpuObj, usize, usize) -> *const u8;
+type FnDestroy = unsafe extern "C" fn(WgpuObj);
+type FnHasFeature = unsafe extern "C" fn(WgpuObj, WgpuEnum) -> WgpuBool;
+type FnViewport = unsafe extern "C" fn(WgpuObj, f32, f32, f32, f32, f32, f32);
+type FnScissor = unsafe extern "C" fn(WgpuObj, u32, u32, u32, u32);
+type FnBlend = unsafe extern "C" fn(WgpuObj, *const Color);
+type FnStencil = unsafe extern "C" fn(WgpuObj, u32);
+type FnSetIndex = unsafe extern "C" fn(WgpuObj, WgpuObj, WgpuEnum, u64, u64);
+type FnDrawIndexed = unsafe extern "C" fn(WgpuObj, u32, u32, u32, i32, u32);
+type FnDrawIndirect = unsafe extern "C" fn(WgpuObj, WgpuObj, u64);
+type FnOcclusion = unsafe extern "C" fn(WgpuObj, u32);
+type FnExecBundles = unsafe extern "C" fn(WgpuObj, usize, *const WgpuObj);
+type FnDispatch = unsafe extern "C" fn(WgpuObj, u32, u32, u32);
+type FnDispatchIndirect = unsafe extern "C" fn(WgpuObj, WgpuObj, u64);
+type FnBundleFinish = unsafe extern "C" fn(WgpuObj, *const RenderBundleDesc) -> WgpuObj;
+type FnGetBgl = unsafe extern "C" fn(WgpuObj, u32) -> WgpuObj;
+type FnPushError = unsafe extern "C" fn(WgpuObj, WgpuEnum);
 
 procs! {
     create_instance: FnCreateInstance,
@@ -513,6 +717,63 @@ procs! {
     release_texture: FnRelease,
     release_view: FnRelease,
     release_instance: FnRelease,
+    create_texture: FnCreateTexture,
+    create_sampler: FnCreateSampler,
+    create_compute_pipeline: FnCreateCp,
+    create_query_set: FnCreateQs,
+    create_bundle_enc: FnCreateBundleEnc,
+    begin_compute_pass: FnBeginCp,
+    copy_b2b: FnCopyB2B,
+    copy_b2t: FnCopyB2T,
+    copy_t2b: FnCopyT2B,
+    copy_t2t: FnCopyT2T,
+    clear_buffer: FnClearBuf,
+    resolve_query: FnResolveQs,
+    write_texture: FnWriteTex,
+    work_done: FnWorkDone,
+    buffer_map: FnMapAsync,
+    buffer_unmap: FnUnmap,
+    buffer_mapped_range: FnMappedRange,
+    buffer_destroy: FnDestroy,
+    texture_destroy: FnDestroy,
+    query_destroy: FnDestroy,
+    device_destroy: FnDestroy,
+    adapter_has_feature: FnHasFeature,
+    pass_set_viewport: FnViewport,
+    pass_set_scissor: FnScissor,
+    pass_set_blend: FnBlend,
+    pass_set_stencil: FnStencil,
+    pass_set_index: FnSetIndex,
+    pass_draw_indexed: FnDrawIndexed,
+    pass_draw_indirect: FnDrawIndirect,
+    pass_draw_indexed_indirect: FnDrawIndirect,
+    pass_occlusion_begin: FnOcclusion,
+    pass_occlusion_end: FnPassEnd,
+    pass_execute_bundles: FnExecBundles,
+    compute_set_pipeline: FnPassSetPipeline,
+    compute_set_bind_group: FnPassSetBg,
+    compute_dispatch: FnDispatch,
+    compute_dispatch_indirect: FnDispatchIndirect,
+    compute_end: FnPassEnd,
+    bundle_finish: FnBundleFinish,
+    bundle_set_pipeline: FnPassSetPipeline,
+    bundle_set_bind_group: FnPassSetBg,
+    bundle_set_vb: FnPassSetVb,
+    bundle_set_index: FnSetIndex,
+    bundle_draw: FnPassDraw,
+    bundle_draw_indexed: FnDrawIndexed,
+    bundle_draw_indirect: FnDrawIndirect,
+    bundle_draw_indexed_indirect: FnDrawIndirect,
+    rp_get_bgl: FnGetBgl,
+    cp_get_bgl: FnGetBgl,
+    push_error: FnPushError,
+    pop_error: FnWorkDone,
+    release_sampler: FnRelease,
+    release_cp: FnRelease,
+    release_qs: FnRelease,
+    release_compute_pass: FnRelease,
+    release_bundle_enc: FnRelease,
+    release_bundle: FnRelease,
 }
 
 static API: OnceLock<Option<Api>> = OnceLock::new();
@@ -625,6 +886,81 @@ fn load_once() -> Option<Api> {
             release_texture: std::mem::transmute(need(c"wgpuTextureRelease")),
             release_view: std::mem::transmute(need(c"wgpuTextureViewRelease")),
             release_instance: std::mem::transmute(need(c"wgpuInstanceRelease")),
+            create_texture: std::mem::transmute(need(c"wgpuDeviceCreateTexture")),
+            create_sampler: std::mem::transmute(need(c"wgpuDeviceCreateSampler")),
+            create_compute_pipeline: std::mem::transmute(need(c"wgpuDeviceCreateComputePipeline")),
+            create_query_set: std::mem::transmute(need(c"wgpuDeviceCreateQuerySet")),
+            create_bundle_enc: std::mem::transmute(need(c"wgpuDeviceCreateRenderBundleEncoder")),
+            begin_compute_pass: std::mem::transmute(need(c"wgpuCommandEncoderBeginComputePass")),
+            copy_b2b: std::mem::transmute(need(c"wgpuCommandEncoderCopyBufferToBuffer")),
+            copy_b2t: std::mem::transmute(need(c"wgpuCommandEncoderCopyBufferToTexture")),
+            copy_t2b: std::mem::transmute(need(c"wgpuCommandEncoderCopyTextureToBuffer")),
+            copy_t2t: std::mem::transmute(need(c"wgpuCommandEncoderCopyTextureToTexture")),
+            clear_buffer: std::mem::transmute(need(c"wgpuCommandEncoderClearBuffer")),
+            resolve_query: std::mem::transmute(need(c"wgpuCommandEncoderResolveQuerySet")),
+            write_texture: std::mem::transmute(need(c"wgpuQueueWriteTexture")),
+            work_done: std::mem::transmute(need(c"wgpuQueueOnSubmittedWorkDone")),
+            buffer_map: std::mem::transmute(need(c"wgpuBufferMapAsync")),
+            buffer_unmap: std::mem::transmute(need(c"wgpuBufferUnmap")),
+            buffer_mapped_range: std::mem::transmute(need(c"wgpuBufferGetConstMappedRange")),
+            buffer_destroy: std::mem::transmute(need(c"wgpuBufferDestroy")),
+            texture_destroy: std::mem::transmute(need(c"wgpuTextureDestroy")),
+            query_destroy: std::mem::transmute(need(c"wgpuQuerySetDestroy")),
+            device_destroy: std::mem::transmute(need(c"wgpuDeviceDestroy")),
+            adapter_has_feature: std::mem::transmute(need(c"wgpuAdapterHasFeature")),
+            pass_set_viewport: std::mem::transmute(need(c"wgpuRenderPassEncoderSetViewport")),
+            pass_set_scissor: std::mem::transmute(need(c"wgpuRenderPassEncoderSetScissorRect")),
+            pass_set_blend: std::mem::transmute(need(c"wgpuRenderPassEncoderSetBlendConstant")),
+            pass_set_stencil: std::mem::transmute(need(
+                c"wgpuRenderPassEncoderSetStencilReference",
+            )),
+            pass_set_index: std::mem::transmute(need(c"wgpuRenderPassEncoderSetIndexBuffer")),
+            pass_draw_indexed: std::mem::transmute(need(c"wgpuRenderPassEncoderDrawIndexed")),
+            pass_draw_indirect: std::mem::transmute(need(c"wgpuRenderPassEncoderDrawIndirect")),
+            pass_draw_indexed_indirect: std::mem::transmute(need(
+                c"wgpuRenderPassEncoderDrawIndexedIndirect",
+            )),
+            pass_occlusion_begin: std::mem::transmute(need(
+                c"wgpuRenderPassEncoderBeginOcclusionQuery",
+            )),
+            pass_occlusion_end: std::mem::transmute(need(
+                c"wgpuRenderPassEncoderEndOcclusionQuery",
+            )),
+            pass_execute_bundles: std::mem::transmute(need(c"wgpuRenderPassEncoderExecuteBundles")),
+            compute_set_pipeline: std::mem::transmute(need(c"wgpuComputePassEncoderSetPipeline")),
+            compute_set_bind_group: std::mem::transmute(need(
+                c"wgpuComputePassEncoderSetBindGroup",
+            )),
+            compute_dispatch: std::mem::transmute(need(
+                c"wgpuComputePassEncoderDispatchWorkgroups",
+            )),
+            compute_dispatch_indirect: std::mem::transmute(need(
+                c"wgpuComputePassEncoderDispatchWorkgroupsIndirect",
+            )),
+            compute_end: std::mem::transmute(need(c"wgpuComputePassEncoderEnd")),
+            bundle_finish: std::mem::transmute(need(c"wgpuRenderBundleEncoderFinish")),
+            bundle_set_pipeline: std::mem::transmute(need(c"wgpuRenderBundleEncoderSetPipeline")),
+            bundle_set_bind_group: std::mem::transmute(need(
+                c"wgpuRenderBundleEncoderSetBindGroup",
+            )),
+            bundle_set_vb: std::mem::transmute(need(c"wgpuRenderBundleEncoderSetVertexBuffer")),
+            bundle_set_index: std::mem::transmute(need(c"wgpuRenderBundleEncoderSetIndexBuffer")),
+            bundle_draw: std::mem::transmute(need(c"wgpuRenderBundleEncoderDraw")),
+            bundle_draw_indexed: std::mem::transmute(need(c"wgpuRenderBundleEncoderDrawIndexed")),
+            bundle_draw_indirect: std::mem::transmute(need(c"wgpuRenderBundleEncoderDrawIndirect")),
+            bundle_draw_indexed_indirect: std::mem::transmute(need(
+                c"wgpuRenderBundleEncoderDrawIndexedIndirect",
+            )),
+            rp_get_bgl: std::mem::transmute(need(c"wgpuRenderPipelineGetBindGroupLayout")),
+            cp_get_bgl: std::mem::transmute(need(c"wgpuComputePipelineGetBindGroupLayout")),
+            push_error: std::mem::transmute(need(c"wgpuDevicePushErrorScope")),
+            pop_error: std::mem::transmute(need(c"wgpuDevicePopErrorScope")),
+            release_sampler: std::mem::transmute(need(c"wgpuSamplerRelease")),
+            release_cp: std::mem::transmute(need(c"wgpuComputePipelineRelease")),
+            release_qs: std::mem::transmute(need(c"wgpuQuerySetRelease")),
+            release_compute_pass: std::mem::transmute(need(c"wgpuComputePassEncoderRelease")),
+            release_bundle_enc: std::mem::transmute(need(c"wgpuRenderBundleEncoderRelease")),
+            release_bundle: std::mem::transmute(need(c"wgpuRenderBundleRelease")),
         };
         if (api.create_instance as *const c_void).is_null()
             || (api.request_adapter as *const c_void).is_null()
@@ -898,12 +1234,20 @@ fn zero_bgl_entry() -> BindGroupLayoutEntry {
     }
 }
 
+fn proc_ok<T>(f: T) -> bool {
+    !unsafe { std::mem::transmute_copy::<T, *const c_void>(&f) }.is_null()
+}
+
 /// JNI leftover pack: 0=uniform 1=storage 2=read-only-storage −1=unused.
+/// Sampler pack: 0=filtering 1=non-filtering 2=comparison −1=unused.
+/// Texture sample pack: 0=float 1=unfilterable 2=depth 3=sint 4=uint −1=unused.
 pub fn create_bind_group_layout(
     device: DawnSlot,
     bindings: &[i32],
     visibilities: &[i32],
     buffer_types: &[i32],
+    sampler_types: &[i32],
+    texture_sample_types: &[i32],
 ) -> DawnSlot {
     let Some(api) = api() else {
         return 0;
@@ -926,6 +1270,20 @@ pub fn create_bind_group_layout(
         if packed == 0 {
             e.buffer.min_binding_size = 64;
         }
+        e.sampler.ty = match sampler_types.get(i).copied().unwrap_or(-1) {
+            0 => SAMPLER_FILTERING,
+            1 => SAMPLER_NON_FILTERING,
+            2 => SAMPLER_COMPARISON,
+            _ => 0,
+        };
+        e.texture.sample_type = match texture_sample_types.get(i).copied().unwrap_or(-1) {
+            0 => TEX_SAMPLE_FLOAT,
+            1 => TEX_SAMPLE_UNFILTERABLE,
+            2 => TEX_SAMPLE_DEPTH,
+            3 => TEX_SAMPLE_SINT,
+            4 => TEX_SAMPLE_UINT,
+            _ => 0,
+        };
         entries.push(e);
     }
     let desc = BindGroupLayoutDesc {
@@ -1138,6 +1496,7 @@ pub fn begin_render_pass(
     stores: &[i32],
     has_clears: &[i32],
     clear_bits: &[i32],
+    depth: DawnSlot,
 ) -> DawnSlot {
     let Some(api) = api() else {
         return 0;
@@ -1191,12 +1550,31 @@ pub fn begin_render_pass(
             },
         });
     }
+    let depth_att = if depth != 0 {
+        Some(DepthStencilAtt {
+            next_in_chain: std::ptr::null_mut(),
+            view: as_ptr(depth),
+            depth_load_op: LOAD_CLEAR,
+            depth_store_op: STORE_STORE,
+            depth_clear: 1.0,
+            depth_read_only: 0,
+            stencil_load_op: 0,
+            stencil_store_op: 0,
+            stencil_clear: 0,
+            stencil_read_only: 1,
+        })
+    } else {
+        None
+    };
     let desc = RenderPassDesc {
         next_in_chain: std::ptr::null_mut(),
         label: StringView::empty(),
         color_attachment_count: atts.len(),
         color_attachments: atts.as_ptr(),
-        depth_stencil_attachment: std::ptr::null(),
+        depth_stencil_attachment: depth_att
+            .as_ref()
+            .map(|d| d as *const DepthStencilAtt as *const c_void)
+            .unwrap_or(std::ptr::null()),
         occlusion_query_set: std::ptr::null_mut(),
         timestamp_writes: std::ptr::null(),
     };
@@ -1434,7 +1812,16 @@ pub fn texture_size(texture: DawnSlot) -> (u32, u32) {
     }
 }
 
-pub fn create_view(texture: DawnSlot) -> DawnSlot {
+pub fn create_view(
+    texture: DawnSlot,
+    dimension: u32,
+    aspect: u32,
+    format: u32,
+    base_mip: u32,
+    mip_count: u32,
+    base_layer: u32,
+    layer_count: u32,
+) -> DawnSlot {
     let Some(api) = api() else {
         return 0;
     };
@@ -1444,13 +1831,21 @@ pub fn create_view(texture: DawnSlot) -> DawnSlot {
     let desc = TextureViewDesc {
         next_in_chain: std::ptr::null_mut(),
         label: StringView::empty(),
-        format: 0,
-        dimension: 0,
-        base_mip_level: 0,
-        mip_level_count: WGPU_MIP_UNDEFINED,
-        base_array_layer: 0,
-        array_layer_count: WGPU_ARRAY_UNDEFINED,
-        aspect: 0,
+        format,
+        dimension,
+        base_mip_level: base_mip,
+        mip_level_count: if mip_count == 0 {
+            WGPU_MIP_UNDEFINED
+        } else {
+            mip_count
+        },
+        base_array_layer: base_layer,
+        array_layer_count: if layer_count == 0 {
+            WGPU_ARRAY_UNDEFINED
+        } else {
+            layer_count
+        },
+        aspect,
         usage: 0,
     };
     unsafe { from_ptr((api.texture_create_view)(as_ptr(texture), &desc)) }
@@ -1513,6 +1908,843 @@ pub fn pass_end(pass: DawnSlot) {
     }
 }
 
+pub fn create_texture(
+    device: DawnSlot,
+    width: u32,
+    height: u32,
+    depth: u32,
+    format: u32,
+    usage: u32,
+    mip: u32,
+    sample: u32,
+    dimension: u32,
+    view_formats: &[i32],
+    label: &str,
+) -> DawnSlot {
+    let Some(api) = api() else {
+        return 0;
+    };
+    if device == 0 || !proc_ok(api.create_texture) {
+        return 0;
+    }
+    let views: Vec<WgpuEnum> = view_formats.iter().map(|f| *f as WgpuEnum).collect();
+    let desc = TextureDesc {
+        next_in_chain: std::ptr::null_mut(),
+        label: StringView::from_str(label),
+        usage: usage as WgpuFlags,
+        dimension,
+        size: Extent3D {
+            width: width.max(1),
+            height: height.max(1),
+            depth: depth.max(1),
+        },
+        format,
+        mip_level_count: mip.max(1),
+        sample_count: sample.max(1),
+        view_format_count: views.len(),
+        view_formats: views.as_ptr(),
+    };
+    unsafe { from_ptr((api.create_texture)(as_ptr(device), &desc)) }
+}
+
+pub fn create_sampler(
+    device: DawnSlot,
+    mag_filter: u32,
+    min_filter: u32,
+    address_mode_u: u32,
+    address_mode_v: u32,
+    address_mode_w: u32,
+    mipmap_filter: u32,
+    compare: u32,
+    lod_min: f32,
+    lod_max: f32,
+) -> DawnSlot {
+    let Some(api) = api() else {
+        return 0;
+    };
+    if device == 0 || !proc_ok(api.create_sampler) {
+        return 0;
+    }
+    let desc = SamplerDesc {
+        next_in_chain: std::ptr::null_mut(),
+        label: StringView::empty(),
+        address_mode_u,
+        address_mode_v,
+        address_mode_w,
+        mag_filter,
+        min_filter,
+        mipmap_filter,
+        lod_min_clamp: lod_min,
+        lod_max_clamp: if lod_max <= 0.0 { 32.0 } else { lod_max },
+        compare,
+        max_anisotropy: 1,
+    };
+    unsafe { from_ptr((api.create_sampler)(as_ptr(device), &desc)) }
+}
+
+pub fn create_compute_pipeline(
+    device: DawnSlot,
+    layout: DawnSlot,
+    shader: DawnSlot,
+    entry: &str,
+    label: &str,
+) -> DawnSlot {
+    let Some(api) = api() else {
+        return 0;
+    };
+    if device == 0 || shader == 0 || !proc_ok(api.create_compute_pipeline) {
+        return 0;
+    }
+    let desc = ComputePipelineDesc {
+        next_in_chain: std::ptr::null_mut(),
+        label: StringView::from_str(label),
+        layout: as_ptr(layout),
+        compute: ComputeState {
+            next_in_chain: std::ptr::null_mut(),
+            module: as_ptr(shader),
+            entry_point: StringView::from_str(if entry.is_empty() { "main" } else { entry }),
+            constant_count: 0,
+            constants: std::ptr::null(),
+        },
+    };
+    unsafe { from_ptr((api.create_compute_pipeline)(as_ptr(device), &desc)) }
+}
+
+pub fn create_query_set(device: DawnSlot, ty: u32, count: u32) -> DawnSlot {
+    let Some(api) = api() else {
+        return 0;
+    };
+    if device == 0 || !proc_ok(api.create_query_set) {
+        return 0;
+    }
+    let desc = QuerySetDesc {
+        next_in_chain: std::ptr::null_mut(),
+        label: StringView::empty(),
+        ty,
+        count: count.max(1),
+    };
+    unsafe { from_ptr((api.create_query_set)(as_ptr(device), &desc)) }
+}
+
+pub fn create_render_bundle_encoder(device: DawnSlot, format: u32) -> DawnSlot {
+    let Some(api) = api() else {
+        return 0;
+    };
+    if device == 0 || !proc_ok(api.create_bundle_enc) {
+        return 0;
+    }
+    let fmt = if format == 0 {
+        FORMAT_RGBA8_UNORM
+    } else {
+        format
+    };
+    let desc = RenderBundleEncDesc {
+        next_in_chain: std::ptr::null_mut(),
+        label: StringView::empty(),
+        color_format_count: 1,
+        color_formats: &fmt,
+        depth_stencil_format: 0,
+        sample_count: 1,
+        depth_read_only: 0,
+        stencil_read_only: 0,
+    };
+    unsafe { from_ptr((api.create_bundle_enc)(as_ptr(device), &desc)) }
+}
+
+pub fn begin_compute_pass(
+    encoder: DawnSlot,
+    query: DawnSlot,
+    begin_idx: u32,
+    end_idx: u32,
+) -> DawnSlot {
+    let Some(api) = api() else {
+        return 0;
+    };
+    if encoder == 0 || !proc_ok(api.begin_compute_pass) {
+        return 0;
+    }
+    let ts = if query != 0 {
+        Some(TimestampWrites {
+            next_in_chain: std::ptr::null_mut(),
+            query_set: as_ptr(query),
+            beginning: if begin_idx == 0 {
+                WGPU_QUERY_INDEX_UNDEFINED
+            } else {
+                begin_idx
+            },
+            end: if end_idx == 0 {
+                WGPU_QUERY_INDEX_UNDEFINED
+            } else {
+                end_idx
+            },
+        })
+    } else {
+        None
+    };
+    let desc = ComputePassDesc {
+        next_in_chain: std::ptr::null_mut(),
+        label: StringView::empty(),
+        timestamp_writes: ts
+            .as_ref()
+            .map(|t| t as *const TimestampWrites)
+            .unwrap_or(std::ptr::null()),
+    };
+    unsafe { from_ptr((api.begin_compute_pass)(as_ptr(encoder), &desc)) }
+}
+
+pub fn copy_buffer_to_buffer(
+    encoder: DawnSlot,
+    src: DawnSlot,
+    src_off: u64,
+    dst: DawnSlot,
+    dst_off: u64,
+    size: u64,
+) {
+    if let Some(api) = api() {
+        if encoder != 0 && src != 0 && dst != 0 && proc_ok(api.copy_b2b) {
+            let sz = if size == 0 { WGPU_WHOLE_SIZE } else { size };
+            unsafe {
+                (api.copy_b2b)(
+                    as_ptr(encoder),
+                    as_ptr(src),
+                    src_off,
+                    as_ptr(dst),
+                    dst_off,
+                    sz,
+                )
+            }
+        }
+    }
+}
+
+fn texel_buf(buffer: DawnSlot, offset: u64, bpr: u32, rpi: u32) -> TexelCopyBufferInfo {
+    TexelCopyBufferInfo {
+        layout: TexelCopyBufferLayout {
+            offset,
+            bytes_per_row: if bpr == 0 {
+                WGPU_COPY_STRIDE_UNDEFINED
+            } else {
+                bpr
+            },
+            rows_per_image: if rpi == 0 {
+                WGPU_COPY_STRIDE_UNDEFINED
+            } else {
+                rpi
+            },
+        },
+        buffer: as_ptr(buffer),
+    }
+}
+
+fn texel_tex(
+    texture: DawnSlot,
+    mip: u32,
+    x: u32,
+    y: u32,
+    z: u32,
+    aspect: u32,
+) -> TexelCopyTextureInfo {
+    TexelCopyTextureInfo {
+        texture: as_ptr(texture),
+        mip_level: mip,
+        origin: Origin3D { x, y, z },
+        aspect,
+    }
+}
+
+pub fn copy_buffer_to_texture(
+    encoder: DawnSlot,
+    buffer: DawnSlot,
+    texture: DawnSlot,
+    width: u32,
+    height: u32,
+    depth: u32,
+) {
+    if let Some(api) = api() {
+        if encoder != 0 && buffer != 0 && texture != 0 && proc_ok(api.copy_b2t) {
+            let src = texel_buf(buffer, 0, 0, 0);
+            let dst = texel_tex(texture, 0, 0, 0, 0, 0);
+            let size = Extent3D {
+                width: width.max(1),
+                height: height.max(1),
+                depth: depth.max(1),
+            };
+            unsafe { (api.copy_b2t)(as_ptr(encoder), &src, &dst, &size) }
+        }
+    }
+}
+
+pub fn copy_texture_to_buffer(
+    encoder: DawnSlot,
+    texture: DawnSlot,
+    buffer: DawnSlot,
+    width: u32,
+    height: u32,
+    depth: u32,
+) {
+    if let Some(api) = api() {
+        if encoder != 0 && buffer != 0 && texture != 0 && proc_ok(api.copy_t2b) {
+            let src = texel_tex(texture, 0, 0, 0, 0, 0);
+            let dst = texel_buf(buffer, 0, 0, 0);
+            let size = Extent3D {
+                width: width.max(1),
+                height: height.max(1),
+                depth: depth.max(1),
+            };
+            unsafe { (api.copy_t2b)(as_ptr(encoder), &src, &dst, &size) }
+        }
+    }
+}
+
+pub fn copy_texture_to_texture(
+    encoder: DawnSlot,
+    src: DawnSlot,
+    dst: DawnSlot,
+    width: u32,
+    height: u32,
+    depth: u32,
+) {
+    if let Some(api) = api() {
+        if encoder != 0 && src != 0 && dst != 0 && proc_ok(api.copy_t2t) {
+            let s = texel_tex(src, 0, 0, 0, 0, 0);
+            let d = texel_tex(dst, 0, 0, 0, 0, 0);
+            let size = Extent3D {
+                width: width.max(1),
+                height: height.max(1),
+                depth: depth.max(1),
+            };
+            unsafe { (api.copy_t2t)(as_ptr(encoder), &s, &d, &size) }
+        }
+    }
+}
+
+pub fn clear_buffer(encoder: DawnSlot, buffer: DawnSlot, offset: u64, size: u64) {
+    if let Some(api) = api() {
+        if encoder != 0 && buffer != 0 && proc_ok(api.clear_buffer) {
+            let sz = if size == 0 { WGPU_WHOLE_SIZE } else { size };
+            unsafe { (api.clear_buffer)(as_ptr(encoder), as_ptr(buffer), offset, sz) }
+        }
+    }
+}
+
+pub fn resolve_query_set(
+    encoder: DawnSlot,
+    query: DawnSlot,
+    first: u32,
+    count: u32,
+    dest: DawnSlot,
+    dest_off: u64,
+) {
+    if let Some(api) = api() {
+        if encoder != 0 && query != 0 && dest != 0 && proc_ok(api.resolve_query) {
+            unsafe {
+                (api.resolve_query)(
+                    as_ptr(encoder),
+                    as_ptr(query),
+                    first,
+                    count.max(1),
+                    as_ptr(dest),
+                    dest_off,
+                )
+            }
+        }
+    }
+}
+
+pub fn write_texture(
+    queue: DawnSlot,
+    texture: DawnSlot,
+    bytes: &[u8],
+    bytes_per_row: u32,
+    width: u32,
+    height: u32,
+    depth: u32,
+) {
+    if let Some(api) = api() {
+        if queue != 0 && texture != 0 && proc_ok(api.write_texture) {
+            let dst = texel_tex(texture, 0, 0, 0, 0, 0);
+            let layout = TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: if bytes_per_row == 0 {
+                    WGPU_COPY_STRIDE_UNDEFINED
+                } else {
+                    bytes_per_row
+                },
+                rows_per_image: WGPU_COPY_STRIDE_UNDEFINED,
+            };
+            let size = Extent3D {
+                width: width.max(1),
+                height: height.max(1),
+                depth: depth.max(1),
+            };
+            unsafe {
+                (api.write_texture)(
+                    as_ptr(queue),
+                    &dst,
+                    bytes.as_ptr(),
+                    bytes.len(),
+                    &layout,
+                    &size,
+                )
+            }
+        }
+    }
+}
+
+unsafe extern "C" fn on_map(
+    status: WgpuEnum,
+    _msg: StringView,
+    userdata1: *mut c_void,
+    _userdata2: *mut c_void,
+) {
+    let out = userdata1 as *mut WgpuEnum;
+    if !out.is_null() {
+        *out = status;
+    }
+}
+
+pub fn buffer_map_async(
+    instance: DawnSlot,
+    buffer: DawnSlot,
+    mode: u32,
+    offset: u64,
+    size: u64,
+) -> bool {
+    let Some(api) = api() else {
+        return false;
+    };
+    if instance == 0 || buffer == 0 || !proc_ok(api.buffer_map) {
+        return false;
+    }
+    let mut status = 0u32;
+    let info = CallbackInfo {
+        next_in_chain: std::ptr::null_mut(),
+        mode: CALLBACK_WAIT_ANY,
+        callback: on_map as *const c_void,
+        userdata1: (&mut status) as *mut _ as *mut c_void,
+        userdata2: std::ptr::null_mut(),
+    };
+    let sz = if size == 0 { usize::MAX } else { size as usize };
+    let future =
+        unsafe { (api.buffer_map)(as_ptr(buffer), mode as WgpuFlags, offset as usize, sz, info) };
+    let mut wait = FutureWaitInfo {
+        future,
+        completed: 0,
+    };
+    unsafe {
+        let _ = (api.wait_any)(as_ptr(instance), 1, &mut wait, 2_000_000_000);
+        if status == 0 {
+            (api.process_events)(as_ptr(instance));
+        }
+    }
+    status == STATUS_SUCCESS
+}
+
+pub fn buffer_unmap(buffer: DawnSlot) {
+    if let Some(api) = api() {
+        if buffer != 0 && proc_ok(api.buffer_unmap) {
+            unsafe { (api.buffer_unmap)(as_ptr(buffer)) }
+        }
+    }
+}
+
+pub fn buffer_mapped_range(buffer: DawnSlot, offset: u64, size: u64) -> Vec<u8> {
+    let Some(api) = api() else {
+        return Vec::new();
+    };
+    if buffer == 0 || !proc_ok(api.buffer_mapped_range) {
+        return Vec::new();
+    }
+    let sz = if size == 0 { 0 } else { size as usize };
+    unsafe {
+        let p = (api.buffer_mapped_range)(as_ptr(buffer), offset as usize, sz);
+        if p.is_null() || sz == 0 {
+            Vec::new()
+        } else {
+            std::slice::from_raw_parts(p, sz).to_vec()
+        }
+    }
+}
+
+pub fn work_done(instance: DawnSlot, queue: DawnSlot) {
+    let Some(api) = api() else {
+        return;
+    };
+    if instance == 0 || queue == 0 || !proc_ok(api.work_done) {
+        return;
+    }
+    let mut status = 0u32;
+    let info = CallbackInfo {
+        next_in_chain: std::ptr::null_mut(),
+        mode: CALLBACK_WAIT_ANY,
+        callback: on_map as *const c_void,
+        userdata1: (&mut status) as *mut _ as *mut c_void,
+        userdata2: std::ptr::null_mut(),
+    };
+    let future = unsafe { (api.work_done)(as_ptr(queue), info) };
+    let mut wait = FutureWaitInfo {
+        future,
+        completed: 0,
+    };
+    unsafe {
+        let _ = (api.wait_any)(as_ptr(instance), 1, &mut wait, 2_000_000_000);
+        if status == 0 {
+            (api.process_events)(as_ptr(instance));
+        }
+    }
+}
+
+pub fn destroy(kind: ResourceKind, slot: DawnSlot) {
+    let Some(api) = api() else {
+        return;
+    };
+    if slot == 0 {
+        return;
+    }
+    let p = as_ptr(slot);
+    unsafe {
+        match kind {
+            ResourceKind::Buffer if proc_ok(api.buffer_destroy) => (api.buffer_destroy)(p),
+            ResourceKind::Texture if proc_ok(api.texture_destroy) => (api.texture_destroy)(p),
+            ResourceKind::QuerySet if proc_ok(api.query_destroy) => (api.query_destroy)(p),
+            ResourceKind::Device if proc_ok(api.device_destroy) => (api.device_destroy)(p),
+            _ => {}
+        }
+    }
+}
+
+pub fn adapter_has_feature(adapter: DawnSlot, feature: u32) -> bool {
+    let Some(api) = api() else {
+        return false;
+    };
+    if adapter == 0 || !proc_ok(api.adapter_has_feature) {
+        return false;
+    }
+    unsafe { (api.adapter_has_feature)(as_ptr(adapter), feature) != 0 }
+}
+
+pub fn pass_set_viewport(pass: DawnSlot, x: f32, y: f32, w: f32, h: f32, min_d: f32, max_d: f32) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.pass_set_viewport) {
+            unsafe { (api.pass_set_viewport)(as_ptr(pass), x, y, w, h, min_d, max_d) }
+        }
+    }
+}
+
+pub fn pass_set_scissor(pass: DawnSlot, x: u32, y: u32, w: u32, h: u32) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.pass_set_scissor) {
+            unsafe { (api.pass_set_scissor)(as_ptr(pass), x, y, w, h) }
+        }
+    }
+}
+
+pub fn pass_set_blend_constant(pass: DawnSlot, r: f64, g: f64, b: f64, a: f64) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.pass_set_blend) {
+            let c = Color { r, g, b, a };
+            unsafe { (api.pass_set_blend)(as_ptr(pass), &c) }
+        }
+    }
+}
+
+pub fn pass_set_stencil_reference(pass: DawnSlot, reference: u32) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.pass_set_stencil) {
+            unsafe { (api.pass_set_stencil)(as_ptr(pass), reference) }
+        }
+    }
+}
+
+pub fn pass_set_index_buffer(
+    pass: DawnSlot,
+    buffer: DawnSlot,
+    format: u32,
+    offset: u64,
+    size: u64,
+) {
+    if let Some(api) = api() {
+        if pass != 0 && buffer != 0 && proc_ok(api.pass_set_index) {
+            let sz = if size == 0 { WGPU_WHOLE_SIZE } else { size };
+            unsafe { (api.pass_set_index)(as_ptr(pass), as_ptr(buffer), format, offset, sz) }
+        }
+    }
+}
+
+pub fn pass_draw_indexed(
+    pass: DawnSlot,
+    index_count: u32,
+    instance_count: u32,
+    first_index: u32,
+    base_vertex: i32,
+    first_instance: u32,
+) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.pass_draw_indexed) {
+            unsafe {
+                (api.pass_draw_indexed)(
+                    as_ptr(pass),
+                    index_count,
+                    instance_count,
+                    first_index,
+                    base_vertex,
+                    first_instance,
+                )
+            }
+        }
+    }
+}
+
+pub fn pass_draw_indirect(pass: DawnSlot, buffer: DawnSlot, offset: u64) {
+    if let Some(api) = api() {
+        if pass != 0 && buffer != 0 && proc_ok(api.pass_draw_indirect) {
+            unsafe { (api.pass_draw_indirect)(as_ptr(pass), as_ptr(buffer), offset) }
+        }
+    }
+}
+
+pub fn pass_draw_indexed_indirect(pass: DawnSlot, buffer: DawnSlot, offset: u64) {
+    if let Some(api) = api() {
+        if pass != 0 && buffer != 0 && proc_ok(api.pass_draw_indexed_indirect) {
+            unsafe { (api.pass_draw_indexed_indirect)(as_ptr(pass), as_ptr(buffer), offset) }
+        }
+    }
+}
+
+pub fn pass_begin_occlusion_query(pass: DawnSlot, query_index: u32) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.pass_occlusion_begin) {
+            unsafe { (api.pass_occlusion_begin)(as_ptr(pass), query_index) }
+        }
+    }
+}
+
+pub fn pass_end_occlusion_query(pass: DawnSlot) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.pass_occlusion_end) {
+            unsafe { (api.pass_occlusion_end)(as_ptr(pass)) }
+        }
+    }
+}
+
+pub fn pass_execute_bundles(pass: DawnSlot, bundles: &[DawnSlot]) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.pass_execute_bundles) && !bundles.is_empty() {
+            let objs: Vec<WgpuObj> = bundles.iter().map(|&s| as_ptr(s)).collect();
+            unsafe { (api.pass_execute_bundles)(as_ptr(pass), objs.len(), objs.as_ptr()) }
+        }
+    }
+}
+
+pub fn compute_set_pipeline(pass: DawnSlot, pipeline: DawnSlot) {
+    if let Some(api) = api() {
+        if pass != 0 && pipeline != 0 && proc_ok(api.compute_set_pipeline) {
+            unsafe { (api.compute_set_pipeline)(as_ptr(pass), as_ptr(pipeline)) }
+        }
+    }
+}
+
+pub fn compute_set_bind_group(pass: DawnSlot, index: u32, group: DawnSlot) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.compute_set_bind_group) {
+            unsafe {
+                (api.compute_set_bind_group)(
+                    as_ptr(pass),
+                    index,
+                    as_ptr(group),
+                    0,
+                    std::ptr::null(),
+                )
+            }
+        }
+    }
+}
+
+pub fn compute_dispatch(pass: DawnSlot, x: u32, y: u32, z: u32) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.compute_dispatch) {
+            unsafe { (api.compute_dispatch)(as_ptr(pass), x.max(1), y.max(1), z.max(1)) }
+        }
+    }
+}
+
+pub fn compute_dispatch_indirect(pass: DawnSlot, buffer: DawnSlot, offset: u64) {
+    if let Some(api) = api() {
+        if pass != 0 && buffer != 0 && proc_ok(api.compute_dispatch_indirect) {
+            unsafe { (api.compute_dispatch_indirect)(as_ptr(pass), as_ptr(buffer), offset) }
+        }
+    }
+}
+
+pub fn compute_end(pass: DawnSlot) {
+    if let Some(api) = api() {
+        if pass != 0 && proc_ok(api.compute_end) {
+            unsafe { (api.compute_end)(as_ptr(pass)) }
+        }
+    }
+}
+
+pub fn bundle_finish(encoder: DawnSlot) -> DawnSlot {
+    let Some(api) = api() else {
+        return 0;
+    };
+    if encoder == 0 || !proc_ok(api.bundle_finish) {
+        return 0;
+    }
+    let desc = RenderBundleDesc {
+        next_in_chain: std::ptr::null_mut(),
+        label: StringView::empty(),
+    };
+    unsafe { from_ptr((api.bundle_finish)(as_ptr(encoder), &desc)) }
+}
+
+pub fn bundle_set_pipeline(enc: DawnSlot, pipeline: DawnSlot) {
+    if let Some(api) = api() {
+        if enc != 0 && pipeline != 0 && proc_ok(api.bundle_set_pipeline) {
+            unsafe { (api.bundle_set_pipeline)(as_ptr(enc), as_ptr(pipeline)) }
+        }
+    }
+}
+
+pub fn bundle_set_bind_group(enc: DawnSlot, index: u32, group: DawnSlot) {
+    if let Some(api) = api() {
+        if enc != 0 && proc_ok(api.bundle_set_bind_group) {
+            unsafe {
+                (api.bundle_set_bind_group)(as_ptr(enc), index, as_ptr(group), 0, std::ptr::null())
+            }
+        }
+    }
+}
+
+pub fn bundle_set_vertex_buffer(
+    enc: DawnSlot,
+    slot: u32,
+    buffer: DawnSlot,
+    offset: u64,
+    size: u64,
+) {
+    if let Some(api) = api() {
+        if enc != 0 && buffer != 0 && proc_ok(api.bundle_set_vb) {
+            let sz = if size == 0 { WGPU_WHOLE_SIZE } else { size };
+            unsafe { (api.bundle_set_vb)(as_ptr(enc), slot, as_ptr(buffer), offset, sz) }
+        }
+    }
+}
+
+pub fn bundle_set_index_buffer(
+    enc: DawnSlot,
+    buffer: DawnSlot,
+    format: u32,
+    offset: u64,
+    size: u64,
+) {
+    if let Some(api) = api() {
+        if enc != 0 && buffer != 0 && proc_ok(api.bundle_set_index) {
+            let sz = if size == 0 { WGPU_WHOLE_SIZE } else { size };
+            unsafe { (api.bundle_set_index)(as_ptr(enc), as_ptr(buffer), format, offset, sz) }
+        }
+    }
+}
+
+pub fn bundle_draw(
+    enc: DawnSlot,
+    vertex_count: u32,
+    instance_count: u32,
+    first: u32,
+    first_inst: u32,
+) {
+    if let Some(api) = api() {
+        if enc != 0 && proc_ok(api.bundle_draw) {
+            unsafe {
+                (api.bundle_draw)(as_ptr(enc), vertex_count, instance_count, first, first_inst)
+            }
+        }
+    }
+}
+
+pub fn bundle_draw_indexed(
+    enc: DawnSlot,
+    index_count: u32,
+    instance_count: u32,
+    first_index: u32,
+    base_vertex: i32,
+    first_instance: u32,
+) {
+    if let Some(api) = api() {
+        if enc != 0 && proc_ok(api.bundle_draw_indexed) {
+            unsafe {
+                (api.bundle_draw_indexed)(
+                    as_ptr(enc),
+                    index_count,
+                    instance_count,
+                    first_index,
+                    base_vertex,
+                    first_instance,
+                )
+            }
+        }
+    }
+}
+
+pub fn bundle_draw_indirect(enc: DawnSlot, buffer: DawnSlot, offset: u64) {
+    if let Some(api) = api() {
+        if enc != 0 && buffer != 0 && proc_ok(api.bundle_draw_indirect) {
+            unsafe { (api.bundle_draw_indirect)(as_ptr(enc), as_ptr(buffer), offset) }
+        }
+    }
+}
+
+pub fn pipeline_bind_group_layout(pipeline: DawnSlot, compute: bool, index: u32) -> DawnSlot {
+    let Some(api) = api() else {
+        return 0;
+    };
+    if pipeline == 0 {
+        return 0;
+    }
+    let f = if compute {
+        api.cp_get_bgl
+    } else {
+        api.rp_get_bgl
+    };
+    if !proc_ok(f) {
+        return 0;
+    }
+    unsafe { from_ptr(f(as_ptr(pipeline), index)) }
+}
+
+pub fn push_error_scope(device: DawnSlot, filter: u32) {
+    if let Some(api) = api() {
+        if device != 0 && proc_ok(api.push_error) {
+            unsafe { (api.push_error)(as_ptr(device), filter) }
+        }
+    }
+}
+
+pub fn pop_error_scope(instance: DawnSlot, device: DawnSlot) {
+    let Some(api) = api() else {
+        return;
+    };
+    if instance == 0 || device == 0 || !proc_ok(api.pop_error) {
+        return;
+    }
+    let mut status = 0u32;
+    let info = CallbackInfo {
+        next_in_chain: std::ptr::null_mut(),
+        mode: CALLBACK_WAIT_ANY,
+        callback: on_map as *const c_void,
+        userdata1: (&mut status) as *mut _ as *mut c_void,
+        userdata2: std::ptr::null_mut(),
+    };
+    let future = unsafe { (api.pop_error)(as_ptr(device), info) };
+    let mut wait = FutureWaitInfo {
+        future,
+        completed: 0,
+    };
+    unsafe {
+        let _ = (api.wait_any)(as_ptr(instance), 1, &mut wait, 2_000_000_000);
+    }
+}
+
 pub fn release(kind: ResourceKind, slot: DawnSlot) {
     if slot == 0 {
         return;
@@ -1538,6 +2770,16 @@ pub fn release(kind: ResourceKind, slot: DawnSlot) {
             ResourceKind::Surface => (api.release_surface)(p),
             ResourceKind::Texture => (api.release_texture)(p),
             ResourceKind::TextureView => (api.release_view)(p),
+            ResourceKind::Sampler if proc_ok(api.release_sampler) => (api.release_sampler)(p),
+            ResourceKind::ComputePipeline if proc_ok(api.release_cp) => (api.release_cp)(p),
+            ResourceKind::QuerySet if proc_ok(api.release_qs) => (api.release_qs)(p),
+            ResourceKind::ComputePassEncoder if proc_ok(api.release_compute_pass) => {
+                (api.release_compute_pass)(p)
+            }
+            ResourceKind::RenderBundleEncoder if proc_ok(api.release_bundle_enc) => {
+                (api.release_bundle_enc)(p)
+            }
+            ResourceKind::RenderBundle if proc_ok(api.release_bundle) => (api.release_bundle)(p),
             _ => {}
         }
     }
