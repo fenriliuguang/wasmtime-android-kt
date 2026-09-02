@@ -234,3 +234,5 @@ Choreographer（累计到 n=51240）：`<11ms=51240` `11-20ms=0` `>20ms=0` `last
 本段 `hotpath-spike`：**6289** 行。超阈值（2 ms；encode 6 ms）：**acquire 5433**，present 916，encode-gap 1，events/write/submit/retire 0。acquire>2 ms 是一段**连续**突发 09:25:46–09:26:31（**45.1 s**，间隔 4–12 ms ≈ 每拍），不是孤立的约 5 s 空隙。45/151 个窗口 last-acquire >2 ms；21/151 last-present >2 ms。
 
 n=51240 累计直方图（含本段之前）：acquire 间隔 `<11ms=51207` `11-20ms=33` `>20ms=0`。present `lastLatencyNs` `<8ms=46243` `8-16ms=4997` `>16ms=1` `>8.3ms=4760`；间隔 `<11ms=51070` `11-20ms=169` `>20ms=1`；`cross=347`；retire 存活 `<8.3ms=0` `8.3-25ms=27045` `>25ms=24192`；`angleDt` `8-9ms=51239` `9-17ms=1`。
+
+**绑定：** 这 150 s **没有约 5 s 周期的进程内阶段冒尖**；成簇超阈值的只有一段 45 s、每拍一次的 **S3b acquire >2 ms**（S6b present >2 ms 频繁但无周期）。肉眼弹出**未确认**，因此本窗口若有约 5 s 弹出，就是 **弹出时没有孤立的进程内冒尖** —— 具名后续是合成器/面板 / 有人盯着的事件 `screenrecord`，不是 S4/S6a。

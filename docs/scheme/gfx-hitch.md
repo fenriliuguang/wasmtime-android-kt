@@ -16,7 +16,7 @@ Branch: **`fix/300-gfx-cube-pop`**. Remaining: `python3 ./scripts/gfx-hitch-rema
 |------|-----------------------------|
 | HP-RFC | landed 2026-09-02 (playbook / skill / remaining; forget inherited localization) |
 | HP-LOG | landed 2026-09-02 (V2458A 150 s `hotpath` / `hotpath-spike`; mapping §6.6) |
-| HP-BIND | `gap: hitch bind pending` |
+| HP-BIND | landed 2026-09-02 (no ~5 s in-process stage spike; 45 s S3b acquire burst) |
 
 ## Named-only (never `Next:`)
 
