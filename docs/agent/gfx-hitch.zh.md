@@ -29,6 +29,6 @@ Vivo V2458A、设置锁 120 Hz。仓外 `hosts/fullscreen-surface` + `GpuBackend
 
 ## 车道（自动序）
 
-HP-RFC（本手册）→ **HP-LOG（真机 ≥2 min logcat）** → **HP-BIND（一句话绑定）** → 具名后续（合成器 / guest·CM / fence / screenrecord）。
+HP-RFC（本手册）→ **HP-LOG（真机 ≥2 min logcat）** → **HP-BIND（一句话绑定）** → 具名后续（合成器 SF 计数器已于 2026-09-02 重采、不拧旋钮；下一步是事件 `screenrecord` / guest·CM / fence）。
 
 与英文冲突时以英文为准。在 HP-BIND 点名之前禁止再叠 keep / DisplayManager / GameState / 砍 JNI。禁止向上游 `gh issue create`。

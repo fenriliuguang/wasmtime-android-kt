@@ -193,10 +193,10 @@ SurfaceFlinger / BLAST / panel
 ### 6.3 Kill order (after numbers, one variable)
 
 0. Collect ≥2 min `hotpath` + `hotpath-spike` on V2458A with the 120 Hz Settings lock. Bind the eye-pop to a stage spike **or** to “no in-process spike at the pop”.
-1. S3 / S6b spike → compositor / acquire (BLAST, timestamp, Fifo). One knob.
+1. S3 / S6b spike → compositor / acquire (BLAST, timestamp, Fifo). One knob. **This restart (§6.7):** SF counters + gfxinfo re-measured; **no knob** (timestamp already 5 ms `desired2present`; BLAST still 5; Mailbox banned). Leftover is item 4.
 2. S4 encode-gap spike → guest / CM (not Dawn C). One knob.
 3. S6a spike, or no CPU spike while the eye pops → GPU / fence lifetime vs D24 `onSubmittedWorkDone`. `dawn_c.rs` does not bind that symbol today.
-4. No in-process spike at the pop → compositor / panel outside this process. Event-triggered `screenrecord` keyed on `hotpath-spike` or `phase-crossing`.
+4. No in-process spike at the pop → compositor / panel **outside SF counters**. Event-triggered `screenrecord` keyed on `hotpath-spike` or the eye.
 
 Do **not** restack keep / DisplayManager / GameState / JNI removal until a stage owns the pop.
 
@@ -236,3 +236,28 @@ Max of per-window **max** (same 151): events 1.61 ms, acquire **8.36 ms**, write
 Cumulative histograms at n=51240 (from process start, includes time before this stream): acquire interval `<11ms=51207` `11-20ms=33` `>20ms=0`. present `lastLatencyNs` `<8ms=46243` `8-16ms=4997` `>16ms=1` `>8.3ms=4760`; interval `<11ms=51070` `11-20ms=169` `>20ms=1`; `cross=347`; retire age `<8.3ms=0` `8.3-25ms=27045` `>25ms=24192`; `angleDt` `8-9ms=51239` `9-17ms=1`.
 
 **Bind:** this 150 s window has **no ~5 s-periodic in-process stage spike**; the only clustered over-threshold event is a 45 s every-beat **S3b acquire >2 ms** burst (S6b present >2 ms is frequent but not periodic). Eye pop was **not confirmed**, so a ~5 s pop in this window is **no isolated in-process spike** — named follow-up is compositor/panel / event `screenrecord` with an observer, not S4/S6a.
+
+### 6.7 Compositor / panel (this restart)
+
+Same install, cube still running (`pid 32755`), Settings 120 Hz lock. Do **not** inherit §§0–5 Closed as the reason to skip this dump. Commands: `dumpsys gfxinfo …`, `dumpsys SurfaceFlinger --timestats -clear -enable` then ~50 s then `--timestats -dump`, plus a full `dumpsys SurfaceFlinger`.
+
+**gfxinfo (View):** `Total frames rendered: 3` (native present, not Skia). SurfaceView **5** `BLAST Consumer` + **1** `VRI[MainActivity]` — same floor as the archive N5 dump, re-counted here. Do **not** restack keep-N.
+
+**SurfaceFlinger timestats** (layer `fd3910b SurfaceView[…](BLAST)#2309`, `uid=10507`; `statsStart`–`statsEnd` ≈ 68 s, `totalFrames=8194`):
+
+| Counter | This dump |
+|---------|-----------|
+| `droppedFrames` / `lateAcquireFrames` / `badDesiredPresentFrames` | **0** / **0** / **0** |
+| `jankyFrames` / `appBufferStuffingJankyFrames` / `totalTimelineFrames` | **0** (SurfaceView has no FrameTimeline) |
+| `missedFrames` (global) | **0** |
+| `setFrameRate` | **120.00** `ExactOrMultiple` `ShouldBeSeamless` |
+| `averageFPS` | 125.044 |
+| `present2present` | **8ms=8163**, 7ms=24, 9ms=5, 6ms=2; **0** in 16 ms / 25 ms buckets |
+| `present2presentDelta` | **0ms=8136**, 1ms=50, 2ms=5, 3ms=2; **0** ≥4 ms |
+| `desired2present` | **5ms=7722**, 6ms=471, 7ms=1 (timestamp default 2 beats is live, not parked ~29 ms) |
+| `latch2present` | peak **9–10 ms** |
+| `acquire2present` | peak **17–18 ms** (~2 vsyncs of queue, not 29 ms stuffing) |
+
+**HWC / display (full dump):** BLAST layer is the only HWC output, `Comp Type=DEVICE`, `usesClientComposition=false`. Active mode **120.00 Hz** `1260x2800`, `renderRate=120.00 Hz`. `GameFrameRateOverrides=` empty; `setFrameRate` UID 10507 → 120 Hz. Layer **FPS ring** (09:33:45–54, ten ~1 s bins): **120.19–120.61** fps, max interval **10.5–11.4 ms** (~1 extra vsync, not a 25 ms class).
+
+**No compositor knob this cut.** BLAST=5, timestamp beats=2, Fifo stay. SF counters on this restart do **not** show a ~5 s drop / rewind / stuffing class. A ~5 s eye pop here is still **outside** these counters (panel / BLAST re-show not counted, or needs frames at the pop). Named leftover: event `screenrecord` with an observer — not keep-N, not Mailbox.

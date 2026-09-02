@@ -67,15 +67,15 @@ After HP-BIND, one variable. Mapping §6.3 order, not a remaining needle:
 
 | Lane | When | DoD |
 |------|------|-----|
-| Compositor / acquire | Bind named S3 / S6b spike | One knob (BLAST / timestamp / Fifo). Not keep-N. |
+| Compositor / acquire | Bind named S3 / S6b spike | One knob (BLAST / timestamp / Fifo). Not keep-N. **Landed 2026-09-02:** mapping §6.7 SF/gfxinfo re-measure; **no knob** (counters clean). |
 | Guest / CM | Bind named S4 encode-gap spike | One knob on guest WIT or pump. Not Dawn C consume. |
 | GPU fence vs D24 | Bind named S6a, or no CPU spike while the eye pops | Real `onSubmittedWorkDone` vs immediate `mark_canvas_gpu_done`. `dawn_c.rs` does not bind that symbol today. |
-| Event `screenrecord` | Bind named no in-process spike | Key off `hotpath-spike` or the eye; frames around the pop. |
+| Event `screenrecord` | Bind named no in-process spike | Key off `hotpath-spike` or the eye; frames around the pop. **Next named** after §6.7. |
 | keep-N / DisplayManager / GameState / JNI | Banned until bind | Do not restack. |
 
 ## File whitelist (typical)
 
-- `docs/mapping/gfx-hitch-native-dawn.md` / `.zh.md` — §6 / §6.6 only on HP-LOG / HP-BIND
+- `docs/mapping/gfx-hitch-native-dawn.md` / `.zh.md` — §6 / §6.6 on HP-LOG / HP-BIND; §6.7 on compositor/panel
 - `docs/scheme/gfx-hitch.md` — **remove this lane’s needle**
 - `changelog/unreleased/<yyyy-mm-dd>-gfx-hitch-<slug>.md`
 - `native/src/native_gpu.rs` — only if HP-LOG needs a log-format fix (not a present-path behavior change)
@@ -108,7 +108,7 @@ Host: out-of-tree `hosts/fullscreen-surface`. Guest: same MoonBit cube. Settings
 - HP-LOG: `test(gfx): HP device hotpath window`
 - HP-BIND: `docs: HP bind cube pop to hotpath stage`
 
-Follow-up (named): `fix(gfx): HP …`
+Follow-up (named): `fix(gfx): HP …` (code knob) or `docs: HP …` (measurement only)
 
 ## Copy source
 

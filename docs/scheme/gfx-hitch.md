@@ -20,4 +20,4 @@ Branch: **`fix/300-gfx-cube-pop`**. Remaining: `python3 ./scripts/gfx-hitch-rema
 
 ## Named-only (never `Next:`)
 
-After HP-BIND: compositor/acquire, guest/CM encode-gap, GPU fence vs D24 `onSubmittedWorkDone`, event-triggered `screenrecord`. Banned until bind: keep-N, DisplayManager, GameState, JNI removal. P2 Wasmtime, CTS, this-repo **1.0.0**.
+After HP-BIND: compositor/acquire **SF counters landed 2026-09-02** (mapping §6.7; no knob). Remaining named: guest/CM encode-gap, GPU fence vs D24 `onSubmittedWorkDone`, event-triggered `screenrecord` (next after §6.7). Banned: keep-N, DisplayManager, GameState, JNI removal. P2 Wasmtime, CTS, this-repo **1.0.0**.

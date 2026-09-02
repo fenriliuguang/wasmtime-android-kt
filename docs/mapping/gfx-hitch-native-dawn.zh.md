@@ -193,10 +193,10 @@ SurfaceFlinger / BLAST / 面板
 ### 6.3 砍刀顺序（先有数，再动一刀）
 
 0. 在 V2458A、设置锁 120 Hz 上收 ≥2 min 的 `hotpath` + `hotpath-spike`。把肉眼弹出绑到某个阶段冒尖，**或**绑到「弹出时进程内无冒尖」。
-1. S3 / S6b 冒尖 → 合成器 / acquire（BLAST、时间戳、Fifo）。只动一个旋钮。
+1. S3 / S6b 冒尖 → 合成器 / acquire（BLAST、时间戳、Fifo）。只动一个旋钮。**这次重开（§6.7）：** 重采 SF 计数器 + gfxinfo；**不拧旋钮**（时间戳已是 5 ms `desired2present`；BLAST 仍是 5；禁止 Mailbox）。剩下第 4 条。
 2. S4 encode-gap 冒尖 → guest / CM（不是 Dawn C）。只动一个旋钮。
 3. S6a 冒尖，或 CPU 不冒尖但眼睛在弹 → GPU / fence 寿命 vs D24 的 `onSubmittedWorkDone`。今天的 `dawn_c.rs` **没有**绑这个符号。
-4. 弹出时进程内无冒尖 → 进程外的合成器 / 面板。用 `hotpath-spike` 或 `phase-crossing` 做事件触发 `screenrecord`。
+4. 弹出时进程内无冒尖 → **SF 计数器之外**的合成器 / 面板。用 `hotpath-spike` 或肉眼做事件触发 `screenrecord`。
 
 在某个阶段认领这次弹出之前，**不要**再叠 keep / DisplayManager / GameState / 砍 JNI。
 
@@ -236,3 +236,28 @@ Choreographer（累计到 n=51240）：`<11ms=51240` `11-20ms=0` `>20ms=0` `last
 n=51240 累计直方图（含本段之前）：acquire 间隔 `<11ms=51207` `11-20ms=33` `>20ms=0`。present `lastLatencyNs` `<8ms=46243` `8-16ms=4997` `>16ms=1` `>8.3ms=4760`；间隔 `<11ms=51070` `11-20ms=169` `>20ms=1`；`cross=347`；retire 存活 `<8.3ms=0` `8.3-25ms=27045` `>25ms=24192`；`angleDt` `8-9ms=51239` `9-17ms=1`。
 
 **绑定：** 这 150 s **没有约 5 s 周期的进程内阶段冒尖**；成簇超阈值的只有一段 45 s、每拍一次的 **S3b acquire >2 ms**（S6b present >2 ms 频繁但无周期）。肉眼弹出**未确认**，因此本窗口若有约 5 s 弹出，就是 **弹出时没有孤立的进程内冒尖** —— 具名后续是合成器/面板 / 有人盯着的事件 `screenrecord`，不是 S4/S6a。
+
+### 6.7 合成器 / 面板（这次重开）
+
+同一安装，立方体仍在跑（`pid 32755`），设置锁 120 Hz。**不要**用 §§0–5 Closed 当跳过这次 dump 的理由。命令：`dumpsys gfxinfo …`、`dumpsys SurfaceFlinger --timestats -clear -enable` 再等约 50 s 后 `--timestats -dump`，再加一份完整 `dumpsys SurfaceFlinger`。
+
+**gfxinfo（View）：** `Total frames rendered: 3`（native present，不是 Skia）。SurfaceView **5** 个 `BLAST Consumer` + **1** 个 `VRI[MainActivity]` —— 与档案 N5 同层，这里重数。**不要**再叠 keep-N。
+
+**SurfaceFlinger timestats**（层 `fd3910b SurfaceView[…](BLAST)#2309`，`uid=10507`；`statsStart`–`statsEnd` ≈ 68 s，`totalFrames=8194`）：
+
+| 计数器 | 本次 dump |
+|--------|-----------|
+| `droppedFrames` / `lateAcquireFrames` / `badDesiredPresentFrames` | **0** / **0** / **0** |
+| `jankyFrames` / `appBufferStuffingJankyFrames` / `totalTimelineFrames` | **0**（SurfaceView 没有 FrameTimeline） |
+| `missedFrames`（全局） | **0** |
+| `setFrameRate` | **120.00** `ExactOrMultiple` `ShouldBeSeamless` |
+| `averageFPS` | 125.044 |
+| `present2present` | **8ms=8163**，7ms=24，9ms=5，6ms=2；16 ms / 25 ms 桶 **0** |
+| `present2presentDelta` | **0ms=8136**，1ms=50，2ms=5，3ms=2；**0** ≥4 ms |
+| `desired2present` | **5ms=7722**，6ms=471，7ms=1（默认 2 拍时间戳在干活，不是停在约 29 ms） |
+| `latch2present` | 峰 **9–10 ms** |
+| `acquire2present` | 峰 **17–18 ms**（约 2 个 vsync 的队列，不是 29 ms 积压） |
+
+**HWC / 显示（完整 dump）：** BLAST 层是唯一 HWC 输出，`Comp Type=DEVICE`，`usesClientComposition=false`。当前模式 **120.00 Hz** `1260x2800`，`renderRate=120.00 Hz`。`GameFrameRateOverrides=` 空；`setFrameRate` UID 10507 → 120 Hz。层 **FPS ring**（09:33:45–54，十个约 1 s 桶）：**120.19–120.61** fps，最大间隔 **10.5–11.4 ms**（约多 1 个 vsync，不是 25 ms 那一档）。
+
+**本刀不拧合成器旋钮。** BLAST=5、时间戳 2 拍、Fifo 保持。这次重开的 SF 计数器**看不到**约 5 s 的丢帧 / 回退 / 积压档。若本窗口有约 5 s 肉眼弹出，仍在这些计数器**之外**（面板 / 未被计数的 BLAST 重播，或需要弹出瞬间的逐帧）。具名剩余：有人盯着的事件 `screenrecord` —— 不是 keep-N，不是 Mailbox。
