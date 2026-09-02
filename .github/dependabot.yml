@@ -1,5 +1,5 @@
-# Wasmtime-only: patch/minor PRs. Major still needs the upgrade RFC in
-# docs/scheme/wasmtime-tracking.md §4.1 (this file ignores semver-major).
+# Wasmtime-only: patch/minor PRs. Major needs a short RFC (this file ignores semver-major).
+# Pin: docs/scheme/tech-stack.md and native/Cargo.toml.
 version: 2
 updates:
   - package-ecosystem: cargo

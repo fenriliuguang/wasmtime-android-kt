@@ -9,7 +9,7 @@
 | Crate | Official `wasmtime` **47.x** (currently `47.0.4`) |
 | Features | `component-model` + `component-model-async` + required `async` |
 | Forbidden | wasmtime4j native / `dlopen` of a 4j `.so` |
-| Tracking | [`wasmtime-tracking.md`](wasmtime-tracking.md) |
+| Upgrade | Patch/minor via Dependabot (ignores major). Major needs a short RFC. Pin lives in `native/Cargo.toml`. |
 
 ## Binding
 
@@ -40,8 +40,8 @@ Target: [`rfc.md`](rfc.md) §2.
 
 SPI lives in `runtime-api`. Do not leak foreign `WasiWebGpuHost` types into L1. Canonical guests: `wasi:webgpu@0.3.0-rc.2`. Do not add new `experimental:webgpu-cm` exports.
 
-**Today:** Host Kotlin lives in `:host-dawn`; Dawn `.so` is `androidx.webgpu` (not git) plus optional `libwebgpu_dawn.so` for NativeGpu. Default consume is Dawn C ([`../agent/remaining.md`](../agent/remaining.md)). See [`../blocked-gpu-host.md`](../blocked-gpu-host.md). `:runtime-jni` does not depend on Dawn types.
+**Today:** Host Kotlin lives in `:host-dawn`; Dawn `.so` is `androidx.webgpu` (not git) plus optional `libwebgpu_dawn.so` for NativeGpu. Default consume is Dawn C. See [`../blocked-gpu-host.md`](../blocked-gpu-host.md). `:runtime-jni` does not depend on Dawn types.
 
 ## Build
 
-Gradle + cargo-ndk. [`../build.md`](../build.md). Optional desktop cdylib: [`../contribute.md`](../contribute.md).
+Gradle + cargo-ndk. Cross-compile: [`../../scripts/build-native-android.ps1`](../../scripts/build-native-android.ps1). Workflow: [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md).

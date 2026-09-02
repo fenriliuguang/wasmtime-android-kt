@@ -2,7 +2,7 @@
 
 **English** | [中文](claim-010.zh.md)
 
-Release-notes-shaped **product subset**. Policy: [`rfc.md`](rfc.md). Remaining close-out: [`../agent/remaining.md`](../agent/remaining.md).
+Release-notes-shaped **product subset**. Policy: [`rfc.md`](rfc.md).
 
 **This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md). Coordinate **`0.1.0`** (not pressed). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml).
 
@@ -33,7 +33,7 @@ Leftovers: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Hos
 | `wasi:filesystem` | Directory preopen + `open-at` + r/w; `..` → `access` | `stat` / dir stream / append |
 | `wasi:sockets` | Outbound TCP IPv4 | listen, UDP, DNS |
 | `wasi:http` | Body `stream<u8>`; outbound GET; no product request/response constructors | `service` world, trailers, TLS |
-| `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `height` / `width` / `request-set-size` / `on-resize` + `on-pointer-*` / `on-key-*` (Store `postGfxPointer` / `postGfxKey`) + `configure` / `get-current-texture` / `present` | See remaining + non-urgent below |
+| `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `height` / `width` / `request-set-size` / `on-resize` + `on-pointer-*` / `on-key-*` (Store `postGfxPointer` / `postGfxKey`) + `configure` / `get-current-texture` / `present` | See non-urgent below |
 
 **Remaining (auto):** none.
 
@@ -71,5 +71,5 @@ Cloud has **no** device. Named, not a matrix. Cube is demo only.
 
 | Device | ABI | Android | Path | Date |
 |--------|-----|---------|------|------|
-| Vivo V2458A (PD2415M) | arm64-v8a | 16 | `WasiGfxFrameLoopInstrumentedTest` | 2026-08-27 |
-| Vivo V2458A (PD2415M) | arm64-v8a | 16 | Out-of-tree cube ([examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)) — demo | 2026-08-27 |
+| Vivo V2458A (PD2415M) | arm64-v8a | 16 | `:smoke-app:connectedDebugAndroidTest` (277 tests, 3 skipped leftover `dawn-jni`, 0 failed) | 2026-09-02 |
+| Vivo V2458A (PD2415M) | arm64-v8a | 16 | Out-of-tree cube ([examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)) — >3 min, vsync ~8.33 ms | 2026-09-02 |

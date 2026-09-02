@@ -28,4 +28,4 @@ Test-only constructors (`get-device`, …) may remain in fixtures. They **must n
 
 ## 3. Present / canvas
 
-`wasi:webgpu` has **no** `present`. Product canvas is `gpu-canvas-context`. Continuous on-screen loop is `wasi-gfx:surface@0.2.0` ([`rfc.md`](rfc.md) §3). Remaining gfx: [`../agent/remaining.md`](../agent/remaining.md).
+`wasi:webgpu` has **no** `present`. Product canvas is `gpu-canvas-context`. Continuous on-screen loop is `wasi-gfx:surface@0.2.0` ([`rfc.md`](rfc.md) §3).

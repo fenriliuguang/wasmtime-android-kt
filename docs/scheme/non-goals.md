@@ -13,7 +13,7 @@ Hard boundaries until a new RFC ([`rfc.md`](rfc.md)).
 | NG-6 | Publish **Maven Central** / GitHub Packages **before `0.1.0` is pressed**. Workflow exists; still no press when secrets are missing |
 | NG-7 | Implement a **second Dawn renderer**. Packaging / adapting **one** Dawn (C API default + `dawn-jni` leftover) is allowed. wgpu-native as default is a second renderer |
 | NG-8 | Treat Latch / sync-compat as **true** CM async |
-| NG-9 | Promote **wasi-gfx / multi-window** to a **P0** wasi:webgpu re-queue. Size/resize is remaining close-out; multi-window is named-only |
+| NG-9 | Promote **wasi-gfx / multi-window** to a **P0** wasi:webgpu re-queue. Size/resize and pin input streams are product; multi-window is named-only |
 | NG-11 | Replace “track upstream Wasmtime” with a non-official engine |
 | NG-12 | Accept **host-fixed descriptor + transitional u32** as the DoD for **new** wasi:webgpu slices |
 

@@ -2,7 +2,7 @@
 
 **English** | [中文](gap-webgpu-native-dawn.zh.md)
 
-Living map for the **in-process Dawn C** path (`NativeGpu`). Pin: `wasi:webgpu@0.3.0-rc.2`. JNI leftover: [`gap-webgpu-wit-androidx.md`](gap-webgpu-wit-androidx.md). Close-out: [`../agent/remaining.md`](../agent/remaining.md). Claim: [`../scheme/claim-010.md`](../scheme/claim-010.md).
+Living map for the **in-process Dawn C** path (`NativeGpu`). Pin: `wasi:webgpu@0.3.0-rc.2`. JNI leftover: [`gap-webgpu-wit-androidx.md`](gap-webgpu-wit-androidx.md). Claim: [`../scheme/claim-010.md`](../scheme/claim-010.md).
 
 `libwebgpu_dawn.so` is optional (Cloud / missing recipe → table-backed). Table-backed boot is still NativeGpu (no ART/JNI).
 

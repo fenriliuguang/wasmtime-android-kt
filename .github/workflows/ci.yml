@@ -3,9 +3,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, release/0.1.0]
   pull_request:
-    branches: [main]
+    branches: [main, release/0.1.0]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -75,23 +75,105 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # runtime-jni / android / smoke-app AARs need Android SDK — not in this job (see publish.yml).
-      - name: Compile JVM modules and publishToMavenLocal
+      # Android AAR / smoke-app need NDK .so — see android-native / android-aar.
+      - name: Compile JVM modules
         run: |
           chmod +x gradlew
-          ./gradlew :runtime-api:compileKotlin :runtime-jni:compileKotlin \
-            :runtime-api:publishToMavenLocal :runtime-jni:publishToMavenLocal --no-daemon
+          ./gradlew :runtime-api:compileKotlin :runtime-jni:compileKotlin --no-daemon
+
+  android-native:
+    name: android (ndk .so)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build Android natives
+        uses: ./.github/actions/build-android-natives
+
+      - name: Upload jniLibs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-jniLibs
+          path: android/jniLibs
+          if-no-files-found: error
+          retention-days: 14
+
+  android-aar:
+    name: android (AAR + smoke APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [android-native]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download jniLibs
+        uses: actions/download-artifact@v4
+        with:
+          name: android-jniLibs
+          path: android/jniLibs
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble published AARs and smoke APK
+        run: |
+          chmod +x gradlew
+          test -f android/jniLibs/arm64-v8a/libwasmtime_android_kt.so
+          test -f android/jniLibs/x86_64/libwasmtime_android_kt.so
+          ./gradlew \
+            :android:assembleRelease \
+            :host-dawn:assembleRelease \
+            :android-webgpu:assembleRelease \
+            :smoke-app:assembleDebug \
+            --no-daemon
+
+      - name: Upload AAR and APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-maven-artifacts
+          path: |
+            android/build/outputs/aar/*.aar
+            host-dawn/build/outputs/aar/*.aar
+            android-webgpu/build/outputs/aar/*.aar
+            smoke-app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
 
   # Single required check name for Rulesets: "CI"
   ci:
     name: CI
-    needs: [native, jvm-api]
+    needs: [native, jvm-api, android-native, android-aar]
     runs-on: ubuntu-latest
     if: ${{ always() }}
     steps:
       - name: All required jobs green
         run: |
-          if [ "${{ needs.native.result }}" != "success" ] || [ "${{ needs.jvm-api.result }}" != "success" ]; then
-            echo "native=${{ needs.native.result }} jvm-api=${{ needs.jvm-api.result }}"
+          if [ "${{ needs.native.result }}" != "success" ] \
+            || [ "${{ needs.jvm-api.result }}" != "success" ] \
+            || [ "${{ needs.android-native.result }}" != "success" ] \
+            || [ "${{ needs.android-aar.result }}" != "success" ]; then
+            echo "native=${{ needs.native.result }} jvm-api=${{ needs.jvm-api.result }} android-native=${{ needs.android-native.result }} android-aar=${{ needs.android-aar.result }}"
             exit 1
           fi

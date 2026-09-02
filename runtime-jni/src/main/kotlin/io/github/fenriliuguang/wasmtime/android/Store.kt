@@ -12,7 +12,9 @@ import java.util.ServiceLoader
 import java.util.logging.Logger
 
 /** Wasmtime store (host callbacks + resource table). */
-class Store private constructor(internal var handle: Long) : AutoCloseable {
+class Store private constructor(initialHandle: Long) : AutoCloseable {
+    @Volatile
+    internal var handle: Long = initialHandle
     @Volatile
     var backendKind: WebGpuBackendKind = WebGpuBackendKind.None
         private set
@@ -89,8 +91,11 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
      */
     @JvmOverloads
     fun postGfxVsync(frameTimeNanos: Long = 0L) {
-        require(handle != 0L) { "store closed" }
-        NativeBridge.nativeStorePostGfxVsync(handle, frameTimeNanos)
+        // Choreographer can fire after close(); throwing on the main thread
+        // aborts the process (and the instrument suite). Drop the beat.
+        val h = handle
+        if (h == 0L) return
+        NativeBridge.nativeStorePostGfxVsync(h, frameTimeNanos)
     }
 
     /**
@@ -136,8 +141,9 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
      * Close the `on-frame` stream (`surfaceDestroyed`). Unblocks guest `run`.
      */
     fun closeGfxOnFrame() {
-        require(handle != 0L) { "store closed" }
-        NativeBridge.nativeStoreCloseGfxOnFrame(handle)
+        val h = handle
+        if (h == 0L) return
+        NativeBridge.nativeStoreCloseGfxOnFrame(h)
     }
 
     /**

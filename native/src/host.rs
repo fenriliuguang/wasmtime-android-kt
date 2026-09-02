@@ -409,6 +409,9 @@ impl GfxOnFrameGate {
             None => start_gen.saturating_add(need),
         };
         loop {
+            if g.closed {
+                return GfxOnFrameTake::Eof;
+            }
             if g.post_generation >= target {
                 g.pending = false;
                 g.last_take_gen = Some(g.post_generation);

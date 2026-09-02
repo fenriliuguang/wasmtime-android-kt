@@ -51,7 +51,7 @@ If a later slice proves “CM loop must share GpuThread”, merge them and revis
 | Waiting for GPU | Latch + `processEvents` in the callback | Non-blocking request → GpuThread finishes → complete future |
 | Acceptance | Historical on-screen smoke | Prove the model first, then frame loops |
 
-Gfx loop shape: [`../scheme/rfc.md`](../scheme/rfc.md) §3. Remaining size/resize: [`../agent/remaining.md`](../agent/remaining.md). Not a P2 lane.
+Gfx loop shape: [`../scheme/rfc.md`](../scheme/rfc.md) §3. Not a P2 lane.
 
 ## 5. WASI 0.3 filesystem sandbox (W6)
 

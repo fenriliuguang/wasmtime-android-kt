@@ -6,5 +6,4 @@
 
 - 产品：Android 优先、可引用宿主；坐标 **`0.1.0`**（未发布前不因消费路径升 GAV）；永续 `0.x` 直至上游 1.0。
 - GPU：默认进程内 Dawn C（`NativeGpu`）；`dawn-jni` 遗留；未接线 → `request-adapter` **`none`**。
-- gfx：钉 `wasi-gfx:surface@0.2.0`；guest 拉 `on-frame`。剩余自动：尺寸/resize + 其余 pin 输入流。非紧急：`unconfigure`、带时间戳的 frame-event、Lost/Outdated `result`、多窗口。
-- 收口：[`../agent/remaining.md`](../agent/remaining.md)。
+- gfx：钉 `wasi-gfx:surface@0.2.0`；guest 拉 `on-frame`。尺寸/resize 与 pin 输入流已落地。非紧急：`unconfigure`、带时间戳的 frame-event、Lost/Outdated `result`、多窗口。

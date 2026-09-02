@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
-$Out = Join-Path $Root "android\jniLibs"
+$Out = Join-Path (Join-Path $Root "android") "jniLibs"
 $LibFile = "libwasmtime_android_kt.so"
 $InfoPath = Join-Path $Out "build-info.json"
 

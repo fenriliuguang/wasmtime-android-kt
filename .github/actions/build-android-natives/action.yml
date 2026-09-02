@@ -1,0 +1,37 @@
+name: Build Android natives
+description: Cross-compile libwasmtime_android_kt.so into android/jniLibs (arm64 + x86_64).
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Install NDK and platform
+      shell: bash
+      run: |
+        set -euo pipefail
+        sdkmanager "ndk;28.2.13676358" "platforms;android-36" "build-tools;36.0.0"
+        echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-$ANDROID_HOME}" >> "$GITHUB_ENV"
+        echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+
+    - name: Install Rust toolchain (Android targets)
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: "1.97.1"
+        targets: aarch64-linux-android,x86_64-linux-android
+
+    - name: Cache cargo (Android ndk)
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: native -> target
+        shared-key: "android-ndk-j2-nodebug"
+
+    - name: Install cargo-ndk
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-ndk
+
+    - name: cargo-ndk release into android/jniLibs
+      shell: pwsh
+      run: ./scripts/build-native-android.ps1
