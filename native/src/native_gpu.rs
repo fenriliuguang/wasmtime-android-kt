@@ -527,13 +527,14 @@ impl Default for NativeGpuHost {
 
 fn feature_enum(name: &str) -> u32 {
     match name {
+        "core-features-and-limits" => 0x1,
         "depth-clip-control" => 0x2,
         "depth32float-stencil8" => 0x3,
         "texture-compression-bc" => 0x4,
-        "texture-compression-bc-sliced-3d" => 0x5,
+        "texture-compression-bc-sliced-3d" | "texture-compression-bc-sliced3d" => 0x5,
         "texture-compression-etc2" => 0x6,
         "texture-compression-astc" => 0x7,
-        "texture-compression-astc-sliced-3d" => 0x8,
+        "texture-compression-astc-sliced-3d" | "texture-compression-astc-sliced3d" => 0x8,
         "timestamp-query" => 0x9,
         "indirect-first-instance" => 0xA,
         "shader-f16" => 0xB,
@@ -544,6 +545,43 @@ fn feature_enum(name: &str) -> u32 {
         "clip-distances" => 0x10,
         "dual-source-blending" => 0x11,
         "subgroups" => 0x12,
+        "texture-formats-tier1" => 0x13,
+        "texture-formats-tier2" => 0x14,
+        "primitive-index" => 0x15,
+        "texture-component-swizzle" => 0x16,
+        _ => 0,
+    }
+}
+
+/// WIT `gpu-feature-name` discriminant → Dawn `WGPUFeatureName` (ordinal + 1).
+fn wit_features_to_dawn(ordinals: &[i32]) -> Vec<u32> {
+    ordinals
+        .iter()
+        .copied()
+        .filter_map(|n| {
+            if (0..=21).contains(&n) {
+                Some((n as u32) + 1)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn dawn_feature_level(s: &str) -> u32 {
+    if s.eq_ignore_ascii_case("compatibility") {
+        1
+    } else if s.eq_ignore_ascii_case("core") {
+        2
+    } else {
+        0
+    }
+}
+
+fn dawn_power_preference(v: i32) -> u32 {
+    match v {
+        1 => 1,
+        2 => 2,
         _ => 0,
     }
 }
@@ -710,12 +748,15 @@ impl NativeGpuHost {
     ) -> Option<GpuHandle> {
         let mut info = NativeAdapterInfo::default();
         info.is_fallback_adapter = options.force_fallback_adapter;
-        let _ = options.feature_level;
-        let _ = options.power_preference;
         let _ = options.xr_compatible;
         let instance = self.ensure_instance();
         let dawn = if instance != 0 {
-            dawn_c::request_adapter_vulkan(instance)
+            dawn_c::request_adapter_vulkan(
+                instance,
+                dawn_feature_level(options.feature_level),
+                dawn_power_preference(options.power_preference),
+                options.force_fallback_adapter,
+            )
         } else {
             0
         };
@@ -733,12 +774,16 @@ impl NativeGpuHost {
         desc: &NativeRequestDeviceDescriptor<'_>,
     ) -> Result<GpuHandle, NativeGpuError> {
         self.get(adapter, ResourceKind::Adapter)?;
-        let _ = desc.required_features;
         let _ = desc.required_limits_rep;
-        let _ = desc.label;
-        let _ = desc.default_queue_label;
+        let features = wit_features_to_dawn(desc.required_features);
         let instance = self.ensure_instance();
-        let dawn = dawn_c::request_device(instance, self.dawn_of(adapter));
+        let dawn = dawn_c::request_device(
+            instance,
+            self.dawn_of(adapter),
+            &features,
+            desc.label,
+            desc.default_queue_label,
+        );
         Ok(self.table.insert(ResourceKind::Device, dawn))
     }
 
@@ -1160,18 +1205,20 @@ impl NativeGpuHost {
         } else {
             0
         };
+        let constants = self.copy_constant_record(constants_rep);
         let dawn = dawn_c::create_compute_pipeline(
             self.dawn_of(device),
             layout_dawn,
             self.dawn_of(shader),
             entry_point,
             label,
+            &constants,
         );
         let handle = self.table.insert(ResourceKind::ComputePipeline, dawn);
         self.pipeline_constants.insert(
             handle.raw(),
             NativePipelineConstants {
-                compute: self.copy_constant_record(constants_rep),
+                compute: constants,
                 ..NativePipelineConstants::default()
             },
         );
@@ -1209,6 +1256,10 @@ impl NativeGpuHost {
             &[],
             &[],
             &[],
+            &[],
+            &[],
+            &[],
+            &[],
         )
     }
 
@@ -1231,6 +1282,10 @@ impl NativeGpuHost {
         attr_offsets: &[i32],
         attr_locations: &[i32],
         primitive: &[i32],
+        multisample: &[i32],
+        blend: &[i32],
+        write_mask: &[i32],
+        depth_stencil: &[i32],
     ) -> Result<GpuHandle, NativeGpuError> {
         self.get(device, ResourceKind::Device)?;
         let vs = self.resolve_shader(vertex_shader)?;
@@ -1246,6 +1301,8 @@ impl NativeGpuHost {
         } else {
             0
         };
+        let vertex_const = self.copy_constant_record(vertex_constants);
+        let fragment_const = self.copy_constant_record(fragment_constants);
         let dawn = dawn_c::create_render_pipeline(
             self.dawn_of(device),
             layout_dawn,
@@ -1264,13 +1321,21 @@ impl NativeGpuHost {
                 attr_locations,
             },
             label,
+            dawn_c::RenderPipelineCtor {
+                multisample,
+                blend,
+                write_mask,
+                depth_stencil,
+                vertex_constants: &vertex_const,
+                fragment_constants: &fragment_const,
+            },
         );
         let handle = self.table.insert(ResourceKind::RenderPipeline, dawn);
         self.pipeline_constants.insert(
             handle.raw(),
             NativePipelineConstants {
-                vertex: self.copy_constant_record(vertex_constants),
-                fragment: self.copy_constant_record(fragment_constants),
+                vertex: vertex_const,
+                fragment: fragment_const,
                 ..NativePipelineConstants::default()
             },
         );
@@ -2781,6 +2846,8 @@ mod tests {
         let mut gpu = NativeGpuHost::new();
         let adapter = gpu
             .request_adapter(&NativeRequestAdapterOptions {
+                feature_level: "core",
+                power_preference: 2,
                 xr_compatible: Some(true),
                 ..Default::default()
             })
@@ -2881,6 +2948,53 @@ mod tests {
             gpu.get(render, ResourceKind::RenderPipeline).unwrap().dawn,
             0
         );
+    }
+
+    #[test]
+    fn render_pipeline_ctor_semantics_table_backed() {
+        let mut gpu = NativeGpuHost::new();
+        let device = gpu.resolve_device(0).expect("boot device");
+        let shader = gpu
+            .create_shader_module(device, "fn main() {}", "", &[], "")
+            .expect("shader");
+        gpu.pipeline_constant_add(9, "k".into(), 2.0);
+        let rp = gpu
+            .create_render_pipeline_described(
+                device,
+                shader.raw(),
+                "vs_main",
+                0,
+                "fs_main",
+                0x16,
+                0,
+                "ctor",
+                9,
+                9,
+                &[],
+                &[],
+                &[],
+                &[],
+                &[],
+                &[],
+                &[4, 0, 1, 3],
+                &[4, 0, 0, 1],
+                &[1, 1, 1, 1, 1, 1, 1],
+                &[-1],
+                &[
+                    1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ],
+            )
+            .expect("render ctor");
+        assert_eq!(
+            gpu.get(rp, ResourceKind::RenderPipeline).unwrap().dawn,
+            0,
+            "missing .so stays table-backed"
+        );
+        let constants = gpu
+            .pipeline_constants(rp)
+            .unwrap()
+            .expect("vertex constants copied");
+        assert_eq!(constants.vertex, vec![("k".into(), 2.0)]);
     }
 
     #[test]

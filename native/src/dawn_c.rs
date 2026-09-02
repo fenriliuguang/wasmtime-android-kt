@@ -278,17 +278,64 @@ struct VertexState {
     module: WgpuObj,
     entry_point: StringView,
     constant_count: usize,
-    constants: *const c_void,
+    constants: *const ConstantEntry,
     buffer_count: usize,
     buffers: *const VertexBufferLayout,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct BlendComponent {
+    operation: WgpuEnum,
+    src_factor: WgpuEnum,
+    dst_factor: WgpuEnum,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct BlendState {
+    color: BlendComponent,
+    alpha: BlendComponent,
 }
 
 #[repr(C)]
 struct ColorTargetState {
     next_in_chain: *mut Chained,
     format: WgpuEnum,
-    blend: *const c_void,
+    blend: *const BlendState,
     write_mask: WgpuFlags,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct StencilFaceState {
+    compare: WgpuEnum,
+    fail_op: WgpuEnum,
+    depth_fail_op: WgpuEnum,
+    pass_op: WgpuEnum,
+}
+
+#[repr(C)]
+struct DepthStencilState {
+    next_in_chain: *mut Chained,
+    format: WgpuEnum,
+    /// `WGPUOptionalBool`: False=0, True=1, Undefined=2.
+    depth_write_enabled: WgpuEnum,
+    depth_compare: WgpuEnum,
+    stencil_front: StencilFaceState,
+    stencil_back: StencilFaceState,
+    stencil_read_mask: u32,
+    stencil_write_mask: u32,
+    depth_bias: i32,
+    depth_bias_slope_scale: f32,
+    depth_bias_clamp: f32,
+}
+
+#[repr(C)]
+struct ConstantEntry {
+    next_in_chain: *mut Chained,
+    key: StringView,
+    value: f64,
 }
 
 #[repr(C)]
@@ -297,7 +344,7 @@ struct FragmentState {
     module: WgpuObj,
     entry_point: StringView,
     constant_count: usize,
-    constants: *const c_void,
+    constants: *const ConstantEntry,
     target_count: usize,
     targets: *const ColorTargetState,
 }
@@ -327,7 +374,7 @@ struct RenderPipelineDesc {
     layout: WgpuObj,
     vertex: VertexState,
     primitive: PrimitiveState,
-    depth_stencil: *const c_void,
+    depth_stencil: *const DepthStencilState,
     multisample: MultisampleState,
     fragment: *const FragmentState,
 }
@@ -485,7 +532,7 @@ struct ComputeState {
     module: WgpuObj,
     entry_point: StringView,
     constant_count: usize,
-    constants: *const c_void,
+    constants: *const ConstantEntry,
 }
 
 #[repr(C)]
@@ -1049,13 +1096,20 @@ pub fn create_instance() -> DawnSlot {
     unsafe { from_ptr((api.create_instance)(&fallback)) }
 }
 
-fn request_adapter_backend(api: &Api, instance: WgpuObj, backend: WgpuEnum) -> DawnSlot {
+fn request_adapter_backend(
+    api: &Api,
+    instance: WgpuObj,
+    backend: WgpuEnum,
+    feature_level: WgpuEnum,
+    power_preference: WgpuEnum,
+    force_fallback: WgpuBool,
+) -> DawnSlot {
     let mut out = (0u32, std::ptr::null_mut());
     let opts = RequestAdapterOptions {
         next_in_chain: std::ptr::null_mut(),
-        feature_level: 0,
-        power_preference: 0,
-        force_fallback_adapter: 0,
+        feature_level,
+        power_preference,
+        force_fallback_adapter: force_fallback,
         backend_type: backend,
         compatible_surface: std::ptr::null_mut(),
     };
@@ -1085,7 +1139,12 @@ fn request_adapter_backend(api: &Api, instance: WgpuObj, backend: WgpuEnum) -> D
     }
 }
 
-pub fn request_adapter_vulkan(instance: DawnSlot) -> DawnSlot {
+pub fn request_adapter_vulkan(
+    instance: DawnSlot,
+    feature_level: WgpuEnum,
+    power_preference: WgpuEnum,
+    force_fallback: bool,
+) -> DawnSlot {
     let Some(api) = api() else {
         return 0;
     };
@@ -1093,14 +1152,35 @@ pub fn request_adapter_vulkan(instance: DawnSlot) -> DawnSlot {
         log_android(false, "wgpuCreateInstance returned null");
         return 0;
     }
-    let vulkan = request_adapter_backend(api, as_ptr(instance), BACKEND_VULKAN);
+    let fallback = if force_fallback { 1 } else { 0 };
+    let vulkan = request_adapter_backend(
+        api,
+        as_ptr(instance),
+        BACKEND_VULKAN,
+        feature_level,
+        power_preference,
+        fallback,
+    );
     if vulkan != 0 {
         return vulkan;
     }
-    request_adapter_backend(api, as_ptr(instance), 0)
+    request_adapter_backend(
+        api,
+        as_ptr(instance),
+        0,
+        feature_level,
+        power_preference,
+        fallback,
+    )
 }
 
-pub fn request_device(instance: DawnSlot, adapter: DawnSlot) -> DawnSlot {
+pub fn request_device(
+    instance: DawnSlot,
+    adapter: DawnSlot,
+    required_features: &[WgpuEnum],
+    label: &str,
+    default_queue_label: &str,
+) -> DawnSlot {
     let Some(api) = api() else {
         return 0;
     };
@@ -1110,13 +1190,17 @@ pub fn request_device(instance: DawnSlot, adapter: DawnSlot) -> DawnSlot {
     let mut out = (0u32, std::ptr::null_mut());
     let desc = DeviceDesc {
         next_in_chain: std::ptr::null_mut(),
-        label: StringView::empty(),
-        required_feature_count: 0,
-        required_features: std::ptr::null(),
+        label: StringView::from_str(label),
+        required_feature_count: required_features.len(),
+        required_features: if required_features.is_empty() {
+            std::ptr::null()
+        } else {
+            required_features.as_ptr()
+        },
         required_limits: std::ptr::null(),
         default_queue: QueueDesc {
             next_in_chain: std::ptr::null_mut(),
-            label: StringView::empty(),
+            label: StringView::from_str(default_queue_label),
         },
         device_lost: CallbackInfo {
             next_in_chain: std::ptr::null_mut(),
@@ -1366,6 +1450,151 @@ pub struct VertexPack<'a> {
     pub attr_locations: &'a [i32],
 }
 
+/// Packed leftover ctor fields (blend / MSAA / depth-stencil / constants).
+pub struct RenderPipelineCtor<'a> {
+    pub multisample: &'a [i32],
+    pub blend: &'a [i32],
+    pub write_mask: &'a [i32],
+    pub depth_stencil: &'a [i32],
+    pub vertex_constants: &'a [(String, f64)],
+    pub fragment_constants: &'a [(String, f64)],
+}
+
+impl RenderPipelineCtor<'static> {
+    pub const EMPTY: Self = Self {
+        multisample: &[],
+        blend: &[],
+        write_mask: &[],
+        depth_stencil: &[],
+        vertex_constants: &[],
+        fragment_constants: &[],
+    };
+}
+
+fn constant_entries(pairs: &[(String, f64)]) -> Vec<ConstantEntry> {
+    pairs
+        .iter()
+        .map(|(k, v)| ConstantEntry {
+            next_in_chain: std::ptr::null_mut(),
+            key: StringView::from_str(k),
+            value: *v,
+        })
+        .collect()
+}
+
+fn packed_write_mask(v: i32) -> WgpuFlags {
+    if v < 0 || (v & (1 << 4)) != 0 {
+        COLOR_WRITE_ALL
+    } else {
+        (v & 0xF) as WgpuFlags
+    }
+}
+
+fn parse_blend(blend: &[i32], target: usize) -> Option<BlendState> {
+    let o = target.saturating_mul(7);
+    if blend.len() < o + 7 || blend[o] == 0 {
+        return None;
+    }
+    Some(BlendState {
+        color: BlendComponent {
+            operation: blend[o + 1] as WgpuEnum,
+            src_factor: blend[o + 2] as WgpuEnum,
+            dst_factor: blend[o + 3] as WgpuEnum,
+        },
+        alpha: BlendComponent {
+            operation: blend[o + 4] as WgpuEnum,
+            src_factor: blend[o + 5] as WgpuEnum,
+            dst_factor: blend[o + 6] as WgpuEnum,
+        },
+    })
+}
+
+fn parse_multisample(packed: &[i32]) -> MultisampleState {
+    if packed.len() < 4 {
+        return MultisampleState {
+            next_in_chain: std::ptr::null_mut(),
+            count: 1,
+            mask: u32::MAX,
+            alpha_to_coverage_enabled: 0,
+        };
+    }
+    let count = if packed[0] <= 0 { 1 } else { packed[0] as u32 };
+    let mask = if packed[1] != 0 {
+        packed[2] as u32
+    } else {
+        u32::MAX
+    };
+    MultisampleState {
+        next_in_chain: std::ptr::null_mut(),
+        count,
+        mask,
+        alpha_to_coverage_enabled: if packed[3] == 1 { 1 } else { 0 },
+    }
+}
+
+fn parse_stencil_face(packed: &[i32], off: usize) -> StencilFaceState {
+    let get = |i: usize| packed.get(i).copied().unwrap_or(0);
+    if get(off) == 0 {
+        return StencilFaceState {
+            compare: 0,
+            fail_op: 0,
+            depth_fail_op: 0,
+            pass_op: 0,
+        };
+    }
+    StencilFaceState {
+        compare: get(off + 1) as WgpuEnum,
+        fail_op: get(off + 2) as WgpuEnum,
+        depth_fail_op: get(off + 3) as WgpuEnum,
+        pass_op: get(off + 4) as WgpuEnum,
+    }
+}
+
+fn parse_depth_stencil(packed: &[i32]) -> Option<DepthStencilState> {
+    if packed.is_empty() {
+        return None;
+    }
+    let get = |i: usize| packed.get(i).copied().unwrap_or(0);
+    let pair_u32 = |off: usize, default: u32| {
+        if get(off) != 0 {
+            get(off + 1) as u32
+        } else {
+            default
+        }
+    };
+    let pair_i32 = |off: usize| {
+        if get(off) != 0 {
+            get(off + 1)
+        } else {
+            0
+        }
+    };
+    let pair_f32 = |off: usize| {
+        if get(off) != 0 {
+            f32::from_bits(get(off + 1) as u32)
+        } else {
+            0.0
+        }
+    };
+    Some(DepthStencilState {
+        next_in_chain: std::ptr::null_mut(),
+        format: get(0) as WgpuEnum,
+        depth_write_enabled: match get(1) {
+            1 => 1,
+            0 => 0,
+            _ => 2,
+        },
+        depth_compare: get(2) as WgpuEnum,
+        stencil_front: parse_stencil_face(packed, 3),
+        stencil_back: parse_stencil_face(packed, 8),
+        stencil_read_mask: pair_u32(13, u32::MAX),
+        stencil_write_mask: pair_u32(15, u32::MAX),
+        depth_bias: pair_i32(17),
+        depth_bias_slope_scale: pair_f32(19),
+        depth_bias_clamp: pair_f32(21),
+    })
+}
+
 pub fn create_render_pipeline(
     device: DawnSlot,
     layout: DawnSlot,
@@ -1377,6 +1606,7 @@ pub fn create_render_pipeline(
     primitive: &[i32],
     pack: VertexPack<'_>,
     label: &str,
+    ctor: RenderPipelineCtor<'_>,
 ) -> DawnSlot {
     let Some(api) = api() else {
         return 0;
@@ -1411,16 +1641,33 @@ pub fn create_render_pipeline(
             attributes: attrs[i].as_ptr(),
         })
         .collect();
-    let target = ColorTargetState {
-        next_in_chain: std::ptr::null_mut(),
-        format: if format == 0 {
-            FORMAT_RGBA8_UNORM
-        } else {
-            format
-        },
-        blend: std::ptr::null(),
-        write_mask: COLOR_WRITE_ALL,
+    let vs_constants = constant_entries(ctor.vertex_constants);
+    let fs_constants = constant_entries(ctor.fragment_constants);
+    let target_n = ctor.write_mask.len().max(ctor.blend.len() / 7).max(1);
+    let blends: Vec<Option<BlendState>> =
+        (0..target_n).map(|i| parse_blend(ctor.blend, i)).collect();
+    let fmt = if format == 0 {
+        FORMAT_RGBA8_UNORM
+    } else {
+        format
     };
+    let targets: Vec<ColorTargetState> = (0..target_n)
+        .map(|i| ColorTargetState {
+            next_in_chain: std::ptr::null_mut(),
+            format: fmt,
+            blend: blends[i]
+                .as_ref()
+                .map(|b| b as *const BlendState)
+                .unwrap_or(std::ptr::null()),
+            write_mask: ctor
+                .write_mask
+                .get(i)
+                .copied()
+                .map(packed_write_mask)
+                .unwrap_or(COLOR_WRITE_ALL),
+        })
+        .collect();
+    let depth = parse_depth_stencil(ctor.depth_stencil);
     let fs_mod = if fs == 0 { vs } else { fs };
     let fragment = FragmentState {
         next_in_chain: std::ptr::null_mut(),
@@ -1430,10 +1677,14 @@ pub fn create_render_pipeline(
         } else {
             fs_entry
         }),
-        constant_count: 0,
-        constants: std::ptr::null(),
-        target_count: 1,
-        targets: &target,
+        constant_count: fs_constants.len(),
+        constants: if fs_constants.is_empty() {
+            std::ptr::null()
+        } else {
+            fs_constants.as_ptr()
+        },
+        target_count: targets.len(),
+        targets: targets.as_ptr(),
     };
     let desc = RenderPipelineDesc {
         next_in_chain: std::ptr::null_mut(),
@@ -1447,8 +1698,12 @@ pub fn create_render_pipeline(
             } else {
                 vs_entry
             }),
-            constant_count: 0,
-            constants: std::ptr::null(),
+            constant_count: vs_constants.len(),
+            constants: if vs_constants.is_empty() {
+                std::ptr::null()
+            } else {
+                vs_constants.as_ptr()
+            },
             buffer_count: layouts.len(),
             buffers: layouts.as_ptr(),
         },
@@ -1463,13 +1718,11 @@ pub fn create_render_pipeline(
             cull_mode: primitive.get(3).copied().unwrap_or(CULL_BACK as i32) as WgpuEnum,
             unclipped_depth: 0,
         },
-        depth_stencil: std::ptr::null(),
-        multisample: MultisampleState {
-            next_in_chain: std::ptr::null_mut(),
-            count: 1,
-            mask: u32::MAX,
-            alpha_to_coverage_enabled: 0,
-        },
+        depth_stencil: depth
+            .as_ref()
+            .map(|d| d as *const DepthStencilState)
+            .unwrap_or(std::ptr::null()),
+        multisample: parse_multisample(ctor.multisample),
         fragment: &fragment,
     };
     unsafe { from_ptr((api.create_rp)(as_ptr(device), &desc)) }
@@ -1988,6 +2241,7 @@ pub fn create_compute_pipeline(
     shader: DawnSlot,
     entry: &str,
     label: &str,
+    constants: &[(String, f64)],
 ) -> DawnSlot {
     let Some(api) = api() else {
         return 0;
@@ -1995,6 +2249,7 @@ pub fn create_compute_pipeline(
     if device == 0 || shader == 0 || !proc_ok(api.create_compute_pipeline) {
         return 0;
     }
+    let entries = constant_entries(constants);
     let desc = ComputePipelineDesc {
         next_in_chain: std::ptr::null_mut(),
         label: StringView::from_str(label),
@@ -2003,8 +2258,12 @@ pub fn create_compute_pipeline(
             next_in_chain: std::ptr::null_mut(),
             module: as_ptr(shader),
             entry_point: StringView::from_str(if entry.is_empty() { "main" } else { entry }),
-            constant_count: 0,
-            constants: std::ptr::null(),
+            constant_count: entries.len(),
+            constants: if entries.is_empty() {
+                std::ptr::null()
+            } else {
+                entries.as_ptr()
+            },
         },
     };
     unsafe { from_ptr((api.create_compute_pipeline)(as_ptr(device), &desc)) }

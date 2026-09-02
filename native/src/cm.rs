@@ -7312,6 +7312,10 @@ pub(crate) fn define_host(
                                 &attr_offsets,
                                 &attr_locations,
                                 &primitive,
+                                &multisample,
+                                &blend,
+                                &write_mask,
+                                &depth_stencil,
                             )
                             .map_err(native_gpu_error)?
                         };
@@ -7549,7 +7553,7 @@ pub(crate) fn define_host(
                                             let device = gpu
                                                 .resolve_device(device_rep)
                                                 .map_err(native_gpu_error)?;
-                                            gpu.create_render_pipeline(
+                                            gpu.create_render_pipeline_described(
                                                 device,
                                                 vertex_shader,
                                                 &vertex_entry,
@@ -7560,6 +7564,17 @@ pub(crate) fn define_host(
                                                 &label,
                                                 vertex_constants,
                                                 fragment_constants,
+                                                &vb_strides,
+                                                &vb_step_modes,
+                                                &attr_index,
+                                                &attr_formats,
+                                                &attr_offsets,
+                                                &attr_locations,
+                                                &primitive,
+                                                &multisample,
+                                                &blend,
+                                                &write_mask,
+                                                &depth_stencil,
                                             )
                                             .map_err(native_gpu_error)?
                                         };
