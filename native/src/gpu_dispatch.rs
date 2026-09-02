@@ -62,13 +62,56 @@ impl HostState {
     }
 
     /// `bindCanvasNativeWindow` / Store window handle. Forwards to NativeGpu when set.
+    /// Posts `on-resize` when the reported size changes (including first bind).
     pub fn bind_canvas_native_window(&mut self, window: i64, width: u32, height: u32) {
+        let changed = self.canvas_width != width || self.canvas_height != height;
         self.canvas_native_window = window;
         self.canvas_width = width;
         self.canvas_height = height;
         if let Some(gpu) = self.native_gpu.as_mut() {
             let _ = gpu.bind_canvas_native_window(window, width, height);
         }
+        if changed {
+            self.gfx_on_resize.post(width, height);
+        }
+    }
+
+    /// Bound window size, else constructor `create-desc` (0 if neither).
+    pub fn surface_width(&self, desc: Option<u32>) -> u32 {
+        if self.canvas_width > 0 {
+            self.canvas_width
+        } else {
+            desc.unwrap_or(0)
+        }
+    }
+
+    /// Bound window size, else constructor `create-desc` (0 if neither).
+    pub fn surface_height(&self, desc: Option<u32>) -> u32 {
+        if self.canvas_height > 0 {
+            self.canvas_height
+        } else {
+            desc.unwrap_or(0)
+        }
+    }
+
+    /// Guest `request-set-size`. `none` keeps that axis. Applies to the bound
+    /// window record (NativeGpu swapchain size) when a handle is set.
+    pub fn request_surface_size(&mut self, height: Option<u32>, width: Option<u32>) {
+        let new_w = width.unwrap_or(self.surface_width(None));
+        let new_h = height.unwrap_or(self.surface_height(None));
+        if new_w == 0 || new_h == 0 {
+            return;
+        }
+        if self.canvas_native_window != 0 {
+            self.bind_canvas_native_window(self.canvas_native_window, new_w, new_h);
+            return;
+        }
+        if self.canvas_width == new_w && self.canvas_height == new_h {
+            return;
+        }
+        self.canvas_width = new_w;
+        self.canvas_height = new_h;
+        self.gfx_on_resize.post(new_w, new_h);
     }
 
     /// Product `GpuBackends.dawn()` / `id == "dawn"`.
@@ -127,6 +170,41 @@ mod tests {
         assert_eq!(win.native_window, 0x2000);
         assert_eq!(win.height, 16);
         assert_eq!(win.buffer_count, crate::native_gpu::SWAPCHAIN_BUFFER_COUNT);
+        assert_eq!(host.surface_width(None), 32);
+        assert_eq!(host.surface_height(None), 16);
+        match host.gfx_on_resize.wait_take(true) {
+            crate::host::GfxOnResizeTake::Item(sz) => {
+                assert_eq!(sz.width, 32);
+                assert_eq!(sz.height, 16);
+            }
+            other => panic!("expected first bind resize, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn request_set_size_updates_bound_window() {
+        let mut host = HostState::default();
+        host.native_gpu = Some(NativeGpuHost::default());
+        host.bind_canvas_native_window(0x2000, 32, 16);
+        let _ = host.gfx_on_resize.wait_take(true);
+        host.request_surface_size(Some(48), Some(64));
+        assert_eq!(host.surface_width(None), 64);
+        assert_eq!(host.surface_height(None), 48);
+        let win = host
+            .native_gpu
+            .as_ref()
+            .and_then(|g| g.canvas_window())
+            .expect("resized");
+        assert_eq!(win.native_window, 0x2000);
+        assert_eq!(win.width, 64);
+        assert_eq!(win.height, 48);
+        match host.gfx_on_resize.wait_take(true) {
+            crate::host::GfxOnResizeTake::Item(sz) => {
+                assert_eq!(sz.width, 64);
+                assert_eq!(sz.height, 48);
+            }
+            other => panic!("expected request-set-size resize, got {other:?}"),
+        }
     }
 
     #[test]
@@ -144,5 +222,22 @@ mod tests {
         assert_eq!(win.native_window, 0x3000);
         host.disable_native_gpu();
         assert_eq!(host.webgpu_backend(), GpuBackend::JniBackend);
+    }
+
+    #[test]
+    fn unbound_size_uses_create_desc_then_request() {
+        let mut host = HostState::default();
+        assert_eq!(host.surface_width(Some(10)), 10);
+        assert_eq!(host.surface_height(None), 0);
+        host.request_surface_size(Some(20), Some(30));
+        assert_eq!(host.surface_width(Some(10)), 30);
+        assert_eq!(host.surface_height(Some(9)), 20);
+        match host.gfx_on_resize.wait_take(true) {
+            crate::host::GfxOnResizeTake::Item(sz) => {
+                assert_eq!(sz.width, 30);
+                assert_eq!(sz.height, 20);
+            }
+            other => panic!("expected request-set-size without window, got {other:?}"),
+        }
     }
 }

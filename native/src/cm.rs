@@ -6,11 +6,11 @@ use crate::gpu_dispatch::GpuBackend;
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
     gfx_on_frame_lookup, gfx_on_frame_register, gfx_on_frame_unregister, wasi_monotonic_now_ns,
-    GfxOnFrameGate, GfxOnFrameTake, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer,
-    GpuCommandBuffer, GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice,
-    GpuPipelineLayout, GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder,
-    GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture,
-    GpuTextureView, HostState, Widget,
+    GfxOnFrameGate, GfxOnFrameTake, GfxOnResizeGate, GfxOnResizeTake, Gpu, GpuAdapter,
+    GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer, GpuCommandEncoder,
+    GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout, GpuQuerySet, GpuQueue,
+    GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler,
+    GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
 };
 use crate::jvm;
 use crate::native_gpu::{NativeRequestAdapterOptions, NativeRequestDeviceDescriptor};
@@ -533,7 +533,10 @@ struct HttpResponse {
 }
 
 /// P010-GFXH/L: host `wasi-gfx:surface` (pin `v0.2.0`).
-struct GfxSurface;
+struct GfxSurface {
+    desc_height: Option<u32>,
+    desc_width: Option<u32>,
+}
 
 /// P010-GFXL: `wasi-gfx:surface/surface-webgpu` `context` (reuses canvas JNI).
 struct GfxWebGpuContext {
@@ -551,6 +554,13 @@ struct GfxSurfaceCreateDesc {
 #[component(record)]
 struct GfxFrameEvent {
     nothing: bool,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GfxResizeEvent {
+    height: u32,
+    width: u32,
 }
 
 /// P010-GFXV: Choreographer / helper vsync fills a 1-slot gate; `poll_produce`
@@ -591,6 +601,48 @@ impl<D> StreamProducer<D> for GfxOnFrameProducer {
             }
             GfxOnFrameTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
             GfxOnFrameTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),
+        }
+    }
+}
+
+/// GFX-SIZE: `poll_produce` writes one `resize-event` from the 1-slot gate.
+struct GfxOnResizeProducer {
+    gate: Arc<GfxOnResizeGate>,
+}
+
+impl<D> StreamProducer<D> for GfxOnResizeProducer {
+    type Item = GfxResizeEvent;
+    type Buffer = Option<GfxResizeEvent>;
+
+    fn poll_produce<'a>(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        mut store: StoreContextMut<'a, D>,
+        mut destination: Destination<'a, Self::Item, Self::Buffer>,
+        finish: bool,
+    ) -> Poll<wasmtime::Result<StreamResult>> {
+        let _ = cx;
+        if destination.remaining(&mut store) == Some(0) {
+            return Poll::Ready(Ok(match self.gate.wait_ready(finish) {
+                GfxOnResizeTake::Item(_) => StreamResult::Completed,
+                GfxOnResizeTake::Eof => StreamResult::Dropped,
+                GfxOnResizeTake::Cancelled => StreamResult::Cancelled,
+            }));
+        }
+        match self.gate.wait_take(finish) {
+            GfxOnResizeTake::Item(sz) => {
+                destination.set_buffer(Some(GfxResizeEvent {
+                    height: sz.height,
+                    width: sz.width,
+                }));
+                if self.gate.is_closed() {
+                    Poll::Ready(Ok(StreamResult::Dropped))
+                } else {
+                    Poll::Ready(Ok(StreamResult::Completed))
+                }
+            }
+            GfxOnResizeTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
+            GfxOnResizeTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),
         }
     }
 }
@@ -1488,7 +1540,8 @@ pub(crate) fn define_host(
             .map_err(|e| e.to_string())?;
     }
 
-    // P010-GFXH/V: wasi-gfx:surface@0.2.0 — constructor + on-frame CM stream.
+    // P010-GFXH/V + GFX-SIZE: wasi-gfx:surface@0.2.0 — constructor, on-frame,
+    // height/width against the bound window, request-set-size, on-resize.
     // Guest pulls; Choreographer vsync posts a 1-slot gate; poll_produce on the
     // CM driver (GpuThread) writes. Unconsumed beats drop. No JS-style callback.
     {
@@ -1509,9 +1562,53 @@ pub(crate) fn define_host(
         surface
             .func_wrap(
                 "[constructor]surface",
-                |mut store, (_desc,): (GfxSurfaceCreateDesc,)| {
-                    let resource = store.data_mut().table.push(GfxSurface)?;
+                |mut store, (desc,): (GfxSurfaceCreateDesc,)| {
+                    let resource = store.data_mut().table.push(GfxSurface {
+                        desc_height: desc.height,
+                        desc_width: desc.width,
+                    })?;
                     Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[method]surface.height",
+                |mut store, (this,): (Resource<GfxSurface>,)| {
+                    let desc = store.data_mut().table.get(&this)?.desc_height;
+                    let h = store.data().surface_height(desc);
+                    Ok((h,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[method]surface.width",
+                |mut store, (this,): (Resource<GfxSurface>,)| {
+                    let desc = store.data_mut().table.get(&this)?.desc_width;
+                    let w = store.data().surface_width(desc);
+                    Ok((w,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[method]surface.request-set-size",
+                |mut store, (this, height, width): (Resource<GfxSurface>, Option<u32>, Option<u32>)| {
+                    store.data_mut().table.get(&this)?;
+                    store.data_mut().request_surface_size(height, width);
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[method]surface.on-resize",
+                |mut store, (this,): (Resource<GfxSurface>,)| {
+                    store.data_mut().table.get(&this)?;
+                    let gate = store.data().gfx_on_resize.clone();
+                    let reader = StreamReader::new(&mut store, GfxOnResizeProducer { gate })?;
+                    Ok((reader,))
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -11028,6 +11125,10 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
 ) {
     if let Some(gate) = gfx_on_frame_unregister(handle) {
         gate.close();
+    }
+    if handle != 0 {
+        let store = unsafe { from_handle::<HostStore>(handle) };
+        store.data().gfx_on_resize.close();
     }
     unsafe { drop_handle::<HostStore>(handle) }
 }
