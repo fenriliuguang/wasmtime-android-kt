@@ -18,7 +18,6 @@ Do the printed **Next:** only — one commit. Guest WIT names/args stay. Reuse `
 
 | Commit | Needle | DoD |
 |--------|--------|-----|
-| **BIND** | `gap: remaining bind pending` | Remaining pin `[method]`s that Dawn C has a slot **call `webgpu.h`** when `libwebgpu_dawn.so` is loaded (texture / sampler / compute / copies / map / query / bundle / error / depth-blend / indexed-indirect / viewport / adapter features / `write-texture` / work-done / …). Record holes stay Record. Cloud / missing `.so` may stay table-backed. Reuse `wasi_webgpu_method`. Remove the needle. |
 | **GFX-SIZE** | `gap: remaining gfx-size pending` | `wasi-gfx:surface` `height` / `width` / `request-set-size` / `on-resize` registered and implemented against the bound window. Remove the needle. |
 | **GFX-PIN** | `gap: remaining gfx-pin pending` | Remaining pin surface streams a complete gfx guest imports: `on-pointer-up/down/move`, `on-key-up/down`. Empty events are fine until input is wired; missing imports are not. Remove the needle. |
 

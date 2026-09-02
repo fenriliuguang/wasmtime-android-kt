@@ -10,7 +10,7 @@ Release-notes-shaped **product subset**. Policy: [`rfc.md`](rfc.md). Remaining c
 
 A third party can depend on this host for **most of pinned `wasi:webgpu@0.3.0-rc.2`** (guest `[method]` names on **NativeGpu**) plus the **WASI 0.3 IO/network subset webgpu apps need** and a **wasi-gfx present loop** (product adapter/device + vsync `on-frame`). Record holes and named leftovers are listed, not silent.
 
-Default consume is Dawn C / NativeGpu. Many methods still stay **table-backed** until BIND ([`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md)). Cube is demo evidence only.
+Default consume is Dawn C / NativeGpu. Remaining pin `[method]`s call `webgpu.h` when `libwebgpu_dawn.so` is loaded; Cloud / missing `.so` stays table-backed ([`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md)). Cube is demo evidence only.
 
 ## 2. `wasi:webgpu` (pin `0.3.0-rc.2`)
 
@@ -18,7 +18,7 @@ Default consume is Dawn C / NativeGpu. Many methods still stay **table-backed** 
 |-------|--------|-------|
 | Pin resource `[method]` names (224) | **Shape** + NativeGpu | All 224 names registered in `native/src/cm.rs`. Unwired store → `request-adapter` **`none`**. JNI leftover is `dawn-jni`. |
 | Boot / cube hot path | **Dawn C** when `.so` loads | `request-adapter` / `request-device` / queue / buffer / WGSL / render pipeline / encoder / draw / submit / write-buffer / Android surface present. Guest options (features/limits/power) ignored on the C call. |
-| Remaining pin methods | **Table** until BIND | texture / sampler / compute / copies / map / query / bundle / error / depth-blend / indexed-indirect / viewport / `write-texture` / work-done / … |
+| Remaining pin methods | **Dawn** when `.so` loads | texture / sampler / compute / copies / map / query / bundle / error / indexed-indirect / viewport / `write-texture` / work-done / destroy. Cloud / missing `.so` stays **Table**. |
 | Dawn C / AAR missing ctor slots | **Record** | shader `compilation-hints`; canvas `color-space`; canvas `tone-mapping` |
 | Fixture `get-*` / `experimental:webgpu-cm` flats | **Not product** | Frozen; do not extend |
 
@@ -35,7 +35,7 @@ Leftovers: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Hos
 | `wasi:http` | Body `stream<u8>`; outbound GET; no product request/response constructors | `service` world, trailers, TLS |
 | `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `configure` / `get-current-texture` / `present` | See remaining + non-urgent below |
 
-**Remaining (auto):** Dawn C full bind; surface size/resize; pin pointer/key streams.
+**Remaining (auto):** surface size/resize; pin pointer/key streams.
 
 **Non-urgent:** `context.unconfigure`; timestamped `frame-event`; Lost/Outdated `result`; multi-window.
 
