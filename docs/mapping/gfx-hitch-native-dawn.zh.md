@@ -213,4 +213,24 @@ SurfaceFlinger / BLAST / 面板
 
 ### 6.6 真机窗口（HP-LOG）
 
-这次重开尚未采集。下一刀：V2458A、设置锁 120 Hz，收 ≥2 min 的 `GfxHitch` `hotpath` + `hotpath-spike`。记下各阶段 last/max、spike 行、窗口内眼睛是否弹出。不要用档案 Closed 下结论。
+2026-09-02 采于 V2458A（PD2415），设置 `min_refresh_rate=120` / `peak_refresh_rate=120`。Host：仓外 `hosts/fullscreen-surface` `installDebug`（对本仓 arm64 `libwasmtime_android_kt.so` 在热路径探针之后重编）。Guest：旋转立方体。实时 logcat `GfxHitch` + `FullscreenSurface` **150 s**（09:24:00.992–09:26:31.127）。`present n` 33240 → **51240**（18000 次 present）。不要用档案 Closed 下结论。肉眼弹出：**本窗口未确认**（无观察者）；进程一直在出帧。
+
+Choreographer（累计到 n=51240）：`<11ms=51240` `11-20ms=0` `>20ms=0` `lastDtNs≈8.31ms` `dispHz=120.00001` `modeId=1`。
+
+`hotpath` 窗口：**151**（每 120 次 present）。窗口 **last** Instant（151 个 last 的中位 / 最小 / 最大）：
+
+| 阶段 | 中位 | 最小 | 最大 |
+|------|------|------|------|
+| S3a events | 143 µs | 22 µs | 354 µs |
+| S3b acquire | 489 µs | 121 µs | 7.60 ms |
+| S5 write | 49 µs | 19 µs | 490 µs |
+| S4 encode-gap | 348 µs | 178 µs | 845 µs |
+| S6a submit | 425 µs | 147 µs | 1.45 ms |
+| S6b present | 1.35 ms | 334 µs | 3.97 ms |
+| S6c retire | 231 ns | 0 | 539 ns |
+
+各窗口 **max** 再取最大：events 1.61 ms，acquire **8.36 ms**，write 1.08 ms，encode-gap **17.9 ms**，submit 1.57 ms，present 3.97 ms，retire 0.19 ms。encode-gap 最大只出现在一个窗口（`hotpath n=45960`）。
+
+本段 `hotpath-spike`：**6289** 行。超阈值（2 ms；encode 6 ms）：**acquire 5433**，present 916，encode-gap 1，events/write/submit/retire 0。acquire>2 ms 是一段**连续**突发 09:25:46–09:26:31（**45.1 s**，间隔 4–12 ms ≈ 每拍），不是孤立的约 5 s 空隙。45/151 个窗口 last-acquire >2 ms；21/151 last-present >2 ms。
+
+n=51240 累计直方图（含本段之前）：acquire 间隔 `<11ms=51207` `11-20ms=33` `>20ms=0`。present `lastLatencyNs` `<8ms=46243` `8-16ms=4997` `>16ms=1` `>8.3ms=4760`；间隔 `<11ms=51070` `11-20ms=169` `>20ms=1`；`cross=347`；retire 存活 `<8.3ms=0` `8.3-25ms=27045` `>25ms=24192`；`angleDt` `8-9ms=51239` `9-17ms=1`。

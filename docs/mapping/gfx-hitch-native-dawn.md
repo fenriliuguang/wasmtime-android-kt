@@ -213,4 +213,24 @@ What Cloud **can** check is the in-process beat machine with synthetic Choreogra
 
 ### 6.6 Device window (HP-LOG)
 
-Not collected on this restart yet. Next: ≥2 min `GfxHitch` `hotpath` + `hotpath-spike` on V2458A with the 120 Hz Settings lock. Record counts / last / max per stage and whether the eye popped. Do not conclude from archive Closed rows.
+Collected 2026-09-02 on V2458A (PD2415), Settings `min_refresh_rate=120` / `peak_refresh_rate=120`. Host: out-of-tree `hosts/fullscreen-surface` `installDebug` against this checkout (arm64 `libwasmtime_android_kt.so` rebuilt after hotpath probe). Guest: rotating cube. Streamed logcat `GfxHitch` + `FullscreenSurface` **150 s** (09:24:00.992–09:26:31.127). `present n` 33240 → **51240** (18000 presents). Do not conclude from archive Closed rows. Eye pop: **not confirmed this window** (no on-device observer); the process kept presenting.
+
+Choreographer (cumulative to n=51240): `<11ms=51240` `11-20ms=0` `>20ms=0` `lastDtNs≈8.31ms` `dispHz=120.00001` `modeId=1`.
+
+`hotpath` windows: **151** (every 120 presents). Window-**last** Instant ns (median / min / max of the 151 last samples):
+
+| Stage | med | min | max |
+|-------|-----|-----|-----|
+| S3a events | 143 µs | 22 µs | 354 µs |
+| S3b acquire | 489 µs | 121 µs | 7.60 ms |
+| S5 write | 49 µs | 19 µs | 490 µs |
+| S4 encode-gap | 348 µs | 178 µs | 845 µs |
+| S6a submit | 425 µs | 147 µs | 1.45 ms |
+| S6b present | 1.35 ms | 334 µs | 3.97 ms |
+| S6c retire | 231 ns | 0 | 539 ns |
+
+Max of per-window **max** (same 151): events 1.61 ms, acquire **8.36 ms**, write 1.08 ms, encode-gap **17.9 ms**, submit 1.57 ms, present 3.97 ms, retire 0.19 ms. Encode-gap max was one window (`hotpath n=45960`).
+
+`hotpath-spike` this stream: **6289** lines. Stage over threshold (2 ms; encode 6 ms): **acquire 5433**, present 916, encode-gap 1, events/write/submit/retire 0. Acquire>2 ms was one **continuous** burst 09:25:46–09:26:31 (**45.1 s**, inter-spike 4–12 ms ≈ every beat), not an isolated ~5 s gap. 45/151 windows had last-acquire >2 ms; 21/151 last-present >2 ms.
+
+Cumulative histograms at n=51240 (from process start, includes time before this stream): acquire interval `<11ms=51207` `11-20ms=33` `>20ms=0`. present `lastLatencyNs` `<8ms=46243` `8-16ms=4997` `>16ms=1` `>8.3ms=4760`; interval `<11ms=51070` `11-20ms=169` `>20ms=1`; `cross=347`; retire age `<8.3ms=0` `8.3-25ms=27045` `>25ms=24192`; `angleDt` `8-9ms=51239` `9-17ms=1`.
