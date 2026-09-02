@@ -2,7 +2,7 @@
 
 [English](gfx-hitch-native-dawn.md) | **中文**
 
-不是切刀队列。不是 native-dawn 消费车道。NativeGpu 接上 `wgpu*` 之后的真机 A/B（2026-09-01）。不要 vendor demo。不要给上游提 GitHub issue。具名 hitch 活（D3 present timestamp / skip-present）仍是具名 —— 见 [`../agent/native-dawn.zh.md`](../agent/native-dawn.zh.md)。
+不是 native-dawn 消费车道。抖动剩余队列：[`../agent/gfx-hitch.zh.md`](../agent/gfx-hitch.zh.md)（issue 300；从热路径阶段重开）。NativeGpu 接上 `wgpu*` 之后的真机 A/B（2026-09-01）在 §§0–5 只作**档案**。不要 vendor demo。不要给上游提 GitHub issue。**不要**把 Closed/Likely 当前提。
 
 androidx + `host-dawn` JNI 表：[`gfx-hitch-checklist.zh.md`](gfx-hitch-checklist.zh.md)。**C / H / D** 编号沿用，避免重排。Dawn C 新行是 **N\***。下列 **Check** 以本页中文表为准。
 
@@ -129,7 +129,7 @@ Dawn C 安装上 Choreographer 连续数分钟全是 `<11ms`（与 H23 同形）
 
 ## 6. 重开：跟踪热路径（issue 300）
 
-此前 Closed / Likely / Mitigated 行只作**档案**。这次重开**不把它们当前提**。一刀一个变量。不要给上游提 issue。
+Agent 队列：[`../agent/gfx-hitch.zh.md`](../agent/gfx-hitch.zh.md)。下一刀：`python3 ./scripts/gfx-hitch-remaining.py`。此前 Closed / Likely / Mitigated 行只作**档案**。这次重开**不把它们当前提**。一刀一个变量。不要给上游提 issue。
 
 要对上的症状（眼睛，不是计数器）：NativeGpu / Dawn C 旋转立方体在 Vivo V2458A（Android 16，设置锁 120 Hz）上仍会**肉眼弹出**（约 5 s 一档）。对照：`hosts/native-webgpu` androidx 立方体（D24）**不弹**。
 
@@ -210,3 +210,7 @@ SurfaceFlinger / BLAST / 面板
 云环境**模拟不了**真机 present 路径。没有 Android，没有 `ANativeWindow`，没有 Mali/Vulkan Dawn `.so`，没有 BLAST / SurfaceFlinger / 120 Hz 面板。Linux 上 `hitch_monotonic_ns` 为 0，所以 `present n=` / `phase-crossing` / retire 存活直方图在这里不跑。`try_load_dawn_c` 尽力而为，slot 仍是 0。
 
 云环境**能**查的是进程内节拍机：用合成的 Choreographer 时间戳跑 `GfxOnFrameGate` 1:1 + `NativeGpuHost` acquire → write → submit → H8 空操作 → keep-3 → desired-present 节奏 → `vsync_dt` 桶。这就是 `hotpath_synthetic_120hz_beats_are_1_to_1`。云上绿**关不掉**肉眼弹出。
+
+### 6.6 真机窗口（HP-LOG）
+
+这次重开尚未采集。下一刀：V2458A、设置锁 120 Hz，收 ≥2 min 的 `GfxHitch` `hotpath` + `hotpath-spike`。记下各阶段 last/max、spike 行、窗口内眼睛是否弹出。不要用档案 Closed 下结论。

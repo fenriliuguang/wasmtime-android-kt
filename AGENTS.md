@@ -1,6 +1,8 @@
 # Agent notes
 
-**Living auto queue:** native Dawn host (full `wasi:webgpu` pin via Dawn C) — [`docs/agent/native-dawn.md`](docs/agent/native-dawn.md) (Cursor skill `native-dawn`). Long branch **`cursor/native-dawn-rewrite-1355`**: one lane = one **commit**; **no PR** until `python3 ./scripts/native-dawn-remaining.py` is empty. Cube / out-of-tree demo is evidence only (`ND-DEVICE`), not consume DoD.
+**Living auto leftover:** cube hitch restart (forget inherited Closed/Likely; hot-path stages) — [`docs/agent/gfx-hitch.md`](docs/agent/gfx-hitch.md) (Cursor skill `gfx-hitch`). Branch **`fix/300-gfx-cube-pop`**: one lane = one **commit**; **no per-lane PR**. Next: `python3 ./scripts/gfx-hitch-remaining.py`. Mapping: [`docs/mapping/gfx-hitch-native-dawn.md`](docs/mapping/gfx-hitch-native-dawn.md) §6.
+
+**Native Dawn consume** leftover is **empty** ([`docs/agent/native-dawn.md`](docs/agent/native-dawn.md); skill `native-dawn` only if the user names `ND-*`). Cube / out-of-tree demo is evidence only, not consume DoD.
 
 **`0.1.0` product gates** are **empty** ([`docs/agent/product-010.md`](docs/agent/product-010.md); skill `product-010` only if the user names `P010-*`).
 
@@ -10,7 +12,7 @@ P0 `wasi:webgpu` **shape** is **closed**. Do not re-cut guest-pipeline P1–P5, 
 
 P1 WASI 0.3 official-shape is **closed**. Do not re-cut W1–W8, P1-FS1–FS4, P1-SK1–SK2, P1-HT1, or G-dev. Close-out: [`docs/archive/p1-wasi-p3.md`](docs/archive/p1-wasi-p3.md). `0.1.0` backlog vs named-only: [`docs/mapping/gap-wasi-p3-wit.md`](docs/mapping/gap-wasi-p3-wit.md).
 
-- Hub freeze, narrow tests, and file whitelist are in the **native-dawn** playbook (feature lanes) or the empty 0.1.0 playbook (named `P010-*` only) — do not rediscover them from RFCs or by reading `cm.rs` whole.
+- Hub freeze, narrow tests, and file whitelist are in the **gfx-hitch** playbook (living leftover) or the empty native-dawn / 0.1.0 playbooks (named `ND-*` / `P010-*` only) — do not rediscover them from RFCs or by reading `cm.rs` whole.
 - **Never file upstream GitHub issues** (or Discussions used as an issue tracker) on WASI, Wasmtime, wasi-webgpu, or any other upstream. No `gh issue create`. Record Android facts only in this repo.
 
 ## Cursor Cloud specific instructions

@@ -7,7 +7,7 @@ alwaysApply: false
 
 For P2 / Wasmtime pin / wasmtime tracking / upgrade RFC (user named those), read `docs/agent/wasmtime-p2.md` and follow it.
 
-Living auto queue is **native-dawn**: read `docs/agent/native-dawn.md`. Next: `python3 ./scripts/native-dawn-remaining.py`.
+Living leftover is **gfx-hitch**: read `docs/agent/gfx-hitch.md`. Next: `python3 ./scripts/gfx-hitch-remaining.py`.
 
 P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not re-cut those knives.
 

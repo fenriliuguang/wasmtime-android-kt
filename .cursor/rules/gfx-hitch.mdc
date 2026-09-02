@@ -1,0 +1,15 @@
+---
+description: Cube hitch restart from hot-path stages (issue 300; forget inherited Closed)
+alwaysApply: true
+---
+
+# Cube hitch restart (hot-path stages)
+
+For 抖动 / hitch / cube-pop / issue 300 / gfx-hitch / 真机 / HP-LOG / HP-BIND, read `docs/agent/gfx-hitch.md` and follow it. Beat map: `docs/mapping/gfx-hitch-native-dawn.md` §6.
+
+Native-dawn **consume** leftover is **empty**. P0 / P1 / `0.1.0` auto knives stay **closed**. Do not re-cut those queues.
+
+- Branch **`fix/300-gfx-cube-pop`**. Next **commit**: `python3 ./scripts/gfx-hitch-remaining.py` (one printed Next: only). Do **not** open a per-lane PR.
+- **Forget** inherited Closed / Likely / Mitigated rows. Do not recut D2/D3/N4 as the auto next. Collect `GfxHitch` `hotpath` / `hotpath-spike` on device first.
+- Until HP-BIND names a stage: no keep-N / DisplayManager / GameState / JNI restack. Cloud synthetic 120 Hz does not close the eye-pop.
+- Never file GitHub issues on Wasmtime, WASI, Dawn, or any other upstream. No `gh issue create`.

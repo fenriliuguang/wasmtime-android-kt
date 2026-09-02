@@ -139,9 +139,9 @@ def main() -> None:
         print("Next: (0.1.0 product queue empty)")
         print("Tracking: docs/scheme/product-010.md")
         print(
-            "Living auto: native-dawn on cursor/native-dawn-rewrite-1355 "
-            "(one commit per lane; no PR until empty) — "
-            "python3 ./scripts/native-dawn-remaining.py"
+            "Living leftover: gfx-hitch on fix/300-gfx-cube-pop "
+            "(one commit per lane) — "
+            "python3 ./scripts/gfx-hitch-remaining.py"
         )
         print(
             "Named-only: P2 Wasmtime pin, G-cmd, G-fs-full, listen/UDP, "

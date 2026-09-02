@@ -8,7 +8,7 @@ P0 / P1 auto knives stay **closed**. P2 Wasmtime pin is **named**. Do **not** re
 
 Branch: **`cursor/native-dawn-rewrite-1355`**. Remaining: `python3 ./scripts/native-dawn-remaining.py` (next **commit**, not next PR). A lane drops when its **`gap: nd … pending`** needle leaves **this file**. Do **not** remove a needle without landing that lane’s DoD. Open **one** PR to `main` only when this table has no pending needles.
 
-Cube / out-of-tree demo is **not** a consume needle.
+Cube / out-of-tree demo is **not** a consume needle. Consume leftover is **empty**. Cube hitch restart: [`../agent/gfx-hitch.md`](../agent/gfx-hitch.md).
 
 ## Needles (auto order)
 
@@ -33,4 +33,4 @@ Cube / out-of-tree demo is **not** a consume needle.
 
 ## Named-only (never `Next:`)
 
-Cube-only hot path, hitch D3 present-timestamp, `AChoreographer`, core pin, G-cmd, testsuite, `wasmtime-wasi`, CTS, this-repo **1.0.0**, P0/P1 re-cuts, Wasmtime **major**.
+Cube-only hot path, hitch restart ([`../agent/gfx-hitch.md`](../agent/gfx-hitch.md); not this table), `AChoreographer`, core pin, G-cmd, testsuite, `wasmtime-wasi`, CTS, this-repo **1.0.0**, P0/P1 re-cuts, Wasmtime **major**.

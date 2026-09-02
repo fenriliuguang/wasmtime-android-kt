@@ -10,6 +10,8 @@ Living **auto** queue after `0.1.0`. Tracking needles: [`../scheme/native-dawn.m
 
 P2 Wasmtime pin stays **named-only** ([`wasmtime-p2.md`](wasmtime-p2.md)).
 
+Consume leftover is **empty** (`ND-DEVICE` landed; `#299` on `main`). Cube hitch is **not** a consume needle. Living leftover: [`gfx-hitch.md`](gfx-hitch.md) on **`fix/300-gfx-cube-pop`** — forget inherited Closed/Likely; restart from hot-path stages.
+
 ## Goal
 
 Default product `wasi:webgpu@0.3.0-rc.2` consume is **in-process Dawn C** on the Wasmtime pump thread: guest WIT unchanged; Kotlin `Store` / `Linker` / `WebGpuBackend` unchanged as the **shell and BYO SPI**; hot-path methods do **not** bounce through `ExperimentalHostCallbacks` → androidx JNI.
@@ -30,6 +32,8 @@ guest → cm.rs lowering → 8MiB wasmtime-cm-pump
 
 D24: pure androidx cube is smooth; Wasmtime/`host-dawn` is not. androidx is a Java façade over Dawn; present is `ANativeWindow` → SurfaceFlinger either way. Bypass **Kotlin on the GPU hot path**, not the Activity / `Store` API.
 
+That ART-crossing Why motivated the **consume** rewrite (landed). For the remaining cube **eye pop**, do **not** treat it as a premise — hitch restart is [`gfx-hitch.md`](gfx-hitch.md).
+
 **Equivalent rewrite** means Dawn **semantics** + hitch **invariants** + existing **tests**. Do **not** reimplement the 278 `exp_*` JNI table in Rust.
 
 ## Select the cut
@@ -43,6 +47,12 @@ If the user named a lane (`ND-DISP`, `native-dawn`, `下一刀`), keep **one** f
 No `pwsh`: `python3 ./scripts/native-dawn-remaining.py` (same flags: `--all`).
 
 Do the printed **Next:** line only — as **one commit** on `cursor/native-dawn-rewrite-1355`. Do **not** open a PR for that commit. `product-010-remaining` is empty; do not invent new `0.1.0` needles.
+
+If consume leftover is empty, or the user named hitch / 抖动 / cube-pop / issue 300 / 真机, follow [`gfx-hitch.md`](gfx-hitch.md):
+
+```powershell
+.\scripts\gfx-hitch-remaining.ps1
+```
 
 ## Hard bans
 
@@ -102,7 +112,8 @@ Copy this table. Do not shrink a consume lane to “cube enough.”
 | Lane | When | DoD |
 |------|------|-----|
 | Cube-only hot path | User named cube | Demo evidence only; does **not** close `ND-REST` |
-| Present timestamp / skip-present (D3) | User named hitch D3 | After `ND-SURF`; compositor experiment, not pin consume |
+| Cube hitch restart (issue 300) | User named hitch / 抖动 / 真机, or consume leftover empty | [`gfx-hitch.md`](gfx-hitch.md) — forget inherited Closed/Likely; hot-path stages. Not pin consume. |
+| Present timestamp / skip-present (D3) | *(archive; hitch playbook owns follow-up)* | Landed 2026-09-01; do **not** recut as a consume lane |
 | `AChoreographer` (no Java vsync JNI) | User named it | Optional; `postGfxVsync` stays legal |
 | Core pin / `THREAD_PRIORITY_*` | User named it | Not a consume gate |
 | P2 Wasmtime / `wasmtime-wasi` / CTS / 1.0.0 | User named those | Existing named queues |

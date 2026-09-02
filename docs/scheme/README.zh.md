@@ -3,11 +3,12 @@
 [English](README.md) | **中文**
 
 只列现行文档。史实见 [`../archive/README.md`](../archive/README.md)。  
-P0 形状与 P1、`0.1.0` 已关闭。现行队列：[`../agent/native-dawn.md`](../agent/native-dawn.md)（全量钉 Dawn C），长期分支 **`cursor/native-dawn-rewrite-1355`**（一刀一提交，做完再一个 PR）。**L5 已接受。** 与英文冲突时以英文为准。
+P0 形状与 P1、`0.1.0`、native-dawn **consume** 已关闭。现行剩余：[`../agent/gfx-hitch.md`](../agent/gfx-hitch.md)（立方体抖动从热路径重开），分支 **`fix/300-gfx-cube-pop`**。**L5 已接受。** 与英文冲突时以英文为准。
 
 | 文档 | 角色 |
 |------|------|
-| [`../agent/native-dawn.md`](../agent/native-dawn.md) | **现行自动：** native Dawn host |
+| [`../agent/gfx-hitch.md`](../agent/gfx-hitch.md) | **现行剩余：** 立方体抖动重开（热路径） |
+| [`../agent/native-dawn.md`](../agent/native-dawn.md) | native Dawn consume 手册（已空） |
 | [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` 手册**（已空） |
 | [`claim-010.zh.md`](claim-010.zh.md) | **`0.1.0` 宣称表**（不是 CTS） |
 | [`../agent/wasmtime-p2.md`](../agent/wasmtime-p2.md) | P2 手册（点名） |

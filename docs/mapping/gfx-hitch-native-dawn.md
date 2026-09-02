@@ -2,7 +2,7 @@
 
 **English** | [中文](gfx-hitch-native-dawn.zh.md)
 
-Not a cut queue. Not a native-dawn consume lane. Device A/B after NativeGpu wired `wgpu*` (2026-09-01). Do not vendor the demo. Do not file upstream GitHub issues. Named-only hitch work (D3 present timestamp / skip-present) stays named — see [`../agent/native-dawn.md`](../agent/native-dawn.md).
+Not a native-dawn consume lane. Hitch remaining queue: [`../agent/gfx-hitch.md`](../agent/gfx-hitch.md) (issue 300; restart from hot-path stages). Device A/B after NativeGpu wired `wgpu*` (2026-09-01) is **archive** in §§0–5. Do not vendor the demo. Do not file upstream GitHub issues. Do **not** inherit Closed/Likely as premises.
 
 androidx + `host-dawn` JNI table: [`gfx-hitch-checklist.md`](gfx-hitch-checklist.md). IDs **C / H / D** are reused so we do not renumber. New Dawn C rows are **N\***.
 
@@ -129,7 +129,7 @@ Fix ranking: present timestamp **landed**. Draw-present split is leftover. Do no
 
 ## 6. Restart: track the hot path (issue 300)
 
-Previous Closed / Likely / Mitigated rows stay as **archive**. This restart does **not** inherit them as premises. One variable per cut. Do not file upstream issues.
+Agent queue: [`../agent/gfx-hitch.md`](../agent/gfx-hitch.md). Remaining: `python3 ./scripts/gfx-hitch-remaining.py`. Previous Closed / Likely / Mitigated rows stay as **archive**. This restart does **not** inherit them as premises. One variable per cut. Do not file upstream issues.
 
 Symptom to bind (eye, not a counter): NativeGpu / Dawn C rotating cube still **visually pops** (~5 s class) on Vivo V2458A (Android 16, 120 Hz Settings lock). Control: `hosts/native-webgpu` androidx cube (D24) does **not** pop.
 
@@ -210,3 +210,7 @@ Do **not** restack keep / DisplayManager / GameState / JNI removal until a stage
 Cloud **cannot** simulate the device present path. There is no Android, no `ANativeWindow`, no Mali/Vulkan Dawn `.so`, no BLAST / SurfaceFlinger / 120 Hz panel. `hitch_monotonic_ns` is 0 on Linux, so `present n=` / `phase-crossing` / retire-age histograms do not run here. `try_load_dawn_c` is best-effort; slots stay 0.
 
 What Cloud **can** check is the in-process beat machine with synthetic Choreographer timestamps: `GfxOnFrameGate` 1:1 + `NativeGpuHost` acquire → write → submit → H8 no-op → keep-3 → desired-present cadence → `vsync_dt` buckets. That is `hotpath_synthetic_120hz_beats_are_1_to_1`. A green Cloud run does **not** close the eye-pop.
+
+### 6.6 Device window (HP-LOG)
+
+Not collected on this restart yet. Next: ≥2 min `GfxHitch` `hotpath` + `hotpath-spike` on V2458A with the 120 Hz Settings lock. Record counts / last / max per stage and whether the eye popped. Do not conclude from archive Closed rows.
