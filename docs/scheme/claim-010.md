@@ -33,9 +33,9 @@ Leftovers: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Hos
 | `wasi:filesystem` | Directory preopen + `open-at` + r/w; `..` → `access` | `stat` / dir stream / append |
 | `wasi:sockets` | Outbound TCP IPv4 | listen, UDP, DNS |
 | `wasi:http` | Body `stream<u8>`; outbound GET; no product request/response constructors | `service` world, trailers, TLS |
-| `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `configure` / `get-current-texture` / `present` | See remaining + non-urgent below |
+| `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `height` / `width` / `request-set-size` / `on-resize` + `configure` / `get-current-texture` / `present` | See remaining + non-urgent below |
 
-**Remaining (auto):** surface size/resize; pin pointer/key streams.
+**Remaining (auto):** pin pointer/key streams.
 
 **Non-urgent:** `context.unconfigure`; timestamped `frame-event`; Lost/Outdated `result`; multi-window.
 

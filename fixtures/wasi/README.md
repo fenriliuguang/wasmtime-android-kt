@@ -272,6 +272,16 @@ wasm-tools parse fixtures/wasi/gfx_on_frame.wat -o fixtures/wasi/gfx_on_frame.wa
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_on_frame.wasm
 ```
 
+## `wasi-gfx` — surface size / resize（GFX-SIZE）
+
+Guest export: `run: async func() -> u32`（构造 surface → `height`/`width` 对绑定窗口 → `request-set-size` → `on-resize` `stream.read` 一条 `resize-event` → 返回 1）  
+Host: 产品 `define_host` 注册 `[method]surface.height` / `width` / `request-set-size` / `on-resize`。尺寸跟 `bindCanvasNativeWindow`；请求写回 NativeGpu 窗口记录。无 JS callback。
+
+```powershell
+wasm-tools parse fixtures/wasi/gfx_size.wat -o fixtures/wasi/gfx_size.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_size.wasm
+```
+
 ## `wasi-gfx` — product frame loop（P010-GFXL / P010-GFXB / P010-GFXV）
 
 Guest export: `run: async func() -> u32`（pin `get-gpu` → `request-adapter` → `request-device` → surface + `surface-webgpu` context → configure → `on-frame` 循环：`get-current-texture` → `queue.submit` → `context.present`，直到 host 关闭 stream）  

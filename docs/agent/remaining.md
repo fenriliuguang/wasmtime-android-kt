@@ -18,7 +18,6 @@ Do the printed **Next:** only — one commit. Guest WIT names/args stay. Reuse `
 
 | Commit | Needle | DoD |
 |--------|--------|-----|
-| **GFX-SIZE** | `gap: remaining gfx-size pending` | `wasi-gfx:surface` `height` / `width` / `request-set-size` / `on-resize` registered and implemented against the bound window. Remove the needle. |
 | **GFX-PIN** | `gap: remaining gfx-pin pending` | Remaining pin surface streams a complete gfx guest imports: `on-pointer-up/down/move`, `on-key-up/down`. Empty events are fine until input is wired; missing imports are not. Remove the needle. |
 
 Cube / out-of-tree demo is evidence only.

@@ -250,6 +250,8 @@ pub struct HostState {
     pub canvas_height: u32,
     /// P010-GFXV: 1-slot `on-frame` vsync gate (Choreographer → GpuThread write).
     pub gfx_on_frame: Arc<GfxOnFrameGate>,
+    /// GFX-SIZE: 1-slot `on-resize` (bound window / `request-set-size`).
+    pub gfx_on_resize: Arc<GfxOnResizeGate>,
 }
 
 impl Default for HostState {
@@ -263,6 +265,7 @@ impl Default for HostState {
             canvas_width: 0,
             canvas_height: 0,
             gfx_on_frame: GfxOnFrameGate::new(),
+            gfx_on_resize: GfxOnResizeGate::new(),
         }
     }
 }
@@ -484,6 +487,99 @@ impl GfxOnFrameGate {
     /// (`0` = none).
     pub fn last_take_vsync_ns(&self) -> u64 {
         self.lock().last_take_vsync_ns
+    }
+}
+
+/// Latest bound-window size for `stream<resize-event>`. Coalesce; do not queue.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GfxResizeSize {
+    pub width: u32,
+    pub height: u32,
+}
+
+pub struct GfxOnResizeGate {
+    inner: Mutex<GfxOnResizeInner>,
+    cv: Condvar,
+}
+
+struct GfxOnResizeInner {
+    pending: Option<GfxResizeSize>,
+    closed: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GfxOnResizeTake {
+    Item(GfxResizeSize),
+    Eof,
+    Cancelled,
+}
+
+impl GfxOnResizeGate {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            inner: Mutex::new(GfxOnResizeInner {
+                pending: None,
+                closed: false,
+            }),
+            cv: Condvar::new(),
+        })
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, GfxOnResizeInner> {
+        self.inner.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Keep the latest size. Pin `on-resize` is a sync `func`; `poll_produce`
+    /// must not return `Pending`.
+    pub fn post(&self, width: u32, height: u32) {
+        let mut g = self.lock();
+        if g.closed {
+            return;
+        }
+        g.pending = Some(GfxResizeSize { width, height });
+        self.cv.notify_one();
+    }
+
+    pub fn close(&self) {
+        let mut g = self.lock();
+        g.closed = true;
+        self.cv.notify_all();
+    }
+
+    pub fn wait_take(&self, finish: bool) -> GfxOnResizeTake {
+        let mut g = self.lock();
+        loop {
+            if let Some(ev) = g.pending.take() {
+                return GfxOnResizeTake::Item(ev);
+            }
+            if g.closed {
+                return GfxOnResizeTake::Eof;
+            }
+            if finish {
+                return GfxOnResizeTake::Cancelled;
+            }
+            g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+        }
+    }
+
+    pub fn wait_ready(&self, finish: bool) -> GfxOnResizeTake {
+        let mut g = self.lock();
+        loop {
+            if let Some(ev) = g.pending {
+                return GfxOnResizeTake::Item(ev);
+            }
+            if g.closed {
+                return GfxOnResizeTake::Eof;
+            }
+            if finish {
+                return GfxOnResizeTake::Cancelled;
+            }
+            g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+        }
+    }
+
+    pub fn is_closed(&self) -> bool {
+        self.lock().closed
     }
 }
 
