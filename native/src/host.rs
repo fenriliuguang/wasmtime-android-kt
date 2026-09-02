@@ -2,7 +2,7 @@
 
 use crate::native_gpu::NativeGpuHost;
 use jni::objects::GlobalRef;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::time::Instant;
 use wasmtime::component::ResourceTable;
@@ -252,6 +252,8 @@ pub struct HostState {
     pub gfx_on_frame: Arc<GfxOnFrameGate>,
     /// GFX-SIZE: 1-slot `on-resize` (bound window / `request-set-size`).
     pub gfx_on_resize: Arc<GfxOnResizeGate>,
+    /// Bounded `on-pointer-*` / `on-key-*` queues (Store post → guest stream).
+    pub gfx_input: Arc<GfxInputHost>,
 }
 
 impl Default for HostState {
@@ -266,6 +268,7 @@ impl Default for HostState {
             canvas_height: 0,
             gfx_on_frame: GfxOnFrameGate::new(),
             gfx_on_resize: GfxOnResizeGate::new(),
+            gfx_input: GfxInputHost::new(),
         }
     }
 }
@@ -583,6 +586,170 @@ impl GfxOnResizeGate {
     }
 }
 
+/// Bounded input queue for pin `on-pointer-*` / `on-key-*`. Clicks are not
+/// coalesced (unlike resize). Full queue drops the oldest sample.
+const GFX_INPUT_CAP: usize = 64;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GfxPointerSample {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct GfxKeySample {
+    /// WIT `key` discriminant, or `None` when the Android code is unmapped.
+    pub key: Option<u8>,
+    pub text: Option<String>,
+    pub alt_key: bool,
+    pub ctrl_key: bool,
+    pub meta_key: bool,
+    pub shift_key: bool,
+}
+
+#[derive(Debug)]
+pub enum GfxInputTake<T> {
+    Item(T),
+    Eof,
+    Cancelled,
+}
+
+pub struct GfxInputGate<T> {
+    inner: Mutex<GfxInputInner<T>>,
+    cv: Condvar,
+}
+
+struct GfxInputInner<T> {
+    queue: VecDeque<T>,
+    closed: bool,
+}
+
+pub type GfxPointerGate = GfxInputGate<GfxPointerSample>;
+pub type GfxKeyGate = GfxInputGate<GfxKeySample>;
+
+impl<T: Clone> GfxInputGate<T> {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            inner: Mutex::new(GfxInputInner {
+                queue: VecDeque::new(),
+                closed: false,
+            }),
+            cv: Condvar::new(),
+        })
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, GfxInputInner<T>> {
+        self.inner.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub fn post(&self, item: T) {
+        let mut g = self.lock();
+        if g.closed {
+            return;
+        }
+        if g.queue.len() >= GFX_INPUT_CAP {
+            g.queue.pop_front();
+        }
+        g.queue.push_back(item);
+        self.cv.notify_one();
+    }
+
+    pub fn close(&self) {
+        let mut g = self.lock();
+        g.closed = true;
+        self.cv.notify_all();
+    }
+
+    /// Pin input streams are sync `func`s; `poll_produce` must not return
+    /// `Pending` (guest WAT traps on stream.read BLOCKED).
+    pub fn wait_take(&self, finish: bool) -> GfxInputTake<T> {
+        let mut g = self.lock();
+        loop {
+            if let Some(ev) = g.queue.pop_front() {
+                return GfxInputTake::Item(ev);
+            }
+            if g.closed {
+                return GfxInputTake::Eof;
+            }
+            if finish {
+                return GfxInputTake::Cancelled;
+            }
+            g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+        }
+    }
+
+    pub fn wait_ready(&self, finish: bool) -> GfxInputTake<T> {
+        let mut g = self.lock();
+        loop {
+            if let Some(ev) = g.queue.front() {
+                return GfxInputTake::Item(ev.clone());
+            }
+            if g.closed {
+                return GfxInputTake::Eof;
+            }
+            if finish {
+                return GfxInputTake::Cancelled;
+            }
+            g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+        }
+    }
+
+    pub fn is_closed(&self) -> bool {
+        self.lock().closed
+    }
+
+    pub fn len(&self) -> usize {
+        self.lock().queue.len()
+    }
+}
+
+/// Five pin input streams. UI-thread post uses the process map, not Store.
+pub struct GfxInputHost {
+    pub pointer_up: Arc<GfxPointerGate>,
+    pub pointer_down: Arc<GfxPointerGate>,
+    pub pointer_move: Arc<GfxPointerGate>,
+    pub key_up: Arc<GfxKeyGate>,
+    pub key_down: Arc<GfxKeyGate>,
+}
+
+impl GfxInputHost {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            pointer_up: GfxInputGate::new(),
+            pointer_down: GfxInputGate::new(),
+            pointer_move: GfxInputGate::new(),
+            key_up: GfxInputGate::new(),
+            key_down: GfxInputGate::new(),
+        })
+    }
+
+    pub fn close(&self) {
+        self.pointer_up.close();
+        self.pointer_down.close();
+        self.pointer_move.close();
+        self.key_up.close();
+        self.key_down.close();
+    }
+
+    pub fn post_pointer(&self, kind: i32, x: f64, y: f64) {
+        let ev = GfxPointerSample { x, y };
+        match kind {
+            0 => self.pointer_up.post(ev),
+            1 => self.pointer_down.post(ev),
+            2 => self.pointer_move.post(ev),
+            _ => {}
+        }
+    }
+
+    pub fn post_key(&self, down: bool, sample: GfxKeySample) {
+        if down {
+            self.key_down.post(sample);
+        } else {
+            self.key_up.post(sample);
+        }
+    }
+}
+
 static GFX_GATES: OnceLock<Mutex<HashMap<i64, Arc<GfxOnFrameGate>>>> = OnceLock::new();
 
 fn gfx_gates() -> &'static Mutex<HashMap<i64, Arc<GfxOnFrameGate>>> {
@@ -606,6 +773,34 @@ pub fn gfx_on_frame_lookup(handle: i64) -> Option<Arc<GfxOnFrameGate>> {
 
 pub fn gfx_on_frame_unregister(handle: i64) -> Option<Arc<GfxOnFrameGate>> {
     gfx_gates()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(&handle)
+}
+
+static GFX_INPUT: OnceLock<Mutex<HashMap<i64, Arc<GfxInputHost>>>> = OnceLock::new();
+
+fn gfx_input_map() -> &'static Mutex<HashMap<i64, Arc<GfxInputHost>>> {
+    GFX_INPUT.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn gfx_input_register(handle: i64, gates: Arc<GfxInputHost>) {
+    gfx_input_map()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(handle, gates);
+}
+
+pub fn gfx_input_lookup(handle: i64) -> Option<Arc<GfxInputHost>> {
+    gfx_input_map()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&handle)
+        .cloned()
+}
+
+pub fn gfx_input_unregister(handle: i64) -> Option<Arc<GfxInputHost>> {
+    gfx_input_map()
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .remove(&handle)
@@ -683,5 +878,82 @@ mod gfx_h3_instant {
             "wait_take returned before a fresh vsync"
         );
         handle
+    }
+}
+
+#[cfg(test)]
+mod gfx_input_queue {
+    use super::*;
+
+    #[test]
+    fn pointer_queue_preserves_order() {
+        let gate = GfxPointerGate::new();
+        gate.post(GfxPointerSample { x: 1.0, y: 2.0 });
+        gate.post(GfxPointerSample { x: 3.0, y: 4.0 });
+        match gate.wait_take(true) {
+            GfxInputTake::Item(a) => {
+                assert_eq!(a.x, 1.0);
+                assert_eq!(a.y, 2.0);
+            }
+            other => panic!("expected first sample, got {other:?}"),
+        }
+        match gate.wait_take(true) {
+            GfxInputTake::Item(b) => {
+                assert_eq!(b.x, 3.0);
+                assert_eq!(b.y, 4.0);
+            }
+            other => panic!("expected second sample, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn pointer_cap_drops_oldest() {
+        let gate = GfxPointerGate::new();
+        for i in 0..=GFX_INPUT_CAP {
+            gate.post(GfxPointerSample {
+                x: i as f64,
+                y: 0.0,
+            });
+        }
+        assert_eq!(gate.len(), GFX_INPUT_CAP);
+        match gate.wait_take(true) {
+            GfxInputTake::Item(a) => assert_eq!(a.x, 1.0),
+            other => panic!("expected oldest-dropped sample, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn close_yields_eof() {
+        let gate = GfxPointerGate::new();
+        gate.close();
+        assert!(matches!(gate.wait_take(false), GfxInputTake::Eof));
+    }
+
+    #[test]
+    fn key_post_reaches_down_gate() {
+        let host = GfxInputHost::new();
+        host.post_key(
+            true,
+            GfxKeySample {
+                key: Some(19), // key-a is the 20th variant (0-based 19)
+                text: Some("A".into()),
+                alt_key: false,
+                ctrl_key: false,
+                meta_key: false,
+                shift_key: true,
+            },
+        );
+        match host.key_down.wait_take(true) {
+            GfxInputTake::Item(ev) => {
+                assert_eq!(ev.key, Some(19));
+                assert_eq!(ev.text.as_deref(), Some("A"));
+                assert!(ev.shift_key);
+            }
+            other => panic!("expected key-down, got {other:?}"),
+        }
+        assert!(matches!(
+            host.key_up.wait_take(true),
+            GfxInputTake::Cancelled
+        ));
     }
 }

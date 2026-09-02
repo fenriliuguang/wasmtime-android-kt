@@ -37,6 +37,19 @@ object NativeBridge {
     @JvmStatic external fun nativeStorePostGfxVsync(store: Long, frameTimeNanos: Long)
     @JvmStatic external fun nativeStoreCloseGfxOnFrame(store: Long)
     @JvmStatic
+    external fun nativeStorePostGfxPointer(store: Long, kind: Int, x: Double, y: Double)
+    @JvmStatic
+    external fun nativeStorePostGfxKey(
+        store: Long,
+        down: Boolean,
+        androidKeyCode: Int,
+        text: String?,
+        alt: Boolean,
+        ctrl: Boolean,
+        meta: Boolean,
+        shift: Boolean,
+    )
+    @JvmStatic
     external fun nativeStoreBindCanvasNativeWindow(
         store: Long,
         nativeWindowHandle: Long,

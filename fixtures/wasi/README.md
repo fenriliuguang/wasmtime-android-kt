@@ -285,11 +285,15 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_size.w
 ## `wasi-gfx` — remaining pin streams（GFX-PIN）
 
 Guest export: `run: async func() -> u32`（构造 surface → 打开 `on-pointer-up/down/move` 与 `on-key-up/down` → drop 各 stream → 返回 1）  
-Host: 产品 `define_host` 注册上述五个 import。stream 在接线输入前为空。无 JS callback。
+Host: 产品 `define_host` 注册上述五个 import。`Store.postGfxPointer` / `postGfxKey` 写入有界队列；未 post 时 `stream.read` 会等（drop 未读 stream 为 cancel，不堵死）。无 JS callback。
+
+真事件读回：`gfx_input.wat`（先 post 一条 pointer-down，guest `stream.read` 校验 x/y）。
 
 ```powershell
 wasm-tools parse fixtures/wasi/gfx_pin.wat -o fixtures/wasi/gfx_pin.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_pin.wasm
+wasm-tools parse fixtures/wasi/gfx_input.wat -o fixtures/wasi/gfx_input.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/gfx_input.wasm
 ```
 
 ## `wasi-gfx` — product frame loop（P010-GFXL / P010-GFXB / P010-GFXV）

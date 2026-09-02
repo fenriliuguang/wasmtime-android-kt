@@ -5,12 +5,14 @@ use crate::error::{throw, throw_compile, throw_err, throw_link};
 use crate::gpu_dispatch::GpuBackend;
 use crate::handles::{drop_handle, from_handle, to_handle};
 use crate::host::{
-    gfx_on_frame_lookup, gfx_on_frame_register, gfx_on_frame_unregister, wasi_monotonic_now_ns,
-    GfxOnFrameGate, GfxOnFrameTake, GfxOnResizeGate, GfxOnResizeTake, Gpu, GpuAdapter,
-    GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer, GpuCommandEncoder,
-    GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout, GpuQuerySet, GpuQueue,
-    GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler,
-    GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
+    gfx_input_lookup, gfx_input_register, gfx_input_unregister, gfx_on_frame_lookup,
+    gfx_on_frame_register, gfx_on_frame_unregister, wasi_monotonic_now_ns, GfxInputTake,
+    GfxKeyGate, GfxKeySample, GfxOnFrameGate, GfxOnFrameTake, GfxOnResizeGate, GfxOnResizeTake,
+    GfxPointerGate, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer,
+    GpuCommandBuffer, GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice,
+    GpuPipelineLayout, GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder,
+    GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture,
+    GpuTextureView, HostState, Widget,
 };
 use crate::jvm;
 use crate::native_gpu::{NativeRequestAdapterOptions, NativeRequestDeviceDescriptor};
@@ -38,7 +40,7 @@ use crate::webgpu_abi::{
 };
 use futures::channel::oneshot;
 use jni::objects::{JByteArray, JClass, JObject, JString};
-use jni::sys::{jint, jlong};
+use jni::sys::{jboolean, jdouble, jint, jlong};
 use jni::JNIEnv;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
@@ -1018,6 +1020,220 @@ impl<D> StreamProducer<D> for GfxOnResizeProducer {
     }
 }
 
+struct GfxPointerProducer {
+    gate: Arc<GfxPointerGate>,
+}
+
+impl<D> StreamProducer<D> for GfxPointerProducer {
+    type Item = GfxPointerEvent;
+    type Buffer = Option<GfxPointerEvent>;
+
+    fn poll_produce<'a>(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        mut store: StoreContextMut<'a, D>,
+        mut destination: Destination<'a, Self::Item, Self::Buffer>,
+        finish: bool,
+    ) -> Poll<wasmtime::Result<StreamResult>> {
+        let _ = cx;
+        if destination.remaining(&mut store) == Some(0) {
+            return Poll::Ready(Ok(match self.gate.wait_ready(finish) {
+                GfxInputTake::Item(_) => StreamResult::Completed,
+                GfxInputTake::Eof => StreamResult::Dropped,
+                GfxInputTake::Cancelled => StreamResult::Cancelled,
+            }));
+        }
+        match self.gate.wait_take(finish) {
+            GfxInputTake::Item(ev) => {
+                destination.set_buffer(Some(GfxPointerEvent { x: ev.x, y: ev.y }));
+                if self.gate.is_closed() {
+                    Poll::Ready(Ok(StreamResult::Dropped))
+                } else {
+                    Poll::Ready(Ok(StreamResult::Completed))
+                }
+            }
+            GfxInputTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
+            GfxInputTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),
+        }
+    }
+}
+
+struct GfxKeyProducer {
+    gate: Arc<GfxKeyGate>,
+}
+
+impl<D> StreamProducer<D> for GfxKeyProducer {
+    type Item = GfxKeyEvent;
+    type Buffer = Option<GfxKeyEvent>;
+
+    fn poll_produce<'a>(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        mut store: StoreContextMut<'a, D>,
+        mut destination: Destination<'a, Self::Item, Self::Buffer>,
+        finish: bool,
+    ) -> Poll<wasmtime::Result<StreamResult>> {
+        let _ = cx;
+        if destination.remaining(&mut store) == Some(0) {
+            return Poll::Ready(Ok(match self.gate.wait_ready(finish) {
+                GfxInputTake::Item(_) => StreamResult::Completed,
+                GfxInputTake::Eof => StreamResult::Dropped,
+                GfxInputTake::Cancelled => StreamResult::Cancelled,
+            }));
+        }
+        match self.gate.wait_take(finish) {
+            GfxInputTake::Item(ev) => {
+                destination.set_buffer(Some(GfxKeyEvent {
+                    key: gfx_key_from_disc(ev.key),
+                    text: ev.text,
+                    alt_key: ev.alt_key,
+                    ctrl_key: ev.ctrl_key,
+                    meta_key: ev.meta_key,
+                    shift_key: ev.shift_key,
+                }));
+                if self.gate.is_closed() {
+                    Poll::Ready(Ok(StreamResult::Dropped))
+                } else {
+                    Poll::Ready(Ok(StreamResult::Completed))
+                }
+            }
+            GfxInputTake::Eof => Poll::Ready(Ok(StreamResult::Dropped)),
+            GfxInputTake::Cancelled => Poll::Ready(Ok(StreamResult::Cancelled)),
+        }
+    }
+}
+
+fn gfx_key_from_disc(disc: Option<u8>) -> Option<GfxKey> {
+    let disc = disc?;
+    if disc > GfxKey::Katakana as u8 {
+        return None;
+    }
+    // Sequential `#[repr(u8)]` pin enum.
+    Some(unsafe { std::mem::transmute::<u8, GfxKey>(disc) })
+}
+
+/// Android `KeyEvent.keyCode` → WIT `key`. Unmapped → `none` (caller may still
+/// fill `text`).
+fn gfx_key_from_android(code: i32) -> Option<GfxKey> {
+    use GfxKey::*;
+    Some(match code {
+        7 => Digit0,
+        8 => Digit1,
+        9 => Digit2,
+        10 => Digit3,
+        11 => Digit4,
+        12 => Digit5,
+        13 => Digit6,
+        14 => Digit7,
+        15 => Digit8,
+        16 => Digit9,
+        19 => ArrowUp,
+        20 => ArrowDown,
+        21 => ArrowLeft,
+        22 => ArrowRight,
+        29 => KeyA,
+        30 => KeyB,
+        31 => KeyC,
+        32 => KeyD,
+        33 => KeyE,
+        34 => KeyF,
+        35 => KeyG,
+        36 => KeyH,
+        37 => KeyI,
+        38 => KeyJ,
+        39 => KeyK,
+        40 => KeyL,
+        41 => KeyM,
+        42 => KeyN,
+        43 => KeyO,
+        44 => KeyP,
+        45 => KeyQ,
+        46 => KeyR,
+        47 => KeyS,
+        48 => KeyT,
+        49 => KeyU,
+        50 => KeyV,
+        51 => KeyW,
+        52 => KeyX,
+        53 => KeyY,
+        54 => KeyZ,
+        55 => Comma,
+        56 => Period,
+        57 => AltLeft,
+        58 => AltRight,
+        59 => ShiftLeft,
+        60 => ShiftRight,
+        61 => Tab,
+        62 => Space,
+        66 => Enter,
+        67 => Backspace,
+        68 => Backquote,
+        69 => Minus,
+        70 => Equal,
+        71 => BracketLeft,
+        72 => BracketRight,
+        73 => Backslash,
+        74 => Semicolon,
+        75 => Quote,
+        76 => Slash,
+        82 => ContextMenu,
+        84 => BrowserSearch,
+        92 => PageUp,
+        93 => PageDown,
+        111 => Escape,
+        112 => Delete,
+        113 => ControlLeft,
+        114 => ControlRight,
+        115 => CapsLock,
+        116 => ScrollLock,
+        117 => MetaLeft,
+        118 => MetaRight,
+        119 => Fn,
+        120 => PrintScreen,
+        121 => Pause,
+        122 => Home,
+        123 => End,
+        124 => Insert,
+        131 => F1,
+        132 => F2,
+        133 => F3,
+        134 => F4,
+        135 => F5,
+        136 => F6,
+        137 => F7,
+        138 => F8,
+        139 => F9,
+        140 => F10,
+        141 => F11,
+        142 => F12,
+        143 => NumLock,
+        144 => Numpad0,
+        145 => Numpad1,
+        146 => Numpad2,
+        147 => Numpad3,
+        148 => Numpad4,
+        149 => Numpad5,
+        150 => Numpad6,
+        151 => Numpad7,
+        152 => Numpad8,
+        153 => Numpad9,
+        154 => NumpadDivide,
+        155 => NumpadMultiply,
+        156 => NumpadSubtract,
+        157 => NumpadAdd,
+        158 => NumpadDecimal,
+        160 => NumpadEnter,
+        161 => NumpadEqual,
+        162 => NumpadParenLeft,
+        163 => NumpadParenRight,
+        164 => AudioVolumeMute,
+        24 => AudioVolumeUp,
+        25 => AudioVolumeDown,
+        26 => Power,
+        _ => return None,
+    })
+}
+
 /// WASI 0.3.0 http `error-code` subset (`unknown` only).
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
@@ -1994,13 +2210,15 @@ pub(crate) fn define_host(
                 },
             )
             .map_err(|e| e.to_string())?;
-        // GFX-PIN: remaining pin streams. Empty until input is wired.
+        // GFX-PIN: pointer/key streams. Store.postGfxPointer / postGfxKey fill
+        // bounded queues. poll_produce waits; it must not return Pending.
         surface
             .func_wrap(
                 "[method]surface.on-pointer-up",
                 |mut store, (this,): (Resource<GfxSurface>,)| {
                     store.data_mut().table.get(&this)?;
-                    let reader = StreamReader::new(&mut store, Vec::<GfxPointerEvent>::new())?;
+                    let gate = store.data().gfx_input.pointer_up.clone();
+                    let reader = StreamReader::new(&mut store, GfxPointerProducer { gate })?;
                     Ok((reader,))
                 },
             )
@@ -2010,7 +2228,8 @@ pub(crate) fn define_host(
                 "[method]surface.on-pointer-down",
                 |mut store, (this,): (Resource<GfxSurface>,)| {
                     store.data_mut().table.get(&this)?;
-                    let reader = StreamReader::new(&mut store, Vec::<GfxPointerEvent>::new())?;
+                    let gate = store.data().gfx_input.pointer_down.clone();
+                    let reader = StreamReader::new(&mut store, GfxPointerProducer { gate })?;
                     Ok((reader,))
                 },
             )
@@ -2020,7 +2239,8 @@ pub(crate) fn define_host(
                 "[method]surface.on-pointer-move",
                 |mut store, (this,): (Resource<GfxSurface>,)| {
                     store.data_mut().table.get(&this)?;
-                    let reader = StreamReader::new(&mut store, Vec::<GfxPointerEvent>::new())?;
+                    let gate = store.data().gfx_input.pointer_move.clone();
+                    let reader = StreamReader::new(&mut store, GfxPointerProducer { gate })?;
                     Ok((reader,))
                 },
             )
@@ -2030,7 +2250,8 @@ pub(crate) fn define_host(
                 "[method]surface.on-key-up",
                 |mut store, (this,): (Resource<GfxSurface>,)| {
                     store.data_mut().table.get(&this)?;
-                    let reader = StreamReader::new(&mut store, Vec::<GfxKeyEvent>::new())?;
+                    let gate = store.data().gfx_input.key_up.clone();
+                    let reader = StreamReader::new(&mut store, GfxKeyProducer { gate })?;
                     Ok((reader,))
                 },
             )
@@ -2040,7 +2261,8 @@ pub(crate) fn define_host(
                 "[method]surface.on-key-down",
                 |mut store, (this,): (Resource<GfxSurface>,)| {
                     store.data_mut().table.get(&this)?;
-                    let reader = StreamReader::new(&mut store, Vec::<GfxKeyEvent>::new())?;
+                    let gate = store.data().gfx_input.key_down.clone();
+                    let reader = StreamReader::new(&mut store, GfxKeyProducer { gate })?;
                     Ok((reader,))
                 },
             )
@@ -7312,6 +7534,10 @@ pub(crate) fn define_host(
                                 &attr_offsets,
                                 &attr_locations,
                                 &primitive,
+                                &multisample,
+                                &blend,
+                                &write_mask,
+                                &depth_stencil,
                             )
                             .map_err(native_gpu_error)?
                         };
@@ -7549,7 +7775,7 @@ pub(crate) fn define_host(
                                             let device = gpu
                                                 .resolve_device(device_rep)
                                                 .map_err(native_gpu_error)?;
-                                            gpu.create_render_pipeline(
+                                            gpu.create_render_pipeline_described(
                                                 device,
                                                 vertex_shader,
                                                 &vertex_entry,
@@ -7560,6 +7786,17 @@ pub(crate) fn define_host(
                                                 &label,
                                                 vertex_constants,
                                                 fragment_constants,
+                                                &vb_strides,
+                                                &vb_step_modes,
+                                                &attr_index,
+                                                &attr_formats,
+                                                &attr_offsets,
+                                                &attr_locations,
+                                                &primitive,
+                                                &multisample,
+                                                &blend,
+                                                &write_mask,
+                                                &depth_stencil,
                                             )
                                             .map_err(native_gpu_error)?
                                         };
@@ -11534,8 +11771,10 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     let engine = unsafe { from_handle::<Engine>(engine) };
     let store = Store::new(engine, HostState::default());
     let gate = store.data().gfx_on_frame.clone();
+    let input = store.data().gfx_input.clone();
     let handle = to_handle(store);
     gfx_on_frame_register(handle, gate);
+    gfx_input_register(handle, input);
     handle
 }
 
@@ -11548,9 +11787,13 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     if let Some(gate) = gfx_on_frame_unregister(handle) {
         gate.close();
     }
+    if let Some(input) = gfx_input_unregister(handle) {
+        input.close();
+    }
     if handle != 0 {
         let store = unsafe { from_handle::<HostStore>(handle) };
         store.data().gfx_on_resize.close();
+        store.data().gfx_input.close();
     }
     unsafe { drop_handle::<HostStore>(handle) }
 }
@@ -11568,6 +11811,73 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
     }
     if let Some(gate) = gfx_on_frame_lookup(store) {
         gate.post(frame_time_nanos);
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStorePostGfxPointer(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    kind: jint,
+    x: jdouble,
+    y: jdouble,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    if !(0..=2).contains(&kind) {
+        throw(&mut env, "pointer kind must be 0=up, 1=down, 2=move");
+        return;
+    }
+    if let Some(input) = gfx_input_lookup(store) {
+        input.post_pointer(kind, x, y);
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeBridge_nativeStorePostGfxKey(
+    mut env: JNIEnv,
+    _class: JClass,
+    store: jlong,
+    down: jboolean,
+    android_key_code: jint,
+    text: JString,
+    alt: jboolean,
+    ctrl: jboolean,
+    meta: jboolean,
+    shift: jboolean,
+) {
+    if store == 0 {
+        throw(&mut env, "null store handle");
+        return;
+    }
+    let text = if text.is_null() {
+        None
+    } else {
+        match env.get_string(&text) {
+            Ok(s) => {
+                let owned = s.to_string_lossy().into_owned();
+                if owned.is_empty() {
+                    None
+                } else {
+                    Some(owned)
+                }
+            }
+            Err(_) => None,
+        }
+    };
+    let sample = GfxKeySample {
+        key: gfx_key_from_android(android_key_code).map(|k| k as u8),
+        text,
+        alt_key: alt != 0,
+        ctrl_key: ctrl != 0,
+        meta_key: meta != 0,
+        shift_key: shift != 0,
+    };
+    if let Some(input) = gfx_input_lookup(store) {
+        input.post_key(down != 0, sample);
     }
 }
 

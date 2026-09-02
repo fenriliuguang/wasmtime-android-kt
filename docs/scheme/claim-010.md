@@ -17,7 +17,7 @@ Default consume is Dawn C / NativeGpu. Remaining pin `[method]`s call `webgpu.h`
 | Claim | Degree | Notes |
 |-------|--------|-------|
 | Pin resource `[method]` names (224) | **Shape** + NativeGpu | All 224 names registered in `native/src/cm.rs`. Unwired store → `request-adapter` **`none`**. JNI leftover is `dawn-jni`. |
-| Boot / cube hot path | **Dawn C** when `.so` loads | `request-adapter` / `request-device` / queue / buffer / WGSL / render pipeline / encoder / draw / submit / write-buffer / Android surface present. Guest options (features/limits/power) ignored on the C call. |
+| Boot / cube hot path | **Dawn C** when `.so` loads | `request-adapter` / `request-device` / queue / buffer / WGSL / render pipeline / encoder / draw / submit / write-buffer / Android surface present. Power / fallback / feature-level, required-features, and labels reach the C call. `required-limits` and `xr-compatible` stay Record. Blend / depth-stencil / MSAA / pipeline constants fill the C ctor. |
 | Remaining pin methods | **Dawn** when `.so` loads | texture / sampler / compute / copies / map / query / bundle / error / indexed-indirect / viewport / `write-texture` / work-done / destroy. Cloud / missing `.so` stays **Table**. |
 | Dawn C / AAR missing ctor slots | **Record** | shader `compilation-hints`; canvas `color-space`; canvas `tone-mapping` |
 | Fixture `get-*` / `experimental:webgpu-cm` flats | **Not product** | Frozen; do not extend |
@@ -33,7 +33,7 @@ Leftovers: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Hos
 | `wasi:filesystem` | Directory preopen + `open-at` + r/w; `..` → `access` | `stat` / dir stream / append |
 | `wasi:sockets` | Outbound TCP IPv4 | listen, UDP, DNS |
 | `wasi:http` | Body `stream<u8>`; outbound GET; no product request/response constructors | `service` world, trailers, TLS |
-| `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `height` / `width` / `request-set-size` / `on-resize` + `on-pointer-*` / `on-key-*` + `configure` / `get-current-texture` / `present` | See remaining + non-urgent below |
+| `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `height` / `width` / `request-set-size` / `on-resize` + `on-pointer-*` / `on-key-*` (Store `postGfxPointer` / `postGfxKey`) + `configure` / `get-current-texture` / `present` | See remaining + non-urgent below |
 
 **Remaining (auto):** none.
 
