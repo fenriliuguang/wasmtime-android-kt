@@ -193,10 +193,10 @@ SurfaceFlinger / BLAST / 面板
 ### 6.3 砍刀顺序（先有数，再动一刀）
 
 0. 在 V2458A、设置锁 120 Hz 上收 ≥2 min 的 `hotpath` + `hotpath-spike`。把肉眼弹出绑到某个阶段冒尖，**或**绑到「弹出时进程内无冒尖」。
-1. S3 / S6b 冒尖 → 合成器 / acquire（BLAST、时间戳、Fifo）。只动一个旋钮。**这次重开（§6.7）：** 重采 SF 计数器 + gfxinfo；**不拧旋钮**（时间戳已是 5 ms `desired2present`；BLAST 仍是 5；禁止 Mailbox）。剩下第 4 条。
-2. S4 encode-gap 冒尖 → guest / CM（不是 Dawn C）。只动一个旋钮。
-3. S6a 冒尖，或 CPU 不冒尖但眼睛在弹 → GPU / fence 寿命 vs D24 的 `onSubmittedWorkDone`。今天的 `dawn_c.rs` **没有**绑这个符号。
-4. 弹出时进程内无冒尖 → **SF 计数器之外**的合成器 / 面板。用 `hotpath-spike` 或肉眼做事件触发 `screenrecord`。
+1. S3 / S6b 冒尖 → 合成器 / acquire（BLAST、时间戳、Fifo）。只动一个旋钮。**这次重开（§6.7）：** 重采 SF 计数器 + gfxinfo；**不拧旋钮**。不是这次肉眼弹出（§6.9）。
+2. S4 encode-gap 冒尖 → guest / CM（不是 Dawn C）。只动一个旋钮。**不是这次肉眼弹出**（§6.9）。
+3. S6a 冒尖，或 CPU 不冒尖但眼睛在弹 → GPU / fence 寿命 vs D24 的 `onSubmittedWorkDone`。**不是这次肉眼弹出**（§6.9）。
+4. 弹出时进程内无冒尖 → HP-BIND 之后的剩余。**§6.9 落地：** 仓外 guest `sincos`，不是合成器/面板。
 
 在某个阶段认领这次弹出之前，**不要**再叠 keep / DisplayManager / GameState / 砍 JNI。
 
@@ -235,7 +235,7 @@ Choreographer（累计到 n=51240）：`<11ms=51240` `11-20ms=0` `>20ms=0` `last
 
 n=51240 累计直方图（含本段之前）：acquire 间隔 `<11ms=51207` `11-20ms=33` `>20ms=0`。present `lastLatencyNs` `<8ms=46243` `8-16ms=4997` `>16ms=1` `>8.3ms=4760`；间隔 `<11ms=51070` `11-20ms=169` `>20ms=1`；`cross=347`；retire 存活 `<8.3ms=0` `8.3-25ms=27045` `>25ms=24192`；`angleDt` `8-9ms=51239` `9-17ms=1`。
 
-**绑定：** 这 150 s **没有约 5 s 周期的进程内阶段冒尖**；成簇超阈值的只有一段 45 s、每拍一次的 **S3b acquire >2 ms**（S6b present >2 ms 频繁但无周期）。肉眼弹出**未确认**，因此本窗口若有约 5 s 弹出，就是 **弹出时没有孤立的进程内冒尖** —— 具名后续是合成器/面板 / 有人盯着的事件 `screenrecord`，不是 S4/S6a。
+**绑定：** 这 150 s **没有约 5 s 周期的进程内阶段冒尖**；成簇超阈值的只有一段 45 s、每拍一次的 **S3b acquire >2 ms**（S6b present >2 ms 频繁但无周期）。肉眼弹出**本 log 窗口未确认**。同日观察：只在 **转** 时弹（§6.8）。收口：**guest 三角函数**（§6.9），与「进程内无冒尖」一致。
 
 ### 6.7 合成器 / 面板（这次重开）
 
@@ -260,4 +260,29 @@ n=51240 累计直方图（含本段之前）：acquire 间隔 `<11ms=51207` `11-
 
 **HWC / 显示（完整 dump）：** BLAST 层是唯一 HWC 输出，`Comp Type=DEVICE`，`usesClientComposition=false`。当前模式 **120.00 Hz** `1260x2800`，`renderRate=120.00 Hz`。`GameFrameRateOverrides=` 空；`setFrameRate` UID 10507 → 120 Hz。层 **FPS ring**（09:33:45–54，十个约 1 s 桶）：**120.19–120.61** fps，最大间隔 **10.5–11.4 ms**（约多 1 个 vsync，不是 25 ms 那一档）。
 
-**本刀不拧合成器旋钮。** BLAST=5、时间戳 2 拍、Fifo 保持。这次重开的 SF 计数器**看不到**约 5 s 的丢帧 / 回退 / 积压档。若本窗口有约 5 s 肉眼弹出，仍在这些计数器**之外**（面板 / 未被计数的 BLAST 重播，或需要弹出瞬间的逐帧）。具名剩余：有人盯着的事件 `screenrecord` —— 不是 keep-N，不是 Mailbox。
+**本刀不拧合成器旋钮。** BLAST=5、时间戳 2 拍、Fifo 保持。这次重开的 SF 计数器**看不到**约 5 s 的丢帧 / 回退 / 积压档。肉眼弹出的收口是 guest 数学（§6.9），不是缺了一档 SF 计数。
+
+### 6.8 肉眼对照（转 vs 平移，2026-09-02）
+
+仓外 `hosts/fullscreen-surface`，同一 NativeGpu present 路径，V2458A 锁 120 Hz。真机有观察者。
+
+| Guest | 运动 | 肉眼 |
+|-------|------|------|
+| 3D 立方体只平移（不转） | 直线来回 | **看不出弹出** |
+| 慢速 2D 绕边方块（不转） | 约 5 s 一圈平移 | **看不出弹出** |
+| 3D 立方体改回原来的自转（`0.025×60` rad/s） | 旋转 + 静止刻度 | **会弹** |
+| 2D 双色长条：慢速绕边 **同时** 同转速自转 | 平移 + 旋转 | **会弹** |
+
+**绑定（眼睛）：** 转 vs 平移分的是 **`rotate_*` / `sincos` 这条路径**，不是 3D 几何 vs 2D。只平移根本没走到坏掉的三角函数。**不要**再叠 keep-N。根因：§6.9。
+
+### 6.9 收口：仓外 guest sincos（2026-09-02）
+
+同一 NativeGpu present 路径，V2458A 锁 120 Hz，真机有观察者。仓外 MoonBit guest（不是本仓 Dawn C consume）。
+
+**原来约 5 s 弹出的原因。** Guest 的 `sin_d` / `cos_d` 先 `wrap_pi` 到 ±π，再用到 \(x^7\) 的泰勒。±π 处多项式大约偏 0.075；`y > π` 时 sin 再跳约 0.15（**约 8–9°**）。周期 \(2π / 1.5\) rad/s ≈ **4.19 s**（肉眼约 5 s）。2D 旋转 guest 共用这套函数。androidx 立方体用系统三角函数，对照从不弹。
+
+正交只绕 Y + 面积比把弹出绑在 **绿色完全朝向镜头** 和 **绿色消失**（正好是 wrap 点）。改成 Cody–Waite 约化 + fdlibm 核（`sincos_d`，一对 `(n,r)`）之后，这一类没了。
+
+**三轴恢复后的第二次大跳。** 把**共用**时钟 `θ` 折进 ±π 对 `Ry(θ)` 安全，对 `Rx(0.35θ)` / `Rz(0.21θ)` 不行：`θ ← θ−2π` 会让 X 跳 **约 126°**、Z 跳 **约 76°**，落在绿色要没、黄色要出。不再折 `θ`；每轴在 `sincos_d` 里自己约化。观察：**没有任何肉眼可见异常**。
+
+**绑定：** 这次抖动是 **仓外 guest 数学**，不是 Dawn C，不是 SurfaceFlinger，不是 keep-N。HP-LOG「没有约 5 s 进程内冒尖」对得上。**不要**为这次肉眼弹出再拧合成器或补 `onSubmittedWorkDone`。

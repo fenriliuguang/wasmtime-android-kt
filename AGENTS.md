@@ -1,6 +1,6 @@
 # Agent notes
 
-**Living auto leftover:** cube hitch restart (forget inherited Closed/Likely; hot-path stages) — [`docs/agent/gfx-hitch.md`](docs/agent/gfx-hitch.md) (Cursor skill `gfx-hitch`). Branch **`fix/300-gfx-cube-pop`**: one lane = one **commit**; **no per-lane PR**. Next: `python3 ./scripts/gfx-hitch-remaining.py`. Mapping: [`docs/mapping/gfx-hitch-native-dawn.md`](docs/mapping/gfx-hitch-native-dawn.md) §6.
+**Living auto leftover:** empty. Cube hitch eye-pop is **closed** as out-of-tree guest `sincos` ([`docs/agent/gfx-hitch.md`](docs/agent/gfx-hitch.md) §6.9; skill `gfx-hitch`). Branch **`fix/300-gfx-cube-pop`**. `python3 ./scripts/gfx-hitch-remaining.py` prints empty. Do not restack keep-N / compositor knobs / fence for that pop.
 
 **Native Dawn consume** leftover is **empty** ([`docs/agent/native-dawn.md`](docs/agent/native-dawn.md); skill `native-dawn` only if the user names `ND-*`). Cube / out-of-tree demo is evidence only, not consume DoD.
 

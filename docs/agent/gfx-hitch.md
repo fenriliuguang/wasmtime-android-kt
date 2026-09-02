@@ -4,7 +4,7 @@
 
 P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 official-shape is **closed**. `0.1.0` product gates are **empty**. Native Dawn **consume** leftover is **empty** (`ND-DEVICE` landed; `#299` on `main`). Do **not** re-cut those queues. Do **not** treat this hitch as a consume needle.
 
-Living **auto** leftover after consume: bind the ~5 s **eye pop** on NativeGpu / Dawn C to a hot-path stage — or to “no in-process spike at the pop.” Tracking needles: [`../scheme/gfx-hitch.md`](../scheme/gfx-hitch.md). Code sequence and stage table: [`../mapping/gfx-hitch-native-dawn.md`](../mapping/gfx-hitch-native-dawn.md) **§6**.
+Living **auto** leftover after consume: **empty** (eye-pop bound to out-of-tree guest `sincos`; mapping §6.9). Tracking: [`../scheme/gfx-hitch.md`](../scheme/gfx-hitch.md). Beat map: [`../mapping/gfx-hitch-native-dawn.md`](../mapping/gfx-hitch-native-dawn.md) **§6**.
 
 **Restart rule.** Mapping §§0–5 Closed / Likely / Mitigated rows are **archive**. This queue does **not** inherit them as premises. Issue 300 on this branch already chose that: forget previous localization; start from the vsync→present beat in code.
 
@@ -14,7 +14,7 @@ P2 Wasmtime pin stays **named-only** ([`wasmtime-p2.md`](wasmtime-p2.md)). Consu
 
 ## Goal
 
-On Vivo V2458A (Android 16, Settings lock **120 Hz**), the out-of-tree rotating cube (`hosts/fullscreen-surface` + `GpuBackends.dawn()` + `Store.bindCanvasNativeWindow`) still **visually pops**. Control: `hosts/native-webgpu` androidx cube does **not**. Bind that eye event to `GfxHitch` `hotpath` / `hotpath-spike` `Instant` costs — **or** record that the pop happened with no in-process spike. Then one named follow-up. Not CTS. Not a pin-consume DoD.
+On Vivo V2458A (Android 16, Settings lock **120 Hz**), the out-of-tree rotating cube’s ~5 s **eye pop** is **closed** as guest Taylor/`wrap_pi` (then a shared-Euler `fold_pi` snap). NativeGpu / Dawn C present path was not the cause. Control androidx cube never popped. Not CTS. Not a pin-consume DoD.
 
 ## Why this restart (commits on this branch)
 
@@ -68,14 +68,15 @@ After HP-BIND, one variable. Mapping §6.3 order, not a remaining needle:
 | Lane | When | DoD |
 |------|------|-----|
 | Compositor / acquire | Bind named S3 / S6b spike | One knob (BLAST / timestamp / Fifo). Not keep-N. **Landed 2026-09-02:** mapping §6.7 SF/gfxinfo re-measure; **no knob** (counters clean). |
-| Guest / CM | Bind named S4 encode-gap spike | One knob on guest WIT or pump. Not Dawn C consume. |
-| GPU fence vs D24 | Bind named S6a, or no CPU spike while the eye pops | Real `onSubmittedWorkDone` vs immediate `mark_canvas_gpu_done`. `dawn_c.rs` does not bind that symbol today. |
-| Event `screenrecord` | Bind named no in-process spike | Key off `hotpath-spike` or the eye; frames around the pop. **Next named** after §6.7. |
-| keep-N / DisplayManager / GameState / JNI | Banned until bind | Do not restack. |
+| Guest / CM | Bind named S4 encode-gap spike | One knob on guest WIT or pump. **Not this eye-pop** (§6.9). |
+| GPU fence vs D24 | Bind named S6a, or no CPU spike while the eye pops | Real `onSubmittedWorkDone`. **Not this eye-pop** (§6.9). |
+| Event `screenrecord` | Bind named no in-process spike | Frames around the pop. **Superseded §6.9** (guest trig). |
+| Guest sincos | Observer: no pop after Cody–Waite `sincos_d` + no shared-`θ` fold | Mapping §6.9. **Landed 2026-09-02.** |
+| keep-N / DisplayManager / GameState / JNI | Banned until bind | Do not restack. This eye-pop does not un-ban them. |
 
 ## File whitelist (typical)
 
-- `docs/mapping/gfx-hitch-native-dawn.md` / `.zh.md` — §6 / §6.6 on HP-LOG / HP-BIND; §6.7 on compositor/panel
+- `docs/mapping/gfx-hitch-native-dawn.md` / `.zh.md` — §6 / §6.6–§6.9
 - `docs/scheme/gfx-hitch.md` — **remove this lane’s needle**
 - `changelog/unreleased/<yyyy-mm-dd>-gfx-hitch-<slug>.md`
 - `native/src/native_gpu.rs` — only if HP-LOG needs a log-format fix (not a present-path behavior change)
@@ -90,7 +91,7 @@ This playbook amendment (docs-only):
 python3 ./scripts/gfx-hitch-remaining.py
 ```
 
-Must print **`Next: HP-LOG`** and name branch `fix/300-gfx-cube-pop`.
+Must print **`Next: (gfx hitch restart queue empty)`** and name branch `fix/300-gfx-cube-pop`.
 
 HP-LOG is **device**. Cloud cannot simulate Mali / BLAST / SurfaceFlinger. Do not close HP-LOG without the logcat window. Existing Cloud check (already landed): `cd native && cargo test --locked --lib hotpath_synthetic_120hz_beats_are_1_to_1`.
 
@@ -108,7 +109,7 @@ Host: out-of-tree `hosts/fullscreen-surface`. Guest: same MoonBit cube. Settings
 - HP-LOG: `test(gfx): HP device hotpath window`
 - HP-BIND: `docs: HP bind cube pop to hotpath stage`
 
-Follow-up (named): `fix(gfx): HP …` (code knob) or `docs: HP …` (measurement only)
+- Close-out: `docs: HP bind cube pop to guest sincos`
 
 ## Copy source
 

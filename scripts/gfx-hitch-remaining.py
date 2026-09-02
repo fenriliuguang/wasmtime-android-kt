@@ -57,9 +57,9 @@ def main() -> None:
         print("Next: (gfx hitch restart queue empty)")
         print("Tracking: docs/scheme/gfx-hitch.md")
         print(
-            "Named-only follow-up: compositor/acquire, guest/CM, "
-            "GPU fence vs D24, event screenrecord — user must name one. "
-            "Do not restack keep/DisplayManager/GameState/JNI."
+            "Eye-pop closed: out-of-tree guest sincos (mapping 6.9). "
+            "Do not restack keep/DisplayManager/GameState/JNI for that pop. "
+            "Do not recut compositor/fence as this hitch."
         )
         print("Never file upstream issues.")
 

@@ -193,10 +193,10 @@ SurfaceFlinger / BLAST / panel
 ### 6.3 Kill order (after numbers, one variable)
 
 0. Collect ≥2 min `hotpath` + `hotpath-spike` on V2458A with the 120 Hz Settings lock. Bind the eye-pop to a stage spike **or** to “no in-process spike at the pop”.
-1. S3 / S6b spike → compositor / acquire (BLAST, timestamp, Fifo). One knob. **This restart (§6.7):** SF counters + gfxinfo re-measured; **no knob** (timestamp already 5 ms `desired2present`; BLAST still 5; Mailbox banned). Leftover is item 4.
-2. S4 encode-gap spike → guest / CM (not Dawn C). One knob.
-3. S6a spike, or no CPU spike while the eye pops → GPU / fence lifetime vs D24 `onSubmittedWorkDone`. `dawn_c.rs` does not bind that symbol today.
-4. No in-process spike at the pop → compositor / panel **outside SF counters**. Event-triggered `screenrecord` keyed on `hotpath-spike` or the eye.
+1. S3 / S6b spike → compositor / acquire (BLAST, timestamp, Fifo). One knob. **This restart (§6.7):** SF counters + gfxinfo re-measured; **no knob**. Not this eye-pop (§6.9).
+2. S4 encode-gap spike → guest / CM (not Dawn C). One knob. **Not this eye-pop** (§6.9).
+3. S6a spike, or no CPU spike while the eye pops → GPU / fence lifetime vs D24 `onSubmittedWorkDone`. **Not this eye-pop** (§6.9).
+4. No in-process spike at the pop → was the leftover after HP-BIND. **Landed §6.9:** out-of-tree guest `sincos`, not compositor/panel.
 
 Do **not** restack keep / DisplayManager / GameState / JNI removal until a stage owns the pop.
 
@@ -235,7 +235,7 @@ Max of per-window **max** (same 151): events 1.61 ms, acquire **8.36 ms**, write
 
 Cumulative histograms at n=51240 (from process start, includes time before this stream): acquire interval `<11ms=51207` `11-20ms=33` `>20ms=0`. present `lastLatencyNs` `<8ms=46243` `8-16ms=4997` `>16ms=1` `>8.3ms=4760`; interval `<11ms=51070` `11-20ms=169` `>20ms=1`; `cross=347`; retire age `<8.3ms=0` `8.3-25ms=27045` `>25ms=24192`; `angleDt` `8-9ms=51239` `9-17ms=1`.
 
-**Bind:** this 150 s window has **no ~5 s-periodic in-process stage spike**; the only clustered over-threshold event is a 45 s every-beat **S3b acquire >2 ms** burst (S6b present >2 ms is frequent but not periodic). Eye pop was **not confirmed**, so a ~5 s pop in this window is **no isolated in-process spike** — named follow-up is compositor/panel / event `screenrecord` with an observer, not S4/S6a.
+**Bind:** this 150 s window has **no ~5 s-periodic in-process stage spike**; the only clustered over-threshold event is a 45 s every-beat **S3b acquire >2 ms** burst (S6b present >2 ms is frequent but not periodic). Eye pop was **not confirmed this log window**. Same-day observer: pop on **spin** only (§6.8). Close: **guest trig** (§6.9), which matches “no in-process spike.”
 
 ### 6.7 Compositor / panel (this restart)
 
@@ -260,4 +260,29 @@ Same install, cube still running (`pid 32755`), Settings 120 Hz lock. Do **not**
 
 **HWC / display (full dump):** BLAST layer is the only HWC output, `Comp Type=DEVICE`, `usesClientComposition=false`. Active mode **120.00 Hz** `1260x2800`, `renderRate=120.00 Hz`. `GameFrameRateOverrides=` empty; `setFrameRate` UID 10507 → 120 Hz. Layer **FPS ring** (09:33:45–54, ten ~1 s bins): **120.19–120.61** fps, max interval **10.5–11.4 ms** (~1 extra vsync, not a 25 ms class).
 
-**No compositor knob this cut.** BLAST=5, timestamp beats=2, Fifo stay. SF counters on this restart do **not** show a ~5 s drop / rewind / stuffing class. A ~5 s eye pop here is still **outside** these counters (panel / BLAST re-show not counted, or needs frames at the pop). Named leftover: event `screenrecord` with an observer — not keep-N, not Mailbox.
+**No compositor knob this cut.** BLAST=5, timestamp beats=2, Fifo stay. SF counters on this restart do **not** show a ~5 s drop / rewind / stuffing class. Eye-pop close is guest math (§6.9), not a missing SF counter.
+
+### 6.8 Eye A/B (spin vs translate, 2026-09-02)
+
+Out-of-tree `hosts/fullscreen-surface`, same NativeGpu present path, V2458A 120 Hz lock. Observer on device.
+
+| Guest | Motion | Eye |
+|-------|--------|-----|
+| Translating 3D cube (no spin) | linear ping-pong | **no pop seen** |
+| Slow 2D border square (no spin) | ~5 s/lap translation | **no pop seen** |
+| 3D cube restored to original spin (`0.025×60` rad/s) | rotation + static ticks | **pops** |
+| 2D two-tone rect: slow border travel **+** same-rate spin | translation + rotation | **pops** |
+
+**Bind (eye):** spin vs translate is the **`rotate_*` / `sincos` path**, not 3D geometry vs 2D. Translation never called the broken trig. Do **not** restack keep-N. Cause: §6.9.
+
+### 6.9 Close: out-of-tree guest sincos (2026-09-02)
+
+Same NativeGpu present path, V2458A 120 Hz lock, observer on device. Out-of-tree MoonBit guests (not this repo’s Dawn C consume).
+
+**Cause of the original ~5 s pop.** Guest `sin_d` / `cos_d` wrapped to ±π then used a Taylor polynomial through \(x^7\). At ±π the poly is ~0.075 off; `y > π` then jumps sin by ~0.15 (**~8–9°**). Period \(2π / 1.5\) rad/s ≈ **4.19 s** (eye: ~5 s). The 2D spin guest shared those helpers. androidx cube uses platform trig → control never popped.
+
+Ortho Y-only + face-area ratio bound the pop to **green fully facing** and **green disappearing** (the wrap points). Replacing them with Cody–Waite reduction + fdlibm kernels (`sincos_d`, one `(n,r)` for the pair) removed that class.
+
+**Second snap (X/Y/Z restore).** Folding the **shared** clock `θ` into ±π is safe for `Ry(θ)` but not `Rx(0.35θ)` / `Rz(0.21θ)`: `θ ← θ−2π` snaps X by **~126°** and Z by **~76°**, at green-going / yellow-coming. Stop folding `θ`; each axis reduces inside `sincos_d`. Observer: **no visible anomaly**.
+
+**Bind:** this hitch is **out-of-tree guest math**, not Dawn C, not SurfaceFlinger, not keep-N. HP-LOG’s no ~5 s in-process spike is consistent. Do **not** restack compositor knobs or `onSubmittedWorkDone` for this eye-pop.
