@@ -11,7 +11,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::sync::OnceLock;
-use std::time::Instant;
 
 use crate::dawn_c;
 
@@ -349,96 +348,15 @@ pub struct NativeCanvasFrame {
     pub surface: u32,
     pub texture: u32,
     pub gpu_done: bool,
-    /// CLOCK_MONOTONIC at present() (P3 retire-age probe); 0 = not yet presented.
-    pub presented_mono_ns: u64,
 }
 
-/// N4/D2 device histograms (logcat `GfxHitch` every 120 presents).
+/// Vsync period + desired-present stamp (Fifo BLAST timestamp).
 #[derive(Clone, Copy, Debug, Default)]
 struct GfxHitchLog {
     vsync_ns: u64,
     /// Last measured Choreographer period (4–20 ms); else 8.333 ms.
     period_ns: u64,
     last_desired_ns: u64,
-    last_acquire_mono_ns: u64,
-    last_present_mono_ns: u64,
-    acquire_n: u32,
-    acquire_lt11: u32,
-    acquire_mid: u32,
-    acquire_gt20: u32,
-    present_n: u32,
-    present_lt11: u32,
-    present_mid: u32,
-    present_gt20: u32,
-    latency_n: u32,
-    latency_lt8: u32,
-    latency_8_16: u32,
-    latency_gt16: u32,
-    latency_gt_beat: u32,
-    /// P2: present-time margin to the next vsync boundary (negative = crossed).
-    phase_margin_ns: i64,
-    phase_cross: u32,
-    phase_cross_last_mono_ns: u64,
-    /// P3: present→retire wall-age histogram.
-    retire_n: u32,
-    retire_age_lt8: u32,
-    retire_age_8_25: u32,
-    retire_age_gt25: u32,
-    retire_last_age_ns: u64,
-    /// P4: guest angle-clock (vsync_ns delta) linearity. `vsync_ns` is the
-    /// Choreographer `frameTimeNanos` of each taken beat; its per-frame delta
-    /// is exactly the guest's `angle` step (`rad_per_sec * (now_ns - last_ns)`).
-    vsync_dt_n: u32,
-    vsync_dt_lt8: u32,
-    vsync_dt_8_9: u32,
-    vsync_dt_9_17: u32,
-    vsync_dt_gt17: u32,
-    vsync_dt_last_jump_mono_ns: u64,
-    vsync_dt_jumps: u32,
-    /// Issue 300 restart: last-beat hot-path stage costs (`Instant`, not vsync).
-    last_events_ns: u64,
-    last_acquire_cost_ns: u64,
-    last_write_ns: u64,
-    last_encode_gap_ns: u64,
-    last_submit_ns: u64,
-    last_present_cost_ns: u64,
-    last_retire_ns: u64,
-    max_events_ns: u64,
-    max_acquire_ns: u64,
-    max_write_ns: u64,
-    max_encode_gap_ns: u64,
-    max_submit_ns: u64,
-    max_present_ns: u64,
-    max_retire_ns: u64,
-    stage_spike_n: u32,
-}
-
-/// Stage spike: 2 ms for Dawn/host calls; encode-gap is guest+CM (6 ms).
-const HOT_SPIKE_NS: u64 = 2_000_000;
-const HOT_ENCODE_SPIKE_NS: u64 = 6_000_000;
-
-fn hitch_note_max(max: &mut u64, last: &mut u64, ns: u64) {
-    *last = ns;
-    if ns > *max {
-        *max = ns;
-    }
-}
-
-fn hitch_log(ok: bool, msg: &str) {
-    let _ = (ok, msg);
-    #[cfg(target_os = "android")]
-    unsafe {
-        extern "C" {
-            fn __android_log_write(prio: i32, tag: *const i8, text: *const i8) -> i32;
-        }
-        let prio = if ok { 4 } else { 5 };
-        let c = std::ffi::CString::new(msg).unwrap_or_default();
-        let _ = __android_log_write(
-            prio,
-            c"GfxHitch".as_ptr() as *const i8,
-            c.as_ptr() as *const i8,
-        );
-    }
 }
 
 /// D3: beats of Choreographer vsync to put on the next queued BLAST buffer.
@@ -527,38 +445,6 @@ fn native_window_set_buffers_timestamp(window: i64, timestamp: i64) -> i32 {
     }
 }
 
-/// `CLOCK_MONOTONIC` ns (same epoch as Choreographer `frameTimeNanos` on Android).
-fn hitch_monotonic_ns() -> u64 {
-    #[cfg(target_os = "android")]
-    {
-        #[repr(C)]
-        struct Timespec {
-            tv_sec: i64,
-            tv_nsec: i64,
-        }
-        extern "C" {
-            fn clock_gettime(clk_id: i32, tp: *mut Timespec) -> i32;
-        }
-        const CLOCK_MONOTONIC: i32 = 1;
-        let mut ts = Timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        unsafe {
-            if clock_gettime(CLOCK_MONOTONIC, &mut ts) == 0 {
-                return (ts.tv_sec as u64)
-                    .saturating_mul(1_000_000_000)
-                    .saturating_add(ts.tv_nsec as u64);
-            }
-        }
-        0
-    }
-    #[cfg(not(target_os = "android"))]
-    {
-        0
-    }
-}
-
 /// Table-backed texture leftover until Dawn C is bound.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeTexture {
@@ -631,10 +517,6 @@ pub struct NativeGpuHost {
     /// `WGPUCompositeAlphaMode` chosen at configure (caps.alphaModes[0], matching D24).
     dawn_surface_alpha_mode: u32,
     hitch: GfxHitchLog,
-    /// After `get-current-texture`; encode-gap ends at `queue.submit`.
-    hot_after_acquire: Option<Instant>,
-    /// `write-buffer-with-copy` cost accumulated this beat.
-    hot_write_acc_ns: u64,
 }
 
 impl Default for NativeGpuHost {
@@ -687,45 +569,15 @@ impl NativeGpuHost {
             dawn_surface_configured: false,
             dawn_surface_alpha_mode: 0,
             hitch: GfxHitchLog::default(),
-            hot_after_acquire: None,
-            hot_write_acc_ns: 0,
         }
     }
 
-    /// Consumed Choreographer `frameTimeNanos` for D2 (`vsync→present`) and D3 stamp.
+    /// Consumed Choreographer `frameTimeNanos` for vsync→present stamp.
     pub fn note_consumed_vsync(&mut self, vsync_ns: u64) {
         if self.hitch.vsync_ns > 0 && vsync_ns > self.hitch.vsync_ns {
             let d = vsync_ns - self.hitch.vsync_ns;
             if (4_000_000..=20_000_000).contains(&d) {
                 self.hitch.period_ns = d;
-            }
-            // P4: angle-clock linearity. `d` is the guest's per-frame angle
-            // step; a recurring >9 ms step means the cube visibly fast-forwards
-            // for one frame even though present interval stays 8.33 ms.
-            self.hitch.vsync_dt_n = self.hitch.vsync_dt_n.saturating_add(1);
-            match d {
-                n if n < 8_000_000 => self.hitch.vsync_dt_lt8 += 1,
-                n if n < 9_000_000 => self.hitch.vsync_dt_8_9 += 1,
-                n if n <= 17_000_000 => self.hitch.vsync_dt_9_17 += 1,
-                _ => self.hitch.vsync_dt_gt17 += 1,
-            }
-            if d > 9_000_000 {
-                let now = hitch_monotonic_ns();
-                let last = self.hitch.vsync_dt_last_jump_mono_ns;
-                self.hitch.vsync_dt_last_jump_mono_ns = now;
-                self.hitch.vsync_dt_jumps = self.hitch.vsync_dt_jumps.saturating_add(1);
-                let since = if last > 0 {
-                    now.saturating_sub(last)
-                } else {
-                    0
-                };
-                hitch_log(
-                    true,
-                    &format!(
-                        "angle-dt-jump dt={d}ns sinceLast={since}ns jumps={}",
-                        self.hitch.vsync_dt_jumps
-                    ),
-                );
             }
         }
         self.hitch.vsync_ns = vsync_ns;
@@ -750,246 +602,7 @@ impl NativeGpuHost {
         #[cfg(target_os = "android")]
         {
             let window = self.canvas_window.map(|w| w.native_window).unwrap_or(0);
-            let rc = native_window_set_buffers_timestamp(window, ts);
-            if self.present_count == 0 {
-                hitch_log(
-                    rc == 0,
-                    &format!(
-                        "desiredPresent beats={beats} periodNs={period} vsyncNs={vsync} ts={ts} rc={rc}"
-                    ),
-                );
-            }
-        }
-    }
-
-    fn note_acquire_hitch(&mut self, acquire_ns: u64, status: u32) {
-        let now = hitch_monotonic_ns();
-        let prev = self.hitch.last_acquire_mono_ns;
-        if now > 0 {
-            self.hitch.last_acquire_mono_ns = now;
-        }
-        if acquire_ns >= 2_000_000 || (status != 0 && status != 1 && status != 2) {
-            hitch_log(false, &format!("acquire {acquire_ns}ns status={status}"));
-        }
-        if prev == 0 || now == 0 {
-            return;
-        }
-        let interval_ns = now.saturating_sub(prev);
-        self.hitch.acquire_n = self.hitch.acquire_n.saturating_add(1);
-        match interval_ns {
-            n if n < 11_000_000 => self.hitch.acquire_lt11 += 1,
-            n if n <= 20_000_000 => self.hitch.acquire_mid += 1,
-            _ => self.hitch.acquire_gt20 += 1,
-        }
-        if self.hitch.acquire_n % 120 == 0 {
-            hitch_log(
-                true,
-                &format!(
-                    "acquire n={} last={}ns lastDtNs={} interval <11ms={} 11-20ms={} >20ms={} status={}",
-                    self.hitch.acquire_n,
-                    acquire_ns,
-                    interval_ns,
-                    self.hitch.acquire_lt11,
-                    self.hitch.acquire_mid,
-                    self.hitch.acquire_gt20,
-                    status,
-                ),
-            );
-        }
-    }
-
-    fn note_present_hitch(&mut self) {
-        let now = hitch_monotonic_ns();
-        if now == 0 {
-            return;
-        }
-        let prev = self.hitch.last_present_mono_ns;
-        self.hitch.last_present_mono_ns = now;
-        let interval_ns = if prev == 0 {
-            0
-        } else {
-            now.saturating_sub(prev)
-        };
-        if prev != 0 {
-            self.hitch.present_n = self.hitch.present_n.saturating_add(1);
-            match interval_ns {
-                n if n < 11_000_000 => self.hitch.present_lt11 += 1,
-                n if n <= 20_000_000 => self.hitch.present_mid += 1,
-                _ => self.hitch.present_gt20 += 1,
-            }
-        }
-        let vsync = self.hitch.vsync_ns;
-        let mut latency_ns = 0u64;
-        if vsync > 0 && now > vsync {
-            latency_ns = now - vsync;
-            self.hitch.latency_n = self.hitch.latency_n.saturating_add(1);
-            match latency_ns {
-                n if n < 8_000_000 => self.hitch.latency_lt8 += 1,
-                n if n <= 16_000_000 => self.hitch.latency_8_16 += 1,
-                _ => self.hitch.latency_gt16 += 1,
-            }
-            if latency_ns > 8_333_333 {
-                self.hitch.latency_gt_beat += 1;
-            }
-        }
-        // P2: margin to the next vsync boundary (negative = crossed into the
-        // next beat). A periodic zero/crossing with a ~5 s cadence pins the
-        // hitch to a vsync→present phase drift rather than a frame-time spike.
-        let period = self.hitch_period_ns();
-        let margin = if vsync > 0 && period > 0 {
-            (vsync.saturating_add(period) as i64).saturating_sub(now as i64)
-        } else {
-            0
-        };
-        let prev_margin = self.hitch.phase_margin_ns;
-        self.hitch.phase_margin_ns = margin;
-        if prev_margin >= 0 && margin < 0 {
-            let last = self.hitch.phase_cross_last_mono_ns;
-            self.hitch.phase_cross = self.hitch.phase_cross.saturating_add(1);
-            self.hitch.phase_cross_last_mono_ns = now;
-            let since = if last > 0 {
-                now.saturating_sub(last)
-            } else {
-                0
-            };
-            hitch_log(
-                true,
-                &format!(
-                    "phase-crossing margin={margin}ns sinceLast={since}ns cross={}",
-                    self.hitch.phase_cross
-                ),
-            );
-        }
-        if self.hitch.present_n > 0 && self.hitch.present_n % 120 == 0 {
-            hitch_log(
-                true,
-                &format!(
-                    "present n={} lastLatencyNs={} lastDesiredNs={} <8ms={} 8-16ms={} >16ms={} >8.3ms={} lastDtNs={} interval <11ms={} 11-20ms={} >20ms={} margin={}ns cross={} retire<8.3={} 8.3-25={} >25={} angleDt<8={} 8-9={} 9-17={} >17={}",
-                    self.hitch.present_n,
-                    latency_ns,
-                    self.hitch.last_desired_ns,
-                    self.hitch.latency_lt8,
-                    self.hitch.latency_8_16,
-                    self.hitch.latency_gt16,
-                    self.hitch.latency_gt_beat,
-                    interval_ns,
-                    self.hitch.present_lt11,
-                    self.hitch.present_mid,
-                    self.hitch.present_gt20,
-                    margin,
-                    self.hitch.phase_cross,
-                    self.hitch.retire_age_lt8,
-                    self.hitch.retire_age_8_25,
-                    self.hitch.retire_age_gt25,
-                    self.hitch.vsync_dt_lt8,
-                    self.hitch.vsync_dt_8_9,
-                    self.hitch.vsync_dt_9_17,
-                    self.hitch.vsync_dt_gt17,
-                ),
-            );
-        }
-    }
-
-    fn reset_hot_window(&mut self) {
-        self.hitch.max_events_ns = 0;
-        self.hitch.max_acquire_ns = 0;
-        self.hitch.max_write_ns = 0;
-        self.hitch.max_encode_gap_ns = 0;
-        self.hitch.max_submit_ns = 0;
-        self.hitch.max_present_ns = 0;
-        self.hitch.max_retire_ns = 0;
-    }
-
-    fn finish_hotpath(&mut self, encode_gap_ns: u64, submit_ns: u64, retire_ns: u64) {
-        let events_ns = self.hitch.last_events_ns;
-        let acquire_ns = self.hitch.last_acquire_cost_ns;
-        let present_ns = self.hitch.last_present_cost_ns;
-        let write_ns = self.hot_write_acc_ns;
-        hitch_note_max(
-            &mut self.hitch.max_events_ns,
-            &mut self.hitch.last_events_ns,
-            events_ns,
-        );
-        hitch_note_max(
-            &mut self.hitch.max_acquire_ns,
-            &mut self.hitch.last_acquire_cost_ns,
-            acquire_ns,
-        );
-        hitch_note_max(
-            &mut self.hitch.max_write_ns,
-            &mut self.hitch.last_write_ns,
-            write_ns,
-        );
-        hitch_note_max(
-            &mut self.hitch.max_encode_gap_ns,
-            &mut self.hitch.last_encode_gap_ns,
-            encode_gap_ns,
-        );
-        hitch_note_max(
-            &mut self.hitch.max_submit_ns,
-            &mut self.hitch.last_submit_ns,
-            submit_ns,
-        );
-        hitch_note_max(
-            &mut self.hitch.max_present_ns,
-            &mut self.hitch.last_present_cost_ns,
-            present_ns,
-        );
-        hitch_note_max(
-            &mut self.hitch.max_retire_ns,
-            &mut self.hitch.last_retire_ns,
-            retire_ns,
-        );
-        self.hot_after_acquire = None;
-        self.hot_write_acc_ns = 0;
-        let spike = self.hitch.last_events_ns > HOT_SPIKE_NS
-            || self.hitch.last_acquire_cost_ns > HOT_SPIKE_NS
-            || self.hitch.last_write_ns > HOT_SPIKE_NS
-            || self.hitch.last_encode_gap_ns > HOT_ENCODE_SPIKE_NS
-            || self.hitch.last_submit_ns > HOT_SPIKE_NS
-            || self.hitch.last_present_cost_ns > HOT_SPIKE_NS
-            || self.hitch.last_retire_ns > HOT_SPIKE_NS;
-        if spike {
-            self.hitch.stage_spike_n = self.hitch.stage_spike_n.saturating_add(1);
-            hitch_log(
-                false,
-                &format!(
-                    "hotpath-spike ev={} acq={} write={} enc={} sub={} pres={} ret={} spike={}",
-                    self.hitch.last_events_ns,
-                    self.hitch.last_acquire_cost_ns,
-                    self.hitch.last_write_ns,
-                    self.hitch.last_encode_gap_ns,
-                    self.hitch.last_submit_ns,
-                    self.hitch.last_present_cost_ns,
-                    self.hitch.last_retire_ns,
-                    self.hitch.stage_spike_n,
-                ),
-            );
-        }
-        if self.hitch.present_n > 0 && self.hitch.present_n % 120 == 0 {
-            hitch_log(
-                true,
-                &format!(
-                    "hotpath n={} last ev={} acq={} write={} enc={} sub={} pres={} ret={} max ev={} acq={} write={} enc={} sub={} pres={} ret={} spike={}",
-                    self.hitch.present_n,
-                    self.hitch.last_events_ns,
-                    self.hitch.last_acquire_cost_ns,
-                    self.hitch.last_write_ns,
-                    self.hitch.last_encode_gap_ns,
-                    self.hitch.last_submit_ns,
-                    self.hitch.last_present_cost_ns,
-                    self.hitch.last_retire_ns,
-                    self.hitch.max_events_ns,
-                    self.hitch.max_acquire_ns,
-                    self.hitch.max_write_ns,
-                    self.hitch.max_encode_gap_ns,
-                    self.hitch.max_submit_ns,
-                    self.hitch.max_present_ns,
-                    self.hitch.max_retire_ns,
-                    self.hitch.stage_spike_n,
-                ),
-            );
-            self.reset_hot_window();
+            let _ = native_window_set_buffers_timestamp(window, ts);
         }
     }
 
@@ -2023,21 +1636,12 @@ impl NativeGpuHost {
             dawn_cmds.push(self.dawn_of(cmd));
             resolved.push(cmd.raw());
         }
-        let encode_gap_ns = self
-            .hot_after_acquire
-            .map(|t| t.elapsed().as_nanos() as u64)
-            .unwrap_or(0);
-        let t_submit = Instant::now();
         dawn_c::queue_submit(self.dawn_of(queue), &dawn_cmds);
-        let submit_ns = t_submit.elapsed().as_nanos() as u64;
         self.last_submit = resolved;
         // H8: submit may auto-present; second guest present is a no-op.
         let _ = self.canvas_present();
-        let t_retire = Instant::now();
         self.mark_canvas_gpu_done();
         self.retire_canvas_frames();
-        let retire_ns = t_retire.elapsed().as_nanos() as u64;
-        self.finish_hotpath(encode_gap_ns, submit_ns, retire_ns);
         Ok(())
     }
 
@@ -2055,11 +1659,7 @@ impl NativeGpuHost {
     ) -> Result<(), NativeGpuError> {
         let queue = self.resolve_queue(queue_rep)?;
         let buffer = self.resolve_buffer(buffer_rep)?;
-        let t_write = Instant::now();
         dawn_c::write_buffer(self.dawn_of(queue), self.dawn_of(buffer), offset, &bytes);
-        self.hot_write_acc_ns = self
-            .hot_write_acc_ns
-            .saturating_add(t_write.elapsed().as_nanos() as u64);
         self.queue_writes.insert(
             queue.raw(),
             NativeQueueWrite {
@@ -2330,35 +1930,6 @@ impl NativeGpuHost {
             match oldest {
                 Some(frame) if frame.gpu_done => {
                     self.presented_ring.pop_front();
-                    // P3: present→retire wall age. <1 beat means the buffer is
-                    // released before SurfaceFlinger can composite it (reuse
-                    // window), feeding a compositor rewind of a recycled image.
-                    let now = hitch_monotonic_ns();
-                    let age = if now > frame.presented_mono_ns && frame.presented_mono_ns > 0 {
-                        now - frame.presented_mono_ns
-                    } else {
-                        0
-                    };
-                    self.hitch.retire_n = self.hitch.retire_n.saturating_add(1);
-                    self.hitch.retire_last_age_ns = age;
-                    match age {
-                        a if a < 8_333_333 => self.hitch.retire_age_lt8 += 1,
-                        a if a <= 25_000_000 => self.hitch.retire_age_8_25 += 1,
-                        _ => self.hitch.retire_age_gt25 += 1,
-                    }
-                    if self.hitch.retire_n % 120 == 0 {
-                        hitch_log(
-                            true,
-                            &format!(
-                                "retire n={} lastAge={}ns <8.3ms={} 8.3-25ms={} >25ms={}",
-                                self.hitch.retire_n,
-                                self.hitch.retire_last_age_ns,
-                                self.hitch.retire_age_lt8,
-                                self.hitch.retire_age_8_25,
-                                self.hitch.retire_age_gt25,
-                            ),
-                        );
-                    }
                     if let Ok(tex) = GpuHandle::from_raw(frame.texture) {
                         let slot = self.dawn_of(tex);
                         if slot != 0 {
@@ -2410,19 +1981,12 @@ impl NativeGpuHost {
                 .unwrap_or(0);
             self.dawn_surface_format = dawn_c::surface_preferred_format(self.dawn_surface, adapter);
             // Align to D24 (androidx) which configures `caps.alphaModes[0]`,
-            // not a hard-coded Auto. Also log the full caps once for evidence.
-            let (formats, present_modes, alpha_modes) =
+            // not a hard-coded Auto.
+            let (_formats, _present_modes, alpha_modes) =
                 dawn_c::surface_caps_detail(self.dawn_surface, adapter);
             if let Some(a) = alpha_modes.first() {
                 self.dawn_surface_alpha_mode = *a;
             }
-            hitch_log(
-                true,
-                &format!(
-                    "surface-caps formats={formats:?} present={present_modes:?} alpha={alpha_modes:?} chosen={}",
-                    self.dawn_surface_alpha_mode
-                ),
-            );
         }
         let _ = device;
         Some(self.table.insert(ResourceKind::Surface, self.dawn_surface))
@@ -2545,20 +2109,12 @@ impl NativeGpuHost {
             }
             _ => (1, 1, 0, 0),
         };
-        self.hot_write_acc_ns = 0;
-        let t_events = Instant::now();
         dawn_c::process_events(self.dawn_instance);
-        self.hitch.last_events_ns = t_events.elapsed().as_nanos() as u64;
-        let t0 = Instant::now();
-        let (dawn_tex, status) = if self.dawn_surface_configured {
+        let (dawn_tex, _status) = if self.dawn_surface_configured {
             dawn_c::surface_current_texture(self.dawn_surface)
         } else {
             (0, 0)
         };
-        let acquire_ns = t0.elapsed().as_nanos() as u64;
-        self.hitch.last_acquire_cost_ns = acquire_ns;
-        self.note_acquire_hitch(acquire_ns, status);
-        self.hot_after_acquire = Some(Instant::now());
         let (width, height) = if dawn_tex != 0 {
             dawn_c::texture_size(dawn_tex)
         } else {
@@ -2578,7 +2134,6 @@ impl NativeGpuHost {
             surface,
             texture: texture.raw(),
             gpu_done: false,
-            presented_mono_ns: 0,
         });
         Ok(texture)
     }
@@ -2588,18 +2143,13 @@ impl NativeGpuHost {
         let Some(frame) = self.pending_present.take() else {
             return false;
         };
-        let t_present = Instant::now();
         self.stamp_desired_present();
         if self.dawn_surface != 0 {
             let _ = dawn_c::surface_present(self.dawn_surface);
         }
-        self.hitch.last_present_cost_ns = t_present.elapsed().as_nanos() as u64;
-        self.note_present_hitch();
         // C2: do not close() the just-presented texture here.
-        let present_mono = hitch_monotonic_ns();
         self.presented_ring.push_back(NativeCanvasFrame {
             gpu_done: false,
-            presented_mono_ns: present_mono,
             ..frame
         });
         self.present_count = self.present_count.saturating_add(1);
@@ -3051,42 +2601,7 @@ mod tests {
     }
 
     #[test]
-    fn hotpath_records_stage_costs_on_submit() {
-        let mut gpu = NativeGpuHost::new();
-        gpu.bind_canvas_native_window(0x1000, 64, 48)
-            .expect("bind window");
-        let device = gpu.resolve_device(0).expect("device");
-        let ctx = gpu
-            .canvas_configure(0, device.raw(), 0x16, 0x10, -1, -1, -1, &[])
-            .expect("configure");
-        gpu.note_consumed_vsync(1_000_000_000);
-        let _ = gpu.canvas_current_texture(ctx.raw()).expect("acquire");
-        let queue = gpu.device_queue(device).expect("queue");
-        let buffer = gpu.create_buffer(device, 4, 0x8, -1, "").expect("buffer");
-        gpu.write_buffer_with_copy(queue.raw(), buffer.raw(), 0, b"l2\0\0".to_vec())
-            .expect("write");
-        gpu.queue_submit(queue.raw(), &[]).expect("submit");
-        assert!(
-            gpu.hitch.last_encode_gap_ns < 1_000_000_000,
-            "encode-gap recorded, got {}",
-            gpu.hitch.last_encode_gap_ns
-        );
-        assert!(
-            gpu.hitch.last_submit_ns < 1_000_000_000,
-            "submit recorded, got {}",
-            gpu.hitch.last_submit_ns
-        );
-        assert!(
-            gpu.hitch.last_retire_ns < 1_000_000_000,
-            "retire recorded, got {}",
-            gpu.hitch.last_retire_ns
-        );
-        assert_eq!(gpu.canvas_present_count(), 1);
-        assert_eq!(gpu.hitch.stage_spike_n, 0, "table-backed stages stay quiet");
-    }
-
-    #[test]
-    fn hotpath_synthetic_120hz_beats_are_1_to_1() {
+    fn vsync_present_beats_are_1_to_1() {
         use crate::host::{GfxOnFrameGate, GfxOnFrameTake};
         use std::thread;
         use std::time::Duration;
@@ -3138,12 +2653,6 @@ mod tests {
             assert_eq!(gpu.canvas_present_count(), i + 1);
         }
 
-        assert_eq!(gpu.hitch.vsync_dt_n, BEATS - 1);
-        assert_eq!(gpu.hitch.vsync_dt_8_9, BEATS - 1);
-        assert_eq!(gpu.hitch.vsync_dt_lt8, 0);
-        assert_eq!(gpu.hitch.vsync_dt_9_17, 0);
-        assert_eq!(gpu.hitch.vsync_dt_gt17, 0);
-        assert_eq!(gpu.hitch.stage_spike_n, 0);
         assert!(
             gpu.canvas_ring_len() <= CANVAS_FRAMES_TO_KEEP,
             "keep-3, ring={}",
@@ -3159,15 +2668,5 @@ mod tests {
                 "desired-present stays 1:1 with vsync + {stamp_beats} beats"
             );
         }
-
-        let jump = (T0 + u64::from(BEATS + 1) * PERIOD) as i64;
-        gate.post(jump);
-        assert!(matches!(gate.wait_take(false), GfxOnFrameTake::Item));
-        gpu.note_consumed_vsync(gate.last_take_vsync_ns());
-        assert_eq!(
-            gpu.hitch.vsync_dt_9_17, 1,
-            "skipped beat is visible in angleDt"
-        );
-        assert_eq!(gpu.hitch.vsync_dt_8_9, BEATS - 1);
     }
 }

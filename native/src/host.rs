@@ -51,22 +51,6 @@ fn hitch_skip_present_n() -> u32 {
     })
 }
 
-fn gfx_hitch_log(msg: &str) {
-    let _ = msg;
-    #[cfg(target_os = "android")]
-    unsafe {
-        extern "C" {
-            fn __android_log_write(prio: i32, tag: *const i8, text: *const i8) -> i32;
-        }
-        let c = std::ffi::CString::new(msg).unwrap_or_default();
-        let _ = __android_log_write(
-            4,
-            c"GfxHitch".as_ptr() as *const i8,
-            c.as_ptr() as *const i8,
-        );
-    }
-}
-
 #[derive(Debug)]
 pub struct Widget {
     pub rep: u32,
@@ -428,9 +412,6 @@ impl GfxOnFrameGate {
                 if n >= 2 && g.consumed % n == 0 {
                     // Consume this vsync without producing a BLAST image.
                     g.in_frame = false;
-                    if g.consumed % n.saturating_mul(20) == 0 {
-                        gfx_hitch_log(&format!("skip-present n={n} consumed={}", g.consumed));
-                    }
                     target = g.post_generation.saturating_add(need);
                     continue;
                 }
@@ -481,14 +462,6 @@ impl GfxOnFrameGate {
         }
         if g.last_take_vsync_ns > 0 && g.last_post_ns >= g.last_take_vsync_ns {
             let dt = g.last_post_ns.saturating_sub(g.last_take_vsync_ns);
-            // P5: guest take interval. `dt` is how many Choreographer beats the
-            // guest's `now` advances this frame (it feeds the cube `angle`). A
-            // `dt` > 1 beat means the guest skipped a vsync, so `now` jumps a
-            // multi-beat step and the cube visibly fast-forwards for one frame.
-            if dt > 12_000_000 {
-                let beats = (dt + 4_166_666) / 8_333_333;
-                gfx_hitch_log(&format!("take-skip dt={dt}ns beats={beats}"));
-            }
             g.last_take_wasi_ns = g.last_take_wasi_ns.saturating_add(dt);
         } else {
             g.last_take_wasi_ns = wasi_monotonic_now_ns().max(1);
@@ -508,7 +481,7 @@ impl GfxOnFrameGate {
     }
 
     /// Choreographer `frameTimeNanos` of the beat consumed by the last take
-    /// (`0` = none). NativeGpu hitch D2 compares this to `CLOCK_MONOTONIC`.
+    /// (`0` = none).
     pub fn last_take_vsync_ns(&self) -> u64 {
         self.lock().last_take_vsync_ns
     }

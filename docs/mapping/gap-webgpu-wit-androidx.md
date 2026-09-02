@@ -75,6 +75,6 @@ Recorded on Vivo V2458A (Android 16, `arm64-v8a`, Mali-G925-Immortalis MC12) wit
 | `CompositeAlphaMode::Opaque` rejected for this window | Guest should leave canvas `alpha-mode` unset (host picks a capability). Not an androidx hole in §2. |
 | `create-texture` `depth24plus` observed as `RGBA8Unorm` on this path | Guest may skip depth; mapping hole vs pin, not a P0 re-cut. |
 | GFXV instrument did not catch this | `CLOSE_AFTER_VSYNC_MS = 500`. Leak needs seconds of present. Cpu recycle: `WasiWebGpuCanvasContextFrameLifetimeInstrumentedTest`. |
-| Cube **still hitches** after recycle / no 60 Hz cap / clocks dt / in-frame vsync drop | Living checklist: [`gfx-hitch-checklist.md`](gfx-hitch-checklist.md). This branch: no GPU wait on acquire (H1), retire on poller (H26), `writeBuffer` lock+scratch (H4/H5), acquire log without `gpuLock` during BLAST wait (H21). Device still confirms visual hitch. |
+| Cube **still hitches** after recycle / no 60 Hz cap / clocks dt / in-frame vsync drop | Host beat is 1:1 ([`gfx-hitch-checklist.md`](gfx-hitch-checklist.md)). Guest-side trig lives in the out-of-tree examples repo. |
 
 When androidx grows a hole’s ctor argument: copy the existing Kotlin field into Dawn in that pin-bump PR, and update this table. Do not reopen G1–G9 or F1–F9 as queues.

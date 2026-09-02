@@ -123,9 +123,7 @@ def main() -> None:
         print("Next: (native-dawn host queue empty)")
         print("Tracking: docs/scheme/native-dawn.md")
         print(
-            "Living leftover: cube hitch restart on fix/300-gfx-cube-pop "
-            "— python3 ./scripts/gfx-hitch-remaining.py "
-            "(forget inherited Closed/Likely; hot-path stages)."
+            "Living leftover: empty. Beat sync: docs/mapping/gfx-hitch-checklist.md."
         )
         print(
             "Named-only: P2 Wasmtime pin, cube-only path, "

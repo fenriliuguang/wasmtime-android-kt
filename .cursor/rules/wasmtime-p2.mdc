@@ -1,5 +1,5 @@
 ---
-description: Wasmtime pin (P2) — named queue; living auto cut is native-dawn
+description: Wasmtime pin (P2) — named queue
 alwaysApply: false
 ---
 
@@ -7,10 +7,7 @@ alwaysApply: false
 
 For P2 / Wasmtime pin / wasmtime tracking / upgrade RFC (user named those), read `docs/agent/wasmtime-p2.md` and follow it.
 
-Living leftover is **gfx-hitch**: read `docs/agent/gfx-hitch.md`. Next: `python3 ./scripts/gfx-hitch-remaining.py`.
-
-P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not re-cut those knives.
+Living leftover is **empty**. P0 `wasi:webgpu` is **closed**. P1 WASI 0.3 official-shape is **closed**. Do not re-cut those knives.
 
 - P2 Next: `.\scripts\wasmtime-p2-remaining.ps1` or `python3 ./scripts/wasmtime-p2-remaining.py` (only when the user named P2).
 - Do not add `wasmtime-wasi` without a size + Android thread note. Major (47 → 48+) needs a short RFC. No wasmtime4j.
-- Never file GitHub issues (or Discussions-as-issues) on Wasmtime, WASI, or any other upstream. No `gh issue create`.

@@ -139,9 +139,7 @@ def main() -> None:
         print("Next: (0.1.0 product queue empty)")
         print("Tracking: docs/scheme/product-010.md")
         print(
-            "Living leftover: gfx-hitch on fix/300-gfx-cube-pop "
-            "(one commit per lane) — "
-            "python3 ./scripts/gfx-hitch-remaining.py"
+            "Living leftover: empty. Beat sync: docs/mapping/gfx-hitch-checklist.md."
         )
         print(
             "Named-only: P2 Wasmtime pin, G-cmd, G-fs-full, listen/UDP, "

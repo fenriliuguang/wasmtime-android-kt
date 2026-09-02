@@ -7,12 +7,10 @@ Language: [`../LANGUAGE.md`](../LANGUAGE.md).
 
 ## Now
 
-P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 is **closed**. `0.1.0` gates are **empty**. Native-dawn **consume** leftover is **empty**. Current leftover: [`../agent/gfx-hitch.md`](../agent/gfx-hitch.md) (cube hitch restart, hot-path stages) on **`fix/300-gfx-cube-pop`**. P2 Wasmtime pin is **named**. **L5 is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
+P0 `wasi:webgpu` **shape** is **closed**. P1 WASI 0.3 is **closed**. `0.1.0` gates are **empty**. Native-dawn **consume** leftover is **empty**. Living leftover is **empty**. Beat sync: [`../mapping/gfx-hitch-checklist.md`](../mapping/gfx-hitch-checklist.md). P2 Wasmtime pin is **named**. **L5 is accepted** ([`rfc-l5-productization.md`](rfc-l5-productization.md)).
 
 | Doc | Role |
 |-----|------|
-| [`../agent/gfx-hitch.md`](../agent/gfx-hitch.md) | **Living leftover:** cube hitch restart (hot-path stages) |
-| [`gfx-hitch.md`](gfx-hitch.md) | Hitch restart needles |
 | [`../agent/native-dawn.md`](../agent/native-dawn.md) | Native Dawn consume playbook (**empty**) |
 | [`native-dawn.md`](native-dawn.md) | Native-dawn needles (all landed) |
 | [`../agent/product-010.md`](../agent/product-010.md) | **`0.1.0` playbook** (empty) |
