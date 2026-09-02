@@ -563,6 +563,377 @@ struct GfxResizeEvent {
     width: u32,
 }
 
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GfxPointerEvent {
+    x: f64,
+    y: f64,
+}
+
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum GfxKey {
+    #[component(name = "backquote")]
+    Backquote,
+    #[component(name = "backslash")]
+    Backslash,
+    #[component(name = "bracket-left")]
+    BracketLeft,
+    #[component(name = "bracket-right")]
+    BracketRight,
+    #[component(name = "comma")]
+    Comma,
+    #[component(name = "digit0")]
+    Digit0,
+    #[component(name = "digit1")]
+    Digit1,
+    #[component(name = "digit2")]
+    Digit2,
+    #[component(name = "digit3")]
+    Digit3,
+    #[component(name = "digit4")]
+    Digit4,
+    #[component(name = "digit5")]
+    Digit5,
+    #[component(name = "digit6")]
+    Digit6,
+    #[component(name = "digit7")]
+    Digit7,
+    #[component(name = "digit8")]
+    Digit8,
+    #[component(name = "digit9")]
+    Digit9,
+    #[component(name = "equal")]
+    Equal,
+    #[component(name = "intl-backslash")]
+    IntlBackslash,
+    #[component(name = "intl-ro")]
+    IntlRo,
+    #[component(name = "intl-yen")]
+    IntlYen,
+    #[component(name = "key-a")]
+    KeyA,
+    #[component(name = "key-b")]
+    KeyB,
+    #[component(name = "key-c")]
+    KeyC,
+    #[component(name = "key-d")]
+    KeyD,
+    #[component(name = "key-e")]
+    KeyE,
+    #[component(name = "key-f")]
+    KeyF,
+    #[component(name = "key-g")]
+    KeyG,
+    #[component(name = "key-h")]
+    KeyH,
+    #[component(name = "key-i")]
+    KeyI,
+    #[component(name = "key-j")]
+    KeyJ,
+    #[component(name = "key-k")]
+    KeyK,
+    #[component(name = "key-l")]
+    KeyL,
+    #[component(name = "key-m")]
+    KeyM,
+    #[component(name = "key-n")]
+    KeyN,
+    #[component(name = "key-o")]
+    KeyO,
+    #[component(name = "key-p")]
+    KeyP,
+    #[component(name = "key-q")]
+    KeyQ,
+    #[component(name = "key-r")]
+    KeyR,
+    #[component(name = "key-s")]
+    KeyS,
+    #[component(name = "key-t")]
+    KeyT,
+    #[component(name = "key-u")]
+    KeyU,
+    #[component(name = "key-v")]
+    KeyV,
+    #[component(name = "key-w")]
+    KeyW,
+    #[component(name = "key-x")]
+    KeyX,
+    #[component(name = "key-y")]
+    KeyY,
+    #[component(name = "key-z")]
+    KeyZ,
+    #[component(name = "minus")]
+    Minus,
+    #[component(name = "period")]
+    Period,
+    #[component(name = "quote")]
+    Quote,
+    #[component(name = "semicolon")]
+    Semicolon,
+    #[component(name = "slash")]
+    Slash,
+    #[component(name = "alt-left")]
+    AltLeft,
+    #[component(name = "alt-right")]
+    AltRight,
+    #[component(name = "backspace")]
+    Backspace,
+    #[component(name = "caps-lock")]
+    CapsLock,
+    #[component(name = "context-menu")]
+    ContextMenu,
+    #[component(name = "control-left")]
+    ControlLeft,
+    #[component(name = "control-right")]
+    ControlRight,
+    #[component(name = "enter")]
+    Enter,
+    #[component(name = "meta-left")]
+    MetaLeft,
+    #[component(name = "meta-right")]
+    MetaRight,
+    #[component(name = "shift-left")]
+    ShiftLeft,
+    #[component(name = "shift-right")]
+    ShiftRight,
+    #[component(name = "space")]
+    Space,
+    #[component(name = "tab")]
+    Tab,
+    #[component(name = "convert")]
+    Convert,
+    #[component(name = "kana-mode")]
+    KanaMode,
+    #[component(name = "lang1")]
+    Lang1,
+    #[component(name = "lang2")]
+    Lang2,
+    #[component(name = "lang3")]
+    Lang3,
+    #[component(name = "lang4")]
+    Lang4,
+    #[component(name = "lang5")]
+    Lang5,
+    #[component(name = "non-convert")]
+    NonConvert,
+    #[component(name = "delete")]
+    Delete,
+    #[component(name = "end")]
+    End,
+    #[component(name = "help")]
+    Help,
+    #[component(name = "home")]
+    Home,
+    #[component(name = "insert")]
+    Insert,
+    #[component(name = "page-down")]
+    PageDown,
+    #[component(name = "page-up")]
+    PageUp,
+    #[component(name = "arrow-down")]
+    ArrowDown,
+    #[component(name = "arrow-left")]
+    ArrowLeft,
+    #[component(name = "arrow-right")]
+    ArrowRight,
+    #[component(name = "arrow-up")]
+    ArrowUp,
+    #[component(name = "num-lock")]
+    NumLock,
+    #[component(name = "numpad0")]
+    Numpad0,
+    #[component(name = "numpad1")]
+    Numpad1,
+    #[component(name = "numpad2")]
+    Numpad2,
+    #[component(name = "numpad3")]
+    Numpad3,
+    #[component(name = "numpad4")]
+    Numpad4,
+    #[component(name = "numpad5")]
+    Numpad5,
+    #[component(name = "numpad6")]
+    Numpad6,
+    #[component(name = "numpad7")]
+    Numpad7,
+    #[component(name = "numpad8")]
+    Numpad8,
+    #[component(name = "numpad9")]
+    Numpad9,
+    #[component(name = "numpad-add")]
+    NumpadAdd,
+    #[component(name = "numpad-backspace")]
+    NumpadBackspace,
+    #[component(name = "numpad-clear")]
+    NumpadClear,
+    #[component(name = "numpad-clear-entry")]
+    NumpadClearEntry,
+    #[component(name = "numpad-comma")]
+    NumpadComma,
+    #[component(name = "numpad-decimal")]
+    NumpadDecimal,
+    #[component(name = "numpad-divide")]
+    NumpadDivide,
+    #[component(name = "numpad-enter")]
+    NumpadEnter,
+    #[component(name = "numpad-equal")]
+    NumpadEqual,
+    #[component(name = "numpad-hash")]
+    NumpadHash,
+    #[component(name = "numpad-memory-add")]
+    NumpadMemoryAdd,
+    #[component(name = "numpad-memory-clear")]
+    NumpadMemoryClear,
+    #[component(name = "numpad-memory-recall")]
+    NumpadMemoryRecall,
+    #[component(name = "numpad-memory-store")]
+    NumpadMemoryStore,
+    #[component(name = "numpad-memory-subtract")]
+    NumpadMemorySubtract,
+    #[component(name = "numpad-multiply")]
+    NumpadMultiply,
+    #[component(name = "numpad-paren-left")]
+    NumpadParenLeft,
+    #[component(name = "numpad-paren-right")]
+    NumpadParenRight,
+    #[component(name = "numpad-star")]
+    NumpadStar,
+    #[component(name = "numpad-subtract")]
+    NumpadSubtract,
+    #[component(name = "escape")]
+    Escape,
+    #[component(name = "f1")]
+    F1,
+    #[component(name = "f2")]
+    F2,
+    #[component(name = "f3")]
+    F3,
+    #[component(name = "f4")]
+    F4,
+    #[component(name = "f5")]
+    F5,
+    #[component(name = "f6")]
+    F6,
+    #[component(name = "f7")]
+    F7,
+    #[component(name = "f8")]
+    F8,
+    #[component(name = "f9")]
+    F9,
+    #[component(name = "f10")]
+    F10,
+    #[component(name = "f11")]
+    F11,
+    #[component(name = "f12")]
+    F12,
+    #[component(name = "fn")]
+    Fn,
+    #[component(name = "fn-lock")]
+    FnLock,
+    #[component(name = "print-screen")]
+    PrintScreen,
+    #[component(name = "scroll-lock")]
+    ScrollLock,
+    #[component(name = "pause")]
+    Pause,
+    #[component(name = "browser-back")]
+    BrowserBack,
+    #[component(name = "browser-favorites")]
+    BrowserFavorites,
+    #[component(name = "browser-forward")]
+    BrowserForward,
+    #[component(name = "browser-home")]
+    BrowserHome,
+    #[component(name = "browser-refresh")]
+    BrowserRefresh,
+    #[component(name = "browser-search")]
+    BrowserSearch,
+    #[component(name = "browser-stop")]
+    BrowserStop,
+    #[component(name = "eject")]
+    Eject,
+    #[component(name = "launch-app1")]
+    LaunchApp1,
+    #[component(name = "launch-app2")]
+    LaunchApp2,
+    #[component(name = "launch-mail")]
+    LaunchMail,
+    #[component(name = "media-play-pause")]
+    MediaPlayPause,
+    #[component(name = "media-select")]
+    MediaSelect,
+    #[component(name = "media-stop")]
+    MediaStop,
+    #[component(name = "media-track-next")]
+    MediaTrackNext,
+    #[component(name = "media-track-previous")]
+    MediaTrackPrevious,
+    #[component(name = "power")]
+    Power,
+    #[component(name = "sleep")]
+    Sleep,
+    #[component(name = "audio-volume-down")]
+    AudioVolumeDown,
+    #[component(name = "audio-volume-mute")]
+    AudioVolumeMute,
+    #[component(name = "audio-volume-up")]
+    AudioVolumeUp,
+    #[component(name = "wake-up")]
+    WakeUp,
+    #[component(name = "hyper")]
+    Hyper,
+    #[component(name = "super")]
+    Super,
+    #[component(name = "turbo")]
+    Turbo,
+    #[component(name = "abort")]
+    Abort,
+    #[component(name = "resume")]
+    Resume,
+    #[component(name = "suspend")]
+    Suspend,
+    #[component(name = "again")]
+    Again,
+    #[component(name = "copy")]
+    Copy,
+    #[component(name = "cut")]
+    Cut,
+    #[component(name = "find")]
+    Find,
+    #[component(name = "open")]
+    Open,
+    #[component(name = "paste")]
+    Paste,
+    #[component(name = "props")]
+    Props,
+    #[component(name = "select")]
+    Select,
+    #[component(name = "undo")]
+    Undo,
+    #[component(name = "hiragana")]
+    Hiragana,
+    #[component(name = "katakana")]
+    Katakana,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct GfxKeyEvent {
+    key: Option<GfxKey>,
+    text: Option<String>,
+    #[component(name = "alt-key")]
+    alt_key: bool,
+    #[component(name = "ctrl-key")]
+    ctrl_key: bool,
+    #[component(name = "meta-key")]
+    meta_key: bool,
+    #[component(name = "shift-key")]
+    shift_key: bool,
+}
+
 /// P010-GFXV: Choreographer / helper vsync fills a 1-slot gate; `poll_produce`
 /// on the CM driver (GpuThread) writes one `frame-event`. Unconsumed beats drop.
 /// Pin `on-frame` is a sync `func`; no stackful CM async — wait on the gate
@@ -1619,6 +1990,57 @@ pub(crate) fn define_host(
                     store.data_mut().table.get(&this)?;
                     let gate = store.data().gfx_on_frame.clone();
                     let reader = StreamReader::new(&mut store, GfxOnFrameProducer { gate })?;
+                    Ok((reader,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        // GFX-PIN: remaining pin streams. Empty until input is wired.
+        surface
+            .func_wrap(
+                "[method]surface.on-pointer-up",
+                |mut store, (this,): (Resource<GfxSurface>,)| {
+                    store.data_mut().table.get(&this)?;
+                    let reader = StreamReader::new(&mut store, Vec::<GfxPointerEvent>::new())?;
+                    Ok((reader,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[method]surface.on-pointer-down",
+                |mut store, (this,): (Resource<GfxSurface>,)| {
+                    store.data_mut().table.get(&this)?;
+                    let reader = StreamReader::new(&mut store, Vec::<GfxPointerEvent>::new())?;
+                    Ok((reader,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[method]surface.on-pointer-move",
+                |mut store, (this,): (Resource<GfxSurface>,)| {
+                    store.data_mut().table.get(&this)?;
+                    let reader = StreamReader::new(&mut store, Vec::<GfxPointerEvent>::new())?;
+                    Ok((reader,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[method]surface.on-key-up",
+                |mut store, (this,): (Resource<GfxSurface>,)| {
+                    store.data_mut().table.get(&this)?;
+                    let reader = StreamReader::new(&mut store, Vec::<GfxKeyEvent>::new())?;
+                    Ok((reader,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        surface
+            .func_wrap(
+                "[method]surface.on-key-down",
+                |mut store, (this,): (Resource<GfxSurface>,)| {
+                    store.data_mut().table.get(&this)?;
+                    let reader = StreamReader::new(&mut store, Vec::<GfxKeyEvent>::new())?;
                     Ok((reader,))
                 },
             )

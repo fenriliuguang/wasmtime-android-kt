@@ -16,9 +16,7 @@ Do the printed **Next:** only — one commit. Guest WIT names/args stay. Reuse `
 
 ## Lanes (auto)
 
-| Commit | Needle | DoD |
-|--------|--------|-----|
-| **GFX-PIN** | `gap: remaining gfx-pin pending` | Remaining pin surface streams a complete gfx guest imports: `on-pointer-up/down/move`, `on-key-up/down`. Empty events are fine until input is wired; missing imports are not. Remove the needle. |
+Auto queue is **empty**. `python3 ./scripts/remaining.py` prints `Next: (remaining close-out empty)`. Do not invent extra auto lanes.
 
 Cube / out-of-tree demo is evidence only.
 
