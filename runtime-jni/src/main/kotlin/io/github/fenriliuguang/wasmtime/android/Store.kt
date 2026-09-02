@@ -94,6 +94,45 @@ class Store private constructor(internal var handle: Long) : AutoCloseable {
     }
 
     /**
+     * Post one pointer sample into `wasi-gfx` `surface.on-pointer-*`.
+     * [kind]: `0` = up, `1` = down, `2` = move. Bounded queue (64); oldest
+     * sample drops when full. Pin streams are sync; guest `stream.read` waits.
+     */
+    fun postGfxPointer(kind: Int, x: Double, y: Double) {
+        require(handle != 0L) { "store closed" }
+        require(kind in 0..2) { "pointer kind must be 0=up, 1=down, 2=move" }
+        NativeBridge.nativeStorePostGfxPointer(handle, kind, x, y)
+    }
+
+    /**
+     * Post one key sample into `on-key-down` ([down] true) or `on-key-up`.
+     * [androidKeyCode] is Android `KeyEvent.keyCode`; unmapped codes yield
+     * WIT `key: none` and optional [text].
+     */
+    @JvmOverloads
+    fun postGfxKey(
+        down: Boolean,
+        androidKeyCode: Int,
+        text: String? = null,
+        alt: Boolean = false,
+        ctrl: Boolean = false,
+        meta: Boolean = false,
+        shift: Boolean = false,
+    ) {
+        require(handle != 0L) { "store closed" }
+        NativeBridge.nativeStorePostGfxKey(
+            handle,
+            down,
+            androidKeyCode,
+            text,
+            alt,
+            ctrl,
+            meta,
+            shift,
+        )
+    }
+
+    /**
      * Close the `on-frame` stream (`surfaceDestroyed`). Unblocks guest `run`.
      */
     fun closeGfxOnFrame() {

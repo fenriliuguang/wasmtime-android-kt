@@ -25,6 +25,8 @@ Living map for the **in-process Dawn C** path (`NativeGpu`). Pin: `wasi:webgpu@0
 | create-texture / sampler / compute pipeline / compute pass / copies / clear / query-set / render-bundle / map-async / write-texture / work-done / indexed-indirect / viewport / scissor / blend / stencil / error scopes / adapter features / destroy | **Dawn** (compute pipeline constants on the C ctor) | **Table** |
 | Android `ANativeWindow` surface / configure / get-current-texture / present | **Dawn** (Fifo; color-space / tone-mapping **Record**) | **Table** (keep-3 / H8 still) |
 
+`wasi-gfx` `on-pointer-*` / `on-key-*` are host-wired (`Store.postGfxPointer` / `postGfxKey` → bounded gate). Not Dawn C.
+
 ## 2. Record holes (not BIND)
 
 | WIT | NativeGpu | Dawn C |

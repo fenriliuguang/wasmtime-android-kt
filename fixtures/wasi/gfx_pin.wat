@@ -1,6 +1,6 @@
 ;; GFX-PIN: wasi-gfx:surface@0.2.0 on-pointer-* / on-key-* streams.
-;; Host registers all five pin imports. Streams are empty until input is wired.
-;; Guest constructs a surface, opens each stream, drops it (0 events), returns 1.
+;; Host registers all five pin imports. Guest constructs a surface, opens each
+;; stream, drops it without reading (cancel), returns 1.
 (component
   (import "wasi-gfx:surface/surface@0.2.0" (instance $surf
     (export "surface" (type $surface (sub resource)))

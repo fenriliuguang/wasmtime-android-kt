@@ -2,4 +2,4 @@
 
 [English](gap-webgpu-native-dawn.md) | **中文**
 
-与英文冲突时以英文为准。`.so` 在时：boot + cube 热路径以及 BIND 覆盖的 pin 方法（texture / sampler / compute / copy / map / query / bundle / viewport / 索引绘制 / error scope 等）走 **Dawn**。C ctor 子集（blend / depth-stencil / MSAA / constants / adapter·device 选项）在 `.so` 在时也走 **Dawn**。缺 `.so` 仍是 **Table**。Record 洞：compilation-hints、color-space、tone-mapping；`required-limits` 与 `xr-compatible` 仍无 C 槽。
+与英文冲突时以英文为准。`.so` 在时：boot + cube 热路径以及 BIND 覆盖的 pin 方法（texture / sampler / compute / copy / map / query / bundle / viewport / 索引绘制 / error scope 等）走 **Dawn**。C ctor 子集（blend / depth-stencil / MSAA / constants / adapter·device 选项）在 `.so` 在时也走 **Dawn**。缺 `.so` 仍是 **Table**。Record 洞：compilation-hints、color-space、tone-mapping；`required-limits` 与 `xr-compatible` 仍无 C 槽。`wasi-gfx` pointer/key 由 `Store.postGfxPointer` / `postGfxKey` 接线，不是 Dawn C。

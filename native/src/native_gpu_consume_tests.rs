@@ -379,3 +379,37 @@ fn gfx_pin_pointer_key_streams_on_product_linker() -> wasmtime::Result<()> {
     assert_eq!(v, 1, "guest opened and dropped on-pointer-* / on-key-*");
     Ok(())
 }
+
+#[test]
+fn gfx_input_pointer_down_reaches_guest() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let path = format!(
+        "{}/../fixtures/wasi/gfx_input.wasm",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let bytes = std::fs::read(&path)?;
+    let component = Component::new(&engine, bytes)?;
+    let mut linker: Linker<HostState> = Linker::new(&engine);
+    define_host(&mut linker, false).map_err(wasmtime::Error::msg)?;
+    let host = native_host();
+    host.gfx_input
+        .pointer_down
+        .post(crate::host::GfxPointerSample { x: 12.5, y: 34.0 });
+    let mut store = Store::new(&engine, host);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let v = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })?;
+    assert_eq!(v, 1, "guest read posted pointer-down, got {v}");
+    Ok(())
+}
