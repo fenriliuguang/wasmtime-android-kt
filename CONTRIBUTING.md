@@ -21,7 +21,7 @@ Language: English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)).
 1. From latest `main`: `docs/…` / `feat/…` / `fix/…` / `chore/…`.  
 2. **One PR, one thing.** User-visible changes: new file [`changelog/unreleased/<yyyy-mm-dd>-<slug>.md`](changelog/unreleased/README.md). **Do not** edit root `CHANGELOG.md`.  
 3. CI green, then squash-merge; delete the head branch.  
-4. No long-lived `feature/*` forks. **`release/0.1.0` is the one standing exception** until `0.1.0` is pressed; it never uploads Maven.
+4. No long-lived `feature/*` forks. **`release/0.1.0`** may stay as a maintenance branch; it never uploads Maven.
 
 ## Hub freeze
 
@@ -47,16 +47,16 @@ These files collide on every short PR. Feature PRs **must not** touch them unles
 | `android (ndk .so)` | `scripts/build-native-android.ps1` (arm64 + x86_64) |
 | `android (AAR + smoke APK)` | assemble published AARs + `:smoke-app:assembleDebug` |
 
-GitHub-hosted CI does **not** run device instruments. Press gate is local:
+GitHub-hosted CI does **not** run device instruments. Publish gate is local:
 
 ```powershell
 .\gradlew.bat :smoke-app:connectedDebugAndroidTest
 .\scripts\verify-examples-gate.ps1
 ```
 
-## Publish / press `0.1.0`
+## Publish
 
-- GAV stays **`0.1.0`** until that release is pressed. No `SNAPSHOT`, no `-rc` GAV.
+- Current GAV is **`0.1.0`** (pressed). Later versions follow [`docs/scheme/api-stability.md`](docs/scheme/api-stability.md). No `SNAPSHOT`, no `-rc` GAV.
 - [`.github/workflows/publish.yml`](.github/workflows/publish.yml) uploads only from **`main`**: annotated tag `v*` or `workflow_dispatch`. GitHub Environment **`release`** (required reviewer; allowed refs: `main`, tags `v*`).
 - The job cross-compiles arm64 `.so` then publishes. Missing `.so` **fails** (does not skip). Maven Central secrets missing **fails** if Central is requested.
 - **Never** run Publish from `release/0.1.0`. Never publish `:smoke-app`.

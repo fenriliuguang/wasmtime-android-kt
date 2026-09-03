@@ -2,7 +2,7 @@
 
 **English** | [中文](README.zh.md)
 
-Product RFC and shape docs. Language: [`../LANGUAGE.md`](../LANGUAGE.md). Coordinate **`0.1.0`** (not pressed).
+Product RFC and shape docs. Language: [`../LANGUAGE.md`](../LANGUAGE.md). Coordinate **`0.1.0`** (pressed).
 
 | Doc | Role |
 |-----|------|
@@ -25,5 +25,5 @@ Product RFC and shape docs. Language: [`../LANGUAGE.md`](../LANGUAGE.md). Coordi
 1. Canonical `wasi:webgpu` guest shape; no host-fixed `u32` as new-slice acceptance.
 2. True CM async via upstream Wasmtime.
 3. Android-first; one Dawn as the default backend; do not rewrite Dawn (NG-7).
-4. Experimental `0.x`; **no Central before `0.1.0` is pressed**; no CTS claim.
+4. Experimental `0.x`; **`0.1.0` pressed**; no CTS claim.
 5. English docs are canonical.

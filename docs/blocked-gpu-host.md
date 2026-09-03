@@ -8,7 +8,7 @@
 
 **ND-SO pin:** same Dawn SHA as `androidx.webgpu:webgpu:1.0.0-alpha05` AAR `assets/dawn_build_metadata.json` (`9d41fdf36977cca92361c6ae2769129bbaaafd9b`). Recipe: [`../scripts/build-dawn-c-android.py`](../scripts/build-dawn-c-android.py) / [`ORIGIN.txt`](../native/third_party/dawn-c/ORIGIN.txt). Output `libwebgpu_dawn.so` is **gitignored**.
 
-Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. Maven coordinates (`0.1.0`, not pressed): `runtime` / `host-dawn` / **`android-webgpu`**. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
+Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. Maven coordinates (`0.1.0`, pressed): `runtime` / `host-dawn` / **`android-webgpu`**. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
 
 ## 1. In-tree layout
 

@@ -6,13 +6,66 @@
 
 An **upstream Wasmtime** embedding for Android (JNI / ART) that hosts [Component Model](https://component-model.bytecodealliance.org/) guests, including **true CM async**, with **canonical [`wasi:webgpu`](https://github.com/WebAssembly/wasi-webgpu)** as the first proposal world.
 
-This repository is meant to be a **citable Android host** on the Wasm component chain — not a UI toolkit, not a **rewritten** Dawn, and not a production WASI distro. The **default product/test artifact includes Dawn**; the core runtime AAR does not. See [`rfc.md`](docs/scheme/rfc.md).
+This repository is a **citable Android host** on the Wasm component chain — not a UI toolkit, not a **rewritten** Dawn, and not a production WASI distro. The **default product/test artifact includes Dawn**; the core runtime AAR does not. See [`rfc.md`](docs/scheme/rfc.md).
 
-Status: **experimental `0.x`**. No compliant wasi:webgpu / CTS claim. Coordinate **`0.1.0`** (not pressed). Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) (tag `v*` on `main` or `workflow_dispatch` from `main`, GitHub Environment `release`).
+Status: **experimental `0.x`**. Coordinate **`0.1.0`** (pressed). No compliant wasi:webgpu / CTS claim. Product subset: [`claim-010.md`](docs/scheme/claim-010.md). Later publishes: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) (tag `v*` on `main` or `workflow_dispatch` from `main`, GitHub Environment `release`).
 
 Do **not** file upstream GitHub issues. Non-urgent: `context.unconfigure`, timestamped `frame-event`, Lost/Outdated `result`, multi-window.
 
-## Quick start
+## Use `0.1.0`
+
+minSdk **24**. Repositories: `mavenCentral()` + `google()` (`androidx.webgpu`). R8/minify must keep the AAR `consumer-rules.pro`. Sockets / outbound HTTP need the Android **INTERNET** permission.
+
+Recommended (0.x default bundle — runtime + Dawn host):
+
+```kotlin
+dependencies {
+    implementation("io.github.fenriliuguang.wasmtime.android:android-webgpu:0.1.0")
+}
+```
+
+BYO / no GPU: `…:runtime:0.1.0`. Dawn host only: `…:host-dawn:0.1.0`. Do **not** depend on `runtime-api` / `runtime-jni` directly (Maven transitives of `runtime`). Never depend on `:smoke-app`.
+
+Source checkout / `includeBuild` still works if you are not consuming Maven.
+
+### Host
+
+Public SPI: `Engine` / `Store` / `Linker` / `Component` / `Instance`, `GpuBackends.dawn()`, `Store.setWebGpuBackend`. Compile, instantiate, and `callRunConcurrent` on a dedicated **GpuThread** — not the ART main thread ([threading](docs/mapping/threading-android.md)).
+
+```kotlin
+Engine.create().use { engine ->
+    Component.compile(engine, wasmBytes).use { component ->
+        Linker.create(engine).use { linker ->
+            Store.create(engine).use { store ->
+                store.setWebGpuBackend(GpuBackends.dawn())
+                store.bindCanvasNativeWindow(
+                    NativeBridge.nativeWindowFromSurface(surface),
+                    width,
+                    height,
+                )
+                linker.instantiate(store, component).use { instance ->
+                    // Choreographer / GpuThread: store.postGfxVsync(frameTimeNanos)
+                    val frames = instance.callRunConcurrent(store)
+                    store.closeGfxOnFrame()
+                }
+            }
+        }
+    }
+}
+```
+
+- No backend → guest `gpu.request-adapter` returns **`none`**. `Store.createWithDiscoveredBackend` is ServiceLoader convenience; **`setWebGpuBackend` always wins**.
+- Product `Linker.create` omits fixture constructors (`get-device`, HTTP request/response ctors). Pin `get-gpu` stays.
+- Present loop: guest **pulls** `wasi-gfx:surface@0.2.0` `on-frame`; host posts vsync with `Store.postGfxVsync`. `surfaceDestroyed` → `closeGfxOnFrame`. Pointer / key: `postGfxPointer` / `postGfxKey`.
+- Close `Engine` / `Store` / `Linker` / `Component` / `Instance` (all `AutoCloseable`).
+
+### Guest
+
+Ship a **Component** wasm (not core-module only). Pin **`wasi:webgpu@0.3.0-rc.2`**: chain `get-gpu` → `request-adapter` → `request-device`. Continuous on-screen: **`wasi-gfx:surface@0.2.0`**. WIT rules: [`guest-shape.md`](docs/scheme/guest-shape.md). What `0.1.0` actually covers: [`claim-010.md`](docs/scheme/claim-010.md).
+
+End-to-end app (pack a guest, load, present): [wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples). This repository does **not** vendor that app. `:smoke-app` here is instruments, not the demo.
+
+## Build from source
 
 ```powershell
 # 1. Cross-compile libwasmtime_android_kt.so → android/jniLibs/
@@ -25,31 +78,7 @@ Do **not** file upstream GitHub issues. Non-urgent: `context.unconfigure`, times
 .\gradlew.bat :smoke-app:connectedDebugAndroidTest
 ```
 
-NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1` — [`tech-stack.md`](docs/scheme/tech-stack.md). Workflow: [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-## Demo
-
-Pack a guest wasm, load it with this Android runtime (`android-webgpu` or a source composite), and present on a Surface: [wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples). This repository does **not** vendor the app. `:smoke-app` here is instruments, not that demo.
-
-Out-of-tree gate (includeBuild, no mavenLocal):
-
-```powershell
-.\scripts\verify-examples-gate.ps1
-```
-
-## Consume `0.1.0`
-
-Recommended (0.x default bundle — runtime + Dawn host):
-
-```kotlin
-dependencies {
-    implementation("io.github.fenriliuguang.wasmtime.android:android-webgpu:0.1.0")
-}
-```
-
-BYO / no GPU: `…:runtime:0.1.0`. Dawn host only: `…:host-dawn:0.1.0`. Do **not** depend on `runtime-api` / `runtime-jni` directly (Maven transitives of `runtime`). Never depend on `:smoke-app`.
-
-Artifacts appear on Maven Central / GitHub Packages after a maintainer presses `v0.1.0` on `main` (Environment `release`: full device instruments + examples cube). Until that press, use this repo as a source checkout. Minify must consume the AAR `consumer-rules.pro`. Rebuild natives: [`scripts/build-native-android.ps1`](scripts/build-native-android.ps1).
+NDK `28.2.13676358`, Rust `1.97.1`, AGP `9.3.1` — [`tech-stack.md`](docs/scheme/tech-stack.md). Workflow: [`CONTRIBUTING.md`](CONTRIBUTING.md). Rebuild natives with the same script. Out-of-tree examples gate (includeBuild, no mavenLocal): `.\scripts\verify-examples-gate.ps1`.
 
 GPU-backed instruments use in-tree `:host-dawn` plus published `androidx.webgpu` — [`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md).
 
@@ -72,7 +101,7 @@ English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)). Chinese siblings 
 
 | Doc | Notes |
 |-----|--------|
-| [Contributing](CONTRIBUTING.md) | PR / CI / press |
+| [Contributing](CONTRIBUTING.md) | PR / CI / publish |
 | [Scheme index](docs/scheme/README.md) | RFC and shape docs |
 | [RFC](docs/scheme/rfc.md) | Product / GPU host / gfx loop |
 | [Guest shape](docs/scheme/guest-shape.md) | WIT acceptance rules |

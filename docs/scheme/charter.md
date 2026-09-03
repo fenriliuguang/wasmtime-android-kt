@@ -14,7 +14,7 @@ First proposal world: canonical [`wasi:webgpu`](https://github.com/WebAssembly/w
 - Kotlin-friendly lifecycle, threads, and errors.
 - **Citable** experimental host — [`rfc.md`](rfc.md).
 
-Product class **B**, perpetual **`0.x`**, coordinate **`0.1.0`** until that release is pressed. Still **not** a compliant wasi:webgpu product (NG-5).
+Product class **B**, perpetual **`0.x`**, coordinate **`0.1.0`** (pressed). Still **not** a compliant wasi:webgpu product (NG-5).
 
 ## Principles
 
