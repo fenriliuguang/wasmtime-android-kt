@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Android Dawn C API `.so` recipe (ND-SO).
 
-Pin matches androidx.webgpu 1.0.0-alpha05 AAR dawn_build_metadata.json.
+Press pin is Google dated Android `.a` (`--prebuilt`, see ORIGIN.txt).
 Does **not** git-add any `.so`. Product NativeGpu (`GpuBackends.dawn()`)
-loads `libwebgpu_dawn.so` when present. Press (0.1.1+) runs `--build` and
-packs the arm64 `.so` into `:host-dawn`. Cloud CI assemble may omit it
-(table-backed).
+loads `libwebgpu_dawn.so` when present. Press (0.1.2+) runs `--prebuilt`
+and packs the arm64 `.so` into `:host-dawn`. Cloud CI assemble may omit it
+(table-backed). `--build` is a local experiment (androidx leftover SHA).
 
   python3 ./scripts/build-dawn-c-android.py --probe-aar
+  python3 ./scripts/build-dawn-c-android.py --prebuilt [--targets arm64-v8a x86_64]
   python3 ./scripts/build-dawn-c-android.py --build [--targets arm64-v8a x86_64]
 
-`--probe-aar` works without NDK (Cloud). `--build` needs NDK 28.2.13676358.
+`--probe-aar` works without NDK (Cloud). `--prebuilt` / `--build` need NDK
+28.2.13676358.
 """
 from __future__ import annotations
 
@@ -320,6 +322,10 @@ def build_abi(ndk: Path, abi: str) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / C_API_SO
     shutil.copy2(so, dest)
+    stale = dest_dir / "ORIGIN-PREBUILT.txt"
+    if stale.is_file():
+        stale.unlink()
+        print(f"removed {stale} (--build is not the press pin)")
     names = symbol_names(nm_defined(dest))
     missing = [n for n in C_API_NEEDLES if n not in names]
     if missing:
@@ -395,6 +401,14 @@ def link_prebuilt_archive(archive: Path, abi: str, ndk: Path) -> Path:
     print(f"prebuilt-linked {dest}  {dest.stat().st_size} bytes ({mib:.2f} MiB)")
     print(f"Dawn GitHub prebuilt {PREBUILT_TAG} ({PREBUILT_SHA[:12]})")
     print("Do not git-add this .so.")
+    origin = dest.parent / "ORIGIN-PREBUILT.txt"
+    origin.write_text(
+        "press: --prebuilt\n"
+        f"tag: {PREBUILT_TAG}\n"
+        f"sha: {PREBUILT_SHA}\n"
+        "not androidx leftover SHA 9d41fdf36977cca92361c6ae2769129bbaaafd9b\n",
+        encoding="utf-8",
+    )
     return dest
 
 
@@ -451,7 +465,7 @@ def main() -> None:
         "--targets",
         nargs="+",
         default=["arm64-v8a"],
-        help="Android ABIs for --build (default: arm64-v8a)",
+        help="Android ABIs for --prebuilt / --build (default: arm64-v8a)",
     )
     ap.add_argument(
         "--commit",
@@ -465,7 +479,8 @@ def main() -> None:
         ap.print_help()
         print()
         die("pass --probe-aar and/or --build and/or --prebuilt")
-    print(f"Dawn pin: {DAWN_COMMIT}  androidx.webgpu:{ANDROIDX_WEBGPU}")
+    print(f"androidx leftover pin: {DAWN_COMMIT}  androidx.webgpu:{ANDROIDX_WEBGPU}")
+    print(f"press prebuilt: {PREBUILT_TAG} {PREBUILT_SHA}")
     print(f"Output (gitignored): {OUT}/<abi>/{C_API_SO}")
     if args.probe_aar:
         probe_aar()

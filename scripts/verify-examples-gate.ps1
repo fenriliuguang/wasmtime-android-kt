@@ -1,4 +1,5 @@
 # Out-of-tree examples gate: includeBuild this checkout (no mavenLocal).
+# Local-dev cube only. Press AAR evidence is in-tree: verify-press-aar.py.
 # Default examples tree: sibling ../wasmtime-android-kt-examples or $env:EXAMPLES_DIR.
 # Always :app:assembleDebug. :app:installDebug when an adb device is present
 # (or -Install). Cube guest: guests/rotating-cube/dist/guest.wasm.

@@ -2,10 +2,12 @@
 # Required check name stays "CI" in ci.yml — this workflow is not a Ruleset gate.
 #
 # Never run from release/0.1.0. Never auto-publish on push to a branch.
-# Press: annotated tag v0.x.y on main, or workflow_dispatch from main, both
-# gated by GitHub Environment "release" (device instruments + examples cube).
-# Packs recipe libwebgpu_dawn.so into :host-dawn (0.1.1+). Missing arm64
-# wasmtime or Dawn C .so fails (does not skip). Never publish :smoke-app.
+# Press: annotated tag v0.x.y or v0.x.y-SNAPSHOT on main, or workflow_dispatch
+# from main, both gated by GitHub Environment "release".
+# SNAPSHOT GAV is allowed (Central publishing limits: snapshots do not consume
+# a release quota and may be overwritten). Packs Google Android prebuilt
+# libwebgpu_dawn.so into :host-dawn. Missing arm64 wasmtime or Dawn C .so
+# fails (does not skip). Never publish :smoke-app.
 name: Publish
 
 on:
@@ -67,11 +69,24 @@ jobs:
       - name: Build Android natives
         uses: ./.github/actions/build-android-natives
 
-      - name: Build Dawn C libwebgpu_dawn.so
+      - name: Link Dawn C libwebgpu_dawn.so (--prebuilt)
         uses: ./.github/actions/build-dawn-c
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble published AARs
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          SO="android/jniLibs/arm64-v8a/libwasmtime_android_kt.so"
+          DAWN_SO="native/third_party/dawn-c/out/arm64-v8a/libwebgpu_dawn.so"
+          test -f "$SO"
+          test -f "$DAWN_SO"
+          ./gradlew :android:assembleRelease :host-dawn:assembleRelease --no-configuration-cache
+
+      - name: AAR .so SHA must match recipe
+        run: python3 ./scripts/verify-press-aar.py
 
       - name: Publish
         env:
@@ -83,6 +98,8 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x gradlew
+          VERSION="$(grep -E '^wasmtime\.android\.version=' gradle.properties | cut -d= -f2-)"
+          echo "Publishing GAV ${VERSION} (SNAPSHOT is allowed; Central snapshots skip release quota)"
           SO="android/jniLibs/arm64-v8a/libwasmtime_android_kt.so"
           DAWN_SO="native/third_party/dawn-c/out/arm64-v8a/libwebgpu_dawn.so"
           if [ ! -f "$SO" ]; then

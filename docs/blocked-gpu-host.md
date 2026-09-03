@@ -6,9 +6,9 @@
 
 **ND-DEFAULT (2026-09-01):** product `GpuBackends.dawn()` / `:android-webgpu` is **NativeGpu**. `DawnWasiWebGpuHost.kt` stays the **mapping spec** and the `id = "dawn-jni"` leftover. Default APK **excludes** `libwebgpu_c_bundled.so` and packs recipe `libwebgpu_dawn.so` when built (do not ship both).
 
-**ND-SO pin:** same Dawn SHA as `androidx.webgpu:webgpu:1.0.0-alpha05` AAR `assets/dawn_build_metadata.json` (`9d41fdf36977cca92361c6ae2769129bbaaafd9b`). Recipe: [`../scripts/build-dawn-c-android.py`](../scripts/build-dawn-c-android.py) / [`ORIGIN.txt`](../native/third_party/dawn-c/ORIGIN.txt). Output `libwebgpu_dawn.so` is **gitignored**. **0.1.1 press** runs the recipe and packs arm64 (+ x86_64) into the published `host-dawn` AAR. Apps consume that AAR; they do not rebuild Dawn or republish `androidx.webgpu`.
+**ND-SO pin:** NativeGpu press is Google’s dated Android `.a` (tag `v20260828.215121`, SHA `bddf1a04f7c262107a9aae301c45fc49e15c7fef`), NDK-linked by [`../scripts/build-dawn-c-android.py`](../scripts/build-dawn-c-android.py) `--prebuilt`. That is the on-device-green `.so`. `androidx.webgpu:webgpu:1.0.0-alpha05` leftover JNI is a **different** Dawn SHA (`9d41fdf36977cca92361c6ae2769129bbaaafd9b`); default APK **excludes** `libwebgpu_c_bundled.so`. Output `libwebgpu_dawn.so` is **gitignored**. **0.1.2-SNAPSHOT press** packs arm64 (+ x86_64) into the published `host-dawn` AAR. Maven **`0.1.1` packed `--build` at the androidx SHA and is not the device-green binary.** Apps consume the AAR; they do not rebuild Dawn or republish `androidx.webgpu`.
 
-Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. Maven coordinates (`0.1.1`): `runtime` / `host-dawn` / **`android-webgpu`**. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
+Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. Maven coordinates (`0.1.2-SNAPSHOT`): `runtime` / `host-dawn` / **`android-webgpu`**. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
 
 ## 1. In-tree layout
 

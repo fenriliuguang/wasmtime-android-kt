@@ -2,6 +2,9 @@
 #
 # Docs-only change sets (*.md and changelog/**) skip cargo / NDK / AAR.
 # The aggregate job still reports success as "CI" (skipped != missing).
+#
+# GAV in gradle.properties may be 0.x.y or 0.x.y-SNAPSHOT (Central publishing
+# limits). Assemble uses that property as-is; do not reject SNAPSHOT.
 name: CI
 
 on:
@@ -215,6 +218,8 @@ jobs:
           chmod +x gradlew
           test -f android/jniLibs/arm64-v8a/libwasmtime_android_kt.so
           test -f android/jniLibs/x86_64/libwasmtime_android_kt.so
+          VERSION="$(grep -E '^wasmtime\.android\.version=' gradle.properties | cut -d= -f2-)"
+          echo "Assembling GAV ${VERSION} (SNAPSHOT is allowed)"
           ./gradlew \
             :android:assembleRelease \
             :host-dawn:assembleRelease \
