@@ -38,6 +38,11 @@ android {
 
     packaging {
         jniLibs {
+            // Match :android. Without this, AGP stripReleaseDebugSymbols (and
+            // 16 KB ELF align) rewrite the unstripped --prebuilt .so; the press
+            // SHA gate then fails and the AAR is not the device-green binary.
+            useLegacyPackaging = true
+            keepDebugSymbols += "**/libwebgpu_dawn.so"
             // Product default is one C API `.so`. androidx bundled is dawn-jni leftover.
             excludes += "**/libwebgpu_c_bundled.so"
         }
