@@ -8,19 +8,18 @@
 
 本仓目标是成为 Wasm 组件链上 **可引用的 Android Host**——不是 UI 框架、不是重写的 Dawn、也不是生产级 WASI 发行版。**默认产品/测试构件包含 Dawn**；核心 AAR 不含。见 [`rfc.md`](docs/scheme/rfc.md)。
 
-状态：**experimental `0.x`**。坐标 **`0.1.2-SNAPSHOT`**。不宣称合规 wasi:webgpu / CTS。产品子集：[`claim-010.md`](docs/scheme/claim-010.md)。发包：`.github/workflows/publish.yml`（`main` 上的 `v*` 标签，或从 `main` 手动触发；GitHub Environment `release`）。允许 SNAPSHOT（Central 发布限额）。
+状态：**experimental `0.x`**。坐标 **`0.1.2`**。不宣称合规 wasi:webgpu / CTS。产品子集：[`claim-010.md`](docs/scheme/claim-010.md)。发包：`.github/workflows/publish.yml`（`main` 上的 `v*` 标签，或从 `main` 手动触发；GitHub Environment `release`）。允许 SNAPSHOT（Central 发布限额）。
 
 若与英文冲突，**以 [README.md](README.md) 为准**。禁止向上游开 GitHub issue。非紧急：`unconfigure`、带时间戳的 `frame-event`、Lost/Outdated `result`、多窗口。
 
-## 使用 `0.1.2-SNAPSHOT`
+## 使用 `0.1.2`
 
-minSdk **24**。仓库：`google()`（`androidx.webgpu`）、`mavenCentral()`，以及 Central Portal **快照仓**（此 GAV 不在 `mavenCentral()`）：
+minSdk **24**。仓库：`google()`（`androidx.webgpu`）和 `mavenCentral()`：
 
 ```kotlin
 repositories {
     google()
     mavenCentral()
-    maven("https://central.sonatype.com/repository/maven-snapshots/")
 }
 ```
 
@@ -30,13 +29,13 @@ repositories {
 
 ```kotlin
 dependencies {
-    implementation("io.github.fenriliuguang.wasmtime.android:android-webgpu:0.1.2-SNAPSHOT")
+    implementation("io.github.fenriliuguang.wasmtime.android:android-webgpu:0.1.2")
 }
 ```
 
-无 GPU / 自带后端：`…:runtime:0.1.2-SNAPSHOT`。只要 Dawn host：`…:host-dawn:0.1.2-SNAPSHOT`。不要直接依赖 `runtime-api` / `runtime-jni`（`runtime` 的传递依赖）。不要依赖 `:smoke-app`。
+无 GPU / 自带后端：`…:runtime:0.1.2`。只要 Dawn host：`…:host-dawn:0.1.2`。不要直接依赖 `runtime-api` / `runtime-jni`（`runtime` 的传递依赖）。不要依赖 `:smoke-app`。
 
-`host-dawn` / `android-webgpu` **0.1.2-SNAPSHOT** 打进 Press 钉的 `libwebgpu_dawn.so`（NativeGpu：Google Android `--prebuilt` SHA `bddf1a04…`，即真机绿的那份）。**不要用 `0.1.1` 跑 GPU**（那份是另一套 `--build` Dawn）。应用 **不必** 自己编 Dawn，也 **不必** vendor `androidx.webgpu`。`runtime` 不含 Dawn `.so`。没有这份 `.so` 时 NativeGpu 走 **table-backed**；**发包** 缺 arm64 文件则失败。
+`host-dawn` / `android-webgpu` **0.1.2** 打进 Press 钉的 `libwebgpu_dawn.so`（NativeGpu：Google Android `--prebuilt` SHA `bddf1a04…`，即真机绿的那份）。**不要用 `0.1.1` 跑 GPU**（那份是另一套 `--build` Dawn）。应用 **不必** 自己编 Dawn，也 **不必** vendor `androidx.webgpu`。`runtime` 不含 Dawn `.so`。没有这份 `.so` 时 NativeGpu 走 **table-backed**；**发包** 缺 arm64 文件则失败。
 
 不走 Maven 时，源码检出 / `includeBuild` 仍可用。**发包证据**在本仓：`scripts/verify-press-aar.py`（release AAR 里的 `.so` SHA 必须等于配方）。includeBuild examples 不能代替这一步。
 

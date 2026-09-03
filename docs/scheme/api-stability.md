@@ -4,7 +4,7 @@
 
 1. Stay on **`0.x.y`** until upstream 1.0 gates in [`rfc.md`](rfc.md) §6 (break in MINOR). This-repo **1.0.0** is not a calendar target.
 2. SemVer 2.0 shape: `MAJOR.MINOR.PATCH[-prerelease]`.
-3. Current coordinate: **`0.1.2-SNAPSHOT`** (`gradle.properties` → `wasmtime.android.version`). **`SNAPSHOT` is allowed** (Maven Central publishing limits: snapshots do not consume a release quota). Subsequent non-SNAPSHOT bumps follow the `0.x` rules below. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). Do not press when secrets, arm64 wasmtime jniLibs, or arm64 `libwebgpu_dawn.so` are missing.
+3. Current coordinate: **`0.1.2`** (`gradle.properties` → `wasmtime.android.version`). **`SNAPSHOT` is allowed** (Maven Central publishing limits: snapshots do not consume a release quota). Subsequent non-SNAPSHOT bumps follow the `0.x` rules below. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). Do not press when secrets, arm64 wasmtime jniLibs, or arm64 `libwebgpu_dawn.so` are missing.
 4. No CTS / compliant wasi:webgpu claim ([`non-goals.md`](non-goals.md) NG-5).
 5. `ExperimentalHostCallbacks` is **not** `runtime-api` public SPI. Attach with `Store.setWebGpuBackend`.
 6. Dual-track: `Store.setWebGpuBackend` is the stable contract; `Store.createWithDiscoveredBackend` is default-bundle convenience.
