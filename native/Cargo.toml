@@ -1,6 +1,6 @@
 [package]
 name = "wasmtime-android-kt"
-version = "0.1.2-SNAPSHOT"
+version = "0.1.2"
 edition = "2021"
 description = "Thin JNI cdylib over upstream Wasmtime for Android"
 license = "Apache-2.0"

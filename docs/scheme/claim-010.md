@@ -4,13 +4,13 @@
 
 Release-notes-shaped **product subset**. Policy: [`rfc.md`](rfc.md).
 
-**This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md). Product subset for **0.1.x**. Current GAV **`0.1.2-SNAPSHOT`** packs device-green `--prebuilt` `libwebgpu_dawn.so` into published `host-dawn` / `android-webgpu`. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml).
+**This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md). Product subset for **0.1.x**. Current GAV **`0.1.2`** packs device-green `--prebuilt` `libwebgpu_dawn.so` into published `host-dawn` / `android-webgpu`. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml).
 
 ## 1. One-line claim
 
 A third party can depend on this host for **most of pinned `wasi:webgpu@0.3.0-rc.2`** (guest `[method]` names on **NativeGpu**) plus the **WASI 0.3 IO/network subset webgpu apps need** and a **wasi-gfx present loop** (product adapter/device + vsync `on-frame`). Record holes and named leftovers are listed, not silent.
 
-Default consume is Dawn C / NativeGpu. Maven **0.1.2-SNAPSHOT** packs press-pin `libwebgpu_dawn.so` in `host-dawn`. Remaining pin `[method]`s call `webgpu.h` when that `.so` is loaded; Cloud CI assemble without the recipe stays table-backed ([`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md)). Cube is demo evidence only.
+Default consume is Dawn C / NativeGpu. Maven **0.1.2** packs press-pin `libwebgpu_dawn.so` in `host-dawn`. Remaining pin `[method]`s call `webgpu.h` when that `.so` is loaded; Cloud CI assemble without the recipe stays table-backed ([`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md)). Cube is demo evidence only.
 
 ## 2. `wasi:webgpu` (pin `0.3.0-rc.2`)
 

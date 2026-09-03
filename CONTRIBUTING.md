@@ -58,8 +58,8 @@ Any other path runs the four heavy jobs. Docs-only still reports the required ch
 
 ## Publish
 
-- Current GAV is **`0.1.2-SNAPSHOT`**. Later versions follow [`docs/scheme/api-stability.md`](docs/scheme/api-stability.md).
-- **`SNAPSHOT` is allowed.** Maven Central publishing limits apply to *releases*; a `-SNAPSHOT` press does not consume that quota and may be overwritten. Use it when a release GAV would hit the limit. A later non-SNAPSHOT `0.1.2` (or the next PATCH) is a separate press. Still no `-rc` GAV. No `0.0.x-preview`.
+- Current GAV is **`0.1.2`**. Later versions follow [`docs/scheme/api-stability.md`](docs/scheme/api-stability.md).
+- **`SNAPSHOT` is allowed.** Maven Central publishing limits apply to *releases*; a `-SNAPSHOT` press does not consume that quota and may be overwritten. Use it when a release GAV would hit the limit. A later SNAPSHOT or PATCH is a separate press. Still no `-rc` GAV. No `0.0.x-preview`.
 - [`.github/workflows/publish.yml`](.github/workflows/publish.yml) uploads only from **`main`**: annotated tag `v*` (including `v0.x.y-SNAPSHOT`) or `workflow_dispatch`. GitHub Environment **`release`** (required reviewer; allowed refs: `main`, tags `v*`).
 - The job cross-compiles wasmtime `.so` at opt-level **2** **and** links Google Android `--prebuilt` `libwebgpu_dawn.so`, then publishes. Missing arm64 wasmtime or Dawn C `.so` **fails** (does not skip). Maven Central secrets missing **fails** if Central is requested. SNAPSHOT goes to the Central Portal **snapshots** repo (`https://central.sonatype.com/repository/maven-snapshots/`); vanniktech routes this from the `-SNAPSHOT` version.
 - **Never** run Publish from `release/0.1.0`. Never publish `:smoke-app`.
