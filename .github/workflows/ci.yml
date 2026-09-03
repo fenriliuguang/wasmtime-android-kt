@@ -1,4 +1,7 @@
 # Required status check name for Rulesets: "CI"
+#
+# Docs-only change sets (*.md and changelog/**) skip cargo / NDK / AAR.
+# The aggregate job still reports success as "CI" (skipped != missing).
 name: CI
 
 on:
@@ -6,6 +9,10 @@ on:
     branches: [main, release/0.1.0]
   pull_request:
     branches: [main, release/0.1.0]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -18,8 +25,69 @@ env:
   RUSTFLAGS: "-C debuginfo=0"
 
 jobs:
+  detect:
+    name: detect (change set)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      heavy: ${{ steps.classify.outputs.heavy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify change set
+        id: classify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          set -euo pipefail
+          files=""
+          if [ "$EVENT" = "pull_request" ]; then
+            files="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[] | .filename, (.previous_filename // empty)')"
+          else
+            if [ -z "${BASE_SHA}" ] || [ "${BASE_SHA}" = "0000000000000000000000000000000000000000" ]; then
+              echo "heavy=true" >> "$GITHUB_OUTPUT"
+              echo "no usable base SHA; running heavy jobs"
+              exit 0
+            fi
+            if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "${BASE_SHA}"
+            fi
+            files="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
+            if [ -z "$files" ]; then
+              echo "heavy=true" >> "$GITHUB_OUTPUT"
+              echo "empty diff; running heavy jobs"
+              exit 0
+            fi
+          fi
+          if [ -z "$files" ]; then
+            echo "heavy=true" >> "$GITHUB_OUTPUT"
+            echo "empty file list; running heavy jobs"
+            exit 0
+          fi
+          echo "Changed files:"
+          printf '%s\n' "$files"
+          heavy=false
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            if [[ "$f" == *.md ]] || [[ "$f" == changelog/* ]]; then
+              continue
+            fi
+            echo "heavy file: $f"
+            heavy=true
+            break
+          done <<< "$files"
+          echo "heavy=$heavy" >> "$GITHUB_OUTPUT"
+          echo "heavy=$heavy"
+
   native:
     name: native (cargo test)
+    if: needs.detect.outputs.heavy == 'true'
+    needs: [detect]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -61,6 +129,8 @@ jobs:
 
   jvm-api:
     name: jvm (runtime-api compile)
+    if: needs.detect.outputs.heavy == 'true'
+    needs: [detect]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -83,6 +153,8 @@ jobs:
 
   android-native:
     name: android (ndk .so)
+    if: needs.detect.outputs.heavy == 'true'
+    needs: [detect]
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -110,9 +182,10 @@ jobs:
 
   android-aar:
     name: android (AAR + smoke APK)
+    if: needs.detect.outputs.heavy == 'true'
+    needs: [detect, android-native]
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: [android-native]
     steps:
       - uses: actions/checkout@v4
 
@@ -164,12 +237,21 @@ jobs:
   # Single required check name for Rulesets: "CI"
   ci:
     name: CI
-    needs: [native, jvm-api, android-native, android-aar]
+    needs: [detect, native, jvm-api, android-native, android-aar]
     runs-on: ubuntu-latest
-    if: ${{ always() }}
+    if: ${{ always() && !cancelled() }}
     steps:
       - name: All required jobs green
         run: |
+          set -euo pipefail
+          if [ "${{ needs.detect.result }}" != "success" ]; then
+            echo "detect=${{ needs.detect.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.detect.outputs.heavy }}" != "true" ]; then
+            echo "docs-only (*.md / changelog/**); skipped native, jvm, ndk, aar"
+            exit 0
+          fi
           if [ "${{ needs.native.result }}" != "success" ] \
             || [ "${{ needs.jvm-api.result }}" != "success" ] \
             || [ "${{ needs.android-native.result }}" != "success" ] \

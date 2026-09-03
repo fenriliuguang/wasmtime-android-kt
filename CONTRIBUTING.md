@@ -42,12 +42,13 @@ These files collide on every short PR. Feature PRs **must not** touch them unles
 
 | Job | What |
 |-----|------|
+| `detect (change set)` | `*.md` + `changelog/**` only → skip the four jobs below |
 | `native (cargo test)` | `native/` `cargo test --locked --tests` |
 | `jvm (runtime-api compile)` | `:runtime-api` / `:runtime-jni` `compileKotlin` |
 | `android (ndk .so)` | `scripts/build-native-android.ps1` (arm64 + x86_64) |
 | `android (AAR + smoke APK)` | assemble published AARs + `:smoke-app:assembleDebug` |
 
-GitHub-hosted CI does **not** run device instruments. Publish gate is local:
+Any other path runs the four heavy jobs. Docs-only still reports the required check **`CI`** as success (heavy jobs **skipped**, not missing). GitHub-hosted CI does **not** run device instruments. Publish gate is local:
 
 ```powershell
 .\gradlew.bat :smoke-app:connectedDebugAndroidTest
