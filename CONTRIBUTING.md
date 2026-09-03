@@ -13,7 +13,7 @@ Language: English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)).
 | [`docs/scheme/rfc.md`](docs/scheme/rfc.md) | Product / GPU host / gfx loop |
 | [`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md) | wasi:webgpu WIT gates |
 | [`docs/scheme/non-goals.md`](docs/scheme/non-goals.md) | Hard no |
-| [`docs/scheme/claim-010.md`](docs/scheme/claim-010.md) | `0.1.0` product subset |
+| [`docs/scheme/claim-010.md`](docs/scheme/claim-010.md) | 0.1.x product subset |
 | [`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md) | GPU host — vendor path |
 
 ## Workflow
@@ -57,9 +57,9 @@ Any other path runs the four heavy jobs. Docs-only still reports the required ch
 
 ## Publish
 
-- Current GAV is **`0.1.0`** (pressed). Later versions follow [`docs/scheme/api-stability.md`](docs/scheme/api-stability.md). No `SNAPSHOT`, no `-rc` GAV.
+- Current GAV is **`0.1.1`**. Later versions follow [`docs/scheme/api-stability.md`](docs/scheme/api-stability.md). No `SNAPSHOT`, no `-rc` GAV.
 - [`.github/workflows/publish.yml`](.github/workflows/publish.yml) uploads only from **`main`**: annotated tag `v*` or `workflow_dispatch`. GitHub Environment **`release`** (required reviewer; allowed refs: `main`, tags `v*`).
-- The job cross-compiles arm64 `.so` then publishes. Missing `.so` **fails** (does not skip). Maven Central secrets missing **fails** if Central is requested.
+- The job cross-compiles wasmtime `.so` **and** recipe `libwebgpu_dawn.so`, then publishes. Missing arm64 wasmtime or Dawn C `.so` **fails** (does not skip). Maven Central secrets missing **fails** if Central is requested.
 - **Never** run Publish from `release/0.1.0`. Never publish `:smoke-app`.
 - Approver checklist: full `:smoke-app:connectedDebugAndroidTest` green on a named device; out-of-tree cube `installDebug` via includeBuild.
 

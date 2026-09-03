@@ -8,23 +8,25 @@
 
 本仓目标是成为 Wasm 组件链上 **可引用的 Android Host**——不是 UI 框架、不是重写的 Dawn、也不是生产级 WASI 发行版。**默认产品/测试构件包含 Dawn**；核心 AAR 不含。见 [`rfc.md`](docs/scheme/rfc.md)。
 
-状态：**experimental `0.x`**。坐标 **`0.1.0`**（已发布）。不宣称合规 wasi:webgpu / CTS。产品子集：[`claim-010.md`](docs/scheme/claim-010.md)。后续发包：`.github/workflows/publish.yml`（`main` 上的 `v*` 标签，或从 `main` 手动触发；GitHub Environment `release`）。
+状态：**experimental `0.x`**。坐标 **`0.1.1`**。不宣称合规 wasi:webgpu / CTS。产品子集：[`claim-010.md`](docs/scheme/claim-010.md)。发包：`.github/workflows/publish.yml`（`main` 上的 `v*` 标签，或从 `main` 手动触发；GitHub Environment `release`）。
 
 若与英文冲突，**以 [README.md](README.md) 为准**。禁止向上游开 GitHub issue。非紧急：`unconfigure`、带时间戳的 `frame-event`、Lost/Outdated `result`、多窗口。
 
-## 使用 `0.1.0`
+## 使用 `0.1.1`
 
-minSdk **24**。仓库：`mavenCentral()` + `google()`（`androidx.webgpu`）。混淆必须吃到 AAR 的 `consumer-rules.pro`。sockets / 出站 HTTP 需要 Android **INTERNET**。
+minSdk **24**。仓库：`mavenCentral()` + `google()`（`androidx.webgpu` 是 **Google** 的 AAR，本仓不重发）。混淆必须吃到 AAR 的 `consumer-rules.pro`。sockets / 出站 HTTP 需要 Android **INTERNET**。
 
 推荐（0.x 默认包 — runtime + Dawn host）：
 
 ```kotlin
 dependencies {
-    implementation("io.github.fenriliuguang.wasmtime.android:android-webgpu:0.1.0")
+    implementation("io.github.fenriliuguang.wasmtime.android:android-webgpu:0.1.1")
 }
 ```
 
-无 GPU / 自带后端：`…:runtime:0.1.0`。只要 Dawn host：`…:host-dawn:0.1.0`。不要直接依赖 `runtime-api` / `runtime-jni`（`runtime` 的传递依赖）。不要依赖 `:smoke-app`。
+无 GPU / 自带后端：`…:runtime:0.1.1`。只要 Dawn host：`…:host-dawn:0.1.1`。不要直接依赖 `runtime-api` / `runtime-jni`（`runtime` 的传递依赖）。不要依赖 `:smoke-app`。
+
+`host-dawn` / `android-webgpu` **0.1.1** 打进配方 `libwebgpu_dawn.so`（NativeGpu，与 androidx 同一 Dawn SHA）。应用 **不必** 自己编 Dawn，也 **不必** vendor `androidx.webgpu`。`runtime` 不含 Dawn `.so`。没有这份 `.so` 时 NativeGpu 走 **table-backed**；**发包** 缺 arm64 文件则失败。
 
 不走 Maven 时，源码检出 / `includeBuild` 仍可用。
 
@@ -61,7 +63,7 @@ Engine.create().use { engine ->
 
 ### Guest
 
-交付 **Component** wasm（不是仅 core module）。钉 **`wasi:webgpu@0.3.0-rc.2`**：`get-gpu` → `request-adapter` → `request-device`。连续上屏走 **`wasi-gfx:surface@0.2.0`**。WIT 规则：[`guest-shape.md`](docs/scheme/guest-shape.md)。`0.1.0` 实际覆盖面：[`claim-010.md`](docs/scheme/claim-010.md)。
+交付 **Component** wasm（不是仅 core module）。钉 **`wasi:webgpu@0.3.0-rc.2`**：`get-gpu` → `request-adapter` → `request-device`。连续上屏走 **`wasi-gfx:surface@0.2.0`**。WIT 规则：[`guest-shape.md`](docs/scheme/guest-shape.md)。0.1.x 实际覆盖面：[`claim-010.md`](docs/scheme/claim-010.md)。
 
 端到端示例（打包 guest、加载、上屏）：[wasmtime-android-kt-examples](https://github.com/fenriliuguang/wasmtime-android-kt-examples)。本仓不内嵌该 app。仓外门禁：`.\scripts\verify-examples-gate.ps1`（includeBuild，不用 mavenLocal）。
 
@@ -69,6 +71,7 @@ Engine.create().use { engine ->
 
 ```powershell
 .\scripts\build-native-android.ps1
+python3 .\scripts\build-dawn-c-android.py --build --targets arm64-v8a
 .\gradlew.bat :smoke-app:assembleDebug
 .\gradlew.bat :smoke-app:connectedDebugAndroidTest
 ```

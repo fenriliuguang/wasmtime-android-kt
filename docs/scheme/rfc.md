@@ -13,7 +13,7 @@ This repo is an **Android-first app runtime** (class B): upstream Wasmtime, Comp
 | Question | Decision |
 |----------|----------|
 | Versioning | Perpetual **`0.x.y`** until `wasi:webgpu` and `wasi-gfx` are ratified WASI, WASI publishes **1.0**, and `androidx.webgpu` ships a non-alpha release. Break in MINOR. |
-| Coordinate | **`0.1.0`** (pressed). Later bumps follow [`api-stability.md`](api-stability.md). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). Do not press when secrets or arm64 `.so` are missing. No `0.0.x-preview` Central. |
+| Coordinate | **`0.1.1`**. Later bumps follow [`api-stability.md`](api-stability.md). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). Do not press when secrets, arm64 `libwasmtime_android_kt.so`, or arm64 `libwebgpu_dawn.so` are missing. No `0.0.x-preview` Central. |
 | Engine | Official `wasmtime` **47.x** only. True CM async only. |
 | WASI claim | Product subset, not wasi-testsuite / “full WASI 0.3”. |
 | WebGPU claim | Most of the pinned WIT instantiates; Dawn holes listed. **Not** CTS (NG-5). |
@@ -32,7 +32,7 @@ Default consume is **in-process Dawn C** (`NativeGpu`, `GpuBackends.dawn()`, id 
 | SPI | Kotlin `WebGpuBackend` stays BYO / discover. Do not grow it into a 224-method Kotlin WebGPU client (NG-3). |
 | Guest shape | Pin `[method]` names, `own`/`borrow`, `async` wraps. No new host-fixed `u32` (NG-12). No JS-style `start(callback)`. |
 
-`libwebgpu_dawn.so` is optional (Cloud / missing recipe). Table-backed NativeGpu is still NativeGpu (no ART/JNI). Pin methods that Dawn C can implement call `webgpu.h` when the `.so` is loaded — [`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md).
+`libwebgpu_dawn.so` is packed into published `host-dawn` / `android-webgpu` from **0.1.1**. Cloud CI assemble without the recipe stays table-backed (no ART/JNI). Pin methods that Dawn C can implement call `webgpu.h` when the `.so` is loaded — [`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md).
 
 ## 3. Frame loop (`wasi-gfx`)
 

@@ -4,7 +4,8 @@
 # Never run from release/0.1.0. Never auto-publish on push to a branch.
 # Press: annotated tag v0.x.y on main, or workflow_dispatch from main, both
 # gated by GitHub Environment "release" (device instruments + examples cube).
-# Never publish :smoke-app.
+# Packs recipe libwebgpu_dawn.so into :host-dawn (0.1.1+). Missing arm64
+# wasmtime or Dawn C .so fails (does not skip). Never publish :smoke-app.
 name: Publish
 
 on:
@@ -34,7 +35,7 @@ jobs:
   publish:
     name: publish
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     environment: release
     if: >-
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
@@ -66,6 +67,9 @@ jobs:
       - name: Build Android natives
         uses: ./.github/actions/build-android-natives
 
+      - name: Build Dawn C libwebgpu_dawn.so
+        uses: ./.github/actions/build-dawn-c
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -80,8 +84,13 @@ jobs:
           set -euo pipefail
           chmod +x gradlew
           SO="android/jniLibs/arm64-v8a/libwasmtime_android_kt.so"
+          DAWN_SO="native/third_party/dawn-c/out/arm64-v8a/libwebgpu_dawn.so"
           if [ ! -f "$SO" ]; then
             echo "missing $SO after cargo-ndk (cannot press)"
+            exit 1
+          fi
+          if [ ! -f "$DAWN_SO" ]; then
+            echo "missing $DAWN_SO after Dawn C recipe (cannot press)"
             exit 1
           fi
 

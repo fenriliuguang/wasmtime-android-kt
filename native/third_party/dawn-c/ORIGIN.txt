@@ -1,4 +1,4 @@
-Dawn C API Android `.so` (ND-SO). Not the product default (ND-DEFAULT).
+Dawn C API Android `.so` (NativeGpu / `GpuBackends.dawn()`).
 
 Pin matches `androidx.webgpu:webgpu:1.0.0-alpha05` AAR
 `assets/dawn_build_metadata.json` → `dawn_source_commit_sha`:
@@ -12,14 +12,19 @@ androidx JNI leftover — C API adapter, not a second Dawn (NG-7).
 Recipe (does **not** git-add any `.so`):
 
   python3 ./scripts/build-dawn-c-android.py --probe-aar
-  python3 ./scripts/build-dawn-c-android.py --build
+  python3 ./scripts/build-dawn-c-android.py --build --targets arm64-v8a x86_64
   .\scripts\build-dawn-c-android.ps1 -ProbeAar
-  .\scripts\build-dawn-c-android.ps1 -Build
+  .\scripts\build-dawn-c-android.ps1 -Build -Targets arm64-v8a,x86_64
 
 `--probe-aar` downloads the published AAR into `.cache/` (gitignored) and
 records JNI leftover size + missing `webgpu.h` exports.
 `--build` needs NDK `28.2.13676358` and writes
 `out/<abi>/libwebgpu_dawn.so` plus generated `webgpu.h` under `install/`.
 
+Press (GAV 0.1.1+) runs `--build` and packs the `.so` into the `host-dawn`
+AAR. Consumers of `android-webgpu` / `host-dawn` do not rebuild Dawn.
+Cloud CI assemble without the recipe stays table-backed.
+
 Do not git-add `libwebgpu_c_bundled.so` (already inside androidx.webgpu).
 Do not ship androidx bundled + this C API `.so` together in the default APK.
+`--prebuilt` (Google dated Android `.a`) is not the press path (different SHA).

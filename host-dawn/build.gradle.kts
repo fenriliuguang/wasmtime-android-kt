@@ -6,7 +6,7 @@ plugins {
 extra["wasmtime.publishedArtifactId"] = "host-dawn"
 extra["wasmtime.publishedName"] = "Wasmtime Android Dawn host"
 extra["wasmtime.publishedDescription"] =
-    "Dawn C (NativeGpu) default + androidx dawn-jni leftover. Prefer android-webgpu unless BYO runtime."
+    "Dawn C NativeGpu (packs libwebgpu_dawn.so) + androidx dawn-jni leftover. Prefer android-webgpu unless BYO runtime."
 apply(from = rootProject.file("gradle/wasmtime-publish.gradle"))
 
 android {
@@ -30,7 +30,8 @@ android {
     sourceSets {
         getByName("main") {
             // Recipe output `native/third_party/dawn-c/out/<abi>/libwebgpu_dawn.so`
-            // (gitignored). Empty dir is fine when Cloud has no NDK.
+            // (gitignored). Cloud CI assemble may be empty (table-backed).
+            // Press (0.1.1+) fails if arm64 is missing — see publish.yml.
             jniLibs.directories.add("${rootProject.projectDir}/native/third_party/dawn-c/out")
         }
     }

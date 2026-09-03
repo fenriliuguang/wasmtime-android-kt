@@ -10,7 +10,7 @@ Hard boundaries until a new RFC ([`rfc.md`](rfc.md)).
 | NG-3 | Reimplement a full **Kotlin WebGPU client API** |
 | NG-4 | Treat “all WASI 0.3 worlds” or “full wasi-testsuite P3” as the single KPI |
 | NG-5 | Claim a **compliant wasi:webgpu product**, CTS pass, or WASI 1.0 distro |
-| NG-6 | Publish **Maven Central** / GitHub Packages **outside** GitHub Environment `release`, or when secrets / arm64 `.so` are missing. `0.1.0` is pressed; later GAVs still go through that Environment |
+| NG-6 | Publish **Maven Central** / GitHub Packages **outside** GitHub Environment `release`, or when secrets / arm64 wasmtime `.so` / arm64 `libwebgpu_dawn.so` are missing. `0.1.1` packs NativeGpu into `host-dawn`; later GAVs still go through that Environment |
 | NG-7 | Implement a **second Dawn renderer**. Packaging / adapting **one** Dawn (C API default + `dawn-jni` leftover) is allowed. wgpu-native as default is a second renderer |
 | NG-8 | Treat Latch / sync-compat as **true** CM async |
 | NG-9 | Promote **wasi-gfx / multi-window** to a **P0** wasi:webgpu re-queue. Size/resize and pin input streams are product; multi-window is named-only |

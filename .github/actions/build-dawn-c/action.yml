@@ -1,0 +1,47 @@
+name: Build Dawn C Android
+description: Recipe libwebgpu_dawn.so into native/third_party/dawn-c/out (gitignored). Press packs this into :host-dawn.
+
+inputs:
+  targets:
+    description: Android ABIs (space-separated)
+    required: false
+    default: "arm64-v8a x86_64"
+
+runs:
+  using: composite
+  steps:
+    - name: Install cmake and ninja
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
+
+    - name: Point ANDROID_NDK_HOME at the pinned NDK
+      shell: bash
+      run: |
+        set -euo pipefail
+        SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+        if [ -z "$SDK" ]; then
+          echo "ANDROID_SDK_ROOT / ANDROID_HOME not set (run build-android-natives first)"
+          exit 1
+        fi
+        NDK="$SDK/ndk/28.2.13676358"
+        test -f "$NDK/build/cmake/android.toolchain.cmake"
+        echo "ANDROID_NDK_HOME=$NDK" >> "$GITHUB_ENV"
+        echo "ANDROID_NDK_ROOT=$NDK" >> "$GITHUB_ENV"
+        echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+
+    - name: Cache Dawn checkout and .so
+      uses: actions/cache@v4
+      with:
+        path: |
+          native/third_party/dawn-c/src
+          native/third_party/dawn-c/.cache
+          native/third_party/dawn-c/out
+          native/third_party/dawn-c/install
+        key: dawn-c-${{ hashFiles('scripts/build-dawn-c-android.py', 'native/third_party/dawn-c/ORIGIN.txt') }}-${{ inputs.targets }}
+
+    - name: Build libwebgpu_dawn.so
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 ./scripts/build-dawn-c-android.py --build --targets ${{ inputs.targets }}
+        test -f native/third_party/dawn-c/out/arm64-v8a/libwebgpu_dawn.so
