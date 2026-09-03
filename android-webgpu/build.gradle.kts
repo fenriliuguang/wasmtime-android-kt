@@ -6,7 +6,7 @@ plugins {
 extra["wasmtime.publishedArtifactId"] = "android-webgpu"
 extra["wasmtime.publishedName"] = "Wasmtime Android WebGPU bundle"
 extra["wasmtime.publishedDescription"] =
-    "Default 0.x product bundle: runtime + Dawn host. Recommended consumer coordinate."
+    "Default 0.x product bundle: runtime + Dawn host (packs libwebgpu_dawn.so from 0.1.1). Recommended consumer coordinate."
 apply(from = rootProject.file("gradle/wasmtime-publish.gradle"))
 
 android {

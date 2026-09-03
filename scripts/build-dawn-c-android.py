@@ -2,11 +2,13 @@
 """Android Dawn C API `.so` recipe (ND-SO).
 
 Pin matches androidx.webgpu 1.0.0-alpha05 AAR dawn_build_metadata.json.
-Does **not** git-add any `.so`. Does **not** enable the product default
-(ND-DEFAULT). One Dawn renderer: C API adapter, not wgpu-native.
+Does **not** git-add any `.so`. Product NativeGpu (`GpuBackends.dawn()`)
+loads `libwebgpu_dawn.so` when present. Press (0.1.1+) runs `--build` and
+packs the arm64 `.so` into `:host-dawn`. Cloud CI assemble may omit it
+(table-backed).
 
   python3 ./scripts/build-dawn-c-android.py --probe-aar
-  python3 ./scripts/build-dawn-c-android.py --build [--targets arm64-v8a]
+  python3 ./scripts/build-dawn-c-android.py --build [--targets arm64-v8a x86_64]
 
 `--probe-aar` works without NDK (Cloud). `--build` needs NDK 28.2.13676358.
 """
@@ -463,7 +465,6 @@ def main() -> None:
         ap.print_help()
         print()
         die("pass --probe-aar and/or --build and/or --prebuilt")
-    print(f"Playbook: docs/agent/remaining.md")
     print(f"Dawn pin: {DAWN_COMMIT}  androidx.webgpu:{ANDROIDX_WEBGPU}")
     print(f"Output (gitignored): {OUT}/<abi>/{C_API_SO}")
     if args.probe_aar:

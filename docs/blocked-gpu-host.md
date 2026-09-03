@@ -6,9 +6,9 @@
 
 **ND-DEFAULT (2026-09-01):** product `GpuBackends.dawn()` / `:android-webgpu` is **NativeGpu**. `DawnWasiWebGpuHost.kt` stays the **mapping spec** and the `id = "dawn-jni"` leftover. Default APK **excludes** `libwebgpu_c_bundled.so` and packs recipe `libwebgpu_dawn.so` when built (do not ship both).
 
-**ND-SO pin:** same Dawn SHA as `androidx.webgpu:webgpu:1.0.0-alpha05` AAR `assets/dawn_build_metadata.json` (`9d41fdf36977cca92361c6ae2769129bbaaafd9b`). Recipe: [`../scripts/build-dawn-c-android.py`](../scripts/build-dawn-c-android.py) / [`ORIGIN.txt`](../native/third_party/dawn-c/ORIGIN.txt). Output `libwebgpu_dawn.so` is **gitignored**.
+**ND-SO pin:** same Dawn SHA as `androidx.webgpu:webgpu:1.0.0-alpha05` AAR `assets/dawn_build_metadata.json` (`9d41fdf36977cca92361c6ae2769129bbaaafd9b`). Recipe: [`../scripts/build-dawn-c-android.py`](../scripts/build-dawn-c-android.py) / [`ORIGIN.txt`](../native/third_party/dawn-c/ORIGIN.txt). Output `libwebgpu_dawn.so` is **gitignored**. **0.1.1 press** runs the recipe and packs arm64 (+ x86_64) into the published `host-dawn` AAR. Apps consume that AAR; they do not rebuild Dawn or republish `androidx.webgpu`.
 
-Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. Maven coordinates (`0.1.0`, pressed): `runtime` / `host-dawn` / **`android-webgpu`**. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
+Public product surface stays `:host-dawn` / `:android-webgpu` / `WebGpuBackend`. Maven coordinates (`0.1.1`): `runtime` / `host-dawn` / **`android-webgpu`**. `WasiWebGpuHost` is an impl detail (package `…experimental…` kept on the first copy).
 
 ## 1. In-tree layout
 

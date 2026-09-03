@@ -14,7 +14,7 @@ First proposal world: canonical [`wasi:webgpu`](https://github.com/WebAssembly/w
 - Kotlin-friendly lifecycle, threads, and errors.
 - **Citable** experimental host — [`rfc.md`](rfc.md).
 
-Product class **B**, perpetual **`0.x`**, coordinate **`0.1.0`** (pressed). Still **not** a compliant wasi:webgpu product (NG-5).
+Product class **B**, perpetual **`0.x`**, coordinate **`0.1.1`**. Still **not** a compliant wasi:webgpu product (NG-5).
 
 ## Principles
 
@@ -31,4 +31,4 @@ Product subset: [`claim-010.md`](claim-010.md). Wasmtime major bumps stay **name
 
 ## Claims
 
-Package coordinates stay **`0.x`** until upstream 1.0 gates in [`rfc.md`](rfc.md) §6. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). Do not press when secrets are missing. No CTS / WASI-1.0 distro marketing.
+Package coordinates stay **`0.x`** until upstream 1.0 gates in [`rfc.md`](rfc.md) §6. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). Do not press when secrets or arm64 wasmtime / Dawn C `.so` are missing. No CTS / WASI-1.0 distro marketing.
