@@ -13,7 +13,7 @@ This repo is an **Android-first app runtime** (class B): upstream Wasmtime, Comp
 | Question | Decision |
 |----------|----------|
 | Versioning | Perpetual **`0.x.y`** until `wasi:webgpu` and `wasi-gfx` are ratified WASI, WASI publishes **1.0**, and `androidx.webgpu` ships a non-alpha release. Break in MINOR. |
-| Coordinate | **`0.1.0`** until that release is pressed. Do not bump the GAV for a consume-path change. Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). Do not press when secrets or arm64 `.so` are missing. No `0.0.x-preview` Central. |
+| Coordinate | **`0.1.0`** (pressed). Later bumps follow [`api-stability.md`](api-stability.md). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml). Do not press when secrets or arm64 `.so` are missing. No `0.0.x-preview` Central. |
 | Engine | Official `wasmtime` **47.x** only. True CM async only. |
 | WASI claim | Product subset, not wasi-testsuite / “full WASI 0.3”. |
 | WebGPU claim | Most of the pinned WIT instantiates; Dawn holes listed. **Not** CTS (NG-5). |

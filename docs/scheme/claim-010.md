@@ -4,7 +4,7 @@
 
 Release-notes-shaped **product subset**. Policy: [`rfc.md`](rfc.md).
 
-**This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md). Coordinate **`0.1.0`** (not pressed). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml).
+**This is not a compliance claim.** No WebGPU CTS. No “full WASI 0.3”. No this-repo 1.0. See [`non-goals.md`](non-goals.md). Coordinate **`0.1.0`** (pressed). Publishing CI: [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml).
 
 ## 1. One-line claim
 
@@ -54,7 +54,6 @@ Sandbox (documented promise, not a proof): FS = app-private; TCP = outbound + IN
 | This-repo **1.0.0** | Upstream gates in [`rfc.md`](rfc.md) §6 |
 | `wasmtime-wasi` crate | Size + Android thread review |
 | JS-style `start(callback)` | gfx loop is pull-stream |
-| Maven press at this coordinate | Workflow exists; first press still needs secrets + arm64 `.so` |
 
 ## 6. Device-verified on-screen
 

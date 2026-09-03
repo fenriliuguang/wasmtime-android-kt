@@ -4,6 +4,6 @@
 
 与英文冲突时以英文为准。原 L5 / 生态 / 可插拔 GPU / gfx 循环四份 RFC 已合并为此页。
 
-- 产品：Android 优先、可引用宿主；坐标 **`0.1.0`**（未发布前不因消费路径升 GAV）；永续 `0.x` 直至上游 1.0。
+- 产品：Android 优先、可引用宿主；坐标 **`0.1.0`**（已发布）；后续升 GAV 见 [`api-stability.md`](api-stability.md)；永续 `0.x` 直至上游 1.0。
 - GPU：默认进程内 Dawn C（`NativeGpu`）；`dawn-jni` 遗留；未接线 → `request-adapter` **`none`**。
 - gfx：钉 `wasi-gfx:surface@0.2.0`；guest 拉 `on-frame`。尺寸/resize 与 pin 输入流已落地。非紧急：`unconfigure`、带时间戳的 frame-event、Lost/Outdated `result`、多窗口。
