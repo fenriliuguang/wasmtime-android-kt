@@ -91,11 +91,14 @@ def assemble() -> None:
     subprocess.check_call(cmd, cwd=ROOT)
 
 
-def expect_match(label: str, want: str, got: str, aar: Path, inner: str) -> None:
+def expect_match(label: str, want_path: Path, got: str, aar: Path, inner: str) -> None:
+    want = sha256_file(want_path)
     if want != got:
+        want_n = want_path.stat().st_size
         die(
             f"{label}: {aar.name} {inner} SHA256 {got} != recipe {want} "
-            "(AAR is not the file on disk — do not press)"
+            f"(recipe {want_n} bytes; AGP must not strip/realign this .so — "
+            "host-dawn packaging.jniLibs.keepDebugSymbols + useLegacyPackaging)"
         )
     print(f"ok {label} {got}")
 
@@ -126,14 +129,14 @@ def main() -> None:
     dawn_aar = find_release_aar("host-dawn")
     expect_match(
         "libwasmtime_android_kt.so",
-        sha256_file(WASMTIME_SO),
+        WASMTIME_SO,
         sha256_zip_entry(runtime_aar, "jni/arm64-v8a/libwasmtime_android_kt.so"),
         runtime_aar,
         "jni/arm64-v8a/libwasmtime_android_kt.so",
     )
     expect_match(
         "libwebgpu_dawn.so",
-        sha256_file(DAWN_SO),
+        DAWN_SO,
         sha256_zip_entry(dawn_aar, "jni/arm64-v8a/libwebgpu_dawn.so"),
         dawn_aar,
         "jni/arm64-v8a/libwebgpu_dawn.so",
