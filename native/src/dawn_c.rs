@@ -1027,6 +1027,10 @@ pub fn from_ptr(p: WgpuObj) -> DawnSlot {
     p as DawnSlot
 }
 
+/// Press-pin `WGPURequestAdapterCallback` (Google Android prebuilt
+/// `bddf1a04…`): `(status, adapter, WGPUStringView, userdata1, userdata2)`.
+/// `STATUS_SUCCESS` is 1. Success with a null adapter is still a failed
+/// request (Maven `0.1.1` `--build` at `9d41fdf` hit that log).
 unsafe extern "C" fn on_adapter(
     status: WgpuEnum,
     adapter: WgpuObj,
@@ -1131,8 +1135,9 @@ fn request_adapter_backend(
         log_android(
             false,
             &format!(
-                "wgpuInstanceRequestAdapter failed backend={backend} status={}",
-                out.0
+                "wgpuInstanceRequestAdapter failed backend={backend} status={} adapter_null={}",
+                out.0,
+                out.1.is_null()
             ),
         );
         0

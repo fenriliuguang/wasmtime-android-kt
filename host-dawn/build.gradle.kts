@@ -31,7 +31,7 @@ android {
         getByName("main") {
             // Recipe output `native/third_party/dawn-c/out/<abi>/libwebgpu_dawn.so`
             // (gitignored). Cloud CI assemble may be empty (table-backed).
-            // Press (0.1.1+) fails if arm64 is missing — see publish.yml.
+            // Press (0.1.2+) fails if arm64 is missing — see publish.yml.
             jniLibs.directories.add("${rootProject.projectDir}/native/third_party/dawn-c/out")
         }
     }

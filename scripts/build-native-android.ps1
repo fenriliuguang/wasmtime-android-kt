@@ -43,12 +43,13 @@ $env:ANDROID_NDK_ROOT = $Ndk
 if (-not $env:RUSTUP_TOOLCHAIN) {
     $env:RUSTUP_TOOLCHAIN = $RustToolchain
 }
-# Windows host + aarch64/x86_64-linux-android: rustc 1.97.1 can ACCESS_VIOLATION
-# at some opt-levels. Default 2 so stream.write / cli stdio instrument frames
-# fit ART (~1MiB) and the 8MiB cm-pump; override with 0 if rustc crashes.
-if (($IsWindows -or $env:OS -eq "Windows_NT") -and -not $env:CARGO_PROFILE_RELEASE_OPT_LEVEL) {
+# Pin opt-level 2 on every host (Windows local + Linux CI). Device-green
+# libwasmtime was Windows cargo-ndk at 2; Linux --release default 3 was a
+# different .so (Maven 0.1.1). Windows rustc 1.97.1 can ACCESS_VIOLATION at
+# some levels — override with 0 if that happens. Also keeps ART frames smaller.
+if (-not $env:CARGO_PROFILE_RELEASE_OPT_LEVEL) {
     $env:CARGO_PROFILE_RELEASE_OPT_LEVEL = "2"
-    Write-Host "Note: CARGO_PROFILE_RELEASE_OPT_LEVEL=2 (set 0 if rustc ACCESS_VIOLATION when cross-compiling)"
+    Write-Host "Note: CARGO_PROFILE_RELEASE_OPT_LEVEL=2 (press pin; set 0 if rustc ACCESS_VIOLATION)"
 }
 $env:CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS = "-Lnative=$Stubs"
 $env:CARGO_TARGET_X86_64_LINUX_ANDROID_RUSTFLAGS = "-Lnative=$Stubs"

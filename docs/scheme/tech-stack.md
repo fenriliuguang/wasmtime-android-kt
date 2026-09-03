@@ -40,7 +40,7 @@ Target: [`rfc.md`](rfc.md) §2.
 
 SPI lives in `runtime-api`. Do not leak foreign `WasiWebGpuHost` types into L1. Canonical guests: `wasi:webgpu@0.3.0-rc.2`. Do not add new `experimental:webgpu-cm` exports.
 
-**Today:** Host Kotlin lives in `:host-dawn`; `androidx.webgpu` is the Google Maven AAR (not republished here). Product NativeGpu is recipe `libwebgpu_dawn.so`, packed into published `host-dawn` from **0.1.1**. Cloud CI assemble without the recipe stays table-backed. See [`../blocked-gpu-host.md`](../blocked-gpu-host.md). `:runtime-jni` does not depend on Dawn types.
+**Today:** Host Kotlin lives in `:host-dawn`; `androidx.webgpu` is the Google Maven AAR (not republished here). Product NativeGpu is `--prebuilt` `libwebgpu_dawn.so` (Google Android dated `.a`), packed into published `host-dawn` from **0.1.2-SNAPSHOT**. Cloud CI assemble without the recipe stays table-backed. See [`../blocked-gpu-host.md`](../blocked-gpu-host.md). `:runtime-jni` does not depend on Dawn types.
 
 ## Build
 
