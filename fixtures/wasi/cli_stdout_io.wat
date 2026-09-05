@@ -1,7 +1,7 @@
-;; WASI 0.3: wasi:cli/stdout@0.3.0#write-via-stream err path (P010-CLIERR).
-;; Official: stream<u8> -> future<result<_, error-code>>.
-;; Guest writes a NUL byte; host returns error-code.illegal-byte-sequence.
-;; Harness: run returns 1 after matching disc=err + payload=illegal-byte-sequence.
+;; WASI 0.3 leftover L-ERR-CLI: extra guest-visible err path beyond NUL.
+;; Official error-code: io / illegal-byte-sequence / pipe.
+;; Guest writes a lone 0x80 (invalid UTF-8); host returns error-code.io.
+;; Harness: run returns 1 after matching disc=err + payload=io (0).
 (component
   (import "wasi:cli/stdout@0.3.0" (instance $stdout
     (type $error-code-def (enum "io" "illegal-byte-sequence" "pipe"))
@@ -19,7 +19,7 @@
 
   (core module $libc
     (memory (export "mem") 1)
-    (data (i32.const 16) "\00")
+    (data (i32.const 16) "\80")
   )
   (core instance $libc (instantiate $libc))
 
@@ -51,15 +51,13 @@
 
       (call $stream.drop-writable (local.get $w))
 
-      ;; future.read writes packed result<_, error-code> at mem[32]: disc (1=err), payload at 33.
       (local.set $status (call $future.read (local.get $fut) (i32.const 32)))
       (if (i32.eq (local.get $status) (i32.const -1))
         (then unreachable))
       (call $future.drop-readable (local.get $fut))
-      ;; result<_, error-code> is packed: disc u8 + payload u8 (not 4-byte aligned).
       (if (i32.ne (i32.load8_u (i32.const 32)) (i32.const 1))
         (then unreachable))
-      (if (i32.ne (i32.load8_u (i32.const 33)) (i32.const 1))
+      (if (i32.ne (i32.load8_u (i32.const 33)) (i32.const 0))
         (then unreachable))
 
       i32.const 1

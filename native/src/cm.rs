@@ -8,11 +8,10 @@ use crate::host::{
     gfx_input_lookup, gfx_input_register, gfx_input_unregister, gfx_on_frame_lookup,
     gfx_on_frame_register, gfx_on_frame_unregister, wasi_monotonic_now_ns, GfxInputTake,
     GfxKeyGate, GfxKeySample, GfxOnFrameGate, GfxOnFrameTake, GfxOnResizeGate, GfxOnResizeTake,
-    GfxPointerGate, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer,
-    GpuCommandBuffer, GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice,
-    GpuPipelineLayout, GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder,
-    GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture,
-    GpuTextureView, HostState, Widget,
+    GfxPointerGate, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
+    GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout,
+    GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder,
+    GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
 };
 use crate::jvm;
 use crate::native_gpu::{NativeRequestAdapterOptions, NativeRequestDeviceDescriptor};
@@ -329,14 +328,12 @@ struct SystemClockInstant {
     nanoseconds: u32,
 }
 
-/// WASI 0.3.0 `wasi:cli` `error-code` (G-cli-error subset; not the full dump).
+/// WASI 0.3.0 `wasi:cli/types` `error-code` (official: io / illegal-byte-sequence / pipe).
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
 enum CliErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
     #[component(name = "io")]
     Io,
     #[component(name = "illegal-byte-sequence")]
@@ -1584,13 +1581,16 @@ pub(crate) fn define_host(
             },
         )?;
         let fut = FutureReader::new(store, async move {
-            let _n = match rx.await {
+            let n = match rx.await {
                 Ok(n) => n,
-                Err(_) => 0,
+                Err(_) => return Ok::<_, wasmtime::Error>(Err(CliErrorCode::Pipe)),
             };
             let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
+            let _ = n;
             if bytes.iter().any(|&b| b == 0) {
-                Ok::<_, wasmtime::Error>(Err(CliErrorCode::IllegalByteSequence))
+                Ok(Err(CliErrorCode::IllegalByteSequence))
+            } else if std::str::from_utf8(&bytes).is_err() {
+                Ok(Err(CliErrorCode::Io))
             } else {
                 Ok(Ok(()))
             }
