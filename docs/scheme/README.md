@@ -7,6 +7,7 @@ Product RFC and shape docs. Language: [`../LANGUAGE.md`](../LANGUAGE.md). Coordi
 | Doc | Role |
 |-----|------|
 | [`rfc.md`](rfc.md) | **Accepted:** product / GPU host / gfx loop |
+| [`rfc-wasi-p3.md`](rfc-wasi-p3.md) | **Draft:** WASI 0.3 leftover fill vs completeness (`wasmtime-wasi` / testsuite stay Out) |
 | [`claim-010.md`](claim-010.md) | 0.1.x claim table (not CTS) |
 | [`guest-shape.md`](guest-shape.md) | WIT shape gates |
 | [`charter.md`](charter.md) | Vision / principles |
