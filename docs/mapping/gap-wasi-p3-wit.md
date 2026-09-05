@@ -29,5 +29,5 @@ Pin: [WASI 0.3.0](https://github.com/WebAssembly/WASI/releases/tag/v0.3.0).
 | CM stream/future, `wasi:random`, `wasi:clocks` instant | **Smoke** |
 | `wasi:cli` stdout/stderr/stdin/run | **Smoke** + official `error-code` (`io` / `illegal-byte-sequence` / `pipe`); NUL → `illegal-byte-sequence`; invalid UTF-8 → `io` |
 | `wasi:filesystem` | **Smoke** + official `error-code` variant; `..` → `access`; missing descriptor → `bad-descriptor`; r/w IO → `io` / `is-directory` (no `unknown`) |
-| `wasi:sockets` | **Smoke** create + connect + outbound non-loopback IPv4 |
+| `wasi:sockets` | **Smoke** + official `error-code` variant; IPv6 create → `not-supported`; failed connect mapped off `unknown` |
 | `wasi:http` | **Smoke** body `stream<u8>` + outbound GET; product linker omits request/response constructors |

@@ -513,6 +513,7 @@ fn fs_open_child(
 struct TcpSocket {
     client: Option<std::net::TcpStream>,
     server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
+    writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
 struct TcpConnected {
@@ -532,14 +533,60 @@ enum IpAddressFamily {
     Ipv6,
 }
 
-/// WASI 0.3.0 sockets `error-code` subset (`unknown` only).
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+/// WASI 0.3.0 sockets `error-code` (official variant; last case `other`).
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum SockErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
+    #[component(name = "access-denied")]
+    AccessDenied,
+    #[component(name = "not-supported")]
+    NotSupported,
+    #[component(name = "invalid-argument")]
+    InvalidArgument,
+    #[component(name = "out-of-memory")]
+    OutOfMemory,
+    #[component(name = "timeout")]
+    Timeout,
+    #[component(name = "invalid-state")]
+    InvalidState,
+    #[component(name = "address-not-bindable")]
+    AddressNotBindable,
+    #[component(name = "address-in-use")]
+    AddressInUse,
+    #[component(name = "remote-unreachable")]
+    RemoteUnreachable,
+    #[component(name = "connection-refused")]
+    ConnectionRefused,
+    #[component(name = "connection-broken")]
+    ConnectionBroken,
+    #[component(name = "connection-reset")]
+    ConnectionReset,
+    #[component(name = "connection-aborted")]
+    ConnectionAborted,
+    #[component(name = "datagram-too-large")]
+    DatagramTooLarge,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+fn sock_error_from_io(err: &std::io::Error) -> SockErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        PermissionDenied => SockErrorCode::AccessDenied,
+        InvalidInput => SockErrorCode::InvalidArgument,
+        OutOfMemory => SockErrorCode::OutOfMemory,
+        TimedOut => SockErrorCode::Timeout,
+        AddrNotAvailable => SockErrorCode::AddressNotBindable,
+        AddrInUse => SockErrorCode::AddressInUse,
+        HostUnreachable | NetworkUnreachable | NetworkDown => SockErrorCode::RemoteUnreachable,
+        ConnectionRefused => SockErrorCode::ConnectionRefused,
+        BrokenPipe => SockErrorCode::ConnectionBroken,
+        ConnectionReset => SockErrorCode::ConnectionReset,
+        ConnectionAborted => SockErrorCode::ConnectionAborted,
+        Unsupported => SockErrorCode::NotSupported,
+        _ => SockErrorCode::Other(None),
+    }
 }
 
 /// WASI 0.3.0 `ipv4-socket-address` (P1-SK2 / P010-TCP).
@@ -1874,8 +1921,9 @@ pub(crate) fn define_host(
 
     // WASI 0.3: wasi:sockets Android subset (W7 + P1-SK1 + P1-SK2 + P010-TCP).
     // Official packages: wasi:sockets/tcp@0.3.0 + tcp-create-socket@0.3.0.
-    // create-tcp-socket(ip-address-family) -> result; connect is async
-    // ip-socket-address -> result. Loopback: host ignores port (echo pair).
+    // create-tcp-socket(ip-address-family) -> result; connect is a sync WIT
+    // func (wasm-tools 1.239 cannot parse import `func async`) that still
+    // dials on a helper thread. Loopback: host ignores port (echo pair).
     // Non-loopback: host dials that IPv4:port. write/read via streams (cli shapes).
     // No UDP, no listen, no ip-name-lookup. INTERNET + helper-thread: threading-android.md.
     {
@@ -1892,33 +1940,25 @@ pub(crate) fn define_host(
             },
         )
         .map_err(|e| e.to_string())?;
-        tcp.func_wrap_concurrent(
+        tcp.func_wrap(
             "[method]tcp-socket.connect",
-            |accessor, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
-                Box::pin(async move {
-                    accessor.with(|mut access| -> wasmtime::Result<()> {
-                        access.data_mut().table.get(&sock)?;
-                        Ok(())
-                    })?;
-                    let (done_tx, done_rx) = oneshot::channel::<std::io::Result<TcpConnected>>();
-                    std::thread::spawn(move || {
-                        let _ = done_tx.send(tcp_connect_guest(addr));
-                    });
-                    let connected = match done_rx
-                        .await
-                        .map_err(|_| wasmtime::Error::msg("connect canceled"))?
-                    {
-                        Ok(c) => c,
-                        Err(_) => return Ok((Err(SockErrorCode::Unknown),)),
-                    };
-                    accessor.with(|mut access| -> wasmtime::Result<()> {
-                        let entry = access.data_mut().table.get_mut(&sock)?;
-                        entry.client = Some(connected.client);
-                        entry.server = connected.server;
-                        Ok(())
-                    })?;
-                    Ok((Ok::<(), SockErrorCode>(()),))
-                })
+            |mut store, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
+                store.data_mut().table.get(&sock)?;
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(tcp_connect_guest(addr));
+                });
+                let connected = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("connect canceled"))?
+                {
+                    Ok(c) => c,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                let entry = store.data_mut().table.get_mut(&sock)?;
+                entry.client = Some(connected.client);
+                entry.server = connected.server;
+                Ok((Ok::<(), SockErrorCode>(()),))
             },
         )
         .map_err(|e| e.to_string())?;
@@ -1943,18 +1983,19 @@ pub(crate) fn define_host(
                         max_per_poll: usize::MAX,
                     },
                 )?;
-                let fut = FutureReader::new(&mut store, async move {
-                    let _n = rx.await.unwrap_or(0);
+                let writer = std::thread::spawn(move || {
+                    let _n = pollster::block_on(rx).unwrap_or(0);
+                    let _ = _n;
                     let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
                     use std::io::Write;
                     let mut client = client;
-                    match client
+                    client
                         .write_all(&bytes)
                         .and_then(|_| client.shutdown(std::net::Shutdown::Write))
-                    {
-                        Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(())),
-                        Err(_) => Ok(Err(SockErrorCode::Unknown)),
-                    }
+                });
+                store.data_mut().table.get_mut(&sock)?.writer = Some(writer);
+                let fut = FutureReader::new(&mut store, async move {
+                    Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(()))
                 })?;
                 Ok((fut,))
             },
@@ -1965,6 +2006,9 @@ pub(crate) fn define_host(
             |mut store, (sock,): (Resource<TcpSocket>,)| {
                 use std::io::Read;
                 let entry = store.data_mut().table.get_mut(&sock)?;
+                if let Some(h) = entry.writer.take() {
+                    let _ = h.join();
+                }
                 let mut client = entry
                     .client
                     .as_ref()
@@ -2009,10 +2053,11 @@ pub(crate) fn define_host(
                         let resource = store.data_mut().table.push(TcpSocket {
                             client: None,
                             server: None,
+                            writer: None,
                         })?;
                         Ok((Ok(resource),))
                     }
-                    IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::Unknown),)),
+                    IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::NotSupported),)),
                 },
             )
             .map_err(|e| e.to_string())?;

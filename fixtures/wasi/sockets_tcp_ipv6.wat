@@ -1,0 +1,71 @@
+;; L-ERR-SOCK: create-tcp-socket(ipv6) → error-code.not-supported (variant disc 1).
+(component
+  (import "wasi:sockets/tcp-create-socket@0.3.0" (instance $create
+    (export "tcp-socket" (type $tcp-socket (sub resource)))
+    (type $error-code-def (variant
+      (case "access-denied")
+      (case "not-supported")
+      (case "invalid-argument")
+      (case "out-of-memory")
+      (case "timeout")
+      (case "invalid-state")
+      (case "address-not-bindable")
+      (case "address-in-use")
+      (case "remote-unreachable")
+      (case "connection-refused")
+      (case "connection-broken")
+      (case "connection-reset")
+      (case "connection-aborted")
+      (case "datagram-too-large")
+      (case "other" (option string))
+    ))
+    (export "error-code" (type $ec (eq $error-code-def)))
+    (type $family-def (enum "ipv4" "ipv6"))
+    (export "ip-address-family" (type $family (eq $family-def)))
+    (type $create-result (result (own $tcp-socket) (error $ec)))
+    (export "create-tcp-socket"
+      (func (param "address-family" $family) (result $create-result)))
+  ))
+  (alias export $create "create-tcp-socket" (func $create-tcp-socket))
+  (core module $libc
+    (memory (export "mem") 1)
+    (global $last (mut i32) (i32.const 256))
+    (func (export "realloc")
+      (param $oldptr i32) (param $oldlen i32) (param $align i32) (param $newlen i32)
+      (result i32)
+      (local $ret i32)
+      (local.set $ret (global.get $last))
+      (global.set $last
+        (i32.and
+          (i32.add (i32.add (local.get $ret) (local.get $newlen)) (i32.const 7))
+          (i32.const -8)))
+      (local.get $ret)
+    )
+  )
+  (core instance $libc (instantiate $libc))
+  (core module $m
+    (import "" "mem" (memory 1))
+    (import "" "create-tcp-socket" (func $create-tcp-socket (param i32 i32)))
+    (func (export "run") (result i32)
+      ;; family ipv6 = 1; result at 192 (disc 1=err, variant disc 1=not-supported).
+      (call $create-tcp-socket (i32.const 1) (i32.const 192))
+      (if (i32.ne (i32.load8_u (i32.const 192)) (i32.const 1))
+        (then unreachable))
+      (if (i32.ne (i32.load8_u (i32.const 196)) (i32.const 1))
+        (then unreachable))
+      (i32.const 1)
+    )
+  )
+  (core func $create_lower
+    (canon lower (func $create-tcp-socket)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
+  (core instance $i (instantiate $m
+    (with "" (instance
+      (export "mem" (memory $libc "mem"))
+      (export "create-tcp-socket" (func $create_lower))
+    ))
+  ))
+  (func (export "run") (result u32)
+    (canon lift (core func $i "run")))
+)
