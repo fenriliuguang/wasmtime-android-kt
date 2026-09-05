@@ -2,7 +2,7 @@
 
 [English](CONTRIBUTING.md) | **中文**
 
-短命分支 + PR；不要直推 `main`。英文为正文。`release/0.1.0` 可作为维护分支，且从不在该分支发包。
+短命分支 + PR；不要直推 `main`。英文为正文。`release/0.1.0` 可作为维护分支，且从不在该分支发包。具名例外：长刀 **`cursor/wasi-p3-leftover-b677`**（WASI 0.3 leftover），一刀一 commit，remaining 空了再开一个 PR。
 
 必读：[`docs/scheme/rfc.md`](docs/scheme/rfc.md)、[`docs/scheme/guest-shape.md`](docs/scheme/guest-shape.md)、[`docs/scheme/claim-010.md`](docs/scheme/claim-010.md)、[`docs/blocked-gpu-host.md`](docs/blocked-gpu-host.md)。
 

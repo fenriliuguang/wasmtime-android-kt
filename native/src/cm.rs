@@ -8,11 +8,10 @@ use crate::host::{
     gfx_input_lookup, gfx_input_register, gfx_input_unregister, gfx_on_frame_lookup,
     gfx_on_frame_register, gfx_on_frame_unregister, wasi_monotonic_now_ns, GfxInputTake,
     GfxKeyGate, GfxKeySample, GfxOnFrameGate, GfxOnFrameTake, GfxOnResizeGate, GfxOnResizeTake,
-    GfxPointerGate, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer,
-    GpuCommandBuffer, GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice,
-    GpuPipelineLayout, GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder,
-    GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture,
-    GpuTextureView, HostState, Widget,
+    GfxPointerGate, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
+    GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout,
+    GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder,
+    GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
 };
 use crate::jvm;
 use crate::native_gpu::{NativeRequestAdapterOptions, NativeRequestDeviceDescriptor};
@@ -329,14 +328,12 @@ struct SystemClockInstant {
     nanoseconds: u32,
 }
 
-/// WASI 0.3.0 `wasi:cli` `error-code` (G-cli-error subset; not the full dump).
+/// WASI 0.3.0 `wasi:cli/types` `error-code` (official: io / illegal-byte-sequence / pipe).
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
 enum CliErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
     #[component(name = "io")]
     Io,
     #[component(name = "illegal-byte-sequence")]
@@ -345,22 +342,118 @@ enum CliErrorCode {
     Pipe,
 }
 
-/// WASI 0.3.0 `wasi:filesystem` `error-code` subset (`unknown`, `access`).
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+/// WASI 0.3.0 `wasi:filesystem` `error-code` (official variant; last case `other`).
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum FsErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
     #[component(name = "access")]
     Access,
+    #[component(name = "already")]
+    Already,
+    #[component(name = "bad-descriptor")]
+    BadDescriptor,
+    #[component(name = "busy")]
+    Busy,
+    #[component(name = "deadlock")]
+    Deadlock,
+    #[component(name = "quota")]
+    Quota,
+    #[component(name = "exist")]
+    Exist,
+    #[component(name = "file-too-large")]
+    FileTooLarge,
+    #[component(name = "illegal-byte-sequence")]
+    IllegalByteSequence,
+    #[component(name = "in-progress")]
+    InProgress,
+    #[component(name = "interrupted")]
+    Interrupted,
+    #[component(name = "invalid")]
+    Invalid,
+    #[component(name = "io")]
+    Io,
+    #[component(name = "is-directory")]
+    IsDirectory,
+    #[component(name = "loop")]
+    Loop,
+    #[component(name = "too-many-links")]
+    TooManyLinks,
+    #[component(name = "message-size")]
+    MessageSize,
+    #[component(name = "name-too-long")]
+    NameTooLong,
+    #[component(name = "no-device")]
+    NoDevice,
+    #[component(name = "no-entry")]
+    NoEntry,
+    #[component(name = "no-lock")]
+    NoLock,
+    #[component(name = "insufficient-memory")]
+    InsufficientMemory,
+    #[component(name = "insufficient-space")]
+    InsufficientSpace,
+    #[component(name = "not-directory")]
+    NotDirectory,
+    #[component(name = "not-empty")]
+    NotEmpty,
+    #[component(name = "not-recoverable")]
+    NotRecoverable,
+    #[component(name = "unsupported")]
+    Unsupported,
+    #[component(name = "no-tty")]
+    NoTty,
+    #[component(name = "no-such-device")]
+    NoSuchDevice,
+    #[component(name = "overflow")]
+    Overflow,
+    #[component(name = "not-permitted")]
+    NotPermitted,
+    #[component(name = "pipe")]
+    Pipe,
+    #[component(name = "read-only")]
+    ReadOnly,
+    #[component(name = "invalid-seek")]
+    InvalidSeek,
+    #[component(name = "text-file-busy")]
+    TextFileBusy,
+    #[component(name = "cross-device")]
+    CrossDevice,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+fn fs_error_from_io(err: &std::io::Error) -> FsErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        NotFound => FsErrorCode::NoEntry,
+        PermissionDenied => FsErrorCode::Access,
+        AlreadyExists => FsErrorCode::Exist,
+        InvalidInput => FsErrorCode::Invalid,
+        Interrupted => FsErrorCode::Interrupted,
+        OutOfMemory => FsErrorCode::InsufficientMemory,
+        BrokenPipe => FsErrorCode::Pipe,
+        Unsupported => FsErrorCode::Unsupported,
+        IsADirectory => FsErrorCode::IsDirectory,
+        NotADirectory => FsErrorCode::NotDirectory,
+        DirectoryNotEmpty => FsErrorCode::NotEmpty,
+        ReadOnlyFilesystem => FsErrorCode::ReadOnly,
+        StorageFull => FsErrorCode::InsufficientSpace,
+        FileTooLarge => FsErrorCode::FileTooLarge,
+        QuotaExceeded => FsErrorCode::Quota,
+        InvalidFilename => FsErrorCode::IllegalByteSequence,
+        NotSeekable => FsErrorCode::InvalidSeek,
+        _ => FsErrorCode::Io,
+    }
 }
 
 /// Host `resource descriptor` for the W6 preopen smoke. Path is under the
 /// process sandbox root (see `filesystem_sandbox_join`).
+/// `writer` joins before read so guests can drop the write future (official
+/// `error-code` has `other(option<string>)`; `future.read` BLOCKS under sync lift).
 struct FsDescriptor {
     path: std::path::PathBuf,
+    writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
 fn filesystem_sandbox_root() -> std::path::PathBuf {
@@ -371,8 +464,11 @@ fn filesystem_sandbox_root() -> std::path::PathBuf {
 /// Not `/sdcard` or other shared storage — root is `temp_dir()` (Android:
 /// app-private cache via `TMPDIR`).
 fn filesystem_sandbox_join(rel: &str) -> Result<std::path::PathBuf, FsErrorCode> {
-    if rel.is_empty() || rel.contains('\0') {
-        return Err(FsErrorCode::Access);
+    if rel.is_empty() {
+        return Err(FsErrorCode::Invalid);
+    }
+    if rel.contains('\0') {
+        return Err(FsErrorCode::IllegalByteSequence);
     }
     let p = std::path::Path::new(rel);
     if p.components()
@@ -406,20 +502,24 @@ fn fs_open_child(
     parent: &wasmtime::component::Resource<FsDescriptor>,
     rel: &str,
 ) -> Result<wasmtime::component::Resource<FsDescriptor>, FsErrorCode> {
-    let _ = table.get(parent).map_err(|_| FsErrorCode::Unknown)?;
+    let _ = table.get(parent).map_err(|_| FsErrorCode::BadDescriptor)?;
     let child = filesystem_sandbox_join(rel)?;
     if !child.exists() {
-        std::fs::write(&child, b"").map_err(|_| FsErrorCode::Unknown)?;
+        std::fs::write(&child, b"").map_err(|e| fs_error_from_io(&e))?;
     }
     table
-        .push(FsDescriptor { path: child })
-        .map_err(|_| FsErrorCode::Unknown)
+        .push(FsDescriptor {
+            path: child,
+            writer: None,
+        })
+        .map_err(|_| FsErrorCode::InsufficientMemory)
 }
 
 /// Host `resource tcp-socket` for the W7 loopback smoke + P010 outbound dial.
 struct TcpSocket {
     client: Option<std::net::TcpStream>,
     server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
+    writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
 struct TcpConnected {
@@ -439,14 +539,60 @@ enum IpAddressFamily {
     Ipv6,
 }
 
-/// WASI 0.3.0 sockets `error-code` subset (`unknown` only).
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+/// WASI 0.3.0 sockets `error-code` (official variant; last case `other`).
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum SockErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
+    #[component(name = "access-denied")]
+    AccessDenied,
+    #[component(name = "not-supported")]
+    NotSupported,
+    #[component(name = "invalid-argument")]
+    InvalidArgument,
+    #[component(name = "out-of-memory")]
+    OutOfMemory,
+    #[component(name = "timeout")]
+    Timeout,
+    #[component(name = "invalid-state")]
+    InvalidState,
+    #[component(name = "address-not-bindable")]
+    AddressNotBindable,
+    #[component(name = "address-in-use")]
+    AddressInUse,
+    #[component(name = "remote-unreachable")]
+    RemoteUnreachable,
+    #[component(name = "connection-refused")]
+    ConnectionRefused,
+    #[component(name = "connection-broken")]
+    ConnectionBroken,
+    #[component(name = "connection-reset")]
+    ConnectionReset,
+    #[component(name = "connection-aborted")]
+    ConnectionAborted,
+    #[component(name = "datagram-too-large")]
+    DatagramTooLarge,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+fn sock_error_from_io(err: &std::io::Error) -> SockErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        PermissionDenied => SockErrorCode::AccessDenied,
+        InvalidInput => SockErrorCode::InvalidArgument,
+        OutOfMemory => SockErrorCode::OutOfMemory,
+        TimedOut => SockErrorCode::Timeout,
+        AddrNotAvailable => SockErrorCode::AddressNotBindable,
+        AddrInUse => SockErrorCode::AddressInUse,
+        HostUnreachable | NetworkUnreachable | NetworkDown => SockErrorCode::RemoteUnreachable,
+        ConnectionRefused => SockErrorCode::ConnectionRefused,
+        BrokenPipe => SockErrorCode::ConnectionBroken,
+        ConnectionReset => SockErrorCode::ConnectionReset,
+        ConnectionAborted => SockErrorCode::ConnectionAborted,
+        Unsupported => SockErrorCode::NotSupported,
+        _ => SockErrorCode::Other(None),
+    }
 }
 
 /// WASI 0.3.0 `ipv4-socket-address` (P1-SK2 / P010-TCP).
@@ -1218,18 +1364,143 @@ fn gfx_key_from_android(code: i32) -> Option<GfxKey> {
     })
 }
 
-/// WASI 0.3.0 http `error-code` subset (`unknown` only).
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+/// WASI 0.3.0 `wasi:http` `error-code` (official variant + payload records).
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct DnsErrorPayload {
+    rcode: Option<String>,
+    #[component(name = "info-code")]
+    info_code: Option<u16>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct TlsAlertReceivedPayload {
+    #[component(name = "alert-id")]
+    alert_id: Option<u8>,
+    #[component(name = "alert-message")]
+    alert_message: Option<String>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct FieldSizePayload {
+    #[component(name = "field-name")]
+    field_name: Option<String>,
+    #[component(name = "field-size")]
+    field_size: Option<u32>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum HttpErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
+    #[component(name = "DNS-timeout")]
+    DnsTimeout,
+    #[component(name = "DNS-error")]
+    DnsError(DnsErrorPayload),
+    #[component(name = "destination-not-found")]
+    DestinationNotFound,
+    #[component(name = "destination-unavailable")]
+    DestinationUnavailable,
+    #[component(name = "destination-IP-prohibited")]
+    DestinationIpProhibited,
+    #[component(name = "destination-IP-unroutable")]
+    DestinationIpUnroutable,
+    #[component(name = "connection-refused")]
+    ConnectionRefused,
+    #[component(name = "connection-terminated")]
+    ConnectionTerminated,
+    #[component(name = "connection-timeout")]
+    ConnectionTimeout,
+    #[component(name = "connection-read-timeout")]
+    ConnectionReadTimeout,
+    #[component(name = "connection-write-timeout")]
+    ConnectionWriteTimeout,
+    #[component(name = "connection-limit-reached")]
+    ConnectionLimitReached,
+    #[component(name = "TLS-protocol-error")]
+    TlsProtocolError,
+    #[component(name = "TLS-certificate-error")]
+    TlsCertificateError,
+    #[component(name = "TLS-alert-received")]
+    TlsAlertReceived(TlsAlertReceivedPayload),
+    #[component(name = "HTTP-request-denied")]
+    HttpRequestDenied,
+    #[component(name = "HTTP-request-length-required")]
+    HttpRequestLengthRequired,
+    #[component(name = "HTTP-request-body-size")]
+    HttpRequestBodySize(Option<u64>),
+    #[component(name = "HTTP-request-method-invalid")]
+    HttpRequestMethodInvalid,
+    #[component(name = "HTTP-request-URI-invalid")]
+    HttpRequestUriInvalid,
+    #[component(name = "HTTP-request-URI-too-long")]
+    HttpRequestUriTooLong,
+    #[component(name = "HTTP-request-header-section-size")]
+    HttpRequestHeaderSectionSize(Option<u32>),
+    #[component(name = "HTTP-request-header-size")]
+    HttpRequestHeaderSize(Option<FieldSizePayload>),
+    #[component(name = "HTTP-request-trailer-section-size")]
+    HttpRequestTrailerSectionSize(Option<u32>),
+    #[component(name = "HTTP-request-trailer-size")]
+    HttpRequestTrailerSize(FieldSizePayload),
+    #[component(name = "HTTP-response-incomplete")]
+    HttpResponseIncomplete,
+    #[component(name = "HTTP-response-header-section-size")]
+    HttpResponseHeaderSectionSize(Option<u32>),
+    #[component(name = "HTTP-response-header-size")]
+    HttpResponseHeaderSize(FieldSizePayload),
+    #[component(name = "HTTP-response-body-size")]
+    HttpResponseBodySize(Option<u64>),
+    #[component(name = "HTTP-response-trailer-section-size")]
+    HttpResponseTrailerSectionSize(Option<u32>),
+    #[component(name = "HTTP-response-trailer-size")]
+    HttpResponseTrailerSize(FieldSizePayload),
+    #[component(name = "HTTP-response-transfer-coding")]
+    HttpResponseTransferCoding(Option<String>),
+    #[component(name = "HTTP-response-content-coding")]
+    HttpResponseContentCoding(Option<String>),
+    #[component(name = "HTTP-response-timeout")]
+    HttpResponseTimeout,
+    #[component(name = "HTTP-upgrade-failed")]
+    HttpUpgradeFailed,
+    #[component(name = "HTTP-protocol-error")]
+    HttpProtocolError,
+    #[component(name = "loop-detected")]
+    LoopDetected,
+    #[component(name = "configuration-error")]
+    ConfigurationError,
+    #[component(name = "internal-error")]
+    InternalError(Option<String>),
+}
+
+fn http_authority_reject(authority: &str) -> Option<HttpErrorCode> {
+    if authority.to_ascii_lowercase().starts_with("https:") {
+        return Some(HttpErrorCode::TlsProtocolError);
+    }
+    if authority.is_empty() || authority.contains('/') {
+        return Some(HttpErrorCode::HttpRequestUriInvalid);
+    }
+    None
+}
+
+fn http_error_from_io(err: &std::io::Error) -> HttpErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        InvalidInput => HttpErrorCode::HttpRequestUriInvalid,
+        ConnectionRefused => HttpErrorCode::ConnectionRefused,
+        TimedOut => HttpErrorCode::ConnectionTimeout,
+        ConnectionReset | ConnectionAborted => HttpErrorCode::ConnectionTerminated,
+        _ => HttpErrorCode::InternalError(None),
+    }
 }
 
 /// HTTP/1.1 GET to `authority` (`host:port`). Wire send — not in-process 200.
-/// No TLS crate this lane (size); https is `unknown`. Helper-thread caller.
+/// No TLS crate this lane (size); https is `TLS-protocol-error`. Helper-thread caller.
 fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
     use std::io::{Read, Write};
     use std::net::{SocketAddr, TcpStream};
@@ -1584,13 +1855,16 @@ pub(crate) fn define_host(
             },
         )?;
         let fut = FutureReader::new(store, async move {
-            let _n = match rx.await {
+            let n = match rx.await {
                 Ok(n) => n,
-                Err(_) => 0,
+                Err(_) => return Ok::<_, wasmtime::Error>(Err(CliErrorCode::Pipe)),
             };
             let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
+            let _ = n;
             if bytes.iter().any(|&b| b == 0) {
-                Ok::<_, wasmtime::Error>(Err(CliErrorCode::IllegalByteSequence))
+                Ok(Err(CliErrorCode::IllegalByteSequence))
+            } else if std::str::from_utf8(&bytes).is_err() {
+                Ok(Err(CliErrorCode::Io))
             } else {
                 Ok(Ok(()))
             }
@@ -1667,6 +1941,27 @@ pub(crate) fn define_host(
         )
         .map_err(|e| e.to_string())?;
 
+    // WASI 0.3: wasi:cli/environment@0.3.0 — get-environment / get-arguments.
+    // Android: empty or documented TMPDIR only (not a full process-env dump).
+    // get-initial-cwd is not this lane.
+    {
+        let mut environment = linker
+            .instance("wasi:cli/environment@0.3.0")
+            .map_err(|e| e.to_string())?;
+        environment
+            .func_wrap("get-environment", |_store, ()| {
+                let pairs = match std::env::var("TMPDIR") {
+                    Ok(v) => vec![("TMPDIR".to_string(), v)],
+                    Err(_) => Vec::new(),
+                };
+                Ok((pairs,))
+            })
+            .map_err(|e| e.to_string())?;
+        environment
+            .func_wrap("get-arguments", |_store, ()| Ok((Vec::<String>::new(),)))
+            .map_err(|e| e.to_string())?;
+    }
+
     // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3).
     // Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
     // get-directories → list (sandbox directory, ".");
@@ -1701,21 +1996,19 @@ pub(crate) fn define_host(
                             max_per_poll: usize::MAX,
                         },
                     )?;
-                    let fut = FutureReader::new(&mut store, async move {
-                        let _n = match rx.await {
-                            Ok(n) => n,
-                            Err(_) => 0,
-                        };
+                    let writer = std::thread::spawn(move || {
+                        let _n = pollster::block_on(rx).unwrap_or(0);
+                        let _ = _n;
                         let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
-                        let wrote = if offset == 0 {
+                        if offset == 0 {
                             std::fs::write(&path, bytes)
                         } else {
                             fs_write_at(&path, offset, &bytes)
-                        };
-                        match wrote {
-                            Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(())),
-                            Err(_) => Ok(Err(FsErrorCode::Unknown)),
                         }
+                    });
+                    store.data_mut().table.get_mut(&desc)?.writer = Some(writer);
+                    let fut = FutureReader::new(&mut store, async move {
+                        Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
                     })?;
                     Ok((fut,))
                 },
@@ -1725,7 +2018,11 @@ pub(crate) fn define_host(
             .func_wrap(
                 "[method]descriptor.read-via-stream",
                 |mut store, (desc, offset): (Resource<FsDescriptor>, u64)| {
-                    let path = store.data_mut().table.get(&desc)?.path.clone();
+                    let entry = store.data_mut().table.get_mut(&desc)?;
+                    if let Some(h) = entry.writer.take() {
+                        let _ = h.join();
+                    }
+                    let path = entry.path.clone();
                     let bytes = fs_read_from(&path, offset);
                     let reader = StreamReader::new(&mut store, bytes)?;
                     let fut = FutureReader::new(&mut store, async move {
@@ -1770,6 +2067,7 @@ pub(crate) fn define_host(
                     .map_err(|e| wasmtime::Error::msg(format!("sandbox mkdir: {e}")))?;
                 let resource = store.data_mut().table.push(FsDescriptor {
                     path: filesystem_sandbox_root(),
+                    writer: None,
                 })?;
                 Ok((vec![(resource, ".".to_string())],))
             })
@@ -1778,8 +2076,9 @@ pub(crate) fn define_host(
 
     // WASI 0.3: wasi:sockets Android subset (W7 + P1-SK1 + P1-SK2 + P010-TCP).
     // Official packages: wasi:sockets/tcp@0.3.0 + tcp-create-socket@0.3.0.
-    // create-tcp-socket(ip-address-family) -> result; connect is async
-    // ip-socket-address -> result. Loopback: host ignores port (echo pair).
+    // create-tcp-socket(ip-address-family) -> result; connect is a sync WIT
+    // func (wasm-tools 1.239 cannot parse import `func async`) that still
+    // dials on a helper thread. Loopback: host ignores port (echo pair).
     // Non-loopback: host dials that IPv4:port. write/read via streams (cli shapes).
     // No UDP, no listen, no ip-name-lookup. INTERNET + helper-thread: threading-android.md.
     {
@@ -1796,33 +2095,25 @@ pub(crate) fn define_host(
             },
         )
         .map_err(|e| e.to_string())?;
-        tcp.func_wrap_concurrent(
+        tcp.func_wrap(
             "[method]tcp-socket.connect",
-            |accessor, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
-                Box::pin(async move {
-                    accessor.with(|mut access| -> wasmtime::Result<()> {
-                        access.data_mut().table.get(&sock)?;
-                        Ok(())
-                    })?;
-                    let (done_tx, done_rx) = oneshot::channel::<std::io::Result<TcpConnected>>();
-                    std::thread::spawn(move || {
-                        let _ = done_tx.send(tcp_connect_guest(addr));
-                    });
-                    let connected = match done_rx
-                        .await
-                        .map_err(|_| wasmtime::Error::msg("connect canceled"))?
-                    {
-                        Ok(c) => c,
-                        Err(_) => return Ok((Err(SockErrorCode::Unknown),)),
-                    };
-                    accessor.with(|mut access| -> wasmtime::Result<()> {
-                        let entry = access.data_mut().table.get_mut(&sock)?;
-                        entry.client = Some(connected.client);
-                        entry.server = connected.server;
-                        Ok(())
-                    })?;
-                    Ok((Ok::<(), SockErrorCode>(()),))
-                })
+            |mut store, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
+                store.data_mut().table.get(&sock)?;
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(tcp_connect_guest(addr));
+                });
+                let connected = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("connect canceled"))?
+                {
+                    Ok(c) => c,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                let entry = store.data_mut().table.get_mut(&sock)?;
+                entry.client = Some(connected.client);
+                entry.server = connected.server;
+                Ok((Ok::<(), SockErrorCode>(()),))
             },
         )
         .map_err(|e| e.to_string())?;
@@ -1847,18 +2138,19 @@ pub(crate) fn define_host(
                         max_per_poll: usize::MAX,
                     },
                 )?;
-                let fut = FutureReader::new(&mut store, async move {
-                    let _n = rx.await.unwrap_or(0);
+                let writer = std::thread::spawn(move || {
+                    let _n = pollster::block_on(rx).unwrap_or(0);
+                    let _ = _n;
                     let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
                     use std::io::Write;
                     let mut client = client;
-                    match client
+                    client
                         .write_all(&bytes)
                         .and_then(|_| client.shutdown(std::net::Shutdown::Write))
-                    {
-                        Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(())),
-                        Err(_) => Ok(Err(SockErrorCode::Unknown)),
-                    }
+                });
+                store.data_mut().table.get_mut(&sock)?.writer = Some(writer);
+                let fut = FutureReader::new(&mut store, async move {
+                    Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(()))
                 })?;
                 Ok((fut,))
             },
@@ -1869,6 +2161,9 @@ pub(crate) fn define_host(
             |mut store, (sock,): (Resource<TcpSocket>,)| {
                 use std::io::Read;
                 let entry = store.data_mut().table.get_mut(&sock)?;
+                if let Some(h) = entry.writer.take() {
+                    let _ = h.join();
+                }
                 let mut client = entry
                     .client
                     .as_ref()
@@ -1913,10 +2208,11 @@ pub(crate) fn define_host(
                         let resource = store.data_mut().table.push(TcpSocket {
                             client: None,
                             server: None,
+                            writer: None,
                         })?;
                         Ok((Ok(resource),))
                     }
-                    IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::Unknown),)),
+                    IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::NotSupported),)),
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1932,7 +2228,7 @@ pub(crate) fn define_host(
     // [static]response.new(contents: stream<u8>) → tuple<response, future>
     // (no headers). Outbound: set-authority + client.send HTTP/1.1 GET on the
     // wire (helper thread). Product linker omits [constructor]request/response
-    // (P010-HCTOR; test linker keeps them). No TLS crate / https → unknown.
+    // (P010-HCTOR; test linker keeps them). No TLS crate / https → TLS-protocol-error.
     {
         let mut types = linker
             .instance("wasi:http/types@0.3.0")
@@ -2046,8 +2342,8 @@ pub(crate) fn define_host(
             .func_wrap(
                 "[method]request.set-authority",
                 |mut store, (req, authority): (Resource<HttpRequest>, String)| {
-                    if authority.is_empty() {
-                        return Ok((Err(HttpErrorCode::Unknown),));
+                    if let Some(code) = http_authority_reject(&authority) {
+                        return Ok((Err(code),));
                     }
                     store.data_mut().table.get_mut(&req)?.authority = authority;
                     Ok((Ok::<(), HttpErrorCode>(()),))
@@ -2082,31 +2378,28 @@ pub(crate) fn define_host(
             )
             .map_err(|e| e.to_string())?;
         client
-            .func_wrap_concurrent("send", |accessor, (req,): (Resource<HttpRequest>,)| {
-                Box::pin(async move {
-                    let authority = accessor.with(|mut access| {
-                        Ok::<_, wasmtime::Error>(access.data_mut().table.delete(req)?.authority)
-                    })?;
-                    let (done_tx, done_rx) = oneshot::channel::<std::io::Result<(u16, Vec<u8>)>>();
-                    std::thread::spawn(move || {
-                        let _ = done_tx.send(http_send_get(&authority));
-                    });
-                    let outcome = done_rx
-                        .await
-                        .map_err(|_| wasmtime::Error::msg("send canceled"))?;
-                    match outcome {
-                        Ok((status, body)) => {
-                            let resource = accessor.with(|mut access| {
-                                access.data_mut().table.push(HttpResponse {
-                                    status,
-                                    body: Arc::new(Mutex::new(body)),
-                                })
-                            })?;
-                            Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
-                        }
-                        Err(_) => Ok((Err(HttpErrorCode::Unknown),)),
+            .func_wrap("send", |mut store, (req,): (Resource<HttpRequest>,)| {
+                let authority = store.data_mut().table.delete(req)?.authority;
+                if let Some(code) = http_authority_reject(&authority) {
+                    return Ok((Err(code),));
+                }
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(http_send_get(&authority));
+                });
+                let outcome = done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("send canceled"))?;
+                match outcome {
+                    Ok((status, body)) => {
+                        let resource = store.data_mut().table.push(HttpResponse {
+                            status,
+                            body: Arc::new(Mutex::new(body)),
+                        })?;
+                        Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
                     }
-                })
+                    Err(e) => Ok((Err(http_error_from_io(&e)),)),
+                }
             })
             .map_err(|e| e.to_string())?;
     }

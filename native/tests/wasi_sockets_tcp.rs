@@ -17,13 +17,59 @@ use wasmtime::{Config, Engine, Store, StoreContextMut};
 
 const PAYLOAD: &[u8] = b"P3SK";
 
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum SockErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
+    #[component(name = "access-denied")]
+    AccessDenied,
+    #[component(name = "not-supported")]
+    NotSupported,
+    #[component(name = "invalid-argument")]
+    InvalidArgument,
+    #[component(name = "out-of-memory")]
+    OutOfMemory,
+    #[component(name = "timeout")]
+    Timeout,
+    #[component(name = "invalid-state")]
+    InvalidState,
+    #[component(name = "address-not-bindable")]
+    AddressNotBindable,
+    #[component(name = "address-in-use")]
+    AddressInUse,
+    #[component(name = "remote-unreachable")]
+    RemoteUnreachable,
+    #[component(name = "connection-refused")]
+    ConnectionRefused,
+    #[component(name = "connection-broken")]
+    ConnectionBroken,
+    #[component(name = "connection-reset")]
+    ConnectionReset,
+    #[component(name = "connection-aborted")]
+    ConnectionAborted,
+    #[component(name = "datagram-too-large")]
+    DatagramTooLarge,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+fn sock_error_from_io(err: &std::io::Error) -> SockErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        PermissionDenied => SockErrorCode::AccessDenied,
+        InvalidInput => SockErrorCode::InvalidArgument,
+        OutOfMemory => SockErrorCode::OutOfMemory,
+        TimedOut => SockErrorCode::Timeout,
+        AddrNotAvailable => SockErrorCode::AddressNotBindable,
+        AddrInUse => SockErrorCode::AddressInUse,
+        HostUnreachable | NetworkUnreachable | NetworkDown => SockErrorCode::RemoteUnreachable,
+        ConnectionRefused => SockErrorCode::ConnectionRefused,
+        BrokenPipe => SockErrorCode::ConnectionBroken,
+        ConnectionReset => SockErrorCode::ConnectionReset,
+        ConnectionAborted => SockErrorCode::ConnectionAborted,
+        Unsupported => SockErrorCode::NotSupported,
+        _ => SockErrorCode::Other(None),
+    }
 }
 
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
@@ -56,6 +102,7 @@ enum IpSocketAddress {
 struct TcpSocket {
     client: Option<TcpStream>,
     server: Option<thread::JoinHandle<std::io::Result<()>>>,
+    writer: Option<thread::JoinHandle<std::io::Result<()>>>,
 }
 
 struct TcpConnected {
@@ -230,33 +277,25 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                 Ok(())
             },
         )?;
-        tcp.func_wrap_concurrent(
+        tcp.func_wrap(
             "[method]tcp-socket.connect",
-            |accessor, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
-                Box::pin(async move {
-                    accessor.with(|mut access| -> wasmtime::Result<()> {
-                        access.data_mut().table.get(&sock)?;
-                        Ok(())
-                    })?;
-                    let (done_tx, done_rx) = oneshot::channel::<std::io::Result<TcpConnected>>();
-                    thread::spawn(move || {
-                        let _ = done_tx.send(tcp_connect_guest(addr));
-                    });
-                    let connected = match done_rx
-                        .await
-                        .map_err(|_| wasmtime::Error::msg("connect canceled"))?
-                    {
-                        Ok(c) => c,
-                        Err(_) => return Ok((Err(SockErrorCode::Unknown),)),
-                    };
-                    accessor.with(|mut access| -> wasmtime::Result<()> {
-                        let entry = access.data_mut().table.get_mut(&sock)?;
-                        entry.client = Some(connected.client);
-                        entry.server = connected.server;
-                        Ok(())
-                    })?;
-                    Ok((Ok::<(), SockErrorCode>(()),))
-                })
+            |mut store, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
+                store.data_mut().table.get(&sock)?;
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                thread::spawn(move || {
+                    let _ = done_tx.send(tcp_connect_guest(addr));
+                });
+                let connected = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("connect canceled"))?
+                {
+                    Ok(c) => c,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                let entry = store.data_mut().table.get_mut(&sock)?;
+                entry.client = Some(connected.client);
+                entry.server = connected.server;
+                Ok((Ok::<(), SockErrorCode>(()),))
             },
         )?;
         tcp.func_wrap(
@@ -279,17 +318,18 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                         done: Some(tx),
                     },
                 )?;
-                let fut = FutureReader::new(&mut store, async move {
-                    let _n = rx.await.unwrap_or(0);
+                let writer = thread::spawn(move || {
+                    let _n = pollster::block_on(rx).unwrap_or(0);
+                    let _ = _n;
                     let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
                     let mut client = client;
-                    match client
+                    client
                         .write_all(&bytes)
                         .and_then(|_| client.shutdown(Shutdown::Write))
-                    {
-                        Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(())),
-                        Err(_) => Ok(Err(SockErrorCode::Unknown)),
-                    }
+                });
+                store.data_mut().table.get_mut(&sock)?.writer = Some(writer);
+                let fut = FutureReader::new(&mut store, async move {
+                    Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(()))
                 })?;
                 Ok((fut,))
             },
@@ -298,6 +338,9 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
             "[method]tcp-socket.read-via-stream",
             |mut store, (sock,): (Resource<TcpSocket>,)| {
                 let entry = store.data_mut().table.get_mut(&sock)?;
+                if let Some(h) = entry.writer.take() {
+                    let _ = h.join();
+                }
                 let mut client = entry
                     .client
                     .as_ref()
@@ -334,10 +377,11 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                     let resource = store.data_mut().table.push(TcpSocket {
                         client: None,
                         server: None,
+                        writer: None,
                     })?;
                     Ok((Ok(resource),))
                 }
-                IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::Unknown),)),
+                IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::NotSupported),)),
             },
         )?;
     }
@@ -452,5 +496,42 @@ fn wasi_sockets_tcp_outbound_smoke() -> wasmtime::Result<()> {
         PAYLOAD,
         "host must dial guest address (echo server saw no payload if ignore-port pair)"
     );
+    Ok(())
+}
+
+#[test]
+fn sock_error_from_io_refused_is_connection_refused() {
+    let err = std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "refused");
+    assert!(matches!(
+        sock_error_from_io(&err),
+        SockErrorCode::ConnectionRefused
+    ));
+}
+
+#[test]
+fn wasi_sockets_tcp_ipv6_is_not_supported() -> wasmtime::Result<()> {
+    let mut config = Config::new();
+    config.wasm_component_model(true);
+    config.wasm_component_model_async(true);
+    let engine = Engine::new(&config)?;
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/wasi/sockets_tcp_ipv6.wasm"
+    ))?;
+    let component = Component::new(&engine, bytes)?;
+
+    let mut linker = Linker::new(&engine);
+    register(&mut linker)?;
+
+    let mut store = Store::new(
+        &engine,
+        TestHost {
+            table: ResourceTable::new(),
+        },
+    );
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
+    let (v,) = pollster::block_on(func.call_async(&mut store, ()))?;
+    assert_eq!(v, 1, "guest must see error-code.not-supported and return 1");
     Ok(())
 }

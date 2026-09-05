@@ -24,7 +24,7 @@ Default consume is Dawn C / NativeGpu. Maven **0.1.2** packs press-pin `libwebgp
 
 ## 3. WASI 0.3 product subset vs named-only
 
-Leftovers: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Host is the in-tree thin host (**not** `wasmtime-wasi`).
+Leftovers: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Host is the in-tree thin host (**not** `wasmtime-wasi`). Living leftover queue (not a 0.1.0 gate): [`wasi-p3-leftover.md`](wasi-p3-leftover.md).
 
 | Package | Product (`0.1.0`) | Named-only |
 |---------|-------------------|------------|
@@ -35,9 +35,9 @@ Leftovers: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Hos
 | `wasi:http` | Body `stream<u8>`; outbound GET; no product request/response constructors | `service` world, trailers, TLS |
 | `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `height` / `width` / `request-set-size` / `on-resize` + `on-pointer-*` / `on-key-*` (Store `postGfxPointer` / `postGfxKey`) + `configure` / `get-current-texture` / `present` | See non-urgent below |
 
-**Remaining (auto):** none.
+**Remaining (auto):** WASI leftover `L-*` on `cursor/wasi-p3-leftover-b677` (`python3 ./scripts/wasi-p3-leftover-remaining.py`). Still **not** wasi-testsuite / `wasmtime-wasi`.
 
-**Non-urgent:** `context.unconfigure`; timestamped `frame-event`; Lost/Outdated `result`; multi-window.
+**Non-urgent (gfx, never leftover `Next:`):** `context.unconfigure`; timestamped `frame-event`; Lost/Outdated `result`; multi-window.
 
 Sandbox (documented promise, not a proof): FS = app-private; TCP = outbound + INTERNET, no listen by default; HTTP = system trust.
 

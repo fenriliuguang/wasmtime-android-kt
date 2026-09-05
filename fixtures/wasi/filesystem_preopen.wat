@@ -7,7 +7,45 @@
 (component
   (import "wasi:filesystem/types@0.3.0" (instance $types
     (export "descriptor" (type $descriptor (sub resource)))
-    (type $error-code-def (enum "unknown" "access"))
+    (type $error-code-def (variant
+      (case "access")
+      (case "already")
+      (case "bad-descriptor")
+      (case "busy")
+      (case "deadlock")
+      (case "quota")
+      (case "exist")
+      (case "file-too-large")
+      (case "illegal-byte-sequence")
+      (case "in-progress")
+      (case "interrupted")
+      (case "invalid")
+      (case "io")
+      (case "is-directory")
+      (case "loop")
+      (case "too-many-links")
+      (case "message-size")
+      (case "name-too-long")
+      (case "no-device")
+      (case "no-entry")
+      (case "no-lock")
+      (case "insufficient-memory")
+      (case "insufficient-space")
+      (case "not-directory")
+      (case "not-empty")
+      (case "not-recoverable")
+      (case "unsupported")
+      (case "no-tty")
+      (case "no-such-device")
+      (case "overflow")
+      (case "not-permitted")
+      (case "pipe")
+      (case "read-only")
+      (case "invalid-seek")
+      (case "text-file-busy")
+      (case "cross-device")
+      (case "other" (option string))
+    ))
     (export "error-code" (type $error-code (eq $error-code-def)))
     (type $io-result (result (error $error-code)))
     (type $st (stream u8))
@@ -63,7 +101,6 @@
     (import "" "stream.write" (func $stream.write (param i32 i32 i32) (result i32)))
     (import "" "stream.read" (func $stream.read (param i32 i32 i32) (result i32)))
     (import "" "stream.drop-writable" (func $stream.drop-writable (param i32)))
-    (import "" "future.read" (func $future.read (param i32 i32) (result i32)))
     (import "" "future.drop-readable" (func $future.drop-readable (param i32)))
     (import "" "get-directories" (func $get-directories (param i32)))
     (import "" "open-at" (func $open-at (param i32 i32 i32 i32)))
@@ -91,18 +128,19 @@
         (then unreachable))
       (local.set $dir (i32.load (local.get $list)))
 
-      ;; open-at("..") → error-code.access (disc 1, payload 1).
-      (call $open-at (local.get $dir) (i32.const 108) (i32.const 2) (i32.const 80))
-      (if (i32.ne (i32.load8_u (i32.const 80)) (i32.const 1))
+      ;; open-at("..") → error-code.access (result disc 1, variant disc 0).
+      ;; Retptr 192: official error-code is a 16-byte variant; do not overlap paths at 96/108.
+      (call $open-at (local.get $dir) (i32.const 108) (i32.const 2) (i32.const 192))
+      (if (i32.ne (i32.load8_u (i32.const 192)) (i32.const 1))
         (then unreachable))
-      (if (i32.ne (i32.load8_u (i32.const 84)) (i32.const 1))
+      (if (i32.ne (i32.load8_u (i32.const 196)) (i32.const 0))
         (then unreachable))
 
-      ;; result<descriptor, error-code> at mem[80]: u8 disc (0=ok), handle at 84.
-      (call $open-at (local.get $dir) (i32.const 96) (i32.const 8) (i32.const 80))
-      (if (i32.ne (i32.load8_u (i32.const 80)) (i32.const 0))
+      ;; result<descriptor, error-code> at mem[192]: u8 disc (0=ok), handle at 196.
+      (call $open-at (local.get $dir) (i32.const 96) (i32.const 8) (i32.const 192))
+      (if (i32.ne (i32.load8_u (i32.const 192)) (i32.const 0))
         (then unreachable))
-      (local.set $desc (i32.load (i32.const 84)))
+      (local.set $desc (i32.load (i32.const 196)))
 
       (local.set $pair (call $stream.new))
       (local.set $r (i32.wrap_i64 (local.get $pair)))
@@ -113,13 +151,11 @@
       (if (i32.eq (local.get $status) (i32.const -1))
         (then unreachable))
       (call $stream.drop-writable (local.get $w))
-
-      (local.set $status (call $future.read (local.get $fut) (i32.const 0)))
-      (if (i32.eq (local.get $status) (i32.const -1))
-        (then unreachable))
+      ;; Drop write/read futures without future.read: official error-code includes
+      ;; `other(option<string>)`, so a payload read needs realloc and BLOCKED under
+      ;; sync-lifted `run`. Host completes the write on a helper thread and joins
+      ;; it in read-via-stream so drop does not lose P3FS.
       (call $future.drop-readable (local.get $fut))
-      (if (i32.ne (i32.load8_u (i32.const 0)) (i32.const 0))
-        (then unreachable))
 
       ;; tuple at mem[32]: stream handle, future handle; offset 0
       (call $read-via-stream (local.get $desc) (i64.const 0) (i32.const 32))
@@ -132,13 +168,7 @@
       (local.set $n (i32.shr_u (local.get $status) (i32.const 4)))
       (if (i32.ne (i32.load (i32.const 48)) (i32.load (i32.const 16)))
         (then unreachable))
-
-      (local.set $status (call $future.read (local.get $fut) (i32.const 64)))
-      (if (i32.eq (local.get $status) (i32.const -1))
-        (then unreachable))
       (call $future.drop-readable (local.get $fut))
-      (if (i32.ne (i32.load8_u (i32.const 64)) (i32.const 0))
-        (then unreachable))
 
       (local.get $n)
     )
@@ -148,14 +178,15 @@
   (core func $stream.write (canon stream.write $st async (memory $libc "mem")))
   (core func $stream.read (canon stream.read $st async (memory $libc "mem")))
   (core func $stream.drop-writable (canon stream.drop-writable $st))
-  (core func $future.read (canon future.read $ft async (memory $libc "mem")))
   (core func $future.drop-readable (canon future.drop-readable $ft))
   (core func $get_directories_lower
     (canon lower (func $get-directories)
       (memory $libc "mem")
       (realloc (func $libc "realloc"))))
   (core func $open_at_lower
-    (canon lower (func $open-at) (memory $libc "mem")))
+    (canon lower (func $open-at)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
   (core func $write_lower (canon lower (func $write-via-stream) (memory $libc "mem")))
   (core func $read_lower (canon lower (func $read-via-stream) (memory $libc "mem")))
 
@@ -166,7 +197,6 @@
       (export "stream.write" (func $stream.write))
       (export "stream.read" (func $stream.read))
       (export "stream.drop-writable" (func $stream.drop-writable))
-      (export "future.read" (func $future.read))
       (export "future.drop-readable" (func $future.drop-readable))
       (export "get-directories" (func $get_directories_lower))
       (export "open-at" (func $open_at_lower))

@@ -38,7 +38,7 @@ wasm-tools parse fixtures/wasi/monotonic_now.wat -o fixtures/wasi/monotonic_now.
 Guest export: `run: func() -> u32`（ok 后返回写入字节数 4）  
 Host: `wasi:cli/stdout@0.3.0#write-via-stream`（`CollectConsumer` 管道；钉 `@0.3.0`）
 
-官方签名：`func(data: stream<u8>) -> future<result<_, error-code>>`。ok 路径 guest 写 `OUT\n` 后 `run` 返回 `4`。**P010-CLIERR：** NUL 字节 → `error-code.illegal-byte-sequence`（`cli_stdout_err`；枚举含 `unknown`/`io`/`illegal-byte-sequence`/`pipe`）。
+官方签名：`func(data: stream<u8>) -> future<result<_, error-code>>`。ok 路径 guest 写 `OUT\n` 后 `run` 返回 `4`。**P010-CLIERR：** NUL 字节 → `error-code.illegal-byte-sequence`。**L-ERR-CLI：** 官方枚举 `io` / `illegal-byte-sequence` / `pipe`（无 `unknown`）；非 NUL 非法 UTF-8 → `io`（`cli_stdout_io`）。
 
 成功：ok 路径返回 `4`；err 路径 guest 见到 `illegal-byte-sequence` 后 `run` 返回 `1`。
 
@@ -47,6 +47,8 @@ wasm-tools parse fixtures/wasi/cli_stdout.wat -o fixtures/wasi/cli_stdout.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdout.wasm
 wasm-tools parse fixtures/wasi/cli_stdout_err.wat -o fixtures/wasi/cli_stdout_err.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdout_err.wasm
+wasm-tools parse fixtures/wasi/cli_stdout_io.wat -o fixtures/wasi/cli_stdout_io.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_stdout_io.wasm
 ```
 
 ## `wasi:cli` — `stderr.write-via-stream`
@@ -163,12 +165,26 @@ wasm-tools parse fixtures/wasi/cli_command.wat -o fixtures/wasi/cli_command.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_command.wasm
 ```
 
+## `wasi:cli/environment` — get-environment / get-arguments（L-CMD-ENV）
+
+Guest export: `run: func() -> u32`（见到 `TMPDIR=/tmp/p3env` 且 arguments 为空则返回 1）  
+Host: `wasi:cli/environment@0.3.0`（钉 `@0.3.0`）
+
+`get-environment` 只返回文档化的 `TMPDIR` pair（Android：无则空 list，不是整份进程环境）。`get-arguments` 返回空 list。`get-initial-cwd` 不在本刀。无 Kotlin SPI。
+
+成功：测试注入 `TMPDIR=/tmp/p3env` 时 `run` 返回 `1`；无 `TMPDIR` 时返回 `0`。
+
+```powershell
+wasm-tools parse fixtures/wasi/cli_environment.wat -o fixtures/wasi/cli_environment.wasm
+wasm-tools validate --features=component-model fixtures/wasi/cli_environment.wasm
+```
+
 ## `wasi:filesystem` — preopen + read/write（Android 沙箱子集）
 
 Guest export: `run: func() -> u32`（写 `P3FS` 再读回，返回 4）  
 Host: `wasi:filesystem/preopens@0.3.0#get-directories` → 沙箱**目录** `list`（名 `"."`）；`[method]descriptor.open-at("p3fs.txt")` → child；write/read-via-stream 带 `offset: filesize`（钉 `@0.3.0`）
 
-官方包名如上。本切片：目录 preopen + `open-at` 成功路径；guest `open-at("..")` → `error-code.access`；write/read 取 `offset: filesize`（smoke 用 `0`）。沙箱见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §5。G-fs-shape / G-fs-open **已完成**。
+官方包名如上。本切片：目录 preopen + `open-at` 成功路径；guest `open-at("..")` → `error-code.access`（官方 variant 第 0 案，无 `unknown`）；write/read 取 `offset: filesize`（smoke 用 `0`）。r/w IO 映射官方码（目录上写 → `is-directory` / `io`）。write/read 的 `future<result<_, error-code>>` 只 drop、不 `future.read`（variant 含 `other(option<string>)`，sync-lift `run` 下 payload read 会 BLOCKED）。Host 在 helper 线程写盘，`read-via-stream` 先 join，drop 不会丢掉 `P3FS`。沙箱见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §5。G-fs-shape / G-fs-open **已完成**。**L-ERR-FS：** 官方 `error-code` variant。
 
 成功：guest `run` 返回 `4` 且宿主文件内容为 `P3FS`。
 
@@ -182,13 +198,15 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/filesystem
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
 Host: `wasi:sockets/tcp-create-socket@0.3.0#create-tcp-socket`；`[method]tcp-socket.connect`（钉 `@0.3.0`）
 
-官方包名如上。本切片：`create-tcp-socket(ip-address-family) -> result`（smoke `ipv4`）；`connect: async func(ip-socket-address) -> result`（guest 传 loopback，host 可忽略 port，仍用 echo pair）；write/read 走 stream。无 UDP / listen / name-lookup。仅 `127.0.0.1`。Android 需要 **INTERNET**（含 loopback）；阻塞 IO 在 helper 线程，见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §6。G-sock-shape **已完成**。
+官方包名如上。本切片：`create-tcp-socket(ip-address-family) -> result`（smoke `ipv4`）；`connect: async func(ip-socket-address) -> result`（guest 传 loopback，host 可忽略 port，仍用 echo pair）；write/read 走 stream。无 UDP / listen / name-lookup。仅 `127.0.0.1`。Android 需要 **INTERNET**（含 loopback）；阻塞 IO 在 helper 线程，见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §6。G-sock-shape **已完成**。**L-ERR-SOCK：** 官方 `error-code` variant；IPv6 create → `not-supported`（`sockets_tcp_ipv6`）。
 
 成功：guest `run` 经 `run_concurrent` 返回 `4`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/sockets_tcp.wat -o fixtures/wasi/sockets_tcp.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tcp.wasm
+wasm-tools parse fixtures/wasi/sockets_tcp_ipv6.wat -o fixtures/wasi/sockets_tcp_ipv6.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tcp_ipv6.wasm
 ```
 
 ## `wasi:sockets` — TCP outbound（非回环拨号）
@@ -249,13 +267,17 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_body.
 Guest export: `run: async func() -> u32`（`set-authority` → `send` GET → status 200 → `consume-body` `HOUT` → 返回 4）  
 Host: `wasi:http/client@0.3.0#send`（钉 `@0.3.0`；0.3 对 outgoing-handler 的等价物）
 
-Guest authority 在 mem `P3HA` 记录（len + `host:port`），测试 instantiate 前打补丁。Host **真拨** 该地址发 HTTP/1.1 GET（helper 线程），不是进程内 200。无 TLS crate；https → `unknown`。
+Guest authority 在 mem `P3HA` 记录（len + `host:port`），测试 instantiate 前打补丁。Host **真拨** 该地址发 HTTP/1.1 GET（helper 线程），不是进程内 200。无 TLS crate；https → `TLS-protocol-error`。**L-ERR-HTTP：** 官方 `error-code` variant（末案 `internal-error`，无 `unknown`）；空 authority → `HTTP-request-URI-invalid`（`http_empty_authority`）；`https:` → `TLS-protocol-error`（`http_https_tls`）。send 失败映射 `connection-refused` 等。
 
 成功：guest `run` 返回 `4` **且** 测试侧 HTTP 服务器收到 `GET /`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/http_out.wat -o fixtures/wasi/http_out.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_out.wasm
+wasm-tools parse fixtures/wasi/http_empty_authority.wat -o fixtures/wasi/http_empty_authority.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_empty_authority.wasm
+wasm-tools parse fixtures/wasi/http_https_tls.wat -o fixtures/wasi/http_https_tls.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_https_tls.wasm
 ```
 
 ## `wasi-gfx` — `surface.on-frame`（P010-GFXH）

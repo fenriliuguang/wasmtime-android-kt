@@ -14,19 +14,113 @@ use wasmtime::{Config, Engine, Store, StoreContextMut};
 
 const PAYLOAD: &[u8] = b"P3FS";
 
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum FsErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
     #[component(name = "access")]
     Access,
+    #[component(name = "already")]
+    Already,
+    #[component(name = "bad-descriptor")]
+    BadDescriptor,
+    #[component(name = "busy")]
+    Busy,
+    #[component(name = "deadlock")]
+    Deadlock,
+    #[component(name = "quota")]
+    Quota,
+    #[component(name = "exist")]
+    Exist,
+    #[component(name = "file-too-large")]
+    FileTooLarge,
+    #[component(name = "illegal-byte-sequence")]
+    IllegalByteSequence,
+    #[component(name = "in-progress")]
+    InProgress,
+    #[component(name = "interrupted")]
+    Interrupted,
+    #[component(name = "invalid")]
+    Invalid,
+    #[component(name = "io")]
+    Io,
+    #[component(name = "is-directory")]
+    IsDirectory,
+    #[component(name = "loop")]
+    Loop,
+    #[component(name = "too-many-links")]
+    TooManyLinks,
+    #[component(name = "message-size")]
+    MessageSize,
+    #[component(name = "name-too-long")]
+    NameTooLong,
+    #[component(name = "no-device")]
+    NoDevice,
+    #[component(name = "no-entry")]
+    NoEntry,
+    #[component(name = "no-lock")]
+    NoLock,
+    #[component(name = "insufficient-memory")]
+    InsufficientMemory,
+    #[component(name = "insufficient-space")]
+    InsufficientSpace,
+    #[component(name = "not-directory")]
+    NotDirectory,
+    #[component(name = "not-empty")]
+    NotEmpty,
+    #[component(name = "not-recoverable")]
+    NotRecoverable,
+    #[component(name = "unsupported")]
+    Unsupported,
+    #[component(name = "no-tty")]
+    NoTty,
+    #[component(name = "no-such-device")]
+    NoSuchDevice,
+    #[component(name = "overflow")]
+    Overflow,
+    #[component(name = "not-permitted")]
+    NotPermitted,
+    #[component(name = "pipe")]
+    Pipe,
+    #[component(name = "read-only")]
+    ReadOnly,
+    #[component(name = "invalid-seek")]
+    InvalidSeek,
+    #[component(name = "text-file-busy")]
+    TextFileBusy,
+    #[component(name = "cross-device")]
+    CrossDevice,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+fn fs_error_from_io(err: &std::io::Error) -> FsErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        NotFound => FsErrorCode::NoEntry,
+        PermissionDenied => FsErrorCode::Access,
+        AlreadyExists => FsErrorCode::Exist,
+        InvalidInput => FsErrorCode::Invalid,
+        Interrupted => FsErrorCode::Interrupted,
+        OutOfMemory => FsErrorCode::InsufficientMemory,
+        BrokenPipe => FsErrorCode::Pipe,
+        Unsupported => FsErrorCode::Unsupported,
+        IsADirectory => FsErrorCode::IsDirectory,
+        NotADirectory => FsErrorCode::NotDirectory,
+        DirectoryNotEmpty => FsErrorCode::NotEmpty,
+        ReadOnlyFilesystem => FsErrorCode::ReadOnly,
+        StorageFull => FsErrorCode::InsufficientSpace,
+        FileTooLarge => FsErrorCode::FileTooLarge,
+        QuotaExceeded => FsErrorCode::Quota,
+        InvalidFilename => FsErrorCode::IllegalByteSequence,
+        NotSeekable => FsErrorCode::InvalidSeek,
+        _ => FsErrorCode::Io,
+    }
 }
 
 struct FsDescriptor {
     path: PathBuf,
+    writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
 struct TestHost {
@@ -75,12 +169,22 @@ impl StreamConsumer<TestHost> for CollectConsumer {
 }
 
 fn sandbox_root() -> PathBuf {
-    std::env::temp_dir().join("wasmtime-android-kt-wasi-fs")
+    thread_local! {
+        static DIR: PathBuf = {
+            std::env::temp_dir()
+                .join("wasmtime-android-kt-wasi-fs")
+                .join(format!("{:?}", std::thread::current().id()))
+        };
+    }
+    DIR.with(|p| p.clone())
 }
 
 fn sandbox_join(rel: &str) -> Result<PathBuf, FsErrorCode> {
-    if rel.is_empty() || rel.contains('\0') {
-        return Err(FsErrorCode::Access);
+    if rel.is_empty() {
+        return Err(FsErrorCode::Invalid);
+    }
+    if rel.contains('\0') {
+        return Err(FsErrorCode::IllegalByteSequence);
     }
     let p = std::path::Path::new(rel);
     if p.components()
@@ -113,14 +217,17 @@ fn fs_open_child(
     parent: &Resource<FsDescriptor>,
     rel: &str,
 ) -> Result<Resource<FsDescriptor>, FsErrorCode> {
-    let _ = table.get(parent).map_err(|_| FsErrorCode::Unknown)?;
+    let _ = table.get(parent).map_err(|_| FsErrorCode::BadDescriptor)?;
     let child = sandbox_join(rel)?;
     if !child.exists() {
-        std::fs::write(&child, b"").map_err(|_| FsErrorCode::Unknown)?;
+        std::fs::write(&child, b"").map_err(|e| fs_error_from_io(&e))?;
     }
     table
-        .push(FsDescriptor { path: child })
-        .map_err(|_| FsErrorCode::Unknown)
+        .push(FsDescriptor {
+            path: child,
+            writer: None,
+        })
+        .map_err(|_| FsErrorCode::InsufficientMemory)
 }
 
 fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
@@ -148,21 +255,19 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                         done: Some(tx),
                     },
                 )?;
-                let fut = FutureReader::new(&mut store, async move {
-                    let _n = match rx.await {
-                        Ok(n) => n,
-                        Err(_) => 0,
-                    };
+                let writer = std::thread::spawn(move || {
+                    let _n = pollster::block_on(rx).unwrap_or(0);
+                    let _ = _n;
                     let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
-                    let wrote = if offset == 0 {
+                    if offset == 0 {
                         std::fs::write(&path, bytes)
                     } else {
                         fs_write_at(&path, offset, &bytes)
-                    };
-                    match wrote {
-                        Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(())),
-                        Err(_) => Ok(Err(FsErrorCode::Unknown)),
                     }
+                });
+                store.data_mut().table.get_mut(&desc)?.writer = Some(writer);
+                let fut = FutureReader::new(&mut store, async move {
+                    Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
                 })?;
                 Ok((fut,))
             },
@@ -170,7 +275,11 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
         types.func_wrap(
             "[method]descriptor.read-via-stream",
             |mut store, (desc, offset): (Resource<FsDescriptor>, u64)| {
-                let path = store.data_mut().table.get(&desc)?.path.clone();
+                let entry = store.data_mut().table.get_mut(&desc)?;
+                if let Some(h) = entry.writer.take() {
+                    let _ = h.join();
+                }
+                let path = entry.path.clone();
                 let bytes = fs_read_from(&path, offset);
                 let reader = StreamReader::new(&mut store, bytes)?;
                 let fut = FutureReader::new(&mut store, async move {
@@ -206,6 +315,7 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
             std::fs::create_dir_all(sandbox_root())?;
             let resource = store.data_mut().table.push(FsDescriptor {
                 path: sandbox_root(),
+                writer: None,
             })?;
             Ok((vec![(resource, ".".to_string())],))
         })?;
@@ -215,10 +325,21 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
 
 #[test]
 fn sandbox_join_rejects_escape() {
-    assert!(sandbox_join("..").is_err());
-    assert!(sandbox_join("../etc/passwd").is_err());
-    assert!(sandbox_join("/sdcard/x").is_err());
-    assert!(sandbox_join("a/../b").is_err());
+    assert!(matches!(sandbox_join(".."), Err(FsErrorCode::Access)));
+    assert!(matches!(
+        sandbox_join("../etc/passwd"),
+        Err(FsErrorCode::Access)
+    ));
+    assert!(matches!(
+        sandbox_join("/sdcard/x"),
+        Err(FsErrorCode::Access)
+    ));
+    assert!(matches!(sandbox_join("a/../b"), Err(FsErrorCode::Access)));
+    assert!(matches!(sandbox_join(""), Err(FsErrorCode::Invalid)));
+    assert!(matches!(
+        sandbox_join("x\0y"),
+        Err(FsErrorCode::IllegalByteSequence)
+    ));
     assert!(sandbox_join("p3fs.txt").is_ok());
 }
 
@@ -228,10 +349,34 @@ fn open_at_dotdot_returns_access() -> wasmtime::Result<()> {
     let mut table = ResourceTable::new();
     let parent = table.push(FsDescriptor {
         path: sandbox_root(),
+        writer: None,
     })?;
     let err = fs_open_child(&mut table, &parent, "..").unwrap_err();
     assert!(matches!(err, FsErrorCode::Access));
     Ok(())
+}
+
+#[test]
+fn open_at_missing_parent_is_bad_descriptor() -> wasmtime::Result<()> {
+    let mut table = ResourceTable::new();
+    let dangling = Resource::<FsDescriptor>::new_own(0);
+    let err = fs_open_child(&mut table, &dangling, "p3fs.txt").unwrap_err();
+    assert!(matches!(err, FsErrorCode::BadDescriptor));
+    Ok(())
+}
+
+#[test]
+fn write_io_on_directory_is_not_unknown() {
+    std::fs::create_dir_all(sandbox_root()).unwrap();
+    let err = std::fs::write(sandbox_root(), b"x").unwrap_err();
+    let code = fs_error_from_io(&err);
+    assert!(
+        matches!(
+            code,
+            FsErrorCode::IsDirectory | FsErrorCode::Io | FsErrorCode::Access
+        ),
+        "write-on-dir must map off unknown, got {code:?}"
+    );
 }
 
 #[test]
@@ -256,8 +401,16 @@ fn wasi_filesystem_preopen_read_write_smoke() -> wasmtime::Result<()> {
         },
     );
     let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
-    let func = instance.get_typed_func::<(), (u32,)>(&mut store, "run")?;
-    let (n,) = pollster::block_on(func.call_async(&mut store, ()))?;
+    let n = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })?;
     assert_eq!(n, PAYLOAD.len() as u32);
     let on_disk = std::fs::read(sandbox_join("p3fs.txt").unwrap())?;
     assert_eq!(on_disk, PAYLOAD);

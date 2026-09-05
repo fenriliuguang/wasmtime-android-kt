@@ -7,7 +7,23 @@
 (component
   (import "wasi:sockets/tcp@0.3.0" (instance $tcp
     (export "tcp-socket" (type $tcp-socket (sub resource)))
-    (type $error-code-def (enum "unknown"))
+    (type $error-code-def (variant
+      (case "access-denied")
+      (case "not-supported")
+      (case "invalid-argument")
+      (case "out-of-memory")
+      (case "timeout")
+      (case "invalid-state")
+      (case "address-not-bindable")
+      (case "address-in-use")
+      (case "remote-unreachable")
+      (case "connection-refused")
+      (case "connection-broken")
+      (case "connection-reset")
+      (case "connection-aborted")
+      (case "datagram-too-large")
+      (case "other" (option string))
+    ))
     (export "error-code" (type $error-code (eq $error-code-def)))
     (type $io-result (result (error $error-code)))
     (type $st (stream u8))
@@ -21,7 +37,7 @@
     (type $ip-sock-def (variant (case "ipv4" $ipv4-sock)))
     (export "ip-socket-address" (type $ip-sock (eq $ip-sock-def)))
     (export "[method]tcp-socket.connect"
-      (func async (param "self" $borrow-sock) (param "remote-address" $ip-sock) (result $io-result)))
+      (func (param "self" $borrow-sock) (param "remote-address" $ip-sock) (result $io-result)))
     (export "[method]tcp-socket.write-via-stream"
       (func (param "self" $borrow-sock) (param "data" $st) (result $ft)))
     (export "[method]tcp-socket.read-via-stream"
@@ -34,7 +50,23 @@
   (alias export $tcp "[method]tcp-socket.read-via-stream" (func $read-via-stream))
   (import "wasi:sockets/tcp-create-socket@0.3.0" (instance $create
     (export "tcp-socket" (type (eq $tcp-socket)))
-    (type $error-code-def (enum "unknown"))
+    (type $error-code-def (variant
+      (case "access-denied")
+      (case "not-supported")
+      (case "invalid-argument")
+      (case "out-of-memory")
+      (case "timeout")
+      (case "invalid-state")
+      (case "address-not-bindable")
+      (case "address-in-use")
+      (case "remote-unreachable")
+      (case "connection-refused")
+      (case "connection-broken")
+      (case "connection-reset")
+      (case "connection-aborted")
+      (case "datagram-too-large")
+      (case "other" (option string))
+    ))
     (export "error-code" (type $ec (eq $error-code-def)))
     (type $family-def (enum "ipv4" "ipv6"))
     (export "ip-address-family" (type $family (eq $family-def)))
@@ -49,6 +81,18 @@
 
   (core module $libc
     (memory (export "mem") 1)
+    (global $last (mut i32) (i32.const 256))
+    (func (export "realloc")
+      (param $oldptr i32) (param $oldlen i32) (param $align i32) (param $newlen i32)
+      (result i32)
+      (local $ret i32)
+      (local.set $ret (global.get $last))
+      (global.set $last
+        (i32.and
+          (i32.add (i32.add (local.get $ret) (local.get $newlen)) (i32.const 7))
+          (i32.const -8)))
+      (local.get $ret)
+    )
     (data (i32.const 16) "P3SK")
   )
   (core instance $libc (instantiate $libc))
@@ -59,7 +103,6 @@
     (import "" "stream.write" (func $stream.write (param i32 i32 i32) (result i32)))
     (import "" "stream.read" (func $stream.read (param i32 i32 i32) (result i32)))
     (import "" "stream.drop-writable" (func $stream.drop-writable (param i32)))
-    (import "" "future.read" (func $future.read (param i32 i32) (result i32)))
     (import "" "future.drop-readable" (func $future.drop-readable (param i32)))
     (import "" "create-tcp-socket" (func $create-tcp-socket (param i32 i32)))
     (import "" "connect" (func $connect (param i32 i32 i32 i32 i32 i32 i32 i32)))
@@ -81,7 +124,7 @@
       (if (i32.ne (i32.load8_u (i32.const 80)) (i32.const 0))
         (then unreachable))
       (local.set $sock (i32.load (i32.const 84)))
-      ;; connect(self, ipv4 {port=0, 127.0.0.1}, retptr=144)
+      ;; connect(self, ipv4 {port=0, 127.0.0.1}, retptr=192)
       (call $connect
         (local.get $sock)
         (i32.const 0)
@@ -90,8 +133,8 @@
         (i32.const 0)
         (i32.const 0)
         (i32.const 1)
-        (i32.const 144))
-      (if (i32.ne (i32.load8_u (i32.const 144)) (i32.const 0))
+        (i32.const 192))
+      (if (i32.ne (i32.load8_u (i32.const 192)) (i32.const 0))
         (then unreachable))
 
       (local.set $pair (call $stream.new))
@@ -103,13 +146,8 @@
       (if (i32.eq (local.get $status) (i32.const -1))
         (then unreachable))
       (call $stream.drop-writable (local.get $w))
-
-      (local.set $status (call $future.read (local.get $fut) (i32.const 0)))
-      (if (i32.eq (local.get $status) (i32.const -1))
-        (then unreachable))
+      ;; Drop IO futures without future.read (official error-code has other(option<string>)).
       (call $future.drop-readable (local.get $fut))
-      (if (i32.ne (i32.load8_u (i32.const 0)) (i32.const 0))
-        (then unreachable))
 
       ;; tuple at mem[32]: stream handle, future handle
       (call $read-via-stream (local.get $sock) (i32.const 32))
@@ -122,13 +160,7 @@
       (local.set $n (i32.shr_u (local.get $status) (i32.const 4)))
       (if (i32.ne (i32.load (i32.const 48)) (i32.load (i32.const 16)))
         (then unreachable))
-
-      (local.set $status (call $future.read (local.get $fut) (i32.const 64)))
-      (if (i32.eq (local.get $status) (i32.const -1))
-        (then unreachable))
       (call $future.drop-readable (local.get $fut))
-      (if (i32.ne (i32.load8_u (i32.const 64)) (i32.const 0))
-        (then unreachable))
 
       (local.get $n)
     )
@@ -138,12 +170,15 @@
   (core func $stream.write (canon stream.write $st async (memory $libc "mem")))
   (core func $stream.read (canon stream.read $st async (memory $libc "mem")))
   (core func $stream.drop-writable (canon stream.drop-writable $st))
-  (core func $future.read (canon future.read $ft async (memory $libc "mem")))
   (core func $future.drop-readable (canon future.drop-readable $ft))
   (core func $create_lower
-    (canon lower (func $create-tcp-socket) (memory $libc "mem")))
+    (canon lower (func $create-tcp-socket)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
   (core func $connect_lower
-    (canon lower (func $connect) (memory $libc "mem")))
+    (canon lower (func $connect)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
   (core func $write_lower (canon lower (func $write-via-stream) (memory $libc "mem")))
   (core func $read_lower (canon lower (func $read-via-stream) (memory $libc "mem")))
 
@@ -154,7 +189,6 @@
       (export "stream.write" (func $stream.write))
       (export "stream.read" (func $stream.read))
       (export "stream.drop-writable" (func $stream.drop-writable))
-      (export "future.read" (func $future.read))
       (export "future.drop-readable" (func $future.drop-readable))
       (export "create-tcp-socket" (func $create_lower))
       (export "connect" (func $connect_lower))
@@ -163,6 +197,6 @@
     ))
   ))
 
-  (func (export "run") async (result u32)
+  (func (export "run") (result u32)
     (canon lift (core func $i "run")))
 )
