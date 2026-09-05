@@ -153,7 +153,8 @@
       (call $stream.drop-writable (local.get $w))
       ;; Drop write/read futures without future.read: official error-code includes
       ;; `other(option<string>)`, so a payload read needs realloc and BLOCKED under
-      ;; sync-lifted `run`. File bytes + open-at("..") are the guest-visible checks.
+      ;; sync-lifted `run`. Host completes the write on a helper thread and joins
+      ;; it in read-via-stream so drop does not lose P3FS.
       (call $future.drop-readable (local.get $fut))
 
       ;; tuple at mem[32]: stream handle, future handle; offset 0

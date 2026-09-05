@@ -120,6 +120,7 @@ fn fs_error_from_io(err: &std::io::Error) -> FsErrorCode {
 
 struct FsDescriptor {
     path: PathBuf,
+    writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
 struct TestHost {
@@ -168,7 +169,14 @@ impl StreamConsumer<TestHost> for CollectConsumer {
 }
 
 fn sandbox_root() -> PathBuf {
-    std::env::temp_dir().join("wasmtime-android-kt-wasi-fs")
+    thread_local! {
+        static DIR: PathBuf = {
+            std::env::temp_dir()
+                .join("wasmtime-android-kt-wasi-fs")
+                .join(format!("{:?}", std::thread::current().id()))
+        };
+    }
+    DIR.with(|p| p.clone())
 }
 
 fn sandbox_join(rel: &str) -> Result<PathBuf, FsErrorCode> {
@@ -215,7 +223,10 @@ fn fs_open_child(
         std::fs::write(&child, b"").map_err(|e| fs_error_from_io(&e))?;
     }
     table
-        .push(FsDescriptor { path: child })
+        .push(FsDescriptor {
+            path: child,
+            writer: None,
+        })
         .map_err(|_| FsErrorCode::InsufficientMemory)
 }
 
@@ -244,21 +255,19 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
                         done: Some(tx),
                     },
                 )?;
-                let fut = FutureReader::new(&mut store, async move {
-                    let _n = match rx.await {
-                        Ok(n) => n,
-                        Err(_) => 0,
-                    };
+                let writer = std::thread::spawn(move || {
+                    let _n = pollster::block_on(rx).unwrap_or(0);
+                    let _ = _n;
                     let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
-                    let wrote = if offset == 0 {
+                    if offset == 0 {
                         std::fs::write(&path, bytes)
                     } else {
                         fs_write_at(&path, offset, &bytes)
-                    };
-                    match wrote {
-                        Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(())),
-                        Err(e) => Ok(Err(fs_error_from_io(&e))),
                     }
+                });
+                store.data_mut().table.get_mut(&desc)?.writer = Some(writer);
+                let fut = FutureReader::new(&mut store, async move {
+                    Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
                 })?;
                 Ok((fut,))
             },
@@ -266,7 +275,11 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
         types.func_wrap(
             "[method]descriptor.read-via-stream",
             |mut store, (desc, offset): (Resource<FsDescriptor>, u64)| {
-                let path = store.data_mut().table.get(&desc)?.path.clone();
+                let entry = store.data_mut().table.get_mut(&desc)?;
+                if let Some(h) = entry.writer.take() {
+                    let _ = h.join();
+                }
+                let path = entry.path.clone();
                 let bytes = fs_read_from(&path, offset);
                 let reader = StreamReader::new(&mut store, bytes)?;
                 let fut = FutureReader::new(&mut store, async move {
@@ -302,6 +315,7 @@ fn register(linker: &mut Linker<TestHost>) -> wasmtime::Result<()> {
             std::fs::create_dir_all(sandbox_root())?;
             let resource = store.data_mut().table.push(FsDescriptor {
                 path: sandbox_root(),
+                writer: None,
             })?;
             Ok((vec![(resource, ".".to_string())],))
         })?;
@@ -335,6 +349,7 @@ fn open_at_dotdot_returns_access() -> wasmtime::Result<()> {
     let mut table = ResourceTable::new();
     let parent = table.push(FsDescriptor {
         path: sandbox_root(),
+        writer: None,
     })?;
     let err = fs_open_child(&mut table, &parent, "..").unwrap_err();
     assert!(matches!(err, FsErrorCode::Access));

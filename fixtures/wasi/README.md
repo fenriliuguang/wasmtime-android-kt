@@ -184,7 +184,7 @@ wasm-tools validate --features=component-model fixtures/wasi/cli_environment.was
 Guest export: `run: func() -> u32`（写 `P3FS` 再读回，返回 4）  
 Host: `wasi:filesystem/preopens@0.3.0#get-directories` → 沙箱**目录** `list`（名 `"."`）；`[method]descriptor.open-at("p3fs.txt")` → child；write/read-via-stream 带 `offset: filesize`（钉 `@0.3.0`）
 
-官方包名如上。本切片：目录 preopen + `open-at` 成功路径；guest `open-at("..")` → `error-code.access`（官方 variant 第 0 案，无 `unknown`）；write/read 取 `offset: filesize`（smoke 用 `0`）。r/w IO 映射官方码（目录上写 → `is-directory` / `io`）。write/read 的 `future<result<_, error-code>>` 只 drop、不 `future.read`（variant 含 `other(option<string>)`，sync-lift `run` 下 payload read 会 BLOCKED）。沙箱见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §5。G-fs-shape / G-fs-open **已完成**。**L-ERR-FS：** 官方 `error-code` variant。
+官方包名如上。本切片：目录 preopen + `open-at` 成功路径；guest `open-at("..")` → `error-code.access`（官方 variant 第 0 案，无 `unknown`）；write/read 取 `offset: filesize`（smoke 用 `0`）。r/w IO 映射官方码（目录上写 → `is-directory` / `io`）。write/read 的 `future<result<_, error-code>>` 只 drop、不 `future.read`（variant 含 `other(option<string>)`，sync-lift `run` 下 payload read 会 BLOCKED）。Host 在 helper 线程写盘，`read-via-stream` 先 join，drop 不会丢掉 `P3FS`。沙箱见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §5。G-fs-shape / G-fs-open **已完成**。**L-ERR-FS：** 官方 `error-code` variant。
 
 成功：guest `run` 返回 `4` 且宿主文件内容为 `P3FS`。
 

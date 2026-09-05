@@ -449,8 +449,11 @@ fn fs_error_from_io(err: &std::io::Error) -> FsErrorCode {
 
 /// Host `resource descriptor` for the W6 preopen smoke. Path is under the
 /// process sandbox root (see `filesystem_sandbox_join`).
+/// `writer` joins before read so guests can drop the write future (official
+/// `error-code` has `other(option<string>)`; `future.read` BLOCKS under sync lift).
 struct FsDescriptor {
     path: std::path::PathBuf,
+    writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
 fn filesystem_sandbox_root() -> std::path::PathBuf {
@@ -505,7 +508,10 @@ fn fs_open_child(
         std::fs::write(&child, b"").map_err(|e| fs_error_from_io(&e))?;
     }
     table
-        .push(FsDescriptor { path: child })
+        .push(FsDescriptor {
+            path: child,
+            writer: None,
+        })
         .map_err(|_| FsErrorCode::InsufficientMemory)
 }
 
@@ -1990,21 +1996,19 @@ pub(crate) fn define_host(
                             max_per_poll: usize::MAX,
                         },
                     )?;
-                    let fut = FutureReader::new(&mut store, async move {
-                        let _n = match rx.await {
-                            Ok(n) => n,
-                            Err(_) => 0,
-                        };
+                    let writer = std::thread::spawn(move || {
+                        let _n = pollster::block_on(rx).unwrap_or(0);
+                        let _ = _n;
                         let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
-                        let wrote = if offset == 0 {
+                        if offset == 0 {
                             std::fs::write(&path, bytes)
                         } else {
                             fs_write_at(&path, offset, &bytes)
-                        };
-                        match wrote {
-                            Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(())),
-                            Err(e) => Ok(Err(fs_error_from_io(&e))),
                         }
+                    });
+                    store.data_mut().table.get_mut(&desc)?.writer = Some(writer);
+                    let fut = FutureReader::new(&mut store, async move {
+                        Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
                     })?;
                     Ok((fut,))
                 },
@@ -2014,7 +2018,11 @@ pub(crate) fn define_host(
             .func_wrap(
                 "[method]descriptor.read-via-stream",
                 |mut store, (desc, offset): (Resource<FsDescriptor>, u64)| {
-                    let path = store.data_mut().table.get(&desc)?.path.clone();
+                    let entry = store.data_mut().table.get_mut(&desc)?;
+                    if let Some(h) = entry.writer.take() {
+                        let _ = h.join();
+                    }
+                    let path = entry.path.clone();
                     let bytes = fs_read_from(&path, offset);
                     let reader = StreamReader::new(&mut store, bytes)?;
                     let fut = FutureReader::new(&mut store, async move {
@@ -2059,6 +2067,7 @@ pub(crate) fn define_host(
                     .map_err(|e| wasmtime::Error::msg(format!("sandbox mkdir: {e}")))?;
                 let resource = store.data_mut().table.push(FsDescriptor {
                     path: filesystem_sandbox_root(),
+                    writer: None,
                 })?;
                 Ok((vec![(resource, ".".to_string())],))
             })
