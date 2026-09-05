@@ -12,4 +12,4 @@ Chinese is secondary. When a Chinese file exists, it uses the `.zh.md` suffix ne
 
 If the two disagree, **English wins**.
 
-New RFCs and living scheme docs must ship in English. A `.zh.md` sibling is optional and should be a faithful summary, not a second source of truth. One RFC file: [`scheme/rfc.md`](scheme/rfc.md).
+New RFCs and living scheme docs must ship in English. A `.zh.md` sibling is optional and should be a faithful summary, not a second source of truth. Accepted product RFC: [`scheme/rfc.md`](scheme/rfc.md). Additional **Draft** design RFCs may live as `scheme/rfc-*.md` until accepted into `rfc.md` or withdrawn. Living leftover queue: [`scheme/wasi-p3-leftover.md`](scheme/wasi-p3-leftover.md).
