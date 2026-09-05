@@ -342,16 +342,109 @@ enum CliErrorCode {
     Pipe,
 }
 
-/// WASI 0.3.0 `wasi:filesystem` `error-code` subset (`unknown`, `access`).
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+/// WASI 0.3.0 `wasi:filesystem` `error-code` (official variant; last case `other`).
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum FsErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
     #[component(name = "access")]
     Access,
+    #[component(name = "already")]
+    Already,
+    #[component(name = "bad-descriptor")]
+    BadDescriptor,
+    #[component(name = "busy")]
+    Busy,
+    #[component(name = "deadlock")]
+    Deadlock,
+    #[component(name = "quota")]
+    Quota,
+    #[component(name = "exist")]
+    Exist,
+    #[component(name = "file-too-large")]
+    FileTooLarge,
+    #[component(name = "illegal-byte-sequence")]
+    IllegalByteSequence,
+    #[component(name = "in-progress")]
+    InProgress,
+    #[component(name = "interrupted")]
+    Interrupted,
+    #[component(name = "invalid")]
+    Invalid,
+    #[component(name = "io")]
+    Io,
+    #[component(name = "is-directory")]
+    IsDirectory,
+    #[component(name = "loop")]
+    Loop,
+    #[component(name = "too-many-links")]
+    TooManyLinks,
+    #[component(name = "message-size")]
+    MessageSize,
+    #[component(name = "name-too-long")]
+    NameTooLong,
+    #[component(name = "no-device")]
+    NoDevice,
+    #[component(name = "no-entry")]
+    NoEntry,
+    #[component(name = "no-lock")]
+    NoLock,
+    #[component(name = "insufficient-memory")]
+    InsufficientMemory,
+    #[component(name = "insufficient-space")]
+    InsufficientSpace,
+    #[component(name = "not-directory")]
+    NotDirectory,
+    #[component(name = "not-empty")]
+    NotEmpty,
+    #[component(name = "not-recoverable")]
+    NotRecoverable,
+    #[component(name = "unsupported")]
+    Unsupported,
+    #[component(name = "no-tty")]
+    NoTty,
+    #[component(name = "no-such-device")]
+    NoSuchDevice,
+    #[component(name = "overflow")]
+    Overflow,
+    #[component(name = "not-permitted")]
+    NotPermitted,
+    #[component(name = "pipe")]
+    Pipe,
+    #[component(name = "read-only")]
+    ReadOnly,
+    #[component(name = "invalid-seek")]
+    InvalidSeek,
+    #[component(name = "text-file-busy")]
+    TextFileBusy,
+    #[component(name = "cross-device")]
+    CrossDevice,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+fn fs_error_from_io(err: &std::io::Error) -> FsErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        NotFound => FsErrorCode::NoEntry,
+        PermissionDenied => FsErrorCode::Access,
+        AlreadyExists => FsErrorCode::Exist,
+        InvalidInput => FsErrorCode::Invalid,
+        Interrupted => FsErrorCode::Interrupted,
+        OutOfMemory => FsErrorCode::InsufficientMemory,
+        BrokenPipe => FsErrorCode::Pipe,
+        Unsupported => FsErrorCode::Unsupported,
+        IsADirectory => FsErrorCode::IsDirectory,
+        NotADirectory => FsErrorCode::NotDirectory,
+        DirectoryNotEmpty => FsErrorCode::NotEmpty,
+        ReadOnlyFilesystem => FsErrorCode::ReadOnly,
+        StorageFull => FsErrorCode::InsufficientSpace,
+        FileTooLarge => FsErrorCode::FileTooLarge,
+        QuotaExceeded => FsErrorCode::Quota,
+        InvalidFilename => FsErrorCode::IllegalByteSequence,
+        NotSeekable => FsErrorCode::InvalidSeek,
+        _ => FsErrorCode::Io,
+    }
 }
 
 /// Host `resource descriptor` for the W6 preopen smoke. Path is under the
@@ -368,8 +461,11 @@ fn filesystem_sandbox_root() -> std::path::PathBuf {
 /// Not `/sdcard` or other shared storage — root is `temp_dir()` (Android:
 /// app-private cache via `TMPDIR`).
 fn filesystem_sandbox_join(rel: &str) -> Result<std::path::PathBuf, FsErrorCode> {
-    if rel.is_empty() || rel.contains('\0') {
-        return Err(FsErrorCode::Access);
+    if rel.is_empty() {
+        return Err(FsErrorCode::Invalid);
+    }
+    if rel.contains('\0') {
+        return Err(FsErrorCode::IllegalByteSequence);
     }
     let p = std::path::Path::new(rel);
     if p.components()
@@ -403,14 +499,14 @@ fn fs_open_child(
     parent: &wasmtime::component::Resource<FsDescriptor>,
     rel: &str,
 ) -> Result<wasmtime::component::Resource<FsDescriptor>, FsErrorCode> {
-    let _ = table.get(parent).map_err(|_| FsErrorCode::Unknown)?;
+    let _ = table.get(parent).map_err(|_| FsErrorCode::BadDescriptor)?;
     let child = filesystem_sandbox_join(rel)?;
     if !child.exists() {
-        std::fs::write(&child, b"").map_err(|_| FsErrorCode::Unknown)?;
+        std::fs::write(&child, b"").map_err(|e| fs_error_from_io(&e))?;
     }
     table
         .push(FsDescriptor { path: child })
-        .map_err(|_| FsErrorCode::Unknown)
+        .map_err(|_| FsErrorCode::InsufficientMemory)
 }
 
 /// Host `resource tcp-socket` for the W7 loopback smoke + P010 outbound dial.
@@ -1714,7 +1810,7 @@ pub(crate) fn define_host(
                         };
                         match wrote {
                             Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(())),
-                            Err(_) => Ok(Err(FsErrorCode::Unknown)),
+                            Err(e) => Ok(Err(fs_error_from_io(&e))),
                         }
                     })?;
                     Ok((fut,))
