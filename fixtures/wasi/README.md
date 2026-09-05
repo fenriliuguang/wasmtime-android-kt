@@ -165,6 +165,20 @@ wasm-tools parse fixtures/wasi/cli_command.wat -o fixtures/wasi/cli_command.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/cli_command.wasm
 ```
 
+## `wasi:cli/environment` — get-environment / get-arguments（L-CMD-ENV）
+
+Guest export: `run: func() -> u32`（见到 `TMPDIR=/tmp/p3env` 且 arguments 为空则返回 1）  
+Host: `wasi:cli/environment@0.3.0`（钉 `@0.3.0`）
+
+`get-environment` 只返回文档化的 `TMPDIR` pair（Android：无则空 list，不是整份进程环境）。`get-arguments` 返回空 list。`get-initial-cwd` 不在本刀。无 Kotlin SPI。
+
+成功：测试注入 `TMPDIR=/tmp/p3env` 时 `run` 返回 `1`；无 `TMPDIR` 时返回 `0`。
+
+```powershell
+wasm-tools parse fixtures/wasi/cli_environment.wat -o fixtures/wasi/cli_environment.wasm
+wasm-tools validate --features=component-model fixtures/wasi/cli_environment.wasm
+```
+
 ## `wasi:filesystem` — preopen + read/write（Android 沙箱子集）
 
 Guest export: `run: func() -> u32`（写 `P3FS` 再读回，返回 4）  

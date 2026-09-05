@@ -1935,6 +1935,27 @@ pub(crate) fn define_host(
         )
         .map_err(|e| e.to_string())?;
 
+    // WASI 0.3: wasi:cli/environment@0.3.0 — get-environment / get-arguments.
+    // Android: empty or documented TMPDIR only (not a full process-env dump).
+    // get-initial-cwd is not this lane.
+    {
+        let mut environment = linker
+            .instance("wasi:cli/environment@0.3.0")
+            .map_err(|e| e.to_string())?;
+        environment
+            .func_wrap("get-environment", |_store, ()| {
+                let pairs = match std::env::var("TMPDIR") {
+                    Ok(v) => vec![("TMPDIR".to_string(), v)],
+                    Err(_) => Vec::new(),
+                };
+                Ok((pairs,))
+            })
+            .map_err(|e| e.to_string())?;
+        environment
+            .func_wrap("get-arguments", |_store, ()| Ok((Vec::<String>::new(),)))
+            .map_err(|e| e.to_string())?;
+    }
+
     // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3).
     // Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
     // get-directories → list (sandbox directory, ".");

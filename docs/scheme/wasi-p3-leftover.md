@@ -31,7 +31,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | L-ERR-FS | landed 2026-09-05 (official `wasi:filesystem` `error-code` variant; `..` → access; table miss → bad-descriptor; r/w IO → io / is-directory) |
 | L-ERR-SOCK | landed 2026-09-05 (official sockets `error-code` variant; IPv6 create → not-supported; connect IO mapped off unknown) |
 | L-ERR-HTTP | landed 2026-09-05 (official `wasi:http` `error-code` variant; empty authority → HTTP-request-URI-invalid; https without TLS crate → TLS-protocol-error) |
-| L-CMD-ENV | gap: l-cmd-env pending |
+| L-CMD-ENV | landed 2026-09-05 (`wasi:cli/environment@0.3.0` get-environment / get-arguments; TMPDIR only; arguments empty) |
 | L-CMD-EXIT | gap: l-cmd-exit pending |
 | L-CMD-TERM | gap: l-cmd-term pending |
 | L-FS-STAT | gap: l-fs-stat pending |
@@ -56,7 +56,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | **L-ERR-FS** | *(landed)* | Official `wasi:filesystem` `error-code` variant. `open-at("..")` stays `access`; missing descriptor → `bad-descriptor`; r/w IO maps off `unknown` (`io` / `is-directory`). |
 | **L-ERR-SOCK** | *(landed)* | Official sockets `error-code` variant. IPv6 create → `not-supported`; failed connect maps `connection-refused` / `remote-unreachable` / `other(none)` (not `unknown`). Fixture `sockets_tcp_ipv6`. |
 | **L-ERR-HTTP** | *(landed)* | `HttpErrorCode` matches official `wasi:http` `error-code` used by product `send` / body. Empty authority / https-without-TLS stay guest-visible codes, not a crate. Remove the needle. |
-| **L-CMD-ENV** | `gap: l-cmd-env pending` | `wasi:cli/environment@0.3.0` `get-environment` / `get-arguments` (host-supplied; Android: empty or documented `TMPDIR`). Fixture. Remove the needle. |
+| **L-CMD-ENV** | *(landed)* | `wasi:cli/environment@0.3.0` `get-environment` / `get-arguments` (host-supplied; Android: empty or documented `TMPDIR`). Fixture. Remove the needle. |
 | **L-CMD-EXIT** | `gap: l-cmd-exit pending` | `wasi:cli/exit@0.3.0`. Guest `exit` completes `run` with official `result`. Do not kill the ART process. Remove the needle. |
 | **L-CMD-TERM** | `gap: l-cmd-term pending` | `terminal-stdin` / `terminal-stdout` / `terminal-stderr` (Android: `none` is allowed). Not a fake TTY. Remove the needle. |
 | **L-FS-STAT** | `gap: l-fs-stat pending` | `stat` / `stat-at` on the sandbox descriptor. Remove the needle. |
