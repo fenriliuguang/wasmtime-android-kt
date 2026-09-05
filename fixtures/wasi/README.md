@@ -253,13 +253,17 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_body.
 Guest export: `run: async func() -> u32`（`set-authority` → `send` GET → status 200 → `consume-body` `HOUT` → 返回 4）  
 Host: `wasi:http/client@0.3.0#send`（钉 `@0.3.0`；0.3 对 outgoing-handler 的等价物）
 
-Guest authority 在 mem `P3HA` 记录（len + `host:port`），测试 instantiate 前打补丁。Host **真拨** 该地址发 HTTP/1.1 GET（helper 线程），不是进程内 200。无 TLS crate；https → `unknown`。
+Guest authority 在 mem `P3HA` 记录（len + `host:port`），测试 instantiate 前打补丁。Host **真拨** 该地址发 HTTP/1.1 GET（helper 线程），不是进程内 200。无 TLS crate；https → `TLS-protocol-error`。**L-ERR-HTTP：** 官方 `error-code` variant（末案 `internal-error`，无 `unknown`）；空 authority → `HTTP-request-URI-invalid`（`http_empty_authority`）；`https:` → `TLS-protocol-error`（`http_https_tls`）。send 失败映射 `connection-refused` 等。
 
 成功：guest `run` 返回 `4` **且** 测试侧 HTTP 服务器收到 `GET /`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/http_out.wat -o fixtures/wasi/http_out.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_out.wasm
+wasm-tools parse fixtures/wasi/http_empty_authority.wat -o fixtures/wasi/http_empty_authority.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_empty_authority.wasm
+wasm-tools parse fixtures/wasi/http_https_tls.wat -o fixtures/wasi/http_https_tls.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_https_tls.wasm
 ```
 
 ## `wasi-gfx` — `surface.on-frame`（P010-GFXH）

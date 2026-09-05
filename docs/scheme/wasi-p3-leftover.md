@@ -30,7 +30,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | L-ERR-CLI | landed 2026-09-05 (official `wasi:cli` `error-code`; NUL → illegal-byte-sequence; invalid UTF-8 → io) |
 | L-ERR-FS | landed 2026-09-05 (official `wasi:filesystem` `error-code` variant; `..` → access; table miss → bad-descriptor; r/w IO → io / is-directory) |
 | L-ERR-SOCK | landed 2026-09-05 (official sockets `error-code` variant; IPv6 create → not-supported; connect IO mapped off unknown) |
-| L-ERR-HTTP | gap: l-err-http pending |
+| L-ERR-HTTP | landed 2026-09-05 (official `wasi:http` `error-code` variant; empty authority → HTTP-request-URI-invalid; https without TLS crate → TLS-protocol-error) |
 | L-CMD-ENV | gap: l-cmd-env pending |
 | L-CMD-EXIT | gap: l-cmd-exit pending |
 | L-CMD-TERM | gap: l-cmd-term pending |
@@ -55,7 +55,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | **L-ERR-CLI** | *(landed)* | Official `wasi:cli` `error-code` enum (`io` / `illegal-byte-sequence` / `pipe`). NUL → `illegal-byte-sequence`; invalid UTF-8 → `io`; cancelled oneshot → `pipe`. Fixture `cli_stdout_io`. |
 | **L-ERR-FS** | *(landed)* | Official `wasi:filesystem` `error-code` variant. `open-at("..")` stays `access`; missing descriptor → `bad-descriptor`; r/w IO maps off `unknown` (`io` / `is-directory`). |
 | **L-ERR-SOCK** | *(landed)* | Official sockets `error-code` variant. IPv6 create → `not-supported`; failed connect maps `connection-refused` / `remote-unreachable` / `other(none)` (not `unknown`). Fixture `sockets_tcp_ipv6`. |
-| **L-ERR-HTTP** | `gap: l-err-http pending` | `HttpErrorCode` matches official `wasi:http` `error-code` used by product `send` / body. Empty authority / https-without-TLS stay guest-visible codes, not a crate. Remove the needle. |
+| **L-ERR-HTTP** | *(landed)* | `HttpErrorCode` matches official `wasi:http` `error-code` used by product `send` / body. Empty authority / https-without-TLS stay guest-visible codes, not a crate. Remove the needle. |
 | **L-CMD-ENV** | `gap: l-cmd-env pending` | `wasi:cli/environment@0.3.0` `get-environment` / `get-arguments` (host-supplied; Android: empty or documented `TMPDIR`). Fixture. Remove the needle. |
 | **L-CMD-EXIT** | `gap: l-cmd-exit pending` | `wasi:cli/exit@0.3.0`. Guest `exit` completes `run` with official `result`. Do not kill the ART process. Remove the needle. |
 | **L-CMD-TERM** | `gap: l-cmd-term pending` | `terminal-stdin` / `terminal-stdout` / `terminal-stderr` (Android: `none` is allowed). Not a fake TTY. Remove the needle. |

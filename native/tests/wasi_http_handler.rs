@@ -20,13 +20,139 @@ use wasmtime::{Config, Engine, Store, StoreContextMut};
 
 const PAYLOAD: &[u8] = b"HBOD";
 
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct DnsErrorPayload {
+    rcode: Option<String>,
+    #[component(name = "info-code")]
+    info_code: Option<u16>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct TlsAlertReceivedPayload {
+    #[component(name = "alert-id")]
+    alert_id: Option<u8>,
+    #[component(name = "alert-message")]
+    alert_message: Option<String>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct FieldSizePayload {
+    #[component(name = "field-name")]
+    field_name: Option<String>,
+    #[component(name = "field-size")]
+    field_size: Option<u32>,
+}
+
+/// WASI 0.3.0 `wasi:http` `error-code` (official variant; last case `internal-error`).
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum HttpErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
+    #[component(name = "DNS-timeout")]
+    DnsTimeout,
+    #[component(name = "DNS-error")]
+    DnsError(DnsErrorPayload),
+    #[component(name = "destination-not-found")]
+    DestinationNotFound,
+    #[component(name = "destination-unavailable")]
+    DestinationUnavailable,
+    #[component(name = "destination-IP-prohibited")]
+    DestinationIpProhibited,
+    #[component(name = "destination-IP-unroutable")]
+    DestinationIpUnroutable,
+    #[component(name = "connection-refused")]
+    ConnectionRefused,
+    #[component(name = "connection-terminated")]
+    ConnectionTerminated,
+    #[component(name = "connection-timeout")]
+    ConnectionTimeout,
+    #[component(name = "connection-read-timeout")]
+    ConnectionReadTimeout,
+    #[component(name = "connection-write-timeout")]
+    ConnectionWriteTimeout,
+    #[component(name = "connection-limit-reached")]
+    ConnectionLimitReached,
+    #[component(name = "TLS-protocol-error")]
+    TlsProtocolError,
+    #[component(name = "TLS-certificate-error")]
+    TlsCertificateError,
+    #[component(name = "TLS-alert-received")]
+    TlsAlertReceived(TlsAlertReceivedPayload),
+    #[component(name = "HTTP-request-denied")]
+    HttpRequestDenied,
+    #[component(name = "HTTP-request-length-required")]
+    HttpRequestLengthRequired,
+    #[component(name = "HTTP-request-body-size")]
+    HttpRequestBodySize(Option<u64>),
+    #[component(name = "HTTP-request-method-invalid")]
+    HttpRequestMethodInvalid,
+    #[component(name = "HTTP-request-URI-invalid")]
+    HttpRequestUriInvalid,
+    #[component(name = "HTTP-request-URI-too-long")]
+    HttpRequestUriTooLong,
+    #[component(name = "HTTP-request-header-section-size")]
+    HttpRequestHeaderSectionSize(Option<u32>),
+    #[component(name = "HTTP-request-header-size")]
+    HttpRequestHeaderSize(Option<FieldSizePayload>),
+    #[component(name = "HTTP-request-trailer-section-size")]
+    HttpRequestTrailerSectionSize(Option<u32>),
+    #[component(name = "HTTP-request-trailer-size")]
+    HttpRequestTrailerSize(FieldSizePayload),
+    #[component(name = "HTTP-response-incomplete")]
+    HttpResponseIncomplete,
+    #[component(name = "HTTP-response-header-section-size")]
+    HttpResponseHeaderSectionSize(Option<u32>),
+    #[component(name = "HTTP-response-header-size")]
+    HttpResponseHeaderSize(FieldSizePayload),
+    #[component(name = "HTTP-response-body-size")]
+    HttpResponseBodySize(Option<u64>),
+    #[component(name = "HTTP-response-trailer-section-size")]
+    HttpResponseTrailerSectionSize(Option<u32>),
+    #[component(name = "HTTP-response-trailer-size")]
+    HttpResponseTrailerSize(FieldSizePayload),
+    #[component(name = "HTTP-response-transfer-coding")]
+    HttpResponseTransferCoding(Option<String>),
+    #[component(name = "HTTP-response-content-coding")]
+    HttpResponseContentCoding(Option<String>),
+    #[component(name = "HTTP-response-timeout")]
+    HttpResponseTimeout,
+    #[component(name = "HTTP-upgrade-failed")]
+    HttpUpgradeFailed,
+    #[component(name = "HTTP-protocol-error")]
+    HttpProtocolError,
+    #[component(name = "loop-detected")]
+    LoopDetected,
+    #[component(name = "configuration-error")]
+    ConfigurationError,
+    #[component(name = "internal-error")]
+    InternalError(Option<String>),
+}
+
+fn http_authority_reject(authority: &str) -> Option<HttpErrorCode> {
+    if authority.to_ascii_lowercase().starts_with("https:") {
+        return Some(HttpErrorCode::TlsProtocolError);
+    }
+    if authority.is_empty() || authority.contains('/') {
+        return Some(HttpErrorCode::HttpRequestUriInvalid);
+    }
+    None
+}
+
+fn http_error_from_io(err: &std::io::Error) -> HttpErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        InvalidInput => HttpErrorCode::HttpRequestUriInvalid,
+        ConnectionRefused => HttpErrorCode::ConnectionRefused,
+        TimedOut => HttpErrorCode::ConnectionTimeout,
+        ConnectionReset | ConnectionAborted => HttpErrorCode::ConnectionTerminated,
+        _ => HttpErrorCode::InternalError(None),
+    }
 }
 
 struct HttpRequest {
@@ -183,8 +309,8 @@ fn register_http(linker: &mut Linker<TestHost>, fixture_ctors: bool) -> wasmtime
     types.func_wrap(
         "[method]request.set-authority",
         |mut store, (req, authority): (Resource<HttpRequest>, String)| {
-            if authority.is_empty() {
-                return Ok((Err(HttpErrorCode::Unknown),));
+            if let Some(code) = http_authority_reject(&authority) {
+                return Ok((Err(code),));
             }
             store.data_mut().table.get_mut(&req)?.authority = authority;
             Ok((Ok::<(), HttpErrorCode>(()),))
@@ -210,31 +336,28 @@ fn register_http(linker: &mut Linker<TestHost>, fixture_ctors: bool) -> wasmtime
             Ok(())
         },
     )?;
-    client.func_wrap_concurrent("send", |accessor, (req,): (Resource<HttpRequest>,)| {
-        Box::pin(async move {
-            let authority = accessor.with(|mut access| {
-                Ok::<_, wasmtime::Error>(access.data_mut().table.delete(req)?.authority)
-            })?;
-            let (done_tx, done_rx) = oneshot::channel::<std::io::Result<(u16, Vec<u8>)>>();
-            thread::spawn(move || {
-                let _ = done_tx.send(http_send_get(&authority));
-            });
-            let outcome = done_rx
-                .await
-                .map_err(|_| wasmtime::Error::msg("send canceled"))?;
-            match outcome {
-                Ok((status, body)) => {
-                    let resource = accessor.with(|mut access| {
-                        access.data_mut().table.push(HttpResponse {
-                            status,
-                            body: Arc::new(Mutex::new(body)),
-                        })
-                    })?;
-                    Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
-                }
-                Err(_) => Ok((Err(HttpErrorCode::Unknown),)),
+    client.func_wrap("send", |mut store, (req,): (Resource<HttpRequest>,)| {
+        let authority = store.data_mut().table.delete(req)?.authority;
+        if let Some(code) = http_authority_reject(&authority) {
+            return Ok((Err(code),));
+        }
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        thread::spawn(move || {
+            let _ = done_tx.send(http_send_get(&authority));
+        });
+        let outcome = done_rx
+            .recv()
+            .map_err(|_| wasmtime::Error::msg("send canceled"))?;
+        match outcome {
+            Ok((status, body)) => {
+                let resource = store.data_mut().table.push(HttpResponse {
+                    status,
+                    body: Arc::new(Mutex::new(body)),
+                })?;
+                Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
             }
-        })
+            Err(e) => Ok((Err(http_error_from_io(&e)),)),
+        }
     })?;
     Ok(())
 }
@@ -565,6 +688,37 @@ fn wasi_http_outbound_send_hits_bound_peer() -> wasmtime::Result<()> {
         seen.starts_with(b"GET / HTTP/1.1"),
         "host must wire-send (peer saw {:?})",
         String::from_utf8_lossy(&seen)
+    );
+    Ok(())
+}
+
+#[test]
+fn http_error_from_io_refused_is_connection_refused() {
+    let err = std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "refused");
+    assert!(matches!(
+        http_error_from_io(&err),
+        HttpErrorCode::ConnectionRefused
+    ));
+}
+
+#[test]
+fn wasi_http_empty_authority_is_uri_invalid() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    assert_eq!(
+        call_run(&engine, "http_empty_authority.wasm")?,
+        19,
+        "guest must see HTTP-request-URI-invalid (disc 19)"
+    );
+    Ok(())
+}
+
+#[test]
+fn wasi_http_https_authority_is_tls_protocol_error() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    assert_eq!(
+        call_run(&engine, "http_https_tls.wasm")?,
+        12,
+        "guest must see TLS-protocol-error (disc 12)"
     );
     Ok(())
 }
