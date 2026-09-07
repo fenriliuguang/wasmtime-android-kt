@@ -8,11 +8,10 @@ use crate::host::{
     gfx_input_lookup, gfx_input_register, gfx_input_unregister, gfx_on_frame_lookup,
     gfx_on_frame_register, gfx_on_frame_unregister, wasi_monotonic_now_ns, GfxInputTake,
     GfxKeyGate, GfxKeySample, GfxOnFrameGate, GfxOnFrameTake, GfxOnResizeGate, GfxOnResizeTake,
-    GfxPointerGate, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer,
-    GpuCommandBuffer, GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice,
-    GpuPipelineLayout, GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder,
-    GpuRenderPassEncoder, GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture,
-    GpuTextureView, HostState, Widget,
+    GfxPointerGate, Gpu, GpuAdapter, GpuBindGroup, GpuBindGroupLayout, GpuBuffer, GpuCommandBuffer,
+    GpuCommandEncoder, GpuComputePassEncoder, GpuComputePipeline, GpuDevice, GpuPipelineLayout,
+    GpuQuerySet, GpuQueue, GpuRenderBundle, GpuRenderBundleEncoder, GpuRenderPassEncoder,
+    GpuRenderPipeline, GpuSampler, GpuShaderModule, GpuTexture, GpuTextureView, HostState, Widget,
 };
 use crate::jvm;
 use crate::native_gpu::{NativeRequestAdapterOptions, NativeRequestDeviceDescriptor};
@@ -46,7 +45,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use wasmtime::component::{
-    Component, ComponentType, Destination, FutureReader, Lift, Linker, Lower, Resource,
+    flags, Component, ComponentType, Destination, FutureReader, Lift, Linker, Lower, Resource,
     ResourceType, Source, StreamConsumer, StreamProducer, StreamReader, StreamResult,
 };
 use wasmtime::{Engine, Store, StoreContextMut};
@@ -329,14 +328,54 @@ struct SystemClockInstant {
     nanoseconds: u32,
 }
 
-/// WASI 0.3.0 `wasi:cli` `error-code` (G-cli-error subset; not the full dump).
+/// Typed unwind for `wasi:cli/exit@0.3.0#exit`. Must not `process::exit` / abort ART.
+#[derive(Debug)]
+struct CliExit(Result<(), ()>);
+
+impl std::fmt::Display for CliExit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            Ok(()) => f.write_str("wasi:cli/exit ok"),
+            Err(()) => f.write_str("wasi:cli/exit err"),
+        }
+    }
+}
+
+impl std::error::Error for CliExit {}
+
+/// Guest `exit` completes `run` with the official empty `result`: ok → 0, err → 1.
+fn map_cli_run_result(result: wasmtime::Result<u32>) -> wasmtime::Result<u32> {
+    match result {
+        Ok(v) => Ok(v),
+        Err(e) => match find_cli_exit(&e) {
+            Some(Ok(())) => Ok(0),
+            Some(Err(())) => Ok(1),
+            None => Err(e),
+        },
+    }
+}
+
+fn find_cli_exit(err: &wasmtime::Error) -> Option<Result<(), ()>> {
+    for cause in err.chain() {
+        if let Some(exit) = cause.downcast_ref::<CliExit>() {
+            return Some(exit.0);
+        }
+    }
+    None
+}
+
+/// WASI 0.3.0 `wasi:cli/terminal-input` resource. Android: never instantiated (none).
+struct TerminalInput;
+
+/// WASI 0.3.0 `wasi:cli/terminal-output` resource. Android: never instantiated (none).
+struct TerminalOutput;
+
+/// WASI 0.3.0 `wasi:cli/types` `error-code` (official: io / illegal-byte-sequence / pipe).
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
 #[repr(u8)]
 #[allow(dead_code)]
 enum CliErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
     #[component(name = "io")]
     Io,
     #[component(name = "illegal-byte-sequence")]
@@ -345,22 +384,174 @@ enum CliErrorCode {
     Pipe,
 }
 
-/// WASI 0.3.0 `wasi:filesystem` `error-code` subset (`unknown`, `access`).
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+/// WASI 0.3.0 `wasi:filesystem` `error-code` (official variant; last case `other`).
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum FsErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
     #[component(name = "access")]
     Access,
+    #[component(name = "already")]
+    Already,
+    #[component(name = "bad-descriptor")]
+    BadDescriptor,
+    #[component(name = "busy")]
+    Busy,
+    #[component(name = "deadlock")]
+    Deadlock,
+    #[component(name = "quota")]
+    Quota,
+    #[component(name = "exist")]
+    Exist,
+    #[component(name = "file-too-large")]
+    FileTooLarge,
+    #[component(name = "illegal-byte-sequence")]
+    IllegalByteSequence,
+    #[component(name = "in-progress")]
+    InProgress,
+    #[component(name = "interrupted")]
+    Interrupted,
+    #[component(name = "invalid")]
+    Invalid,
+    #[component(name = "io")]
+    Io,
+    #[component(name = "is-directory")]
+    IsDirectory,
+    #[component(name = "loop")]
+    Loop,
+    #[component(name = "too-many-links")]
+    TooManyLinks,
+    #[component(name = "message-size")]
+    MessageSize,
+    #[component(name = "name-too-long")]
+    NameTooLong,
+    #[component(name = "no-device")]
+    NoDevice,
+    #[component(name = "no-entry")]
+    NoEntry,
+    #[component(name = "no-lock")]
+    NoLock,
+    #[component(name = "insufficient-memory")]
+    InsufficientMemory,
+    #[component(name = "insufficient-space")]
+    InsufficientSpace,
+    #[component(name = "not-directory")]
+    NotDirectory,
+    #[component(name = "not-empty")]
+    NotEmpty,
+    #[component(name = "not-recoverable")]
+    NotRecoverable,
+    #[component(name = "unsupported")]
+    Unsupported,
+    #[component(name = "no-tty")]
+    NoTty,
+    #[component(name = "no-such-device")]
+    NoSuchDevice,
+    #[component(name = "overflow")]
+    Overflow,
+    #[component(name = "not-permitted")]
+    NotPermitted,
+    #[component(name = "pipe")]
+    Pipe,
+    #[component(name = "read-only")]
+    ReadOnly,
+    #[component(name = "invalid-seek")]
+    InvalidSeek,
+    #[component(name = "text-file-busy")]
+    TextFileBusy,
+    #[component(name = "cross-device")]
+    CrossDevice,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+/// WASI 0.3.0 `wasi:filesystem` `descriptor-type`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum DescriptorType {
+    #[component(name = "block-device")]
+    BlockDevice,
+    #[component(name = "character-device")]
+    CharacterDevice,
+    #[component(name = "directory")]
+    Directory,
+    #[component(name = "fifo")]
+    Fifo,
+    #[component(name = "symbolic-link")]
+    SymbolicLink,
+    #[component(name = "regular-file")]
+    RegularFile,
+    #[component(name = "socket")]
+    Socket,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+/// WASI 0.3.0 `path-flags` (`symlink-follow`).
+flags! {
+    PathFlags {
+        #[component(name = "symlink-follow")]
+        const SYMLINK_FOLLOW;
+    }
+}
+
+/// Clocks `instant` nested in `descriptor-stat` (export name `instant`).
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct Instant {
+    seconds: i64,
+    nanoseconds: u32,
+}
+
+/// WASI 0.3.0 `descriptor-stat`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct DescriptorStat {
+    #[component(name = "type")]
+    type_: DescriptorType,
+    #[component(name = "link-count")]
+    link_count: u64,
+    size: u64,
+    #[component(name = "data-access-timestamp")]
+    data_access_timestamp: Option<Instant>,
+    #[component(name = "data-modification-timestamp")]
+    data_modification_timestamp: Option<Instant>,
+    #[component(name = "status-change-timestamp")]
+    status_change_timestamp: Option<Instant>,
+}
+
+fn fs_error_from_io(err: &std::io::Error) -> FsErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        NotFound => FsErrorCode::NoEntry,
+        PermissionDenied => FsErrorCode::Access,
+        AlreadyExists => FsErrorCode::Exist,
+        InvalidInput => FsErrorCode::Invalid,
+        Interrupted => FsErrorCode::Interrupted,
+        OutOfMemory => FsErrorCode::InsufficientMemory,
+        BrokenPipe => FsErrorCode::Pipe,
+        Unsupported => FsErrorCode::Unsupported,
+        IsADirectory => FsErrorCode::IsDirectory,
+        NotADirectory => FsErrorCode::NotDirectory,
+        DirectoryNotEmpty => FsErrorCode::NotEmpty,
+        ReadOnlyFilesystem => FsErrorCode::ReadOnly,
+        StorageFull => FsErrorCode::InsufficientSpace,
+        FileTooLarge => FsErrorCode::FileTooLarge,
+        QuotaExceeded => FsErrorCode::Quota,
+        InvalidFilename => FsErrorCode::IllegalByteSequence,
+        NotSeekable => FsErrorCode::InvalidSeek,
+        _ => FsErrorCode::Io,
+    }
 }
 
 /// Host `resource descriptor` for the W6 preopen smoke. Path is under the
 /// process sandbox root (see `filesystem_sandbox_join`).
+/// `writer` joins before read so guests can drop the write future (official
+/// `error-code` has `other(option<string>)`; `future.read` BLOCKS under sync lift).
 struct FsDescriptor {
     path: std::path::PathBuf,
+    writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
 }
 
 fn filesystem_sandbox_root() -> std::path::PathBuf {
@@ -371,8 +562,11 @@ fn filesystem_sandbox_root() -> std::path::PathBuf {
 /// Not `/sdcard` or other shared storage — root is `temp_dir()` (Android:
 /// app-private cache via `TMPDIR`).
 fn filesystem_sandbox_join(rel: &str) -> Result<std::path::PathBuf, FsErrorCode> {
-    if rel.is_empty() || rel.contains('\0') {
-        return Err(FsErrorCode::Access);
+    if rel.is_empty() {
+        return Err(FsErrorCode::Invalid);
+    }
+    if rel.contains('\0') {
+        return Err(FsErrorCode::IllegalByteSequence);
     }
     let p = std::path::Path::new(rel);
     if p.components()
@@ -395,6 +589,24 @@ fn fs_write_at(path: &std::path::Path, offset: u64, bytes: &[u8]) -> std::io::Re
     std::fs::write(path, existing)
 }
 
+fn fs_append(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?
+        .write_all(bytes)
+}
+
+fn fs_sync_path(path: &std::path::Path, data_only: bool) -> Result<(), FsErrorCode> {
+    let file = std::fs::File::open(path).map_err(|e| fs_error_from_io(&e))?;
+    if data_only {
+        file.sync_data().map_err(|e| fs_error_from_io(&e))
+    } else {
+        file.sync_all().map_err(|e| fs_error_from_io(&e))
+    }
+}
+
 fn fs_read_from(path: &std::path::Path, offset: u64) -> Vec<u8> {
     let bytes = std::fs::read(path).unwrap_or_default();
     let start = (offset as usize).min(bytes.len());
@@ -406,20 +618,216 @@ fn fs_open_child(
     parent: &wasmtime::component::Resource<FsDescriptor>,
     rel: &str,
 ) -> Result<wasmtime::component::Resource<FsDescriptor>, FsErrorCode> {
-    let _ = table.get(parent).map_err(|_| FsErrorCode::Unknown)?;
+    let _ = table.get(parent).map_err(|_| FsErrorCode::BadDescriptor)?;
     let child = filesystem_sandbox_join(rel)?;
     if !child.exists() {
-        std::fs::write(&child, b"").map_err(|_| FsErrorCode::Unknown)?;
+        std::fs::write(&child, b"").map_err(|e| fs_error_from_io(&e))?;
     }
     table
-        .push(FsDescriptor { path: child })
-        .map_err(|_| FsErrorCode::Unknown)
+        .push(FsDescriptor {
+            path: child,
+            writer: None,
+        })
+        .map_err(|_| FsErrorCode::InsufficientMemory)
+}
+
+fn system_time_to_fs_instant(t: std::time::SystemTime) -> Instant {
+    match t.duration_since(std::time::UNIX_EPOCH) {
+        Ok(d) => Instant {
+            seconds: d.as_secs() as i64,
+            nanoseconds: d.subsec_nanos(),
+        },
+        Err(e) => {
+            let d = e.duration();
+            Instant {
+                seconds: -(d.as_secs() as i64),
+                nanoseconds: d.subsec_nanos(),
+            }
+        }
+    }
+}
+
+fn fs_descriptor_type(meta: &std::fs::Metadata) -> DescriptorType {
+    let ft = meta.file_type();
+    if ft.is_dir() {
+        DescriptorType::Directory
+    } else if ft.is_symlink() {
+        DescriptorType::SymbolicLink
+    } else if ft.is_file() {
+        DescriptorType::RegularFile
+    } else {
+        DescriptorType::Other(None)
+    }
+}
+
+fn fs_link_count(meta: &std::fs::Metadata) -> u64 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        meta.nlink()
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = meta;
+        1
+    }
+}
+
+fn fs_ctime(meta: &std::fs::Metadata) -> Option<Instant> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let nsec = meta.ctime_nsec();
+        if nsec < 0 {
+            return None;
+        }
+        Some(Instant {
+            seconds: meta.ctime(),
+            nanoseconds: nsec as u32,
+        })
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = meta;
+        None
+    }
+}
+
+fn fs_stat_path(path: &std::path::Path, follow: bool) -> Result<DescriptorStat, FsErrorCode> {
+    let meta = if follow {
+        std::fs::metadata(path)
+    } else {
+        std::fs::symlink_metadata(path)
+    }
+    .map_err(|e| fs_error_from_io(&e))?;
+    Ok(DescriptorStat {
+        type_: fs_descriptor_type(&meta),
+        link_count: fs_link_count(&meta),
+        size: meta.len(),
+        data_access_timestamp: meta.accessed().ok().map(system_time_to_fs_instant),
+        data_modification_timestamp: meta.modified().ok().map(system_time_to_fs_instant),
+        status_change_timestamp: fs_ctime(&meta),
+    })
+}
+
+/// WASI 0.3.0 `directory-entry`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct DirectoryEntry {
+    #[component(name = "type")]
+    type_: DescriptorType,
+    name: String,
+}
+
+fn fs_read_dir_entries(path: &std::path::Path) -> Result<Vec<DirectoryEntry>, FsErrorCode> {
+    let meta = std::fs::metadata(path).map_err(|e| fs_error_from_io(&e))?;
+    if !meta.is_dir() {
+        return Err(FsErrorCode::NotDirectory);
+    }
+    let mut out = Vec::new();
+    for ent in std::fs::read_dir(path).map_err(|e| fs_error_from_io(&e))? {
+        let ent = ent.map_err(|e| fs_error_from_io(&e))?;
+        let os_name = ent.file_name();
+        if os_name == "." || os_name == ".." {
+            continue;
+        }
+        let name = os_name.to_string_lossy().into_owned();
+        let ty = match ent.file_type() {
+            Ok(ft) if ft.is_dir() => DescriptorType::Directory,
+            Ok(ft) if ft.is_symlink() => DescriptorType::SymbolicLink,
+            Ok(ft) if ft.is_file() => DescriptorType::RegularFile,
+            _ => DescriptorType::Other(None),
+        };
+        out.push(DirectoryEntry { type_: ty, name });
+    }
+    Ok(out)
+}
+
+/// WASI 0.3.0 `new-timestamp` for `set-times` / `set-times-at`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+enum NewTimestamp {
+    #[component(name = "no-change")]
+    NoChange,
+    #[component(name = "now")]
+    Now,
+    #[component(name = "timestamp")]
+    Timestamp(Instant),
+}
+
+fn instant_to_system_time(i: Instant) -> Result<std::time::SystemTime, FsErrorCode> {
+    use std::time::{Duration, UNIX_EPOCH};
+    if i.nanoseconds >= 1_000_000_000 {
+        return Err(FsErrorCode::Invalid);
+    }
+    if i.seconds >= 0 {
+        UNIX_EPOCH
+            .checked_add(Duration::new(i.seconds as u64, i.nanoseconds))
+            .ok_or(FsErrorCode::Overflow)
+    } else {
+        UNIX_EPOCH
+            .checked_sub(Duration::new((-i.seconds) as u64, i.nanoseconds))
+            .ok_or(FsErrorCode::Overflow)
+    }
+}
+
+fn fs_apply_new_timestamp(
+    times: std::fs::FileTimes,
+    ts: NewTimestamp,
+    accessed: bool,
+) -> Result<(std::fs::FileTimes, bool), FsErrorCode> {
+    match ts {
+        NewTimestamp::NoChange => Ok((times, false)),
+        NewTimestamp::Now => {
+            let t = std::time::SystemTime::now();
+            Ok((
+                if accessed {
+                    times.set_accessed(t)
+                } else {
+                    times.set_modified(t)
+                },
+                true,
+            ))
+        }
+        NewTimestamp::Timestamp(i) => {
+            let t = instant_to_system_time(i)?;
+            Ok((
+                if accessed {
+                    times.set_accessed(t)
+                } else {
+                    times.set_modified(t)
+                },
+                true,
+            ))
+        }
+    }
+}
+
+fn fs_set_times(
+    path: &std::path::Path,
+    access: NewTimestamp,
+    modify: NewTimestamp,
+) -> Result<(), FsErrorCode> {
+    let file = std::fs::File::open(path).map_err(|e| fs_error_from_io(&e))?;
+    let (times, a) = fs_apply_new_timestamp(std::fs::FileTimes::new(), access, true)?;
+    let (times, m) = fs_apply_new_timestamp(times, modify, false)?;
+    if a || m {
+        file.set_times(times).map_err(|e| fs_error_from_io(&e))?;
+    }
+    Ok(())
 }
 
 /// Host `resource tcp-socket` for the W7 loopback smoke + P010 outbound dial.
 struct TcpSocket {
     client: Option<std::net::TcpStream>,
     server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
+    writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
+    listener: Option<std::net::TcpListener>,
+}
+
+/// Host `resource udp-socket` (L-SOCK-UDP). Loopback sandbox only.
+struct UdpSocket {
+    sock: Option<std::net::UdpSocket>,
 }
 
 struct TcpConnected {
@@ -439,14 +847,60 @@ enum IpAddressFamily {
     Ipv6,
 }
 
-/// WASI 0.3.0 sockets `error-code` subset (`unknown` only).
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+/// WASI 0.3.0 sockets `error-code` (official variant; last case `other`).
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
 #[allow(dead_code)]
 enum SockErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
+    #[component(name = "access-denied")]
+    AccessDenied,
+    #[component(name = "not-supported")]
+    NotSupported,
+    #[component(name = "invalid-argument")]
+    InvalidArgument,
+    #[component(name = "out-of-memory")]
+    OutOfMemory,
+    #[component(name = "timeout")]
+    Timeout,
+    #[component(name = "invalid-state")]
+    InvalidState,
+    #[component(name = "address-not-bindable")]
+    AddressNotBindable,
+    #[component(name = "address-in-use")]
+    AddressInUse,
+    #[component(name = "remote-unreachable")]
+    RemoteUnreachable,
+    #[component(name = "connection-refused")]
+    ConnectionRefused,
+    #[component(name = "connection-broken")]
+    ConnectionBroken,
+    #[component(name = "connection-reset")]
+    ConnectionReset,
+    #[component(name = "connection-aborted")]
+    ConnectionAborted,
+    #[component(name = "datagram-too-large")]
+    DatagramTooLarge,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+fn sock_error_from_io(err: &std::io::Error) -> SockErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        PermissionDenied => SockErrorCode::AccessDenied,
+        InvalidInput => SockErrorCode::InvalidArgument,
+        OutOfMemory => SockErrorCode::OutOfMemory,
+        TimedOut => SockErrorCode::Timeout,
+        AddrNotAvailable => SockErrorCode::AddressNotBindable,
+        AddrInUse => SockErrorCode::AddressInUse,
+        HostUnreachable | NetworkUnreachable | NetworkDown => SockErrorCode::RemoteUnreachable,
+        ConnectionRefused => SockErrorCode::ConnectionRefused,
+        BrokenPipe => SockErrorCode::ConnectionBroken,
+        ConnectionReset => SockErrorCode::ConnectionReset,
+        ConnectionAborted => SockErrorCode::ConnectionAborted,
+        Unsupported => SockErrorCode::NotSupported,
+        _ => SockErrorCode::Other(None),
+    }
 }
 
 /// WASI 0.3.0 `ipv4-socket-address` (P1-SK2 / P010-TCP).
@@ -466,6 +920,74 @@ struct Ipv4SocketAddress {
 enum IpSocketAddress {
     #[component(name = "ipv4")]
     Ipv4(Ipv4SocketAddress),
+}
+
+/// WASI 0.3.0 `ip-address` subset (`ipv4` only; name-lookup filters v6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ComponentType, Lift, Lower)]
+#[component(variant)]
+enum IpAddress {
+    #[component(name = "ipv4")]
+    Ipv4((u8, u8, u8, u8)),
+}
+
+/// WASI 0.3.0 `wasi:sockets/ip-name-lookup` `error-code` enum.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(enum)]
+#[repr(u8)]
+#[allow(dead_code)]
+enum DnsErrorCode {
+    #[component(name = "unknown")]
+    Unknown,
+    #[component(name = "access-denied")]
+    AccessDenied,
+    #[component(name = "invalid-argument")]
+    InvalidArgument,
+    #[component(name = "name-unresolvable")]
+    NameUnresolvable,
+    #[component(name = "temporary-resolver-failure")]
+    TemporaryResolverFailure,
+    #[component(name = "permanent-resolver-failure")]
+    PermanentResolverFailure,
+}
+
+fn dns_error_from_io(err: &std::io::Error) -> DnsErrorCode {
+    use std::io::ErrorKind::*;
+    match err.kind() {
+        PermissionDenied => DnsErrorCode::AccessDenied,
+        InvalidInput => DnsErrorCode::InvalidArgument,
+        TimedOut | Interrupted => DnsErrorCode::TemporaryResolverFailure,
+        _ => DnsErrorCode::NameUnresolvable,
+    }
+}
+
+fn resolve_name_guest(name: &str) -> Result<Vec<IpAddress>, DnsErrorCode> {
+    use std::net::ToSocketAddrs;
+
+    if name.is_empty() || name.contains('\0') {
+        return Err(DnsErrorCode::InvalidArgument);
+    }
+    if let Ok(ip) = name.parse::<std::net::Ipv4Addr>() {
+        let o = ip.octets();
+        return Ok(vec![IpAddress::Ipv4((o[0], o[1], o[2], o[3]))]);
+    }
+    let addrs = (name, 0u16)
+        .to_socket_addrs()
+        .map_err(|e| dns_error_from_io(&e))?;
+    let mut out = Vec::new();
+    for addr in addrs {
+        if let std::net::SocketAddr::V4(v) = addr {
+            let o = v.ip().octets();
+            let item = IpAddress::Ipv4((o[0], o[1], o[2], o[3]));
+            if !out.contains(&item) {
+                out.push(item);
+            }
+        }
+    }
+    if out.is_empty() {
+        Err(DnsErrorCode::NameUnresolvable)
+    } else {
+        Ok(out)
+    }
 }
 
 /// Bind `127.0.0.1:0`, spawn an echo accept thread, return the client stream.
@@ -496,7 +1018,7 @@ fn tcp_loopback_pair() -> std::io::Result<(
 }
 
 /// Guest `connect(ip-socket-address)`: loopback keeps the W7 echo pair;
-/// non-loopback **dials that IPv4:port** (P010-TCP). No listen / UDP.
+/// non-loopback **dials that IPv4:port** (P010-TCP). UDP is a later leftover.
 fn tcp_connect_guest(addr: IpSocketAddress) -> std::io::Result<TcpConnected> {
     use std::net::{Ipv4Addr, SocketAddr, TcpStream};
     use std::time::Duration;
@@ -523,15 +1045,202 @@ fn tcp_connect_guest(addr: IpSocketAddress) -> std::io::Result<TcpConnected> {
     }
 }
 
+fn tcp_bind_guest(addr: IpSocketAddress) -> std::io::Result<std::net::TcpListener> {
+    match addr {
+        IpSocketAddress::Ipv4(a) => {
+            let ip = std::net::Ipv4Addr::new(a.address.0, a.address.1, a.address.2, a.address.3);
+            if !ip.is_loopback() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "listen sandbox is loopback only",
+                ));
+            }
+            std::net::TcpListener::bind((ip, a.port))
+        }
+    }
+}
+
+fn tcp_addr_from_std(addr: std::net::SocketAddr) -> IpSocketAddress {
+    match addr {
+        std::net::SocketAddr::V4(v) => {
+            let o = v.ip().octets();
+            IpSocketAddress::Ipv4(Ipv4SocketAddress {
+                port: v.port(),
+                address: (o[0], o[1], o[2], o[3]),
+            })
+        }
+        std::net::SocketAddr::V6(_) => IpSocketAddress::Ipv4(Ipv4SocketAddress {
+            port: 0,
+            address: (127, 0, 0, 1),
+        }),
+    }
+}
+
+fn udp_bind_guest(addr: IpSocketAddress) -> std::io::Result<std::net::UdpSocket> {
+    match addr {
+        IpSocketAddress::Ipv4(a) => {
+            let ip = std::net::Ipv4Addr::new(a.address.0, a.address.1, a.address.2, a.address.3);
+            if !ip.is_loopback() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "udp sandbox is loopback only",
+                ));
+            }
+            std::net::UdpSocket::bind((ip, a.port))
+        }
+    }
+}
+
+fn udp_send_guest(
+    sock: &std::net::UdpSocket,
+    data: &[u8],
+    remote: Option<IpSocketAddress>,
+) -> std::io::Result<()> {
+    let addr = match remote {
+        Some(IpSocketAddress::Ipv4(a)) => {
+            let ip = std::net::Ipv4Addr::new(a.address.0, a.address.1, a.address.2, a.address.3);
+            if !ip.is_loopback() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "udp sandbox is loopback only",
+                ));
+            }
+            if a.port == 0 {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "udp send remote port must be nonzero",
+                ));
+            }
+            std::net::SocketAddr::from((ip, a.port))
+        }
+        None => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "udp send needs a remote address",
+            ));
+        }
+    };
+    if data.len() > 65507 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "udp datagram too large",
+        ));
+    }
+    sock.send_to(data, addr).map(|_| ())
+}
+
+fn udp_recv_guest(sock: &std::net::UdpSocket) -> std::io::Result<(Vec<u8>, IpSocketAddress)> {
+    sock.set_read_timeout(Some(std::time::Duration::from_secs(2)))?;
+    let mut buf = vec![0u8; 2048];
+    let (n, from) = sock.recv_from(&mut buf)?;
+    buf.truncate(n);
+    Ok((buf, tcp_addr_from_std(from)))
+}
+
+/// WASI 0.3.0 `wasi:http` `method`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum Method {
+    #[component(name = "get")]
+    Get,
+    #[component(name = "head")]
+    Head,
+    #[component(name = "post")]
+    Post,
+    #[component(name = "put")]
+    Put,
+    #[component(name = "delete")]
+    Delete,
+    #[component(name = "connect")]
+    Connect,
+    #[component(name = "options")]
+    Options,
+    #[component(name = "trace")]
+    Trace,
+    #[component(name = "patch")]
+    Patch,
+    #[component(name = "other")]
+    Other(String),
+}
+
+/// WASI 0.3.0 `wasi:http` `scheme`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum Scheme {
+    #[component(name = "HTTP")]
+    Http,
+    #[component(name = "HTTPS")]
+    Https,
+    #[component(name = "other")]
+    Other(String),
+}
+
 /// Host `resource request` / `response` for the W8 incoming-handler smoke + P010 body.
 struct HttpRequest {
     body: Vec<u8>,
     authority: String,
+    headers: Vec<(String, Vec<u8>)>,
+    method: Method,
+    path_with_query: Option<String>,
+    scheme: Option<Scheme>,
+}
+
+impl HttpRequest {
+    fn incoming(body: Vec<u8>) -> Self {
+        Self {
+            body,
+            authority: String::new(),
+            headers: Vec::new(),
+            method: Method::Get,
+            path_with_query: None,
+            scheme: None,
+        }
+    }
 }
 
 struct HttpResponse {
     status: u16,
     body: Arc<Mutex<Vec<u8>>>,
+    headers: Vec<(String, Vec<u8>)>,
+}
+
+/// WASI 0.3.0 `wasi:http` `fields` / `headers` / `trailers`.
+struct HttpFields {
+    entries: Vec<(String, Vec<u8>)>,
+    immutable: bool,
+}
+
+/// WASI 0.3.0 `header-error`.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+enum HeaderError {
+    #[component(name = "invalid-syntax")]
+    InvalidSyntax,
+    #[component(name = "forbidden")]
+    Forbidden,
+    #[component(name = "immutable")]
+    Immutable,
+}
+
+fn field_name_ok(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|b| b.is_ascii() && b != 0 && b != b' ' && b != b':')
+}
+
+fn fields_get<'a>(entries: &'a [(String, Vec<u8>)], name: &str) -> Vec<&'a [u8]> {
+    entries
+        .iter()
+        .filter(|(n, _)| n.eq_ignore_ascii_case(name))
+        .map(|(_, v)| v.as_slice())
+        .collect()
+}
+
+fn fields_has(entries: &[(String, Vec<u8>)], name: &str) -> bool {
+    entries.iter().any(|(n, _)| n.eq_ignore_ascii_case(name))
 }
 
 /// P010-GFXH/L: host `wasi-gfx:surface` (pin `v0.2.0`).
@@ -1218,30 +1927,158 @@ fn gfx_key_from_android(code: i32) -> Option<GfxKey> {
     })
 }
 
-/// WASI 0.3.0 http `error-code` subset (`unknown` only).
-#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
-#[component(enum)]
-#[repr(u8)]
+/// WASI 0.3.0 `wasi:http` `error-code` (official variant + payload records).
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
 #[allow(dead_code)]
-enum HttpErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
+struct DnsErrorPayload {
+    rcode: Option<String>,
+    #[component(name = "info-code")]
+    info_code: Option<u16>,
 }
 
-/// HTTP/1.1 GET to `authority` (`host:port`). Wire send — not in-process 200.
-/// No TLS crate this lane (size); https is `unknown`. Helper-thread caller.
-fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
-    use std::io::{Read, Write};
-    use std::net::{SocketAddr, TcpStream};
-    use std::time::Duration;
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct TlsAlertReceivedPayload {
+    #[component(name = "alert-id")]
+    alert_id: Option<u8>,
+    #[component(name = "alert-message")]
+    alert_message: Option<String>,
+}
 
-    if authority.is_empty() || authority.contains('/') {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "authority",
-        ));
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+#[allow(dead_code)]
+struct FieldSizePayload {
+    #[component(name = "field-name")]
+    field_name: Option<String>,
+    #[component(name = "field-size")]
+    field_size: Option<u32>,
+}
+
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum HttpErrorCode {
+    #[component(name = "DNS-timeout")]
+    DnsTimeout,
+    #[component(name = "DNS-error")]
+    DnsError(DnsErrorPayload),
+    #[component(name = "destination-not-found")]
+    DestinationNotFound,
+    #[component(name = "destination-unavailable")]
+    DestinationUnavailable,
+    #[component(name = "destination-IP-prohibited")]
+    DestinationIpProhibited,
+    #[component(name = "destination-IP-unroutable")]
+    DestinationIpUnroutable,
+    #[component(name = "connection-refused")]
+    ConnectionRefused,
+    #[component(name = "connection-terminated")]
+    ConnectionTerminated,
+    #[component(name = "connection-timeout")]
+    ConnectionTimeout,
+    #[component(name = "connection-read-timeout")]
+    ConnectionReadTimeout,
+    #[component(name = "connection-write-timeout")]
+    ConnectionWriteTimeout,
+    #[component(name = "connection-limit-reached")]
+    ConnectionLimitReached,
+    #[component(name = "TLS-protocol-error")]
+    TlsProtocolError,
+    #[component(name = "TLS-certificate-error")]
+    TlsCertificateError,
+    #[component(name = "TLS-alert-received")]
+    TlsAlertReceived(TlsAlertReceivedPayload),
+    #[component(name = "HTTP-request-denied")]
+    HttpRequestDenied,
+    #[component(name = "HTTP-request-length-required")]
+    HttpRequestLengthRequired,
+    #[component(name = "HTTP-request-body-size")]
+    HttpRequestBodySize(Option<u64>),
+    #[component(name = "HTTP-request-method-invalid")]
+    HttpRequestMethodInvalid,
+    #[component(name = "HTTP-request-URI-invalid")]
+    HttpRequestUriInvalid,
+    #[component(name = "HTTP-request-URI-too-long")]
+    HttpRequestUriTooLong,
+    #[component(name = "HTTP-request-header-section-size")]
+    HttpRequestHeaderSectionSize(Option<u32>),
+    #[component(name = "HTTP-request-header-size")]
+    HttpRequestHeaderSize(Option<FieldSizePayload>),
+    #[component(name = "HTTP-request-trailer-section-size")]
+    HttpRequestTrailerSectionSize(Option<u32>),
+    #[component(name = "HTTP-request-trailer-size")]
+    HttpRequestTrailerSize(FieldSizePayload),
+    #[component(name = "HTTP-response-incomplete")]
+    HttpResponseIncomplete,
+    #[component(name = "HTTP-response-header-section-size")]
+    HttpResponseHeaderSectionSize(Option<u32>),
+    #[component(name = "HTTP-response-header-size")]
+    HttpResponseHeaderSize(FieldSizePayload),
+    #[component(name = "HTTP-response-body-size")]
+    HttpResponseBodySize(Option<u64>),
+    #[component(name = "HTTP-response-trailer-section-size")]
+    HttpResponseTrailerSectionSize(Option<u32>),
+    #[component(name = "HTTP-response-trailer-size")]
+    HttpResponseTrailerSize(FieldSizePayload),
+    #[component(name = "HTTP-response-transfer-coding")]
+    HttpResponseTransferCoding(Option<String>),
+    #[component(name = "HTTP-response-content-coding")]
+    HttpResponseContentCoding(Option<String>),
+    #[component(name = "HTTP-response-timeout")]
+    HttpResponseTimeout,
+    #[component(name = "HTTP-upgrade-failed")]
+    HttpUpgradeFailed,
+    #[component(name = "HTTP-protocol-error")]
+    HttpProtocolError,
+    #[component(name = "loop-detected")]
+    LoopDetected,
+    #[component(name = "configuration-error")]
+    ConfigurationError,
+    #[component(name = "internal-error")]
+    InternalError(Option<String>),
+}
+
+fn http_authority_parts(authority: &str) -> Result<(bool, &str), HttpErrorCode> {
+    let (https, rest) = if authority.len() >= 6 && authority[..6].eq_ignore_ascii_case("https:") {
+        (true, authority[6..].trim_start_matches('/'))
+    } else if authority.len() >= 5 && authority[..5].eq_ignore_ascii_case("http:") {
+        (false, authority[5..].trim_start_matches('/'))
+    } else {
+        (false, authority)
+    };
+    if rest.is_empty() || rest.contains('/') {
+        return Err(HttpErrorCode::HttpRequestUriInvalid);
     }
-    let (host, port) = authority
+    Ok((https, rest))
+}
+
+fn http_authority_reject(authority: &str) -> Option<HttpErrorCode> {
+    http_authority_parts(authority).err()
+}
+
+fn http_error_from_io(err: &std::io::Error) -> HttpErrorCode {
+    use std::io::ErrorKind::*;
+    let msg = err.to_string();
+    if msg.starts_with("tls-cert:") {
+        return HttpErrorCode::TlsCertificateError;
+    }
+    if msg.starts_with("tls:") {
+        return HttpErrorCode::TlsProtocolError;
+    }
+    match err.kind() {
+        InvalidInput => HttpErrorCode::HttpRequestUriInvalid,
+        ConnectionRefused => HttpErrorCode::ConnectionRefused,
+        TimedOut => HttpErrorCode::ConnectionTimeout,
+        ConnectionReset | ConnectionAborted => HttpErrorCode::ConnectionTerminated,
+        _ => HttpErrorCode::InternalError(None),
+    }
+}
+
+fn http_parse_host_port(hostport: &str) -> std::io::Result<(std::net::Ipv4Addr, u16)> {
+    let (host, port) = hostport
         .rsplit_once(':')
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "host:port"))?;
     let ip: std::net::Ipv4Addr = host
@@ -1256,15 +2093,20 @@ fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
     let port: u16 = port
         .parse()
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{e}")))?;
-    let addr = SocketAddr::from((ip, port));
-    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(2))?;
-    stream.set_read_timeout(Some(Duration::from_secs(2)))?;
-    stream.set_write_timeout(Some(Duration::from_secs(2)))?;
-    let req = format!("GET / HTTP/1.1\r\nHost: {authority}\r\nConnection: close\r\n\r\n");
-    stream.write_all(req.as_bytes())?;
-    stream.shutdown(std::net::Shutdown::Write)?;
+    Ok((ip, port))
+}
+
+fn http_read_response(stream: &mut dyn std::io::Read) -> std::io::Result<(u16, Vec<u8>)> {
     let mut buf = Vec::new();
-    stream.read_to_end(&mut buf)?;
+    let mut tmp = [0u8; 1024];
+    loop {
+        match stream.read(&mut tmp) {
+            Ok(0) => break,
+            Ok(n) => buf.extend_from_slice(&tmp[..n]),
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => return Err(e),
+        }
+    }
     let split = buf
         .windows(4)
         .position(|w| w == b"\r\n\r\n")
@@ -1276,8 +2118,56 @@ fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
         .nth(1)
         .and_then(|s| s.parse().ok())
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "status"))?;
-    let body = buf[split + 4..].to_vec();
-    Ok((status, body))
+    Ok((status, buf[split + 4..].to_vec()))
+}
+
+fn rustls_client_config() -> std::sync::Arc<rustls::ClientConfig> {
+    use std::sync::{Arc, OnceLock};
+    static CONFIG: OnceLock<Arc<rustls::ClientConfig>> = OnceLock::new();
+    CONFIG
+        .get_or_init(|| {
+            let _ = rustls::crypto::ring::default_provider().install_default();
+            let mut roots = rustls::RootCertStore::empty();
+            roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            Arc::new(
+                rustls::ClientConfig::builder()
+                    .with_root_certificates(roots)
+                    .with_no_client_auth(),
+            )
+        })
+        .clone()
+}
+
+/// HTTP/1.1 GET to `authority` (`host:port` or `https:host:port`).
+/// TLS (rustls + webpki-roots) runs on the helper-thread caller, not ART main.
+fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
+    use std::io::Write;
+    use std::net::{SocketAddr, TcpStream};
+    use std::time::Duration;
+
+    let (https, hostport) = http_authority_parts(authority)
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "authority"))?;
+    let (ip, port) = http_parse_host_port(hostport)?;
+    let addr = SocketAddr::from((ip, port));
+    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(2))?;
+    stream.set_read_timeout(Some(Duration::from_secs(2)))?;
+    stream.set_write_timeout(Some(Duration::from_secs(2)))?;
+    let req = format!("GET / HTTP/1.1\r\nHost: {hostport}\r\nConnection: close\r\n\r\n");
+    if https {
+        let name = rustls::pki_types::ServerName::try_from(ip.to_string())
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{e}")))?
+            .to_owned();
+        let conn = rustls::ClientConnection::new(rustls_client_config(), name)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("tls:{e}")))?;
+        let mut tls = rustls::StreamOwned::new(conn, stream);
+        tls.write_all(req.as_bytes())?;
+        tls.flush()?;
+        http_read_response(&mut tls)
+    } else {
+        stream.write_all(req.as_bytes())?;
+        stream.shutdown(std::net::Shutdown::Write)?;
+        http_read_response(&mut stream)
+    }
 }
 
 /// P3-PRIM-5 / W1: collect guest `stream.write` bytes; complete oneshot on drop.
@@ -1584,13 +2474,16 @@ pub(crate) fn define_host(
             },
         )?;
         let fut = FutureReader::new(store, async move {
-            let _n = match rx.await {
+            let n = match rx.await {
                 Ok(n) => n,
-                Err(_) => 0,
+                Err(_) => return Ok::<_, wasmtime::Error>(Err(CliErrorCode::Pipe)),
             };
             let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
+            let _ = n;
             if bytes.iter().any(|&b| b == 0) {
-                Ok::<_, wasmtime::Error>(Err(CliErrorCode::IllegalByteSequence))
+                Ok(Err(CliErrorCode::IllegalByteSequence))
+            } else if std::str::from_utf8(&bytes).is_err() {
+                Ok(Err(CliErrorCode::Io))
             } else {
                 Ok(Ok(()))
             }
@@ -1667,10 +2560,142 @@ pub(crate) fn define_host(
         )
         .map_err(|e| e.to_string())?;
 
-    // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3).
+    // WASI 0.3: wasi:cli/environment@0.3.0 — get-environment / get-arguments.
+    // Android: empty or documented TMPDIR only (not a full process-env dump).
+    // get-initial-cwd is not this lane.
+    {
+        let mut environment = linker
+            .instance("wasi:cli/environment@0.3.0")
+            .map_err(|e| e.to_string())?;
+        environment
+            .func_wrap("get-environment", |_store, ()| {
+                let pairs = match std::env::var("TMPDIR") {
+                    Ok(v) => vec![("TMPDIR".to_string(), v)],
+                    Err(_) => Vec::new(),
+                };
+                Ok((pairs,))
+            })
+            .map_err(|e| e.to_string())?;
+        environment
+            .func_wrap("get-arguments", |_store, ()| Ok((Vec::<String>::new(),)))
+            .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:cli/exit@0.3.0 — guest `exit` completes `run` with official
+    // `result`. Typed unwind only; do not kill the ART process. `exit-with-code`
+    // is not this lane.
+    {
+        let mut exit = linker
+            .instance("wasi:cli/exit@0.3.0")
+            .map_err(|e| e.to_string())?;
+        exit.func_wrap(
+            "exit",
+            |_store, (status,): (Result<(), ()>,)| -> wasmtime::Result<()> {
+                Err(CliExit(status).into())
+            },
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:cli/terminal-{input,output,stdin,stdout,stderr}@0.3.0.
+    // Android: none is allowed. Not a fake TTY.
+    {
+        let mut input = linker
+            .instance("wasi:cli/terminal-input@0.3.0")
+            .map_err(|e| e.to_string())?;
+        input
+            .resource(
+                "terminal-input",
+                ResourceType::host::<TerminalInput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalInput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        let mut output = linker
+            .instance("wasi:cli/terminal-output@0.3.0")
+            .map_err(|e| e.to_string())?;
+        output
+            .resource(
+                "terminal-output",
+                ResourceType::host::<TerminalOutput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalOutput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        let mut stdin = linker
+            .instance("wasi:cli/terminal-stdin@0.3.0")
+            .map_err(|e| e.to_string())?;
+        stdin
+            .resource(
+                "terminal-input",
+                ResourceType::host::<TerminalInput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalInput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        stdin
+            .func_wrap("get-terminal-stdin", |_store, ()| {
+                Ok((Option::<Resource<TerminalInput>>::None,))
+            })
+            .map_err(|e| e.to_string())?;
+        let mut stdout = linker
+            .instance("wasi:cli/terminal-stdout@0.3.0")
+            .map_err(|e| e.to_string())?;
+        stdout
+            .resource(
+                "terminal-output",
+                ResourceType::host::<TerminalOutput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalOutput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        stdout
+            .func_wrap("get-terminal-stdout", |_store, ()| {
+                Ok((Option::<Resource<TerminalOutput>>::None,))
+            })
+            .map_err(|e| e.to_string())?;
+        let mut stderr = linker
+            .instance("wasi:cli/terminal-stderr@0.3.0")
+            .map_err(|e| e.to_string())?;
+        stderr
+            .resource(
+                "terminal-output",
+                ResourceType::host::<TerminalOutput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalOutput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        stderr
+            .func_wrap("get-terminal-stderr", |_store, ()| {
+                Ok((Option::<Resource<TerminalOutput>>::None,))
+            })
+            .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3 + L-FS-STAT + L-FS-DIR).
     // Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
     // get-directories → list (sandbox directory, ".");
     // open-at(path) -> result; `..` is error-code.access; r/w on the child.
+    // stat / stat-at on the sandbox descriptor (sync WIT; guest does not use stackful async).
+    // read-directory → stream<directory-entry> (omit `.` / `..`); drop the future.
+    // append-via-stream: helper thread; join before the next append/read.
+    // sync / sync-data: File::sync_all / sync_data after joining a pending writer.
+    // set-times / set-times-at: sandbox files only (`FileTimes`).
     {
         let mut types = linker
             .instance("wasi:filesystem/types@0.3.0")
@@ -1701,21 +2726,54 @@ pub(crate) fn define_host(
                             max_per_poll: usize::MAX,
                         },
                     )?;
-                    let fut = FutureReader::new(&mut store, async move {
-                        let _n = match rx.await {
-                            Ok(n) => n,
-                            Err(_) => 0,
-                        };
+                    let writer = std::thread::spawn(move || {
+                        let _n = pollster::block_on(rx).unwrap_or(0);
+                        let _ = _n;
                         let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
-                        let wrote = if offset == 0 {
+                        if offset == 0 {
                             std::fs::write(&path, bytes)
                         } else {
                             fs_write_at(&path, offset, &bytes)
-                        };
-                        match wrote {
-                            Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(())),
-                            Err(_) => Ok(Err(FsErrorCode::Unknown)),
                         }
+                    });
+                    store.data_mut().table.get_mut(&desc)?.writer = Some(writer);
+                    let fut = FutureReader::new(&mut store, async move {
+                        Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
+                    })?;
+                    Ok((fut,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.append-via-stream",
+                |mut store, (desc, reader): (Resource<FsDescriptor>, StreamReader<u8>)| {
+                    let path = {
+                        let entry = store.data_mut().table.get_mut(&desc)?;
+                        if let Some(h) = entry.writer.take() {
+                            let _ = h.join();
+                        }
+                        entry.path.clone()
+                    };
+                    let (tx, rx) = oneshot::channel::<u32>();
+                    let buf = Arc::new(Mutex::new(Vec::new()));
+                    reader.pipe(
+                        &mut store,
+                        CollectConsumer {
+                            buf: buf.clone(),
+                            done: Some(tx),
+                            max_per_poll: usize::MAX,
+                        },
+                    )?;
+                    let writer = std::thread::spawn(move || {
+                        let _n = pollster::block_on(rx).unwrap_or(0);
+                        let _ = _n;
+                        let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
+                        fs_append(&path, &bytes)
+                    });
+                    store.data_mut().table.get_mut(&desc)?.writer = Some(writer);
+                    let fut = FutureReader::new(&mut store, async move {
+                        Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
                     })?;
                     Ok((fut,))
                 },
@@ -1725,7 +2783,11 @@ pub(crate) fn define_host(
             .func_wrap(
                 "[method]descriptor.read-via-stream",
                 |mut store, (desc, offset): (Resource<FsDescriptor>, u64)| {
-                    let path = store.data_mut().table.get(&desc)?.path.clone();
+                    let entry = store.data_mut().table.get_mut(&desc)?;
+                    if let Some(h) = entry.writer.take() {
+                        let _ = h.join();
+                    }
+                    let path = entry.path.clone();
                     let bytes = fs_read_from(&path, offset);
                     let reader = StreamReader::new(&mut store, bytes)?;
                     let fut = FutureReader::new(&mut store, async move {
@@ -1745,6 +2807,177 @@ pub(crate) fn define_host(
                 ) {
                     Ok(child) => Ok((Ok(child),)),
                     Err(code) => Ok((Err(code),)),
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.stat",
+                |mut store, (desc,): (Resource<FsDescriptor>,)| {
+                    let table = &mut store.data_mut().table;
+                    let entry = match table.get_mut(&desc) {
+                        Ok(e) => e,
+                        Err(_) => return Ok((Err(FsErrorCode::BadDescriptor),)),
+                    };
+                    if let Some(h) = entry.writer.take() {
+                        let _ = h.join();
+                    }
+                    let path = entry.path.clone();
+                    match fs_stat_path(&path, true) {
+                        Ok(st) => Ok((Ok(st),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.stat-at",
+                |mut store, (desc, flags, path): (Resource<FsDescriptor>, PathFlags, String)| {
+                    let table = &mut store.data_mut().table;
+                    if table.get(&desc).is_err() {
+                        return Ok((Err(FsErrorCode::BadDescriptor),));
+                    }
+                    let joined = match filesystem_sandbox_join(&path) {
+                        Ok(p) => p,
+                        Err(code) => return Ok((Err(code),)),
+                    };
+                    match fs_stat_path(&joined, flags.contains(PathFlags::SYMLINK_FOLLOW)) {
+                        Ok(st) => Ok((Ok(st),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.read-directory",
+                |mut store, (desc,): (Resource<FsDescriptor>,)| {
+                    let listed = {
+                        let table = &mut store.data_mut().table;
+                        match table.get_mut(&desc) {
+                            Ok(entry) => {
+                                if let Some(h) = entry.writer.take() {
+                                    let _ = h.join();
+                                }
+                                fs_read_dir_entries(&entry.path.clone())
+                            }
+                            Err(_) => Err(FsErrorCode::BadDescriptor),
+                        }
+                    };
+                    match listed {
+                        Ok(entries) => {
+                            let reader = StreamReader::new(&mut store, entries)?;
+                            let fut = FutureReader::new(&mut store, async move {
+                                Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
+                            })?;
+                            Ok(((reader, fut),))
+                        }
+                        Err(code) => {
+                            let reader =
+                                StreamReader::new(&mut store, Vec::<DirectoryEntry>::new())?;
+                            let fut = FutureReader::new(&mut store, async move {
+                                Ok::<_, wasmtime::Error>(Err::<(), FsErrorCode>(code))
+                            })?;
+                            Ok(((reader, fut),))
+                        }
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.sync",
+                |mut store, (desc,): (Resource<FsDescriptor>,)| {
+                    let path = {
+                        let table = &mut store.data_mut().table;
+                        match table.get_mut(&desc) {
+                            Ok(entry) => {
+                                if let Some(h) = entry.writer.take() {
+                                    let _ = h.join();
+                                }
+                                entry.path.clone()
+                            }
+                            Err(_) => return Ok((Err(FsErrorCode::BadDescriptor),)),
+                        }
+                    };
+                    match fs_sync_path(&path, false) {
+                        Ok(()) => Ok((Ok(()),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.sync-data",
+                |mut store, (desc,): (Resource<FsDescriptor>,)| {
+                    let path = {
+                        let table = &mut store.data_mut().table;
+                        match table.get_mut(&desc) {
+                            Ok(entry) => {
+                                if let Some(h) = entry.writer.take() {
+                                    let _ = h.join();
+                                }
+                                entry.path.clone()
+                            }
+                            Err(_) => return Ok((Err(FsErrorCode::BadDescriptor),)),
+                        }
+                    };
+                    match fs_sync_path(&path, true) {
+                        Ok(()) => Ok((Ok(()),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.set-times",
+                |mut store, (desc, access, modify): (Resource<FsDescriptor>, NewTimestamp, NewTimestamp)| {
+                    let path = {
+                        let table = &mut store.data_mut().table;
+                        match table.get_mut(&desc) {
+                            Ok(entry) => {
+                                if let Some(h) = entry.writer.take() {
+                                    let _ = h.join();
+                                }
+                                entry.path.clone()
+                            }
+                            Err(_) => return Ok((Err(FsErrorCode::BadDescriptor),)),
+                        }
+                    };
+                    match fs_set_times(&path, access, modify) {
+                        Ok(()) => Ok((Ok(()),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.set-times-at",
+                |mut store,
+                 (desc, flags, path, access, modify): (
+                    Resource<FsDescriptor>,
+                    PathFlags,
+                    String,
+                    NewTimestamp,
+                    NewTimestamp,
+                )| {
+                    let table = &mut store.data_mut().table;
+                    if table.get(&desc).is_err() {
+                        return Ok((Err(FsErrorCode::BadDescriptor),));
+                    }
+                    let _ = flags;
+                    let joined = match filesystem_sandbox_join(&path) {
+                        Ok(p) => p,
+                        Err(code) => return Ok((Err(code),)),
+                    };
+                    match fs_set_times(&joined, access, modify) {
+                        Ok(()) => Ok((Ok(()),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;
@@ -1770,6 +3003,7 @@ pub(crate) fn define_host(
                     .map_err(|e| wasmtime::Error::msg(format!("sandbox mkdir: {e}")))?;
                 let resource = store.data_mut().table.push(FsDescriptor {
                     path: filesystem_sandbox_root(),
+                    writer: None,
                 })?;
                 Ok((vec![(resource, ".".to_string())],))
             })
@@ -1778,10 +3012,13 @@ pub(crate) fn define_host(
 
     // WASI 0.3: wasi:sockets Android subset (W7 + P1-SK1 + P1-SK2 + P010-TCP).
     // Official packages: wasi:sockets/tcp@0.3.0 + tcp-create-socket@0.3.0.
-    // create-tcp-socket(ip-address-family) -> result; connect is async
-    // ip-socket-address -> result. Loopback: host ignores port (echo pair).
+    // create-tcp-socket(ip-address-family) -> result; connect is a sync WIT
+    // func (wasm-tools 1.239 cannot parse import `func async`) that still
+    // dials on a helper thread. Loopback: host ignores port (echo pair).
     // Non-loopback: host dials that IPv4:port. write/read via streams (cli shapes).
-    // No UDP, no listen, no ip-name-lookup. INTERNET + helper-thread: threading-android.md.
+    // bind/listen/accept: loopback only, helper thread (not ART main).
+    // UDP: udp-create-socket + bind/send/receive loopback subset.
+    // ip-name-lookup: resolve-addresses on a helper thread.
     {
         let mut tcp = linker
             .instance("wasi:sockets/tcp@0.3.0")
@@ -1796,33 +3033,100 @@ pub(crate) fn define_host(
             },
         )
         .map_err(|e| e.to_string())?;
-        tcp.func_wrap_concurrent(
+        tcp.func_wrap(
             "[method]tcp-socket.connect",
-            |accessor, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
-                Box::pin(async move {
-                    accessor.with(|mut access| -> wasmtime::Result<()> {
-                        access.data_mut().table.get(&sock)?;
-                        Ok(())
-                    })?;
-                    let (done_tx, done_rx) = oneshot::channel::<std::io::Result<TcpConnected>>();
-                    std::thread::spawn(move || {
-                        let _ = done_tx.send(tcp_connect_guest(addr));
-                    });
-                    let connected = match done_rx
-                        .await
-                        .map_err(|_| wasmtime::Error::msg("connect canceled"))?
-                    {
-                        Ok(c) => c,
-                        Err(_) => return Ok((Err(SockErrorCode::Unknown),)),
-                    };
-                    accessor.with(|mut access| -> wasmtime::Result<()> {
-                        let entry = access.data_mut().table.get_mut(&sock)?;
-                        entry.client = Some(connected.client);
-                        entry.server = connected.server;
-                        Ok(())
-                    })?;
-                    Ok((Ok::<(), SockErrorCode>(()),))
-                })
+            |mut store, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
+                store.data_mut().table.get(&sock)?;
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(tcp_connect_guest(addr));
+                });
+                let connected = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("connect canceled"))?
+                {
+                    Ok(c) => c,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                let entry = store.data_mut().table.get_mut(&sock)?;
+                entry.client = Some(connected.client);
+                entry.server = connected.server;
+                Ok((Ok::<(), SockErrorCode>(()),))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        tcp.func_wrap(
+            "[method]tcp-socket.bind",
+            |mut store, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
+                store.data_mut().table.get(&sock)?;
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(tcp_bind_guest(addr));
+                });
+                let listener = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("bind canceled"))?
+                {
+                    Ok(l) => l,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                store.data_mut().table.get_mut(&sock)?.listener = Some(listener);
+                Ok((Ok::<(), SockErrorCode>(()),))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        tcp.func_wrap(
+            "[method]tcp-socket.listen",
+            |mut store, (sock,): (Resource<TcpSocket>,)| {
+                store.data_mut().table.get(&sock)?;
+                if store.data_mut().table.get(&sock)?.listener.is_some() {
+                    return Ok((Ok::<(), SockErrorCode>(()),));
+                }
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ =
+                        done_tx.send(tcp_bind_guest(IpSocketAddress::Ipv4(Ipv4SocketAddress {
+                            port: 0,
+                            address: (127, 0, 0, 1),
+                        })));
+                });
+                let listener = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("listen canceled"))?
+                {
+                    Ok(l) => l,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                store.data_mut().table.get_mut(&sock)?.listener = Some(listener);
+                Ok((Ok::<(), SockErrorCode>(()),))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        tcp.func_wrap(
+            "[method]tcp-socket.accept",
+            |mut store, (sock,): (Resource<TcpSocket>,)| {
+                let listener = match store.data_mut().table.get(&sock)?.listener.as_ref() {
+                    Some(l) => l.try_clone()?,
+                    None => return Ok((Err(SockErrorCode::InvalidState),)),
+                };
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(listener.accept());
+                });
+                let (stream, peer) = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("accept canceled"))?
+                {
+                    Ok(v) => v,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                let child = store.data_mut().table.push(TcpSocket {
+                    client: Some(stream),
+                    server: None,
+                    writer: None,
+                    listener: None,
+                })?;
+                Ok((Ok((child, tcp_addr_from_std(peer))),))
             },
         )
         .map_err(|e| e.to_string())?;
@@ -1847,18 +3151,19 @@ pub(crate) fn define_host(
                         max_per_poll: usize::MAX,
                     },
                 )?;
-                let fut = FutureReader::new(&mut store, async move {
-                    let _n = rx.await.unwrap_or(0);
+                let writer = std::thread::spawn(move || {
+                    let _n = pollster::block_on(rx).unwrap_or(0);
+                    let _ = _n;
                     let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
                     use std::io::Write;
                     let mut client = client;
-                    match client
+                    client
                         .write_all(&bytes)
                         .and_then(|_| client.shutdown(std::net::Shutdown::Write))
-                    {
-                        Ok(()) => Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(())),
-                        Err(_) => Ok(Err(SockErrorCode::Unknown)),
-                    }
+                });
+                store.data_mut().table.get_mut(&sock)?.writer = Some(writer);
+                let fut = FutureReader::new(&mut store, async move {
+                    Ok::<_, wasmtime::Error>(Ok::<(), SockErrorCode>(()))
                 })?;
                 Ok((fut,))
             },
@@ -1869,6 +3174,9 @@ pub(crate) fn define_host(
             |mut store, (sock,): (Resource<TcpSocket>,)| {
                 use std::io::Read;
                 let entry = store.data_mut().table.get_mut(&sock)?;
+                if let Some(h) = entry.writer.take() {
+                    let _ = h.join();
+                }
                 let mut client = entry
                     .client
                     .as_ref()
@@ -1913,13 +3221,175 @@ pub(crate) fn define_host(
                         let resource = store.data_mut().table.push(TcpSocket {
                             client: None,
                             server: None,
+                            writer: None,
+                            listener: None,
                         })?;
                         Ok((Ok(resource),))
                     }
-                    IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::Unknown),)),
+                    IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::NotSupported),)),
                 },
             )
             .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:sockets UDP subset (L-SOCK-UDP).
+    // Official 0.3 send/receive are async func; guest imports them as sync WIT.
+    // Loopback only; bind/send/receive on a helper thread (not ART main).
+    {
+        let mut udp = linker
+            .instance("wasi:sockets/udp@0.3.0")
+            .map_err(|e| e.to_string())?;
+        udp.resource(
+            "udp-socket",
+            ResourceType::host::<UdpSocket>(),
+            |mut store, rep| {
+                let resource = Resource::<UdpSocket>::new_own(rep);
+                store.data_mut().table.delete(resource)?;
+                Ok(())
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        udp.func_wrap(
+            "[method]udp-socket.bind",
+            |mut store, (sock, addr): (Resource<UdpSocket>, IpSocketAddress)| {
+                if store.data_mut().table.get(&sock)?.sock.is_some() {
+                    return Ok((Err(SockErrorCode::InvalidState),));
+                }
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(udp_bind_guest(addr));
+                });
+                let bound = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("udp bind canceled"))?
+                {
+                    Ok(s) => s,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                store.data_mut().table.get_mut(&sock)?.sock = Some(bound);
+                Ok((Ok::<(), SockErrorCode>(()),))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        udp.func_wrap(
+            "[method]udp-socket.send",
+            |mut store, (sock, data, remote): (Resource<UdpSocket>, Vec<u8>, Option<IpSocketAddress>)| {
+                if data.len() > 65507 {
+                    return Ok((Err(SockErrorCode::DatagramTooLarge),));
+                }
+                if store.data_mut().table.get(&sock)?.sock.is_none() {
+                    let (done_tx, done_rx) = std::sync::mpsc::channel();
+                    std::thread::spawn(move || {
+                        let _ = done_tx.send(udp_bind_guest(IpSocketAddress::Ipv4(
+                            Ipv4SocketAddress {
+                                port: 0,
+                                address: (127, 0, 0, 1),
+                            },
+                        )));
+                    });
+                    let bound = match done_rx
+                        .recv()
+                        .map_err(|_| wasmtime::Error::msg("udp implicit bind canceled"))?
+                    {
+                        Ok(s) => s,
+                        Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                    };
+                    store.data_mut().table.get_mut(&sock)?.sock = Some(bound);
+                }
+                let cloned = store
+                    .data_mut()
+                    .table
+                    .get(&sock)?
+                    .sock
+                    .as_ref()
+                    .ok_or_else(|| wasmtime::Error::msg("udp-socket missing"))?
+                    .try_clone()?;
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(udp_send_guest(&cloned, &data, remote));
+                });
+                match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("udp send canceled"))?
+                {
+                    Ok(()) => Ok((Ok::<(), SockErrorCode>(()),)),
+                    Err(e) => Ok((Err(sock_error_from_io(&e)),)),
+                }
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        udp.func_wrap(
+            "[method]udp-socket.receive",
+            |mut store, (sock,): (Resource<UdpSocket>,)| {
+                let cloned = match store.data_mut().table.get(&sock)?.sock.as_ref() {
+                    Some(s) => s.try_clone()?,
+                    None => return Ok((Err(SockErrorCode::InvalidState),)),
+                };
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(udp_recv_guest(&cloned));
+                });
+                match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("udp receive canceled"))?
+                {
+                    Ok((bytes, from)) => Ok((Ok((bytes, from)),)),
+                    Err(e) => Ok((Err(sock_error_from_io(&e)),)),
+                }
+            },
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    {
+        let mut create = linker
+            .instance("wasi:sockets/udp-create-socket@0.3.0")
+            .map_err(|e| e.to_string())?;
+        create
+            .resource(
+                "udp-socket",
+                ResourceType::host::<UdpSocket>(),
+                |mut store, rep| {
+                    let resource = Resource::<UdpSocket>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        create
+            .func_wrap(
+                "create-udp-socket",
+                |mut store, (family,): (IpAddressFamily,)| match family {
+                    IpAddressFamily::Ipv4 => {
+                        let resource = store.data_mut().table.push(UdpSocket { sock: None })?;
+                        Ok((Ok(resource),))
+                    }
+                    IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::NotSupported),)),
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:sockets/ip-name-lookup@0.3.0 (L-SOCK-DNS).
+    // Official resolve-addresses is async func; guest imports it as sync WIT.
+    // DNS / ToSocketAddrs run on a helper thread (not ART main).
+    {
+        let mut dns = linker
+            .instance("wasi:sockets/ip-name-lookup@0.3.0")
+            .map_err(|e| e.to_string())?;
+        dns.func_wrap("resolve-addresses", |_store, (name,): (String,)| {
+            let (done_tx, done_rx) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let _ = done_tx.send(resolve_name_guest(&name));
+            });
+            match done_rx
+                .recv()
+                .map_err(|_| wasmtime::Error::msg("dns lookup canceled"))?
+            {
+                Ok(addrs) => Ok((Ok(addrs),)),
+                Err(e) => Ok((Err(e),)),
+            }
+        })
+        .map_err(|e| e.to_string())?;
     }
 
     // WASI 0.3: wasi:http incoming-handler subset (W8 + P1-HT1 + P010-HBODY + P010-HOUT).
@@ -1928,11 +3398,14 @@ pub(crate) fn define_host(
     // Subset: constructors + status-code; handle is guest-exported
     // async func(own<request>) -> result<own<response>, error-code> (ok path).
     // Body: [static]request.consume-body / [static]response.consume-body →
-    // tuple<stream<u8>, future<result>> (no trailers / res-future param);
+    // tuple<stream<u8>, future<result<option<fields>, error-code>>> (trailers none);
     // [static]response.new(contents: stream<u8>) → tuple<response, future>
-    // (no headers). Outbound: set-authority + client.send HTTP/1.1 GET on the
+    // (headers via fields / get-headers).
+    // Incoming handle types: get-method / get-path-with-query / get-scheme /
+    // get-authority / set-status-code (not a listen HTTP server; not request.new).
+    // Outbound: set-authority + client.send HTTP/1.1 GET on the
     // wire (helper thread). Product linker omits [constructor]request/response
-    // (P010-HCTOR; test linker keeps them). No TLS crate / https → unknown.
+    // (P010-HCTOR; test linker keeps them). https on send uses rustls (helper thread).
     {
         let mut types = linker
             .instance("wasi:http/types@0.3.0")
@@ -1959,15 +3432,131 @@ pub(crate) fn define_host(
                 },
             )
             .map_err(|e| e.to_string())?;
+        types
+            .resource(
+                "fields",
+                ResourceType::host::<HttpFields>(),
+                |mut store, rep| {
+                    let resource = Resource::<HttpFields>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap("[constructor]fields", |mut store, ()| {
+                let resource = store.data_mut().table.push(HttpFields {
+                    entries: Vec::new(),
+                    immutable: false,
+                })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.get",
+                |mut store, (fields, name): (Resource<HttpFields>, String)| {
+                    let entries = &store.data_mut().table.get(&fields)?.entries;
+                    let values: Vec<Vec<u8>> = fields_get(entries, &name)
+                        .into_iter()
+                        .map(|v| v.to_vec())
+                        .collect();
+                    Ok((values,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.has",
+                |mut store, (fields, name): (Resource<HttpFields>, String)| {
+                    let has = fields_has(&store.data_mut().table.get(&fields)?.entries, &name);
+                    Ok((has,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.append",
+                |mut store, (fields, name, value): (Resource<HttpFields>, String, Vec<u8>)| {
+                    let f = store.data_mut().table.get_mut(&fields)?;
+                    if f.immutable {
+                        return Ok((Err(HeaderError::Immutable),));
+                    }
+                    if !field_name_ok(&name) {
+                        return Ok((Err(HeaderError::InvalidSyntax),));
+                    }
+                    f.entries.push((name, value));
+                    Ok((Ok::<(), HeaderError>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.set",
+                |mut store, (fields, name, values): (Resource<HttpFields>, String, Vec<Vec<u8>>)| {
+                    let f = store.data_mut().table.get_mut(&fields)?;
+                    if f.immutable {
+                        return Ok((Err(HeaderError::Immutable),));
+                    }
+                    if !field_name_ok(&name) {
+                        return Ok((Err(HeaderError::InvalidSyntax),));
+                    }
+                    f.entries.retain(|(n, _)| !n.eq_ignore_ascii_case(&name));
+                    for v in values {
+                        f.entries.push((name.clone(), v));
+                    }
+                    Ok((Ok::<(), HeaderError>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.delete",
+                |mut store, (fields, name): (Resource<HttpFields>, String)| {
+                    let f = store.data_mut().table.get_mut(&fields)?;
+                    if f.immutable {
+                        return Ok((Err(HeaderError::Immutable),));
+                    }
+                    f.entries.retain(|(n, _)| !n.eq_ignore_ascii_case(&name));
+                    Ok((Ok::<(), HeaderError>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]request.get-headers",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    let headers = store.data_mut().table.get(&req)?.headers.clone();
+                    let resource = store.data_mut().table.push(HttpFields {
+                        entries: headers,
+                        immutable: true,
+                    })?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]response.get-headers",
+                |mut store, (resp,): (Resource<HttpResponse>,)| {
+                    let headers = store.data_mut().table.get(&resp)?.headers.clone();
+                    let resource = store.data_mut().table.push(HttpFields {
+                        entries: headers,
+                        immutable: true,
+                    })?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
         // P010-HCTOR: product linker omits [constructor]request / [constructor]response.
         // Host supplies request when calling handle. Test linker keeps the ctors.
         if fixture_ctors {
             types
                 .func_wrap("[constructor]request", |mut store, ()| {
-                    let resource = store.data_mut().table.push(HttpRequest {
-                        body: b"HBOD".to_vec(),
-                        authority: String::new(),
-                    })?;
+                    let resource = store
+                        .data_mut()
+                        .table
+                        .push(HttpRequest::incoming(b"HBOD".to_vec()))?;
                     Ok((resource,))
                 })
                 .map_err(|e| e.to_string())?;
@@ -1976,11 +3565,50 @@ pub(crate) fn define_host(
                     let resource = store.data_mut().table.push(HttpResponse {
                         status: 200,
                         body: Arc::new(Mutex::new(Vec::new())),
+                        headers: Vec::new(),
                     })?;
                     Ok((resource,))
                 })
                 .map_err(|e| e.to_string())?;
         }
+        types
+            .func_wrap(
+                "[method]request.get-method",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    Ok((store.data_mut().table.get(&req)?.method.clone(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]request.get-path-with-query",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    Ok((store.data_mut().table.get(&req)?.path_with_query.clone(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]request.get-scheme",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    Ok((store.data_mut().table.get(&req)?.scheme.clone(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]request.get-authority",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    let auth = &store.data_mut().table.get(&req)?.authority;
+                    let out = if auth.is_empty() {
+                        None
+                    } else {
+                        Some(auth.clone())
+                    };
+                    Ok((out,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
         types
             .func_wrap(
                 "[method]response.status-code",
@@ -1991,12 +3619,34 @@ pub(crate) fn define_host(
             .map_err(|e| e.to_string())?;
         types
             .func_wrap(
+                "[method]response.get-status-code",
+                |mut store, (resp,): (Resource<HttpResponse>,)| {
+                    Ok((store.data_mut().table.get(&resp)?.status,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]response.set-status-code",
+                |mut store, (resp, status): (Resource<HttpResponse>, u16)| {
+                    if !(100..=599).contains(&status) {
+                        return Ok((Err::<(), ()>(()),));
+                    }
+                    store.data_mut().table.get_mut(&resp)?.status = status;
+                    Ok((Ok::<(), ()>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
                 "[static]request.consume-body",
                 |mut store, (this,): (Resource<HttpRequest>,)| {
                     let req = store.data_mut().table.delete(this)?;
                     let reader = StreamReader::new(&mut store, req.body)?;
                     let fut = FutureReader::new(&mut store, async move {
-                        Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
+                        Ok::<_, wasmtime::Error>(Ok::<Option<Resource<HttpFields>>, HttpErrorCode>(
+                            None,
+                        ))
                     })?;
                     Ok(((reader, fut),))
                 },
@@ -2019,6 +3669,7 @@ pub(crate) fn define_host(
                     let resource = store.data_mut().table.push(HttpResponse {
                         status: 200,
                         body: buf,
+                        headers: Vec::new(),
                     })?;
                     let fut = FutureReader::new(&mut store, async move {
                         let _n = rx.await.unwrap_or(0);
@@ -2036,7 +3687,9 @@ pub(crate) fn define_host(
                     let bytes = resp.body.lock().map(|b| b.clone()).unwrap_or_default();
                     let reader = StreamReader::new(&mut store, bytes)?;
                     let fut = FutureReader::new(&mut store, async move {
-                        Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
+                        Ok::<_, wasmtime::Error>(Ok::<Option<Resource<HttpFields>>, HttpErrorCode>(
+                            None,
+                        ))
                     })?;
                     Ok(((reader, fut),))
                 },
@@ -2046,8 +3699,8 @@ pub(crate) fn define_host(
             .func_wrap(
                 "[method]request.set-authority",
                 |mut store, (req, authority): (Resource<HttpRequest>, String)| {
-                    if authority.is_empty() {
-                        return Ok((Err(HttpErrorCode::Unknown),));
+                    if let Some(code) = http_authority_reject(&authority) {
+                        return Ok((Err(code),));
                     }
                     store.data_mut().table.get_mut(&req)?.authority = authority;
                     Ok((Ok::<(), HttpErrorCode>(()),))
@@ -2082,31 +3735,29 @@ pub(crate) fn define_host(
             )
             .map_err(|e| e.to_string())?;
         client
-            .func_wrap_concurrent("send", |accessor, (req,): (Resource<HttpRequest>,)| {
-                Box::pin(async move {
-                    let authority = accessor.with(|mut access| {
-                        Ok::<_, wasmtime::Error>(access.data_mut().table.delete(req)?.authority)
-                    })?;
-                    let (done_tx, done_rx) = oneshot::channel::<std::io::Result<(u16, Vec<u8>)>>();
-                    std::thread::spawn(move || {
-                        let _ = done_tx.send(http_send_get(&authority));
-                    });
-                    let outcome = done_rx
-                        .await
-                        .map_err(|_| wasmtime::Error::msg("send canceled"))?;
-                    match outcome {
-                        Ok((status, body)) => {
-                            let resource = accessor.with(|mut access| {
-                                access.data_mut().table.push(HttpResponse {
-                                    status,
-                                    body: Arc::new(Mutex::new(body)),
-                                })
-                            })?;
-                            Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
-                        }
-                        Err(_) => Ok((Err(HttpErrorCode::Unknown),)),
+            .func_wrap("send", |mut store, (req,): (Resource<HttpRequest>,)| {
+                let authority = store.data_mut().table.delete(req)?.authority;
+                if let Some(code) = http_authority_reject(&authority) {
+                    return Ok((Err(code),));
+                }
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(http_send_get(&authority));
+                });
+                let outcome = done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("send canceled"))?;
+                match outcome {
+                    Ok((status, body)) => {
+                        let resource = store.data_mut().table.push(HttpResponse {
+                            status,
+                            body: Arc::new(Mutex::new(body)),
+                            headers: Vec::new(),
+                        })?;
+                        Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
                     }
-                })
+                    Err(e) => Ok((Err(http_error_from_io(&e)),)),
+                }
             })
             .map_err(|e| e.to_string())?;
     }
@@ -12154,8 +13805,8 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
             return 0;
         }
     };
-    match func.call(&mut *store, ()) {
-        Ok((result,)) => result as jint,
+    match map_cli_run_result(func.call(&mut *store, ()).map(|(result,)| result)) {
+        Ok(v) => v as jint,
         Err(e) => {
             throw_err(&mut env, e);
             0
@@ -12323,7 +13974,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         }
     };
 
-    match result {
+    match map_cli_run_result(result) {
         Ok(v) => v as jint,
         Err(e) => {
             throw_err(&mut env, e);

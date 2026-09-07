@@ -66,11 +66,11 @@ Path policy:
 
 ## 6. WASI 0.3 sockets (W7)
 
-`wasi:sockets` this cut is **outbound TCP**: guest `connect(ip-socket-address)` to a non-loopback IPv4, host **dials that address**. Loopback (`127.0.0.1`) still uses the W7 echo pair (port ignored). **No listen / UDP** by default (sandbox). Android needs the **INTERNET** permission for any `TcpStream` (`smoke-app` manifest). Blocking connect / read / write run on a **helper thread**; the CM import is `func_wrap_concurrent` + oneshot (same class as `monotonic-clock.wait-for`). Do not bind product sockets or sleep on the ART main thread.
+`wasi:sockets` this cut is **outbound TCP** plus a **loopback listen** subset, a **loopback UDP** subset, and **ip-name-lookup**. Guest `connect(ip-socket-address)` to a non-loopback IPv4, host **dials that address**. Loopback (`127.0.0.1`) still uses the W7 echo pair (port ignored). **Listen / bind / accept default to 127.0.0.1 only** (non-loopback bind → `access-denied`). **UDP `create-udp-socket` / `bind` / `send` / `receive` default to 127.0.0.1 only** (non-loopback bind or send → `access-denied`). **`resolve-addresses` runs `ToSocketAddrs` on a helper thread**; do not do DNS on the ART main thread. Android needs the **INTERNET** permission for any `TcpStream` / `TcpListener` / `UdpSocket` / DNS (`smoke-app` manifest). Blocking connect / bind / accept / send / receive / read / write / lookup run on a **helper thread**; do not bind product sockets or sleep on the ART main thread.
 
 ## 7. WASI 0.3 http (W8)
 
-`wasi:http` this cut is an **in-process** `incoming-handler` ABI smoke (guest `handle` → status 200) plus **body `stream<u8>`** (`consume-body` / `response.new`) and **outbound** `wasi:http/client@0.3.0#send` (HTTP/1.1 GET on the wire). `send` runs on a **helper thread** (same class as TCP connect). Android needs **INTERNET**; smoke-app allows cleartext for the local instrument. No TLS crate this lane (https → `unknown`). Do not add `wasmtime-wasi`.
+`wasi:http` this cut is an **in-process** `incoming-handler` ABI (guest `handle` inspects `get-method` / `get-path-with-query` / `get-scheme` / `get-authority` and `set-status-code`; not a listen HTTP server) plus **body `stream<u8>`** (`consume-body` / `response.new`) and **outbound** `wasi:http/client@0.3.0#send` (HTTP/1.1 GET on the wire; **https via rustls**). `send` and TLS handshake run on a **helper thread** (same class as TCP connect). Android needs **INTERNET**; smoke-app allows cleartext for the local instrument. Do not add `wasmtime-wasi`. Do not run TLS or listen on the ART main thread or GpuThread.
 
 ## 8. wasi-gfx `on-frame` / present (P010-GFXH / P010-GFXL / P010-GFXV)
 

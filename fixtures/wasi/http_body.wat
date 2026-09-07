@@ -1,19 +1,70 @@
-;; WASI 0.3 package smoke: wasi:http body stream<u8> (P010-HBODY)
-;; Official: request/response consume-body → tuple<stream<u8>, future<…>>;
-;; response.new(contents: stream<u8>). Subset: no headers / trailers / res-future
-;; param. In-process (not a listening HTTP server).
+;; WASI 0.3 package smoke: wasi:http body stream<u8> (P010-HBODY + L-HTTP-TRAIL)
+;; Official: request/response consume-body → tuple<stream<u8>,
+;; future<result<option<fields>, error-code>>>; guest drops that future
+;; (error-code other/internal-error option<string> BLOCKS future.read).
+;; response.new(contents: stream<u8>). Subset: no res-future param.
 ;; Guest: ctor request (host body HBOD) → consume-body read → response.new write
 ;; → consume-body read echo → nbytes 4.
 (component
   (import "wasi:http/types@0.3.0" (instance $types
     (export "request" (type $request (sub resource)))
     (export "response" (type $response (sub resource)))
-    (type $error-code-def (enum "unknown"))
+    (export "fields" (type $fields (sub resource)))
+    (type $dns-payload (record (field "rcode" (option string)) (field "info-code" (option u16))))
+    (export "dns-error-payload" (type $dns-ex (eq $dns-payload)))
+    (type $tls-alert (record (field "alert-id" (option u8)) (field "alert-message" (option string))))
+    (export "tls-alert-received-payload" (type $tls-ex (eq $tls-alert)))
+    (type $field-size (record (field "field-name" (option string)) (field "field-size" (option u32))))
+    (export "field-size-payload" (type $field-ex (eq $field-size)))
+    (type $error-code-def (variant
+      (case "DNS-timeout")
+      (case "DNS-error" $dns-ex)
+      (case "destination-not-found")
+      (case "destination-unavailable")
+      (case "destination-IP-prohibited")
+      (case "destination-IP-unroutable")
+      (case "connection-refused")
+      (case "connection-terminated")
+      (case "connection-timeout")
+      (case "connection-read-timeout")
+      (case "connection-write-timeout")
+      (case "connection-limit-reached")
+      (case "TLS-protocol-error")
+      (case "TLS-certificate-error")
+      (case "TLS-alert-received" $tls-ex)
+      (case "HTTP-request-denied")
+      (case "HTTP-request-length-required")
+      (case "HTTP-request-body-size" (option u64))
+      (case "HTTP-request-method-invalid")
+      (case "HTTP-request-URI-invalid")
+      (case "HTTP-request-URI-too-long")
+      (case "HTTP-request-header-section-size" (option u32))
+      (case "HTTP-request-header-size" (option $field-ex))
+      (case "HTTP-request-trailer-section-size" (option u32))
+      (case "HTTP-request-trailer-size" $field-ex)
+      (case "HTTP-response-incomplete")
+      (case "HTTP-response-header-section-size" (option u32))
+      (case "HTTP-response-header-size" $field-ex)
+      (case "HTTP-response-body-size" (option u64))
+      (case "HTTP-response-trailer-section-size" (option u32))
+      (case "HTTP-response-trailer-size" $field-ex)
+      (case "HTTP-response-transfer-coding" (option string))
+      (case "HTTP-response-content-coding" (option string))
+      (case "HTTP-response-timeout")
+      (case "HTTP-upgrade-failed")
+      (case "HTTP-protocol-error")
+      (case "loop-detected")
+      (case "configuration-error")
+      (case "internal-error" (option string))
+    ))
     (export "error-code" (type $error-code (eq $error-code-def)))
     (type $io-result (result (error $error-code)))
     (type $st (stream u8))
     (type $ft (future $io-result))
-    (type $read-ret (tuple $st $ft))
+    (type $trail-ok (option (own $fields)))
+    (type $trail-result (result $trail-ok (error $error-code)))
+    (type $body-ft (future $trail-result))
+    (type $read-ret (tuple $st $body-ft))
     (type $new-ret (tuple (own $response) $ft))
     (export "[constructor]request" (func (result (own $request))))
     (export "[static]request.consume-body"
@@ -25,6 +76,7 @@
   ))
   (alias export $types "request" (type $request))
   (alias export $types "response" (type $response))
+  (alias export $types "fields" (type $fields))
   (alias export $types "error-code" (type $error-code))
   (alias export $types "[constructor]request" (func $request-ctor))
   (alias export $types "[static]request.consume-body" (func $req-consume))
@@ -33,9 +85,24 @@
   (type $io-result (result (error $error-code)))
   (type $st (stream u8))
   (type $ft (future $io-result))
+  (type $trail-ok (option (own $fields)))
+  (type $trail-result (result $trail-ok (error $error-code)))
+  (type $body-ft (future $trail-result))
 
   (core module $libc
     (memory (export "mem") 1)
+    (global $last (mut i32) (i32.const 256))
+    (func (export "realloc")
+      (param $oldptr i32) (param $oldlen i32) (param $align i32) (param $newlen i32)
+      (result i32)
+      (local $ret i32)
+      (local.set $ret (global.get $last))
+      (global.set $last
+        (i32.and
+          (i32.add (i32.add (local.get $ret) (local.get $newlen)) (i32.const 7))
+          (i32.const -8)))
+      (local.get $ret)
+    )
     (data (i32.const 16) "HBOD")
   )
   (core instance $libc (instantiate $libc))
@@ -48,6 +115,7 @@
     (import "" "stream.drop-writable" (func $stream.drop-writable (param i32)))
     (import "" "future.read" (func $future.read (param i32 i32) (result i32)))
     (import "" "future.drop-readable" (func $future.drop-readable (param i32)))
+    (import "" "body-future.drop-readable" (func $body-future.drop-readable (param i32)))
     (import "" "request-ctor" (func $request-ctor (result i32)))
     (import "" "req-consume" (func $req-consume (param i32 i32)))
     (import "" "response-new" (func $response-new (param i32 i32)))
@@ -77,12 +145,7 @@
       (if (i32.ne (i32.load (i32.const 48)) (i32.load (i32.const 16)))
         (then unreachable))
 
-      (local.set $status (call $future.read (local.get $fut) (i32.const 64)))
-      (if (i32.eq (local.get $status) (i32.const -1))
-        (then unreachable))
-      (call $future.drop-readable (local.get $fut))
-      (if (i32.ne (i32.load8_u (i32.const 64)) (i32.const 0))
-        (then unreachable))
+      (call $body-future.drop-readable (local.get $fut))
 
       (local.set $pair (call $stream.new))
       (local.set $r (i32.wrap_i64 (local.get $pair)))
@@ -97,12 +160,7 @@
         (then unreachable))
       (call $stream.drop-writable (local.get $w))
 
-      (local.set $status (call $future.read (local.get $fut) (i32.const 0)))
-      (if (i32.eq (local.get $status) (i32.const -1))
-        (then unreachable))
       (call $future.drop-readable (local.get $fut))
-      (if (i32.ne (i32.load8_u (i32.const 0)) (i32.const 0))
-        (then unreachable))
 
       (call $resp-consume (local.get $resp) (i32.const 96))
       (local.set $s (i32.load (i32.const 96)))
@@ -114,12 +172,7 @@
       (if (i32.ne (i32.load (i32.const 112)) (i32.load (i32.const 16)))
         (then unreachable))
 
-      (local.set $status (call $future.read (local.get $fut) (i32.const 128)))
-      (if (i32.eq (local.get $status) (i32.const -1))
-        (then unreachable))
-      (call $future.drop-readable (local.get $fut))
-      (if (i32.ne (i32.load8_u (i32.const 128)) (i32.const 0))
-        (then unreachable))
+      (call $body-future.drop-readable (local.get $fut))
 
       (local.get $n)
     )
@@ -129,15 +182,22 @@
   (core func $stream.write (canon stream.write $st async (memory $libc "mem")))
   (core func $stream.read (canon stream.read $st async (memory $libc "mem")))
   (core func $stream.drop-writable (canon stream.drop-writable $st))
-  (core func $future.read (canon future.read $ft async (memory $libc "mem")))
+  (core func $future.read (canon future.read $ft async (memory $libc "mem") (realloc (func $libc "realloc"))))
   (core func $future.drop-readable (canon future.drop-readable $ft))
+  (core func $body-future.drop-readable (canon future.drop-readable $body-ft))
   (core func $request_ctor_lower (canon lower (func $request-ctor)))
   (core func $req_consume_lower
-    (canon lower (func $req-consume) (memory $libc "mem")))
+    (canon lower (func $req-consume)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
   (core func $response_new_lower
-    (canon lower (func $response-new) (memory $libc "mem")))
+    (canon lower (func $response-new)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
   (core func $resp_consume_lower
-    (canon lower (func $resp-consume) (memory $libc "mem")))
+    (canon lower (func $resp-consume)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
 
   (core instance $i (instantiate $m
     (with "" (instance
@@ -148,6 +208,7 @@
       (export "stream.drop-writable" (func $stream.drop-writable))
       (export "future.read" (func $future.read))
       (export "future.drop-readable" (func $future.drop-readable))
+      (export "body-future.drop-readable" (func $body-future.drop-readable))
       (export "request-ctor" (func $request_ctor_lower))
       (export "req-consume" (func $req_consume_lower))
       (export "response-new" (func $response_new_lower))
@@ -155,6 +216,6 @@
     ))
   ))
 
-  (func (export "run") async (result u32)
+  (func (export "run") (result u32)
     (canon lift (core func $i "run")))
 )

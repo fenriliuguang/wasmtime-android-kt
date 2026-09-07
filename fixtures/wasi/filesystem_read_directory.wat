@@ -1,0 +1,175 @@
+;; L-FS-DIR: wasi:filesystem/types@0.3.0 [method]descriptor.read-directory
+;; Official: tuple<stream<directory-entry>, future<result<_, error-code>>>.
+;; Guest drops the future (error-code has other(option<string>)).
+;; Guest also drops the stream without stream.read: directory-entry contains
+;; string, so async stream.read BLOCKS under sync-lifted `run` (same class as
+;; future.read of other(option<string>)). Host omits `.` / `..`.
+;; Guest: get-directories → open-at("hello.txt") → read-directory → drop. Harness 1.
+(component
+  (import "wasi:filesystem/types@0.3.0" (instance $types
+    (export "descriptor" (type $descriptor (sub resource)))
+    (type $error-code-def (variant
+      (case "access")
+      (case "already")
+      (case "bad-descriptor")
+      (case "busy")
+      (case "deadlock")
+      (case "quota")
+      (case "exist")
+      (case "file-too-large")
+      (case "illegal-byte-sequence")
+      (case "in-progress")
+      (case "interrupted")
+      (case "invalid")
+      (case "io")
+      (case "is-directory")
+      (case "loop")
+      (case "too-many-links")
+      (case "message-size")
+      (case "name-too-long")
+      (case "no-device")
+      (case "no-entry")
+      (case "no-lock")
+      (case "insufficient-memory")
+      (case "insufficient-space")
+      (case "not-directory")
+      (case "not-empty")
+      (case "not-recoverable")
+      (case "unsupported")
+      (case "no-tty")
+      (case "no-such-device")
+      (case "overflow")
+      (case "not-permitted")
+      (case "pipe")
+      (case "read-only")
+      (case "invalid-seek")
+      (case "text-file-busy")
+      (case "cross-device")
+      (case "other" (option string))
+    ))
+    (export "error-code" (type $error-code (eq $error-code-def)))
+    (type $descriptor-type-def (variant
+      (case "block-device")
+      (case "character-device")
+      (case "directory")
+      (case "fifo")
+      (case "symbolic-link")
+      (case "regular-file")
+      (case "socket")
+      (case "other" (option string))
+    ))
+    (export "descriptor-type" (type $descriptor-type (eq $descriptor-type-def)))
+    (type $directory-entry-def (record
+      (field "type" $descriptor-type)
+      (field "name" string)
+    ))
+    (export "directory-entry" (type $directory-entry (eq $directory-entry-def)))
+    (type $io-result (result (error $error-code)))
+    (type $st (stream $directory-entry))
+    (type $ft (future $io-result))
+    (type $read-ret (tuple $st $ft))
+    (type $borrow-desc (borrow $descriptor))
+    (type $open-result (result (own $descriptor) (error $error-code)))
+    (export "[method]descriptor.read-directory"
+      (func (param "self" $borrow-desc) (result $read-ret)))
+    (export "[method]descriptor.open-at"
+      (func (param "self" $borrow-desc) (param "path" string) (result $open-result)))
+  ))
+  (alias export $types "descriptor" (type $descriptor))
+  (alias export $types "error-code" (type $error-code))
+  (alias export $types "directory-entry" (type $directory-entry))
+  (alias export $types "[method]descriptor.read-directory" (func $read-directory))
+  (alias export $types "[method]descriptor.open-at" (func $open-at))
+  (import "wasi:filesystem/preopens@0.3.0" (instance $preopens
+    (export "descriptor" (type (eq $descriptor)))
+    (type $dir-tuple (tuple (own $descriptor) string))
+    (export "get-directories" (func (result (list $dir-tuple))))
+  ))
+  (alias export $preopens "get-directories" (func $get-directories))
+  (type $io-result (result (error $error-code)))
+  (type $st (stream $directory-entry))
+  (type $ft (future $io-result))
+
+  (core module $libc
+    (memory (export "mem") 1)
+    (data (i32.const 16) "hello.txt")
+    (global $last (mut i32) (i32.const 256))
+    (func (export "realloc")
+      (param $oldptr i32) (param $oldlen i32) (param $align i32) (param $newlen i32)
+      (result i32)
+      (local $ret i32)
+      (local.set $ret (global.get $last))
+      (global.set $last
+        (i32.and
+          (i32.add (i32.add (local.get $ret) (local.get $newlen)) (i32.const 7))
+          (i32.const -8)))
+      (local.get $ret)
+    )
+  )
+  (core instance $libc (instantiate $libc))
+
+  (core module $m
+    (import "" "mem" (memory 1))
+    (import "" "stream.drop-readable" (func $stream.drop-readable (param i32)))
+    (import "" "future.drop-readable" (func $future.drop-readable (param i32)))
+    (import "" "get-directories" (func $get-directories (param i32)))
+    (import "" "open-at" (func $open-at (param i32 i32 i32 i32)))
+    (import "" "read-directory" (func $read-directory (param i32 i32)))
+
+    (func (export "run") (result i32)
+      (local $dir i32)
+      (local $list i32)
+      (local $len i32)
+      (local $s i32)
+      (local $fut i32)
+
+      (call $get-directories (i32.const 80))
+      (local.set $list (i32.load (i32.const 80)))
+      (local.set $len (i32.load (i32.const 84)))
+      (if (i32.eqz (local.get $len))
+        (then (return (i32.const 0))))
+      (local.set $dir (i32.load (local.get $list)))
+
+      (call $open-at (local.get $dir) (i32.const 16) (i32.const 9) (i32.const 192))
+      (if (i32.ne (i32.load8_u (i32.const 192)) (i32.const 0))
+        (then (return (i32.const 0))))
+
+      ;; tuple at 32: stream handle, future handle
+      (call $read-directory (local.get $dir) (i32.const 32))
+      (local.set $s (i32.load (i32.const 32)))
+      (local.set $fut (i32.load (i32.const 36)))
+      (if (i32.eqz (local.get $s))
+        (then (return (i32.const 0))))
+      (call $future.drop-readable (local.get $fut))
+      (call $stream.drop-readable (local.get $s))
+      (i32.const 1)
+    )
+  )
+
+  (core func $stream.drop-readable (canon stream.drop-readable $st))
+  (core func $future.drop-readable (canon future.drop-readable $ft))
+  (core func $get_directories_lower
+    (canon lower (func $get-directories)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
+  (core func $open_at_lower
+    (canon lower (func $open-at)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
+  (core func $read_directory_lower
+    (canon lower (func $read-directory) (memory $libc "mem")))
+
+  (core instance $i (instantiate $m
+    (with "" (instance
+      (export "mem" (memory $libc "mem"))
+      (export "stream.drop-readable" (func $stream.drop-readable))
+      (export "future.drop-readable" (func $future.drop-readable))
+      (export "get-directories" (func $get_directories_lower))
+      (export "open-at" (func $open_at_lower))
+      (export "read-directory" (func $read_directory_lower))
+    ))
+  ))
+
+  (func (export "run") (result u32)
+    (canon lift (core func $i "run")))
+)

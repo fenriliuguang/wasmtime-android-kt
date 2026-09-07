@@ -1,0 +1,1 @@
+- L-ERR-FS follow-up: `write-via-stream` 在 helper 线程落盘，`read-via-stream` 先 join。Guest 因官方 `other(option<string>)` 只 drop 写 future，不再依赖 `future.read` 才会把 `P3FS` 写出去（修 CI `wasi_filesystem_preopen_read_write_smoke` trap）。

@@ -12,8 +12,6 @@ const PAYLOAD: &[u8] = b"IN\n";
 #[repr(u8)]
 #[allow(dead_code)]
 enum CliErrorCode {
-    #[component(name = "unknown")]
-    Unknown,
     #[component(name = "io")]
     Io,
     #[component(name = "illegal-byte-sequence")]

@@ -1,0 +1,1 @@
+- L-FS-APPEND: `wasi:filesystem/types@0.3.0` `[method]descriptor.append-via-stream`。Helper 线程 append；下一次 append / read 先 join。夹具 `filesystem_append`（两次 append 得到 `P3FS`）。

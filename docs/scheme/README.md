@@ -7,6 +7,9 @@ Product RFC and shape docs. Language: [`../LANGUAGE.md`](../LANGUAGE.md). Coordi
 | Doc | Role |
 |-----|------|
 | [`rfc.md`](rfc.md) | **Accepted:** product / GPU host / gfx loop |
+| [`rfc-threads.md`](rfc-threads.md) | **Draft:** guest concurrency / stackful CM async (sibling short PR) |
+| [`rfc-wasi-p3.md`](rfc-wasi-p3.md) | **Draft:** leftover fill vs completeness |
+| [`wasi-p3-leftover.md`](wasi-p3-leftover.md) | Living WASI leftover `L-*` queue (thin host) |
 | [`claim-010.md`](claim-010.md) | 0.1.x claim table (not CTS) |
 | [`guest-shape.md`](guest-shape.md) | WIT shape gates |
 | [`charter.md`](charter.md) | Vision / principles |
@@ -15,7 +18,7 @@ Product RFC and shape docs. Language: [`../LANGUAGE.md`](../LANGUAGE.md). Coordi
 | [`tech-stack.md`](tech-stack.md) | Wasmtime / JNI / NDK pins |
 | [`../mapping/gap-webgpu-native-dawn.md`](../mapping/gap-webgpu-native-dawn.md) | WIT ↔ NativeGpu ↔ Dawn C |
 | [`../mapping/gap-webgpu-wit-androidx.md`](../mapping/gap-webgpu-wit-androidx.md) | JNI leftover holes |
-| [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md) | WASI 0.3 named leftovers |
+| [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md) | WASI 0.3 leftover map (`L-*`) |
 | [`../mapping/threading-android.md`](../mapping/threading-android.md) | Thread contract |
 | [`../mapping/errors.md`](../mapping/errors.md) | Error / trap contract |
 | [`../blocked-gpu-host.md`](../blocked-gpu-host.md) | Dawn vendor path |

@@ -1,0 +1,1 @@
+- L-HTTP-FIELDS: `wasi:http/types@0.3.0` `resource fields`（constructor / get / has / append / set / delete）+ `[method]request.get-headers` / `[method]response.get-headers`。`get-headers` 返回的 fields 不可变（append → `header-error.immutable`）。产品 linker 仍省略 `[constructor]request` / `[constructor]response`。夹具 `http_fields`。

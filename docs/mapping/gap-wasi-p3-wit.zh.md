@@ -2,4 +2,4 @@
 
 [English](gap-wasi-p3-wit.md) | **中文**
 
-与英文冲突时以英文为准。只保留 named leftover（G-cmd / G-fs-full / listen·UDP / 完整 HTTP service）。不是自动刀。
+与英文冲突时以英文为准。`0.1.2` 之后 named leftover 走长刀 [`../scheme/wasi-p3-leftover.md`](../scheme/wasi-p3-leftover.md)（不是 wasi-testsuite / `wasmtime-wasi`）。

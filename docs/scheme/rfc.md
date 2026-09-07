@@ -4,7 +4,7 @@
 
 English is canonical. Short Chinese: [`rfc.zh.md`](rfc.zh.md).
 
-This is the only product RFC. Guest ABI rules stay in [`guest-shape.md`](guest-shape.md).
+This is the **accepted** product RFC. Guest ABI rules stay in [`guest-shape.md`](guest-shape.md). Draft design RFCs (not policy until accepted): [`rfc-threads.md`](rfc-threads.md), [`rfc-wasi-p3.md`](rfc-wasi-p3.md).
 
 ## 1. Product
 
@@ -50,7 +50,9 @@ Claim table: [`claim-010.md`](claim-010.md).
 
 Must: most pin `[method]` names; Dawn path for compute / 3D / present when the `.so` is present; documented Record holes; product cli/fs/outbound TCP/HTTP body+send; gfx pull-stream loop; out-of-tree demo link + one named device row.
 
-Not this gate: full `wasi:cli/command` (G-cmd), G-fs-full, listen/UDP/DNS, wasi-testsuite, `wasmtime-wasi` (needs size + Android thread note), CTS, this-repo 1.0.
+Not this **0.1.0** gate: full `wasi:cli/command` (G-cmd), G-fs-full, listen/UDP/DNS, wasi-testsuite, `wasmtime-wasi` (needs size + Android thread note), CTS, this-repo 1.0.
+
+After `0.1.2`, named leftovers may be filled on **`cursor/wasi-p3-leftover-b677`** ([`wasi-p3-leftover.md`](wasi-p3-leftover.md)). That queue is still not wasi-testsuite and still not `wasmtime-wasi`. Draft: [`rfc-wasi-p3.md`](rfc-wasi-p3.md).
 
 ## 5. Public SPI
 

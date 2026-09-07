@@ -24,9 +24,15 @@ wasmtime = { version = "47.0.4", default-features = false, features = [
     "component-model-async",
     "async",
 ] }
+rustls = { version = "0.23.43", default-features = false, features = ["std", "ring", "tls12"] }
+rustls-pki-types = "1.15.1"
+webpki-roots = "0.26"
 
 [profile.release]
 lto = false
 codegen-units = 16
 # scripts/build-native-android.ps1 defaults Windows Android cross to opt-level=2
 # (stream.write instrument); set CARGO_PROFILE_RELEASE_OPT_LEVEL=0 if rustc ACCESS_VIOLATION.
+
+[dev-dependencies]
+rcgen = "0.14.10"

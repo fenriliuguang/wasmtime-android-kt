@@ -6,7 +6,7 @@
 ;; Not a full command world (no fs/sockets/environment/exit/terminal).
 (component
   (import "wasi:cli/stdout@0.3.0" (instance $stdout
-    (type $error-code-def (enum "unknown" "io" "illegal-byte-sequence" "pipe"))
+    (type $error-code-def (enum "io" "illegal-byte-sequence" "pipe"))
     (export "error-code" (type $error-code (eq $error-code-def)))
     (type $write-result (result (error $error-code)))
     (type $st (stream u8))
@@ -84,10 +84,10 @@
     ))
   ))
 
-  (func (export "run") async (result u32)
+  (func (export "run") (result u32)
     (canon lift (core func $i "run"))
   )
-  (func $command-run async (result (result))
+  (func $command-run (result (result))
     (canon lift (core func $i "run")))
   (instance $cli-run
     (export "run" (func $command-run)))

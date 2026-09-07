@@ -4,7 +4,7 @@
 ;; Harness: run returns 1 after matching disc=err + payload=illegal-byte-sequence.
 (component
   (import "wasi:cli/stdout@0.3.0" (instance $stdout
-    (type $error-code-def (enum "unknown" "io" "illegal-byte-sequence" "pipe"))
+    (type $error-code-def (enum "io" "illegal-byte-sequence" "pipe"))
     (export "error-code" (type $error-code (eq $error-code-def)))
     (type $write-result (result (error $error-code)))
     (type $st (stream u8))
@@ -59,7 +59,7 @@
       ;; result<_, error-code> is packed: disc u8 + payload u8 (not 4-byte aligned).
       (if (i32.ne (i32.load8_u (i32.const 32)) (i32.const 1))
         (then unreachable))
-      (if (i32.ne (i32.load8_u (i32.const 33)) (i32.const 2))
+      (if (i32.ne (i32.load8_u (i32.const 33)) (i32.const 1))
         (then unreachable))
 
       i32.const 1
