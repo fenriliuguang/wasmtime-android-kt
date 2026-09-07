@@ -5,7 +5,7 @@
 
 #![allow(non_camel_case_types, dead_code)]
 
-use std::ffi::c_void;
+use std::ffi::{c_char, c_void};
 use std::sync::OnceLock;
 
 use crate::native_gpu::{DawnSlot, ResourceKind};
@@ -69,7 +69,7 @@ struct Chained {
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct StringView {
-    data: *const i8,
+    data: *const c_char,
     length: usize,
 }
 
@@ -86,7 +86,7 @@ impl StringView {
             return Self::empty();
         }
         Self {
-            data: s.as_ptr() as *const i8,
+            data: s.as_ptr() as *const c_char,
             length: s.len(),
         }
     }
