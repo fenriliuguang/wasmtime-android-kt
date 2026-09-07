@@ -195,6 +195,20 @@ wasm-tools parse fixtures/wasi/cli_exit_err.wat -o fixtures/wasi/cli_exit_err.wa
 wasm-tools validate --features=component-model fixtures/wasi/cli_exit_err.wasm
 ```
 
+## `wasi:cli/terminal-*` — get-terminal-stdin/stdout/stderr（L-CMD-TERM）
+
+Guest export: `run: func() -> u32`（stdin/stdout/stderr 均为 `none` 则返回 1）  
+Host: `wasi:cli/terminal-input@0.3.0` / `terminal-output@0.3.0` / `terminal-stdin@0.3.0` / `terminal-stdout@0.3.0` / `terminal-stderr@0.3.0`（钉 `@0.3.0`）
+
+`get-terminal-*` 始终返回官方 `option` 的 **none**。Android 没有 PTY，**不是**假 TTY。无 Kotlin SPI。
+
+成功：`run` 返回 `1`。
+
+```powershell
+wasm-tools parse fixtures/wasi/cli_terminal.wat -o fixtures/wasi/cli_terminal.wasm
+wasm-tools validate --features=component-model fixtures/wasi/cli_terminal.wasm
+```
+
 ## `wasi:filesystem` — preopen + read/write（Android 沙箱子集）
 
 Guest export: `run: func() -> u32`（写 `P3FS` 再读回，返回 4）  

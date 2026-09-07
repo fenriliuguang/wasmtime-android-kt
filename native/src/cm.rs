@@ -364,6 +364,12 @@ fn find_cli_exit(err: &wasmtime::Error) -> Option<Result<(), ()>> {
     None
 }
 
+/// WASI 0.3.0 `wasi:cli/terminal-input` resource. Android: never instantiated (none).
+struct TerminalInput;
+
+/// WASI 0.3.0 `wasi:cli/terminal-output` resource. Android: never instantiated (none).
+struct TerminalOutput;
+
 /// WASI 0.3.0 `wasi:cli/types` `error-code` (official: io / illegal-byte-sequence / pipe).
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
@@ -2012,6 +2018,96 @@ pub(crate) fn define_host(
             },
         )
         .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:cli/terminal-{input,output,stdin,stdout,stderr}@0.3.0.
+    // Android: none is allowed. Not a fake TTY.
+    {
+        let mut input = linker
+            .instance("wasi:cli/terminal-input@0.3.0")
+            .map_err(|e| e.to_string())?;
+        input
+            .resource(
+                "terminal-input",
+                ResourceType::host::<TerminalInput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalInput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        let mut output = linker
+            .instance("wasi:cli/terminal-output@0.3.0")
+            .map_err(|e| e.to_string())?;
+        output
+            .resource(
+                "terminal-output",
+                ResourceType::host::<TerminalOutput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalOutput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        let mut stdin = linker
+            .instance("wasi:cli/terminal-stdin@0.3.0")
+            .map_err(|e| e.to_string())?;
+        stdin
+            .resource(
+                "terminal-input",
+                ResourceType::host::<TerminalInput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalInput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        stdin
+            .func_wrap("get-terminal-stdin", |_store, ()| {
+                Ok((Option::<Resource<TerminalInput>>::None,))
+            })
+            .map_err(|e| e.to_string())?;
+        let mut stdout = linker
+            .instance("wasi:cli/terminal-stdout@0.3.0")
+            .map_err(|e| e.to_string())?;
+        stdout
+            .resource(
+                "terminal-output",
+                ResourceType::host::<TerminalOutput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalOutput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        stdout
+            .func_wrap("get-terminal-stdout", |_store, ()| {
+                Ok((Option::<Resource<TerminalOutput>>::None,))
+            })
+            .map_err(|e| e.to_string())?;
+        let mut stderr = linker
+            .instance("wasi:cli/terminal-stderr@0.3.0")
+            .map_err(|e| e.to_string())?;
+        stderr
+            .resource(
+                "terminal-output",
+                ResourceType::host::<TerminalOutput>(),
+                |mut store, rep| {
+                    let resource = Resource::<TerminalOutput>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        stderr
+            .func_wrap("get-terminal-stderr", |_store, ()| {
+                Ok((Option::<Resource<TerminalOutput>>::None,))
+            })
+            .map_err(|e| e.to_string())?;
     }
 
     // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3).
