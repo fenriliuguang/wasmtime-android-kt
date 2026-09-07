@@ -743,6 +743,80 @@ fn fs_read_dir_entries(path: &std::path::Path) -> Result<Vec<DirectoryEntry>, Fs
     Ok(out)
 }
 
+/// WASI 0.3.0 `new-timestamp` for `set-times` / `set-times-at`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+enum NewTimestamp {
+    #[component(name = "no-change")]
+    NoChange,
+    #[component(name = "now")]
+    Now,
+    #[component(name = "timestamp")]
+    Timestamp(Instant),
+}
+
+fn instant_to_system_time(i: Instant) -> Result<std::time::SystemTime, FsErrorCode> {
+    use std::time::{Duration, UNIX_EPOCH};
+    if i.nanoseconds >= 1_000_000_000 {
+        return Err(FsErrorCode::Invalid);
+    }
+    if i.seconds >= 0 {
+        UNIX_EPOCH
+            .checked_add(Duration::new(i.seconds as u64, i.nanoseconds))
+            .ok_or(FsErrorCode::Overflow)
+    } else {
+        UNIX_EPOCH
+            .checked_sub(Duration::new((-i.seconds) as u64, i.nanoseconds))
+            .ok_or(FsErrorCode::Overflow)
+    }
+}
+
+fn fs_apply_new_timestamp(
+    times: std::fs::FileTimes,
+    ts: NewTimestamp,
+    accessed: bool,
+) -> Result<(std::fs::FileTimes, bool), FsErrorCode> {
+    match ts {
+        NewTimestamp::NoChange => Ok((times, false)),
+        NewTimestamp::Now => {
+            let t = std::time::SystemTime::now();
+            Ok((
+                if accessed {
+                    times.set_accessed(t)
+                } else {
+                    times.set_modified(t)
+                },
+                true,
+            ))
+        }
+        NewTimestamp::Timestamp(i) => {
+            let t = instant_to_system_time(i)?;
+            Ok((
+                if accessed {
+                    times.set_accessed(t)
+                } else {
+                    times.set_modified(t)
+                },
+                true,
+            ))
+        }
+    }
+}
+
+fn fs_set_times(
+    path: &std::path::Path,
+    access: NewTimestamp,
+    modify: NewTimestamp,
+) -> Result<(), FsErrorCode> {
+    let file = std::fs::File::open(path).map_err(|e| fs_error_from_io(&e))?;
+    let (times, a) = fs_apply_new_timestamp(std::fs::FileTimes::new(), access, true)?;
+    let (times, m) = fs_apply_new_timestamp(times, modify, false)?;
+    if a || m {
+        file.set_times(times).map_err(|e| fs_error_from_io(&e))?;
+    }
+    Ok(())
+}
+
 /// Host `resource tcp-socket` for the W7 loopback smoke + P010 outbound dial.
 struct TcpSocket {
     client: Option<std::net::TcpStream>,
@@ -2304,6 +2378,7 @@ pub(crate) fn define_host(
     // read-directory → stream<directory-entry> (omit `.` / `..`); drop the future.
     // append-via-stream: helper thread; join before the next append/read.
     // sync / sync-data: File::sync_all / sync_data after joining a pending writer.
+    // set-times / set-times-at: sandbox files only (`FileTimes`).
     {
         let mut types = linker
             .instance("wasi:filesystem/types@0.3.0")
@@ -2533,6 +2608,56 @@ pub(crate) fn define_host(
                         }
                     };
                     match fs_sync_path(&path, true) {
+                        Ok(()) => Ok((Ok(()),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.set-times",
+                |mut store, (desc, access, modify): (Resource<FsDescriptor>, NewTimestamp, NewTimestamp)| {
+                    let path = {
+                        let table = &mut store.data_mut().table;
+                        match table.get_mut(&desc) {
+                            Ok(entry) => {
+                                if let Some(h) = entry.writer.take() {
+                                    let _ = h.join();
+                                }
+                                entry.path.clone()
+                            }
+                            Err(_) => return Ok((Err(FsErrorCode::BadDescriptor),)),
+                        }
+                    };
+                    match fs_set_times(&path, access, modify) {
+                        Ok(()) => Ok((Ok(()),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.set-times-at",
+                |mut store,
+                 (desc, flags, path, access, modify): (
+                    Resource<FsDescriptor>,
+                    PathFlags,
+                    String,
+                    NewTimestamp,
+                    NewTimestamp,
+                )| {
+                    let table = &mut store.data_mut().table;
+                    if table.get(&desc).is_err() {
+                        return Ok((Err(FsErrorCode::BadDescriptor),));
+                    }
+                    let _ = flags;
+                    let joined = match filesystem_sandbox_join(&path) {
+                        Ok(p) => p,
+                        Err(code) => return Ok((Err(code),)),
+                    };
+                    match fs_set_times(&joined, access, modify) {
                         Ok(()) => Ok((Ok(()),)),
                         Err(code) => Ok((Err(code),)),
                     }

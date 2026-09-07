@@ -279,6 +279,20 @@ wasm-tools parse fixtures/wasi/filesystem_sync.wat -o fixtures/wasi/filesystem_s
 wasm-tools validate --features=component-model fixtures/wasi/filesystem_sync.wasm
 ```
 
+## `wasi:filesystem` — `set-times` / `set-times-at`（仅沙箱）
+
+Guest export: `run: func() -> u32`（`now` / `no-change` / `set-times-at` 成功且 `set-times-at("..")` 为 `access` 则返回 1）  
+Host: `wasi:filesystem/types@0.3.0` `[method]descriptor.set-times` / `set-times-at`（钉 `@0.3.0`）
+
+官方 WIT 为 `async func`；guest **按 sync 导入**。`new-timestamp`：`no-change` / `now` / `timestamp(instant)`。仅沙箱路径；`FileTimes`，无新 crate。**L-FS-TIMES。**
+
+成功：guest `run` 返回 `1`。
+
+```powershell
+wasm-tools parse fixtures/wasi/filesystem_set_times.wat -o fixtures/wasi/filesystem_set_times.wasm
+wasm-tools validate --features=component-model fixtures/wasi/filesystem_set_times.wasm
+```
+
 ## `wasi:sockets` — TCP loopback echo（Android 子集）
 
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
