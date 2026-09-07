@@ -423,7 +423,7 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_body.
 Guest export: `run: async func() -> u32`（`set-authority` → `send` GET → status 200 → `consume-body` `HOUT` → 返回 4）  
 Host: `wasi:http/client@0.3.0#send`（钉 `@0.3.0`；0.3 对 outgoing-handler 的等价物）
 
-Guest authority 在 mem `P3HA` 记录（len + `host:port`），测试 instantiate 前打补丁。Host **真拨** 该地址发 HTTP/1.1 GET（helper 线程），不是进程内 200。无 TLS crate；https → `TLS-protocol-error`。**L-ERR-HTTP：** 官方 `error-code` variant（末案 `internal-error`，无 `unknown`）；空 authority → `HTTP-request-URI-invalid`（`http_empty_authority`）；`https:` → `TLS-protocol-error`（`http_https_tls`）。send 失败映射 `connection-refused` 等。
+Guest authority 在 mem `P3HA` 记录（len + `host:port` 或 `https:host:port`），测试 instantiate 前打补丁。Host **真拨** 该地址发 HTTP/1.1 GET（helper 线程），不是进程内 200。**L-HTTP-TLS：** https 走 **rustls**（helper 线程，非 ART 主线程）；本机夹具 `http_https_tls` 打本机 rustls 服务。**L-ERR-HTTP：** 官方 `error-code` variant（末案 `internal-error`，无 `unknown`）；空 authority → `HTTP-request-URI-invalid`（`http_empty_authority`）。send 失败映射 `connection-refused` 等。
 
 成功：guest `run` 返回 `4` **且** 测试侧 HTTP 服务器收到 `GET /`。
 

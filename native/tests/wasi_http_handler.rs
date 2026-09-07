@@ -135,17 +135,29 @@ enum HttpErrorCode {
 }
 
 fn http_authority_reject(authority: &str) -> Option<HttpErrorCode> {
-    if authority.to_ascii_lowercase().starts_with("https:") {
-        return Some(HttpErrorCode::TlsProtocolError);
+    let rest = if authority.len() >= 6 && authority[..6].eq_ignore_ascii_case("https:") {
+        authority[6..].trim_start_matches('/')
+    } else if authority.len() >= 5 && authority[..5].eq_ignore_ascii_case("http:") {
+        authority[5..].trim_start_matches('/')
+    } else {
+        authority
+    };
+    if rest.is_empty() || rest.contains('/') {
+        Some(HttpErrorCode::HttpRequestUriInvalid)
+    } else {
+        None
     }
-    if authority.is_empty() || authority.contains('/') {
-        return Some(HttpErrorCode::HttpRequestUriInvalid);
-    }
-    None
 }
 
 fn http_error_from_io(err: &std::io::Error) -> HttpErrorCode {
     use std::io::ErrorKind::*;
+    let msg = err.to_string();
+    if msg.starts_with("tls-cert:") {
+        return HttpErrorCode::TlsCertificateError;
+    }
+    if msg.starts_with("tls:") {
+        return HttpErrorCode::TlsProtocolError;
+    }
     match err.kind() {
         InvalidInput => HttpErrorCode::HttpRequestUriInvalid,
         ConnectionRefused => HttpErrorCode::ConnectionRefused,
@@ -562,13 +574,21 @@ const HOUT: &[u8] = b"HOUT";
 const P3HA: &[u8; 4] = b"P3HA";
 
 fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
-    if authority.is_empty() || authority.contains('/') {
+    let (https, hostport) = if authority.len() >= 6 && authority[..6].eq_ignore_ascii_case("https:")
+    {
+        (true, authority[6..].trim_start_matches('/'))
+    } else if authority.len() >= 5 && authority[..5].eq_ignore_ascii_case("http:") {
+        (false, authority[5..].trim_start_matches('/'))
+    } else {
+        (false, authority)
+    };
+    if hostport.is_empty() || hostport.contains('/') {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "authority",
         ));
     }
-    let (host, port) = authority
+    let (host, port) = hostport
         .rsplit_once(':')
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "host:port"))?;
     let ip: Ipv4Addr = host
@@ -581,11 +601,27 @@ fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
         TcpStream::connect_timeout(&SocketAddr::from((ip, port)), Duration::from_secs(2))?;
     stream.set_read_timeout(Some(Duration::from_secs(2)))?;
     stream.set_write_timeout(Some(Duration::from_secs(2)))?;
-    let req = format!("GET / HTTP/1.1\r\nHost: {authority}\r\nConnection: close\r\n\r\n");
-    stream.write_all(req.as_bytes())?;
-    stream.shutdown(std::net::Shutdown::Write)?;
+    let req = format!("GET / HTTP/1.1\r\nHost: {hostport}\r\nConnection: close\r\n\r\n");
+    if https {
+        test_tls_http_get(stream, ip, req.as_bytes())
+    } else {
+        stream.write_all(req.as_bytes())?;
+        stream.shutdown(std::net::Shutdown::Write)?;
+        http_read_response(&mut stream)
+    }
+}
+
+fn http_read_response(stream: &mut dyn Read) -> std::io::Result<(u16, Vec<u8>)> {
     let mut buf = Vec::new();
-    stream.read_to_end(&mut buf)?;
+    let mut tmp = [0u8; 1024];
+    loop {
+        match stream.read(&mut tmp) {
+            Ok(0) => break,
+            Ok(n) => buf.extend_from_slice(&tmp[..n]),
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => return Err(e),
+        }
+    }
     let split = buf
         .windows(4)
         .position(|w| w == b"\r\n\r\n")
@@ -598,6 +634,68 @@ fn http_send_get(authority: &str) -> std::io::Result<(u16, Vec<u8>)> {
         .and_then(|s| s.parse().ok())
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "status"))?;
     Ok((status, buf[split + 4..].to_vec()))
+}
+
+#[derive(Debug)]
+struct SkipServerVerify;
+
+impl rustls::client::danger::ServerCertVerifier for SkipServerVerify {
+    fn verify_server_cert(
+        &self,
+        _end_entity: &rustls::pki_types::CertificateDer<'_>,
+        _intermediates: &[rustls::pki_types::CertificateDer<'_>],
+        _server_name: &rustls::pki_types::ServerName<'_>,
+        _ocsp: &[u8],
+        _now: rustls::pki_types::UnixTime,
+    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+        Ok(rustls::client::danger::ServerCertVerified::assertion())
+    }
+
+    fn verify_tls12_signature(
+        &self,
+        _message: &[u8],
+        _cert: &rustls::pki_types::CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        _message: &[u8],
+        _cert: &rustls::pki_types::CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+        rustls::crypto::ring::default_provider()
+            .signature_verification_algorithms
+            .supported_schemes()
+    }
+}
+
+fn test_tls_http_get(
+    stream: TcpStream,
+    ip: Ipv4Addr,
+    req: &[u8],
+) -> std::io::Result<(u16, Vec<u8>)> {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let mut config = rustls::ClientConfig::builder()
+        .dangerous()
+        .with_custom_certificate_verifier(std::sync::Arc::new(SkipServerVerify))
+        .with_no_client_auth();
+    config.enable_sni = false;
+    let name = rustls::pki_types::ServerName::try_from(ip.to_string())
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{e}")))?
+        .to_owned();
+    let conn = rustls::ClientConnection::new(std::sync::Arc::new(config), name)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("tls:{e}")))?;
+    let mut tls = rustls::StreamOwned::new(conn, stream);
+    tls.write_all(req)?;
+    tls.flush()?;
+    http_read_response(&mut tls)
 }
 
 fn first_non_loopback_ipv4() -> Ipv4Addr {
@@ -647,6 +745,68 @@ fn spawn_http_hout(
         *received_thread.lock().unwrap() = buf.clone();
         let resp = b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nHOUT";
         sock.write_all(resp)?;
+        Ok(())
+    });
+    Ok((port, received, server))
+}
+
+fn spawn_https_hout() -> std::io::Result<(
+    u16,
+    Arc<Mutex<Vec<u8>>>,
+    thread::JoinHandle<std::io::Result<()>>,
+)> {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let key_pair = rcgen::KeyPair::generate().expect("tls key");
+    let cert = rcgen::CertificateParams::new(vec!["127.0.0.1".into()])
+        .expect("cert params")
+        .self_signed(&key_pair)
+        .expect("self signed");
+    let cert_der = rustls::pki_types::CertificateDer::from(cert.der().to_vec());
+    let key_der = rustls::pki_types::PrivateKeyDer::Pkcs8(
+        rustls::pki_types::PrivatePkcs8KeyDer::from(key_pair.serialize_der()),
+    );
+    let cfg = std::sync::Arc::new(
+        rustls::ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(vec![cert_der], key_der)
+            .expect("server config"),
+    );
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))?;
+    listener.set_nonblocking(true)?;
+    let port = listener.local_addr()?.port();
+    let received = Arc::new(Mutex::new(Vec::new()));
+    let received_thread = received.clone();
+    let server = thread::spawn(move || -> std::io::Result<()> {
+        let start = std::time::Instant::now();
+        let (sock, _) = loop {
+            match listener.accept() {
+                Ok(pair) => break pair,
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    if start.elapsed() > Duration::from_secs(2) {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "https accept timeout",
+                        ));
+                    }
+                    thread::sleep(Duration::from_millis(10));
+                }
+                Err(e) => return Err(e),
+            }
+        };
+        sock.set_nonblocking(false)?;
+        sock.set_read_timeout(Some(Duration::from_secs(2)))?;
+        sock.set_write_timeout(Some(Duration::from_secs(2)))?;
+        let conn = rustls::ServerConnection::new(cfg)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("tls:{e}")))?;
+        let mut tls = rustls::StreamOwned::new(conn, sock);
+        let mut buf = vec![0u8; 2048];
+        let n = tls.read(&mut buf)?;
+        *received_thread.lock().unwrap() = buf[..n].to_vec();
+        let resp = b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nHOUT";
+        tls.write_all(resp)?;
+        tls.flush()?;
+        tls.conn.send_close_notify();
+        let _ = tls.flush();
         Ok(())
     });
     Ok((port, received, server))
@@ -724,12 +884,54 @@ fn wasi_http_empty_authority_is_uri_invalid() -> wasmtime::Result<()> {
 }
 
 #[test]
-fn wasi_http_https_authority_is_tls_protocol_error() -> wasmtime::Result<()> {
+fn https_helper_roundtrip() {
+    let (port, received, server) = spawn_https_hout().expect("https bind");
+    let (status, body) = http_send_get(&format!("https:127.0.0.1:{port}")).expect("https get");
+    server.join().unwrap().unwrap();
+    assert_eq!(status, 200);
+    assert_eq!(body, HOUT);
+    assert!(received
+        .lock()
+        .unwrap()
+        .windows(14)
+        .any(|w| w == b"GET / HTTP/1.1"));
+}
+
+#[test]
+fn wasi_http_https_send_hits_local_rustls() -> wasmtime::Result<()> {
+    let (port, received, server) = spawn_https_hout().expect("https bind");
+    let authority = format!("https:127.0.0.1:{port}");
+    assert!(authority.len() <= 21, "authority {authority}");
+
     let engine = engine()?;
-    assert_eq!(
-        call_run(&engine, "http_https_tls.wasm")?,
-        12,
-        "guest must see TLS-protocol-error (disc 12)"
+    let mut bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fixtures/wasi/http_https_tls.wasm"
+    ))?;
+    patch_p3ha(&mut bytes, &authority);
+    let component = Component::new(&engine, bytes)?;
+    let mut linker = Linker::new(&engine);
+    register(&mut linker)?;
+    let mut store = new_store(&engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    let v = pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })?;
+    server.join().unwrap().unwrap();
+    assert_eq!(v, HOUT.len() as u32);
+    let seen = received.lock().unwrap();
+    assert!(
+        seen.windows(b"GET / HTTP/1.1".len())
+            .any(|w| w == b"GET / HTTP/1.1"),
+        "tls host must wire-send (peer saw {:?})",
+        String::from_utf8_lossy(&seen)
     );
     Ok(())
 }
