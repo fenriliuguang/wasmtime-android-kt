@@ -589,6 +589,15 @@ fn fs_write_at(path: &std::path::Path, offset: u64, bytes: &[u8]) -> std::io::Re
     std::fs::write(path, existing)
 }
 
+fn fs_append(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?
+        .write_all(bytes)
+}
+
 fn fs_read_from(path: &std::path::Path, offset: u64) -> Vec<u8> {
     let bytes = std::fs::read(path).unwrap_or_default();
     let start = (offset as usize).min(bytes.len());
@@ -2284,6 +2293,7 @@ pub(crate) fn define_host(
     // open-at(path) -> result; `..` is error-code.access; r/w on the child.
     // stat / stat-at on the sandbox descriptor (sync WIT; guest does not use stackful async).
     // read-directory → stream<directory-entry> (omit `.` / `..`); drop the future.
+    // append-via-stream: helper thread; join before the next append/read.
     {
         let mut types = linker
             .instance("wasi:filesystem/types@0.3.0")
@@ -2323,6 +2333,41 @@ pub(crate) fn define_host(
                         } else {
                             fs_write_at(&path, offset, &bytes)
                         }
+                    });
+                    store.data_mut().table.get_mut(&desc)?.writer = Some(writer);
+                    let fut = FutureReader::new(&mut store, async move {
+                        Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
+                    })?;
+                    Ok((fut,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.append-via-stream",
+                |mut store, (desc, reader): (Resource<FsDescriptor>, StreamReader<u8>)| {
+                    let path = {
+                        let entry = store.data_mut().table.get_mut(&desc)?;
+                        if let Some(h) = entry.writer.take() {
+                            let _ = h.join();
+                        }
+                        entry.path.clone()
+                    };
+                    let (tx, rx) = oneshot::channel::<u32>();
+                    let buf = Arc::new(Mutex::new(Vec::new()));
+                    reader.pipe(
+                        &mut store,
+                        CollectConsumer {
+                            buf: buf.clone(),
+                            done: Some(tx),
+                            max_per_poll: usize::MAX,
+                        },
+                    )?;
+                    let writer = std::thread::spawn(move || {
+                        let _n = pollster::block_on(rx).unwrap_or(0);
+                        let _ = _n;
+                        let bytes = buf.lock().map(|b| b.clone()).unwrap_or_default();
+                        fs_append(&path, &bytes)
                     });
                     store.data_mut().table.get_mut(&desc)?.writer = Some(writer);
                     let fut = FutureReader::new(&mut store, async move {

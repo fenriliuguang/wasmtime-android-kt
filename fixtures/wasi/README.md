@@ -251,6 +251,20 @@ wasm-tools parse fixtures/wasi/filesystem_read_directory.wat -o fixtures/wasi/fi
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/filesystem_read_directory.wasm
 ```
 
+## `wasi:filesystem` — `append-via-stream`
+
+Guest export: `run: func() -> u32`（两次 append `P3` 再 `FS`，读回返回 4）  
+Host: `wasi:filesystem/types@0.3.0` `[method]descriptor.append-via-stream`（钉 `@0.3.0`）
+
+Host 在 helper 线程 append；下一刀 append / `read-via-stream` 先 join。Guest drop future。**L-FS-APPEND。**
+
+成功：guest `run` 返回 `4` 且宿主文件内容为 `P3FS`。
+
+```powershell
+wasm-tools parse fixtures/wasi/filesystem_append.wat -o fixtures/wasi/filesystem_append.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/filesystem_append.wasm
+```
+
 ## `wasi:sockets` — TCP loopback echo（Android 子集）
 
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
