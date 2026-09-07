@@ -1,0 +1,1 @@
+- L-SOCK-LISTEN: `wasi:sockets/tcp@0.3.0` `[method]tcp-socket.bind` / `listen` / `accept`。默认只 `127.0.0.1`；非 loopback bind → `access-denied`。bind/accept 在 helper 线程，**不得**在 ART 主线程 bind。Android 需要 INTERNET。夹具 `sockets_tcp_listen`。

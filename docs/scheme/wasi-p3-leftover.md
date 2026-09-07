@@ -39,7 +39,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | L-FS-APPEND | landed 2026-09-07 (`wasi:filesystem` `append-via-stream`) |
 | L-FS-SYNC | landed 2026-09-07 (`wasi:filesystem` `sync` / `sync-data`) |
 | L-FS-TIMES | landed 2026-09-07 (`wasi:filesystem` `set-times` / `set-times-at` sandbox files) |
-| L-SOCK-LISTEN | gap: l-sock-listen pending |
+| L-SOCK-LISTEN | landed 2026-09-07 (`wasi:sockets` TCP bind/listen/accept loopback only) |
 | L-SOCK-UDP | gap: l-sock-udp pending |
 | L-SOCK-DNS | gap: l-sock-dns pending |
 | L-HTTP-FIELDS | gap: l-http-fields pending |
@@ -64,7 +64,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | **L-FS-APPEND** | *(landed)* | `append-via-stream`. Remove the needle. |
 | **L-FS-SYNC** | *(landed)* | `sync` / `sync-data`. Remove the needle. |
 | **L-FS-TIMES** | *(landed)* | `set-times` / `set-times-at` (sandbox files only). Remove the needle. |
-| **L-SOCK-LISTEN** | `gap: l-sock-listen pending` | TCP bind / listen / accept. **Default sandbox: loopback only.** Changelog: Android INTERNET + no bind on ART main. Remove the needle. |
+| **L-SOCK-LISTEN** | *(landed)* | TCP bind / listen / accept. **Default sandbox: loopback only.** Changelog: Android INTERNET + no bind on ART main. Remove the needle. |
 | **L-SOCK-UDP** | `gap: l-sock-udp pending` | `udp-create-socket` + send/receive subset. Same sandbox. Remove the needle. |
 | **L-SOCK-DNS** | `gap: l-sock-dns pending` | `ip-name-lookup` (helper thread). Remove the needle. |
 | **L-HTTP-FIELDS** | `gap: l-http-fields pending` | `wasi:http` fields / headers on request/response. Product linker still omits fixture-only constructors unless this lane documents otherwise. Remove the needle. |

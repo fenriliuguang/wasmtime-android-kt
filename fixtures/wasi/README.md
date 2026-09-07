@@ -298,7 +298,7 @@ wasm-tools validate --features=component-model fixtures/wasi/filesystem_set_time
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
 Host: `wasi:sockets/tcp-create-socket@0.3.0#create-tcp-socket`；`[method]tcp-socket.connect`（钉 `@0.3.0`）
 
-官方包名如上。本切片：`create-tcp-socket(ip-address-family) -> result`（smoke `ipv4`）；`connect: async func(ip-socket-address) -> result`（guest 传 loopback，host 可忽略 port，仍用 echo pair）；write/read 走 stream。无 UDP / listen / name-lookup。仅 `127.0.0.1`。Android 需要 **INTERNET**（含 loopback）；阻塞 IO 在 helper 线程，见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §6。G-sock-shape **已完成**。**L-ERR-SOCK：** 官方 `error-code` variant；IPv6 create → `not-supported`（`sockets_tcp_ipv6`）。
+官方包名如上。本切片：`create-tcp-socket(ip-address-family) -> result`（smoke `ipv4`）；`connect: async func(ip-socket-address) -> result`（guest 传 loopback，host 可忽略 port，仍用 echo pair）；write/read 走 stream。无 UDP / name-lookup。listen 见下节。仅 `127.0.0.1`。Android 需要 **INTERNET**（含 loopback）；阻塞 IO 在 helper 线程，见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §6。G-sock-shape **已完成**。**L-ERR-SOCK：** 官方 `error-code` variant；IPv6 create → `not-supported`（`sockets_tcp_ipv6`）。
 
 成功：guest `run` 经 `run_concurrent` 返回 `4`。
 
@@ -309,12 +309,26 @@ wasm-tools parse fixtures/wasi/sockets_tcp_ipv6.wat -o fixtures/wasi/sockets_tcp
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tcp_ipv6.wasm
 ```
 
+## `wasi:sockets` — TCP bind / listen / accept（仅 loopback）
+
+Guest export: `run: func() -> u32`（bind + listen + accept 成功则返回 1）  
+Host: `wasi:sockets/tcp@0.3.0` `[method]tcp-socket.bind` / `listen` / `accept`（钉 `@0.3.0`）
+
+默认沙箱 **只 127.0.0.1**；非 loopback bind → `access-denied`。bind / accept 在 **helper 线程**，不在 ART 主线程。Android 需要 **INTERNET**。**L-SOCK-LISTEN。**
+
+成功：guest `run` 返回 `1`。
+
+```powershell
+wasm-tools parse fixtures/wasi/sockets_tcp_listen.wat -o fixtures/wasi/sockets_tcp_listen.wasm
+wasm-tools validate --features=component-model fixtures/wasi/sockets_tcp_listen.wasm
+```
+
 ## `wasi:sockets` — TCP outbound（非回环拨号）
 
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 **host 真拨** 的 peer echo 读回，返回 4）  
 Host: 同上 `connect`；guest 地址在 mem `P3IP` 记录（port + ipv4），测试在 instantiate 前打补丁。
 
-**P010-TCP：** 非回环 IPv4 时 host **dial 该地址**（不是 ignore-port + echo pair）。回环仍走 W7 echo pair。无 UDP / listen。沙箱：出站 + INTERNET；默认不 listen。
+**P010-TCP：** 非回环 IPv4 时 host **dial 该地址**（不是 ignore-port + echo pair）。回环仍走 W7 echo pair。无 UDP。listen 见上节。沙箱：出站 + INTERNET。
 
 成功：guest `run` 返回 `4` **且** 测试侧 echo 服务器收到 `P3SK`。
 

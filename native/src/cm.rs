@@ -822,6 +822,7 @@ struct TcpSocket {
     client: Option<std::net::TcpStream>,
     server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
     writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
+    listener: Option<std::net::TcpListener>,
 }
 
 struct TcpConnected {
@@ -944,7 +945,7 @@ fn tcp_loopback_pair() -> std::io::Result<(
 }
 
 /// Guest `connect(ip-socket-address)`: loopback keeps the W7 echo pair;
-/// non-loopback **dials that IPv4:port** (P010-TCP). No listen / UDP.
+/// non-loopback **dials that IPv4:port** (P010-TCP). UDP is a later leftover.
 fn tcp_connect_guest(addr: IpSocketAddress) -> std::io::Result<TcpConnected> {
     use std::net::{Ipv4Addr, SocketAddr, TcpStream};
     use std::time::Duration;
@@ -968,6 +969,37 @@ fn tcp_connect_guest(addr: IpSocketAddress) -> std::io::Result<TcpConnected> {
                 server: None,
             })
         }
+    }
+}
+
+fn tcp_bind_guest(addr: IpSocketAddress) -> std::io::Result<std::net::TcpListener> {
+    match addr {
+        IpSocketAddress::Ipv4(a) => {
+            let ip = std::net::Ipv4Addr::new(a.address.0, a.address.1, a.address.2, a.address.3);
+            if !ip.is_loopback() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "listen sandbox is loopback only",
+                ));
+            }
+            std::net::TcpListener::bind((ip, a.port))
+        }
+    }
+}
+
+fn tcp_addr_from_std(addr: std::net::SocketAddr) -> IpSocketAddress {
+    match addr {
+        std::net::SocketAddr::V4(v) => {
+            let o = v.ip().octets();
+            IpSocketAddress::Ipv4(Ipv4SocketAddress {
+                port: v.port(),
+                address: (o[0], o[1], o[2], o[3]),
+            })
+        }
+        std::net::SocketAddr::V6(_) => IpSocketAddress::Ipv4(Ipv4SocketAddress {
+            port: 0,
+            address: (127, 0, 0, 1),
+        }),
     }
 }
 
@@ -2699,7 +2731,7 @@ pub(crate) fn define_host(
     // func (wasm-tools 1.239 cannot parse import `func async`) that still
     // dials on a helper thread. Loopback: host ignores port (echo pair).
     // Non-loopback: host dials that IPv4:port. write/read via streams (cli shapes).
-    // No UDP, no listen, no ip-name-lookup. INTERNET + helper-thread: threading-android.md.
+    // bind/listen/accept: loopback only, helper thread (not ART main). No UDP, no ip-name-lookup.
     {
         let mut tcp = linker
             .instance("wasi:sockets/tcp@0.3.0")
@@ -2733,6 +2765,81 @@ pub(crate) fn define_host(
                 entry.client = Some(connected.client);
                 entry.server = connected.server;
                 Ok((Ok::<(), SockErrorCode>(()),))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        tcp.func_wrap(
+            "[method]tcp-socket.bind",
+            |mut store, (sock, addr): (Resource<TcpSocket>, IpSocketAddress)| {
+                store.data_mut().table.get(&sock)?;
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(tcp_bind_guest(addr));
+                });
+                let listener = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("bind canceled"))?
+                {
+                    Ok(l) => l,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                store.data_mut().table.get_mut(&sock)?.listener = Some(listener);
+                Ok((Ok::<(), SockErrorCode>(()),))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        tcp.func_wrap(
+            "[method]tcp-socket.listen",
+            |mut store, (sock,): (Resource<TcpSocket>,)| {
+                store.data_mut().table.get(&sock)?;
+                if store.data_mut().table.get(&sock)?.listener.is_some() {
+                    return Ok((Ok::<(), SockErrorCode>(()),));
+                }
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ =
+                        done_tx.send(tcp_bind_guest(IpSocketAddress::Ipv4(Ipv4SocketAddress {
+                            port: 0,
+                            address: (127, 0, 0, 1),
+                        })));
+                });
+                let listener = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("listen canceled"))?
+                {
+                    Ok(l) => l,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                store.data_mut().table.get_mut(&sock)?.listener = Some(listener);
+                Ok((Ok::<(), SockErrorCode>(()),))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        tcp.func_wrap(
+            "[method]tcp-socket.accept",
+            |mut store, (sock,): (Resource<TcpSocket>,)| {
+                let listener = match store.data_mut().table.get(&sock)?.listener.as_ref() {
+                    Some(l) => l.try_clone()?,
+                    None => return Ok((Err(SockErrorCode::InvalidState),)),
+                };
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(listener.accept());
+                });
+                let (stream, peer) = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("accept canceled"))?
+                {
+                    Ok(v) => v,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                let child = store.data_mut().table.push(TcpSocket {
+                    client: Some(stream),
+                    server: None,
+                    writer: None,
+                    listener: None,
+                })?;
+                Ok((Ok((child, tcp_addr_from_std(peer))),))
             },
         )
         .map_err(|e| e.to_string())?;
@@ -2828,6 +2935,7 @@ pub(crate) fn define_host(
                             client: None,
                             server: None,
                             writer: None,
+                            listener: None,
                         })?;
                         Ok((Ok(resource),))
                     }
