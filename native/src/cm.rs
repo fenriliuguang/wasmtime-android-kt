@@ -692,6 +692,39 @@ fn fs_stat_path(path: &std::path::Path, follow: bool) -> Result<DescriptorStat, 
     })
 }
 
+/// WASI 0.3.0 `directory-entry`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct DirectoryEntry {
+    #[component(name = "type")]
+    type_: DescriptorType,
+    name: String,
+}
+
+fn fs_read_dir_entries(path: &std::path::Path) -> Result<Vec<DirectoryEntry>, FsErrorCode> {
+    let meta = std::fs::metadata(path).map_err(|e| fs_error_from_io(&e))?;
+    if !meta.is_dir() {
+        return Err(FsErrorCode::NotDirectory);
+    }
+    let mut out = Vec::new();
+    for ent in std::fs::read_dir(path).map_err(|e| fs_error_from_io(&e))? {
+        let ent = ent.map_err(|e| fs_error_from_io(&e))?;
+        let os_name = ent.file_name();
+        if os_name == "." || os_name == ".." {
+            continue;
+        }
+        let name = os_name.to_string_lossy().into_owned();
+        let ty = match ent.file_type() {
+            Ok(ft) if ft.is_dir() => DescriptorType::Directory,
+            Ok(ft) if ft.is_symlink() => DescriptorType::SymbolicLink,
+            Ok(ft) if ft.is_file() => DescriptorType::RegularFile,
+            _ => DescriptorType::Other(None),
+        };
+        out.push(DirectoryEntry { type_: ty, name });
+    }
+    Ok(out)
+}
+
 /// Host `resource tcp-socket` for the W7 loopback smoke + P010 outbound dial.
 struct TcpSocket {
     client: Option<std::net::TcpStream>,
@@ -2245,11 +2278,12 @@ pub(crate) fn define_host(
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3 + L-FS-STAT).
+    // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3 + L-FS-STAT + L-FS-DIR).
     // Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
     // get-directories → list (sandbox directory, ".");
     // open-at(path) -> result; `..` is error-code.access; r/w on the child.
     // stat / stat-at on the sandbox descriptor (sync WIT; guest does not use stackful async).
+    // read-directory → stream<directory-entry> (omit `.` / `..`); drop the future.
     {
         let mut types = linker
             .instance("wasi:filesystem/types@0.3.0")
@@ -2364,6 +2398,42 @@ pub(crate) fn define_host(
                     match fs_stat_path(&joined, flags.contains(PathFlags::SYMLINK_FOLLOW)) {
                         Ok(st) => Ok((Ok(st),)),
                         Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.read-directory",
+                |mut store, (desc,): (Resource<FsDescriptor>,)| {
+                    let listed = {
+                        let table = &mut store.data_mut().table;
+                        match table.get_mut(&desc) {
+                            Ok(entry) => {
+                                if let Some(h) = entry.writer.take() {
+                                    let _ = h.join();
+                                }
+                                fs_read_dir_entries(&entry.path.clone())
+                            }
+                            Err(_) => Err(FsErrorCode::BadDescriptor),
+                        }
+                    };
+                    match listed {
+                        Ok(entries) => {
+                            let reader = StreamReader::new(&mut store, entries)?;
+                            let fut = FutureReader::new(&mut store, async move {
+                                Ok::<_, wasmtime::Error>(Ok::<(), FsErrorCode>(()))
+                            })?;
+                            Ok(((reader, fut),))
+                        }
+                        Err(code) => {
+                            let reader =
+                                StreamReader::new(&mut store, Vec::<DirectoryEntry>::new())?;
+                            let fut = FutureReader::new(&mut store, async move {
+                                Ok::<_, wasmtime::Error>(Err::<(), FsErrorCode>(code))
+                            })?;
+                            Ok(((reader, fut),))
+                        }
                     }
                 },
             )

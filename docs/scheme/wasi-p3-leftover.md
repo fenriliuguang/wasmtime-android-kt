@@ -35,7 +35,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | L-CMD-EXIT | landed 2026-09-07 (`wasi:cli/exit@0.3.0` exit; run completes with official result; does not kill ART) |
 | L-CMD-TERM | landed 2026-09-07 (`wasi:cli/terminal-*@0.3.0`; Android none; not a fake TTY) |
 | L-FS-STAT | landed 2026-09-07 (`wasi:filesystem` `stat` / `stat-at` on sandbox descriptor) |
-| L-FS-DIR | gap: l-fs-dir pending |
+| L-FS-DIR | landed 2026-09-07 (`wasi:filesystem` `read-directory` as a CM stream) |
 | L-FS-APPEND | gap: l-fs-append pending |
 | L-FS-SYNC | gap: l-fs-sync pending |
 | L-FS-TIMES | gap: l-fs-times pending |
@@ -60,7 +60,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | **L-CMD-EXIT** | *(landed)* | `wasi:cli/exit@0.3.0`. Guest `exit` completes `run` with official `result`. Do not kill the ART process. Remove the needle. |
 | **L-CMD-TERM** | *(landed)* | `terminal-stdin` / `terminal-stdout` / `terminal-stderr` (Android: `none` is allowed). Not a fake TTY. Remove the needle. |
 | **L-FS-STAT** | *(landed)* | `stat` / `stat-at` on the sandbox descriptor. Remove the needle. |
-| **L-FS-DIR** | `gap: l-fs-dir pending` | `read-directory` as a CM stream of directory entries. Remove the needle. |
+| **L-FS-DIR** | *(landed)* | `read-directory` as a CM stream of directory entries. Remove the needle. |
 | **L-FS-APPEND** | `gap: l-fs-append pending` | `append-via-stream`. Remove the needle. |
 | **L-FS-SYNC** | `gap: l-fs-sync pending` | `sync` / `sync-data`. Remove the needle. |
 | **L-FS-TIMES** | `gap: l-fs-times pending` | `set-times` / `set-times-at` (sandbox files only). Remove the needle. |

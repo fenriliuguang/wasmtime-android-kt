@@ -237,6 +237,20 @@ wasm-tools parse fixtures/wasi/filesystem_stat.wat -o fixtures/wasi/filesystem_s
 wasm-tools validate --features=component-model fixtures/wasi/filesystem_stat.wasm
 ```
 
+## `wasi:filesystem` — `read-directory`（CM stream）
+
+Guest export: `run: func() -> u32`（`open-at("hello.txt")` 后 `read-directory` 流里找到该名则返回 1）  
+Host: `wasi:filesystem/types@0.3.0` `[method]descriptor.read-directory` → `tuple<stream<directory-entry>, future<result>>`（钉 `@0.3.0`）
+
+官方省略 `.` / `..`。Guest **只 drop** 错误 future 与 directory stream，不 `stream.read` payload（`directory-entry` 含 `string`，sync-lift `run` 下 async `stream.read` 会 BLOCKED，与 `other(option<string>)` 同类）。Host 填沙箱条目。**L-FS-DIR。**
+
+成功：guest `run` 返回 `1`。
+
+```powershell
+wasm-tools parse fixtures/wasi/filesystem_read_directory.wat -o fixtures/wasi/filesystem_read_directory.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/filesystem_read_directory.wasm
+```
+
 ## `wasi:sockets` — TCP loopback echo（Android 子集）
 
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
