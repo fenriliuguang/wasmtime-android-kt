@@ -170,6 +170,61 @@ fn http_error_from_io(err: &std::io::Error) -> HttpErrorCode {
 struct HttpRequest {
     body: Vec<u8>,
     authority: String,
+    method: Method,
+    path_with_query: Option<String>,
+    scheme: Option<Scheme>,
+}
+
+impl HttpRequest {
+    fn incoming(authority: &str) -> Self {
+        Self {
+            body: PAYLOAD.to_vec(),
+            authority: authority.to_string(),
+            method: Method::Get,
+            path_with_query: None,
+            scheme: None,
+        }
+    }
+}
+
+/// WASI 0.3.0 `wasi:http` `method`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum Method {
+    #[component(name = "get")]
+    Get,
+    #[component(name = "head")]
+    Head,
+    #[component(name = "post")]
+    Post,
+    #[component(name = "put")]
+    Put,
+    #[component(name = "delete")]
+    Delete,
+    #[component(name = "connect")]
+    Connect,
+    #[component(name = "options")]
+    Options,
+    #[component(name = "trace")]
+    Trace,
+    #[component(name = "patch")]
+    Patch,
+    #[component(name = "other")]
+    Other(String),
+}
+
+/// WASI 0.3.0 `wasi:http` `scheme`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum Scheme {
+    #[component(name = "HTTP")]
+    Http,
+    #[component(name = "HTTPS")]
+    Https,
+    #[component(name = "other")]
+    Other(String),
 }
 
 struct HttpResponse {
@@ -263,10 +318,7 @@ fn register_http(linker: &mut Linker<TestHost>, fixture_ctors: bool) -> wasmtime
     )?;
     if fixture_ctors {
         types.func_wrap("[constructor]request", |mut store, ()| {
-            let resource = store.data_mut().table.push(HttpRequest {
-                body: PAYLOAD.to_vec(),
-                authority: String::new(),
-            })?;
+            let resource = store.data_mut().table.push(HttpRequest::incoming(""))?;
             Ok((resource,))
         })?;
         types.func_wrap("[constructor]response", |mut store, ()| {
@@ -278,9 +330,55 @@ fn register_http(linker: &mut Linker<TestHost>, fixture_ctors: bool) -> wasmtime
         })?;
     }
     types.func_wrap(
+        "[method]request.get-method",
+        |mut store, (req,): (Resource<HttpRequest>,)| {
+            Ok((store.data_mut().table.get(&req)?.method.clone(),))
+        },
+    )?;
+    types.func_wrap(
+        "[method]request.get-path-with-query",
+        |mut store, (req,): (Resource<HttpRequest>,)| {
+            Ok((store.data_mut().table.get(&req)?.path_with_query.clone(),))
+        },
+    )?;
+    types.func_wrap(
+        "[method]request.get-scheme",
+        |mut store, (req,): (Resource<HttpRequest>,)| {
+            Ok((store.data_mut().table.get(&req)?.scheme.clone(),))
+        },
+    )?;
+    types.func_wrap(
+        "[method]request.get-authority",
+        |mut store, (req,): (Resource<HttpRequest>,)| {
+            let auth = &store.data_mut().table.get(&req)?.authority;
+            let out = if auth.is_empty() {
+                None
+            } else {
+                Some(auth.clone())
+            };
+            Ok((out,))
+        },
+    )?;
+    types.func_wrap(
         "[method]response.status-code",
         |mut store, (resp,): (Resource<HttpResponse>,)| {
             Ok((store.data_mut().table.get(&resp)?.status,))
+        },
+    )?;
+    types.func_wrap(
+        "[method]response.get-status-code",
+        |mut store, (resp,): (Resource<HttpResponse>,)| {
+            Ok((store.data_mut().table.get(&resp)?.status,))
+        },
+    )?;
+    types.func_wrap(
+        "[method]response.set-status-code",
+        |mut store, (resp, status): (Resource<HttpResponse>, u16)| {
+            if !(100..=599).contains(&status) {
+                return Ok((Err::<(), ()>(()),));
+            }
+            store.data_mut().table.get_mut(&resp)?.status = status;
+            Ok((Ok::<(), ()>(()),))
         },
     )?;
     types.func_wrap(
@@ -443,12 +541,8 @@ fn wasi_http_incoming_handler_export() -> wasmtime::Result<()> {
     let status = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u16> {
-                let req = accessor.with(|mut access| {
-                    access.data_mut().table.push(HttpRequest {
-                        body: PAYLOAD.to_vec(),
-                        authority: String::new(),
-                    })
-                })?;
+                let req = accessor
+                    .with(|mut access| access.data_mut().table.push(HttpRequest::incoming("")))?;
                 let idx = accessor.with(|mut access| {
                     let inst = instance
                         .get_export_index(&mut access, None, "wasi:http/incoming-handler@0.3.0")
@@ -528,12 +622,8 @@ fn product_linker_handle_host_supplies_request() -> wasmtime::Result<()> {
     let status = pollster::block_on(async {
         store
             .run_concurrent(async |accessor| -> wasmtime::Result<u16> {
-                let req = accessor.with(|mut access| {
-                    access.data_mut().table.push(HttpRequest {
-                        body: PAYLOAD.to_vec(),
-                        authority: String::new(),
-                    })
-                })?;
+                let req = accessor
+                    .with(|mut access| access.data_mut().table.push(HttpRequest::incoming("")))?;
                 let idx = accessor.with(|mut access| {
                     let inst = instance
                         .get_export_index(&mut access, None, "wasi:http/incoming-handler@0.3.0")
@@ -560,6 +650,150 @@ fn product_linker_handle_host_supplies_request() -> wasmtime::Result<()> {
         status, 200,
         "host-supplied request; product handle returns 200"
     );
+    Ok(())
+}
+
+fn svc_req(
+    method: Method,
+    path: Option<&str>,
+    scheme: Option<Scheme>,
+    authority: &str,
+) -> HttpRequest {
+    HttpRequest {
+        body: PAYLOAD.to_vec(),
+        authority: authority.to_string(),
+        method,
+        path_with_query: path.map(str::to_string),
+        scheme,
+    }
+}
+
+fn call_handle_status(engine: &Engine, req: HttpRequest) -> wasmtime::Result<u16> {
+    let component = load_component(engine, "http_svc.wasm")?;
+    let mut linker = Linker::new(engine);
+    register_product(&mut linker)?;
+    let mut store = new_store(engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u16> {
+                let req = accessor.with(|mut access| access.data_mut().table.push(req))?;
+                let idx = accessor.with(|mut access| {
+                    let inst = instance
+                        .get_export_index(&mut access, None, "wasi:http/incoming-handler@0.3.0")
+                        .ok_or_else(|| {
+                            wasmtime::Error::msg("missing wasi:http/incoming-handler@0.3.0")
+                        })?;
+                    instance
+                        .get_export_index(&mut access, Some(&inst), "handle")
+                        .ok_or_else(|| wasmtime::Error::msg("missing handle"))
+                })?;
+                let func = accessor.with(|mut access| {
+                    instance.get_typed_func::<
+                        (Resource<HttpRequest>,),
+                        (Result<Resource<HttpResponse>, HttpErrorCode>,),
+                    >(&mut access, idx)
+                })?;
+                let (result,) = func.call_concurrent(accessor, (req,)).await?;
+                let resp = result.map_err(|_| wasmtime::Error::msg("handle err"))?;
+                accessor.with(|mut access| Ok(access.data_mut().table.get(&resp)?.status))
+            })
+            .await?
+    })
+}
+
+#[test]
+fn wasi_http_svc_run_returns_200() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    assert_eq!(call_run_product(&engine, "http_svc.wasm")?, 200);
+    Ok(())
+}
+
+fn call_run_product(engine: &Engine, file: &str) -> wasmtime::Result<u32> {
+    let component = load_component(engine, file)?;
+    let mut linker = Linker::new(engine);
+    register_product(&mut linker)?;
+    let mut store = new_store(engine);
+    let instance = pollster::block_on(linker.instantiate_async(&mut store, &component))?;
+    pollster::block_on(async {
+        store
+            .run_concurrent(async |accessor| -> wasmtime::Result<u32> {
+                let func = accessor
+                    .with(|mut access| instance.get_typed_func::<(), (u32,)>(&mut access, "run"))?;
+                let (value,) = func.call_concurrent(accessor, ()).await?;
+                Ok(value)
+            })
+            .await?
+    })
+}
+
+#[test]
+fn wasi_http_svc_handle_get_svc_returns_201() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    let status = call_handle_status(
+        &engine,
+        svc_req(
+            Method::Get,
+            Some("/svc"),
+            Some(Scheme::Http),
+            "example.test",
+        ),
+    )?;
+    assert_eq!(status, 201, "GET /svc with authority and HTTP scheme");
+    Ok(())
+}
+
+#[test]
+fn wasi_http_svc_handle_post_returns_405() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    let status = call_handle_status(
+        &engine,
+        svc_req(
+            Method::Post,
+            Some("/svc"),
+            Some(Scheme::Http),
+            "example.test",
+        ),
+    )?;
+    assert_eq!(status, 405, "POST is not GET");
+    Ok(())
+}
+
+#[test]
+fn wasi_http_svc_handle_wrong_path_returns_404() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    let status = call_handle_status(
+        &engine,
+        svc_req(
+            Method::Get,
+            Some("/nope"),
+            Some(Scheme::Http),
+            "example.test",
+        ),
+    )?;
+    assert_eq!(status, 404, "path other than /svc");
+    Ok(())
+}
+
+#[test]
+fn wasi_http_svc_handle_missing_authority_returns_400() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    let status = call_handle_status(
+        &engine,
+        svc_req(Method::Get, Some("/svc"), Some(Scheme::Http), ""),
+    )?;
+    assert_eq!(status, 400, "empty authority is none");
+    Ok(())
+}
+
+#[test]
+fn wasi_http_svc_handle_missing_scheme_returns_400() -> wasmtime::Result<()> {
+    let engine = engine()?;
+    let status = call_handle_status(
+        &engine,
+        svc_req(Method::Get, Some("/svc"), None, "example.test"),
+    )?;
+    assert_eq!(status, 400, "scheme none");
     Ok(())
 }
 

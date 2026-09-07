@@ -70,7 +70,7 @@ Path policy:
 
 ## 7. WASI 0.3 http (W8)
 
-`wasi:http` this cut is an **in-process** `incoming-handler` ABI smoke (guest `handle` → status 200) plus **body `stream<u8>`** (`consume-body` / `response.new`) and **outbound** `wasi:http/client@0.3.0#send` (HTTP/1.1 GET on the wire; **https via rustls**). `send` and TLS handshake run on a **helper thread** (same class as TCP connect). Android needs **INTERNET**; smoke-app allows cleartext for the local instrument. Do not add `wasmtime-wasi`. Do not run TLS on the ART main thread or GpuThread.
+`wasi:http` this cut is an **in-process** `incoming-handler` ABI (guest `handle` inspects `get-method` / `get-path-with-query` / `get-scheme` / `get-authority` and `set-status-code`; not a listen HTTP server) plus **body `stream<u8>`** (`consume-body` / `response.new`) and **outbound** `wasi:http/client@0.3.0#send` (HTTP/1.1 GET on the wire; **https via rustls**). `send` and TLS handshake run on a **helper thread** (same class as TCP connect). Android needs **INTERNET**; smoke-app allows cleartext for the local instrument. Do not add `wasmtime-wasi`. Do not run TLS or listen on the ART main thread or GpuThread.
 
 ## 8. wasi-gfx `on-frame` / present (P010-GFXH / P010-GFXL / P010-GFXV)
 

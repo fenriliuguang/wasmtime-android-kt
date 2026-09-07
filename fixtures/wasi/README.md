@@ -404,6 +404,19 @@ wasm-tools parse fixtures/wasi/http_handle.wat -o fixtures/wasi/http_handle.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_handle.wasm
 ```
 
+## `wasi:http` — incoming-handler types for guest `handle`（L-HTTP-SVC）
+
+Guest export: 根 `run` 返回 `200`；官方 `handle` 读 `get-method` / `get-path-with-query` / `get-scheme` / `get-authority`，用 `set-status-code` 写响应。**不是**监听 HTTP 服务器。
+
+Host 提供 request：`GET` + path `/svc` + `scheme.HTTP` + 非空 authority → **201**；非 GET → 405；path 不对 → 404；authority / scheme `none` → 400。产品 linker 仍省略 constructor。官方 `request.new` / 带 headers 的 `response.new` 本切片不做。
+
+成功：产品 linker instantiate；`run` 返回 `200`；上述 handle 状态码。
+
+```powershell
+wasm-tools parse fixtures/wasi/http_svc.wat -o fixtures/wasi/http_svc.wasm
+wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_svc.wasm
+```
+
 ## `wasi:http` — body `stream<u8>`（P010-HBODY）
 
 Guest export: `run: async func() -> u32`（读请求 body `HBOD`，经 `response.new` 写回，再 `consume-body` 读回，返回 4）  

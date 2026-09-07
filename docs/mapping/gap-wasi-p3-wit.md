@@ -20,7 +20,7 @@ Pin: [WASI 0.3.0](https://github.com/WebAssembly/WASI/releases/tag/v0.3.0).
 | **G-cmd** | `wasi:cli/command` environment / exit / terminal-* | L-CMD-ENV |
 | **G-fs-full** | `stat`, directory stream, append, sync, dates | L-FS-STAT |
 | **G-sock-rest** | `listen`, UDP, DNS, sockets `types` merge | L-SOCK-LISTEN |
-| **G-http** | Full `service` world, trailers, TLS / https | L-HTTP-FIELDS |
+| **G-http** | Full `service` world, trailers, TLS / https, remaining handler types | landed (L-HTTP-FIELDS … L-HTTP-SVC); not a listen HTTP server / wasi-testsuite |
 
 ## Coverage (now)
 
@@ -30,4 +30,4 @@ Pin: [WASI 0.3.0](https://github.com/WebAssembly/WASI/releases/tag/v0.3.0).
 | `wasi:cli` stdout/stderr/stdin/run | **Smoke** + official `error-code` (`io` / `illegal-byte-sequence` / `pipe`); NUL → `illegal-byte-sequence`; invalid UTF-8 → `io`; `environment` `get-environment` / `get-arguments` (TMPDIR only; arguments empty); `exit` completes `run` with official `result` (does not kill ART); `terminal-*` `get-terminal-*` is `none` (not a fake TTY) |
 | `wasi:filesystem` | **Smoke** + official `error-code` variant; `..` → `access`; missing descriptor → `bad-descriptor`; r/w IO → `io` / `is-directory` (no `unknown`); `stat` / `stat-at` on sandbox descriptor; `read-directory` as a CM stream (omit `.` / `..`); `append-via-stream`; `sync` / `sync-data`; `set-times` / `set-times-at` (sandbox files) |
 | `wasi:sockets` | **Smoke** + official `error-code` variant; IPv6 create → `not-supported`; failed connect mapped off `unknown`; TCP bind / listen / accept **loopback only** (non-loopback bind → `access-denied`; helper thread, not ART main); UDP create / bind / send / receive **loopback only** (non-loopback bind/send → `access-denied`; helper thread); `ip-name-lookup` `resolve-addresses` on a helper thread (ipv4 list; empty name → `invalid-argument`) |
-| `wasi:http` | **Smoke** body `stream<u8>` + outbound GET; official `error-code` variant; empty authority → `HTTP-request-URI-invalid`; https on `client.send` via **rustls** (helper thread, not ART main); `fields` + `request`/`response` `get-headers`; `consume-body` trailers `option` (`none`); product linker omits request/response constructors |
+| `wasi:http` | **Smoke** body `stream<u8>` + outbound GET; official `error-code` variant; empty authority → `HTTP-request-URI-invalid`; https on `client.send` via **rustls** (helper thread, not ART main); `fields` + `request`/`response` `get-headers`; `consume-body` trailers `option` (`none`); incoming-handler types `get-method` / `get-path-with-query` / `get-scheme` / `get-authority` / `set-status-code` (not a listen HTTP server); product linker omits request/response constructors |

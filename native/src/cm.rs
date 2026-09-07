@@ -1137,11 +1137,67 @@ fn udp_recv_guest(sock: &std::net::UdpSocket) -> std::io::Result<(Vec<u8>, IpSoc
     Ok((buf, tcp_addr_from_std(from)))
 }
 
+/// WASI 0.3.0 `wasi:http` `method`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum Method {
+    #[component(name = "get")]
+    Get,
+    #[component(name = "head")]
+    Head,
+    #[component(name = "post")]
+    Post,
+    #[component(name = "put")]
+    Put,
+    #[component(name = "delete")]
+    Delete,
+    #[component(name = "connect")]
+    Connect,
+    #[component(name = "options")]
+    Options,
+    #[component(name = "trace")]
+    Trace,
+    #[component(name = "patch")]
+    Patch,
+    #[component(name = "other")]
+    Other(String),
+}
+
+/// WASI 0.3.0 `wasi:http` `scheme`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum Scheme {
+    #[component(name = "HTTP")]
+    Http,
+    #[component(name = "HTTPS")]
+    Https,
+    #[component(name = "other")]
+    Other(String),
+}
+
 /// Host `resource request` / `response` for the W8 incoming-handler smoke + P010 body.
 struct HttpRequest {
     body: Vec<u8>,
     authority: String,
     headers: Vec<(String, Vec<u8>)>,
+    method: Method,
+    path_with_query: Option<String>,
+    scheme: Option<Scheme>,
+}
+
+impl HttpRequest {
+    fn incoming(body: Vec<u8>) -> Self {
+        Self {
+            body,
+            authority: String::new(),
+            headers: Vec::new(),
+            method: Method::Get,
+            path_with_query: None,
+            scheme: None,
+        }
+    }
 }
 
 struct HttpResponse {
@@ -3344,7 +3400,9 @@ pub(crate) fn define_host(
     // Body: [static]request.consume-body / [static]response.consume-body →
     // tuple<stream<u8>, future<result<option<fields>, error-code>>> (trailers none);
     // [static]response.new(contents: stream<u8>) → tuple<response, future>
-    // (headers via fields / get-headers; request.new headers is L-HTTP-SVC).
+    // (headers via fields / get-headers).
+    // Incoming handle types: get-method / get-path-with-query / get-scheme /
+    // get-authority / set-status-code (not a listen HTTP server; not request.new).
     // Outbound: set-authority + client.send HTTP/1.1 GET on the
     // wire (helper thread). Product linker omits [constructor]request/response
     // (P010-HCTOR; test linker keeps them). https on send uses rustls (helper thread).
@@ -3495,11 +3553,10 @@ pub(crate) fn define_host(
         if fixture_ctors {
             types
                 .func_wrap("[constructor]request", |mut store, ()| {
-                    let resource = store.data_mut().table.push(HttpRequest {
-                        body: b"HBOD".to_vec(),
-                        authority: String::new(),
-                        headers: Vec::new(),
-                    })?;
+                    let resource = store
+                        .data_mut()
+                        .table
+                        .push(HttpRequest::incoming(b"HBOD".to_vec()))?;
                     Ok((resource,))
                 })
                 .map_err(|e| e.to_string())?;
@@ -3516,9 +3573,67 @@ pub(crate) fn define_host(
         }
         types
             .func_wrap(
+                "[method]request.get-method",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    Ok((store.data_mut().table.get(&req)?.method.clone(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]request.get-path-with-query",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    Ok((store.data_mut().table.get(&req)?.path_with_query.clone(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]request.get-scheme",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    Ok((store.data_mut().table.get(&req)?.scheme.clone(),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]request.get-authority",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    let auth = &store.data_mut().table.get(&req)?.authority;
+                    let out = if auth.is_empty() {
+                        None
+                    } else {
+                        Some(auth.clone())
+                    };
+                    Ok((out,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
                 "[method]response.status-code",
                 |mut store, (resp,): (Resource<HttpResponse>,)| {
                     Ok((store.data_mut().table.get(&resp)?.status,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]response.get-status-code",
+                |mut store, (resp,): (Resource<HttpResponse>,)| {
+                    Ok((store.data_mut().table.get(&resp)?.status,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]response.set-status-code",
+                |mut store, (resp, status): (Resource<HttpResponse>, u16)| {
+                    if !(100..=599).contains(&status) {
+                        return Ok((Err::<(), ()>(()),));
+                    }
+                    store.data_mut().table.get_mut(&resp)?.status = status;
+                    Ok((Ok::<(), ()>(()),))
                 },
             )
             .map_err(|e| e.to_string())?;

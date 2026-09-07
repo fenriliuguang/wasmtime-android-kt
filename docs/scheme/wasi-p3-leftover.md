@@ -45,7 +45,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | L-HTTP-FIELDS | landed 2026-09-07 (`wasi:http` fields / get-headers on request and response) |
 | L-HTTP-TRAIL | landed 2026-09-07 (`wasi:http` consume-body trailers option none) |
 | L-HTTP-TLS | landed 2026-09-07 (`wasi:http` client.send https via rustls helper thread) |
-| L-HTTP-SVC | gap: l-http-svc pending |
+| L-HTTP-SVC | landed 2026-09-07 (`wasi:http` incoming-handler types: get-method / get-path-with-query / get-scheme / get-authority / set-status-code; not a listen HTTP server) |
 
 ## Lanes (auto)
 
@@ -70,7 +70,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | **L-HTTP-FIELDS** | *(landed)* | `wasi:http` fields / headers on request/response. Product linker still omits fixture-only constructors unless this lane documents otherwise. Remove the needle. |
 | **L-HTTP-TRAIL** | *(landed)* | Trailers on consume-body `option`. Remove the needle. |
 | **L-HTTP-TLS** | *(landed)* | https on `client.send`. Changelog **must** record `.so` size + which thread does TLS. No `wasmtime-wasi`. Remove the needle. |
-| **L-HTTP-SVC** | `gap: l-http-svc pending` | Remaining `incoming-handler` / types shape for a guest `handle` (not a listen HTTP server). Remove the needle. Then remaining.py is empty → **one** PR to `main`. |
+| **L-HTTP-SVC** | *(landed)* | Remaining `incoming-handler` / types shape for a guest `handle`: `get-method` / `get-path-with-query` / `get-scheme` / `get-authority` / `set-status-code`. Not a listen HTTP server. Product linker still omits request/response constructors. Fixture `http_svc`. Remove the needle. `remaining.py` is empty → **one** PR to `main`. |
 
 Path policy, INTERNET, and helper-thread IO stay as in [`../mapping/threading-android.md`](../mapping/threading-android.md). Do not put listen / large FS / TLS on the ART main thread.
 
