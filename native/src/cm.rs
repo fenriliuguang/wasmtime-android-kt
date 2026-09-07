@@ -825,6 +825,11 @@ struct TcpSocket {
     listener: Option<std::net::TcpListener>,
 }
 
+/// Host `resource udp-socket` (L-SOCK-UDP). Loopback sandbox only.
+struct UdpSocket {
+    sock: Option<std::net::UdpSocket>,
+}
+
 struct TcpConnected {
     client: std::net::TcpStream,
     server: Option<std::thread::JoinHandle<std::io::Result<()>>>,
@@ -1001,6 +1006,67 @@ fn tcp_addr_from_std(addr: std::net::SocketAddr) -> IpSocketAddress {
             address: (127, 0, 0, 1),
         }),
     }
+}
+
+fn udp_bind_guest(addr: IpSocketAddress) -> std::io::Result<std::net::UdpSocket> {
+    match addr {
+        IpSocketAddress::Ipv4(a) => {
+            let ip = std::net::Ipv4Addr::new(a.address.0, a.address.1, a.address.2, a.address.3);
+            if !ip.is_loopback() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "udp sandbox is loopback only",
+                ));
+            }
+            std::net::UdpSocket::bind((ip, a.port))
+        }
+    }
+}
+
+fn udp_send_guest(
+    sock: &std::net::UdpSocket,
+    data: &[u8],
+    remote: Option<IpSocketAddress>,
+) -> std::io::Result<()> {
+    let addr = match remote {
+        Some(IpSocketAddress::Ipv4(a)) => {
+            let ip = std::net::Ipv4Addr::new(a.address.0, a.address.1, a.address.2, a.address.3);
+            if !ip.is_loopback() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "udp sandbox is loopback only",
+                ));
+            }
+            if a.port == 0 {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "udp send remote port must be nonzero",
+                ));
+            }
+            std::net::SocketAddr::from((ip, a.port))
+        }
+        None => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "udp send needs a remote address",
+            ));
+        }
+    };
+    if data.len() > 65507 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "udp datagram too large",
+        ));
+    }
+    sock.send_to(data, addr).map(|_| ())
+}
+
+fn udp_recv_guest(sock: &std::net::UdpSocket) -> std::io::Result<(Vec<u8>, IpSocketAddress)> {
+    sock.set_read_timeout(Some(std::time::Duration::from_secs(2)))?;
+    let mut buf = vec![0u8; 2048];
+    let (n, from) = sock.recv_from(&mut buf)?;
+    buf.truncate(n);
+    Ok((buf, tcp_addr_from_std(from)))
 }
 
 /// Host `resource request` / `response` for the W8 incoming-handler smoke + P010 body.
@@ -2731,7 +2797,8 @@ pub(crate) fn define_host(
     // func (wasm-tools 1.239 cannot parse import `func async`) that still
     // dials on a helper thread. Loopback: host ignores port (echo pair).
     // Non-loopback: host dials that IPv4:port. write/read via streams (cli shapes).
-    // bind/listen/accept: loopback only, helper thread (not ART main). No UDP, no ip-name-lookup.
+    // bind/listen/accept: loopback only, helper thread (not ART main).
+    // UDP: udp-create-socket + bind/send/receive loopback subset. No ip-name-lookup.
     {
         let mut tcp = linker
             .instance("wasi:sockets/tcp@0.3.0")
@@ -2937,6 +3004,143 @@ pub(crate) fn define_host(
                             writer: None,
                             listener: None,
                         })?;
+                        Ok((Ok(resource),))
+                    }
+                    IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::NotSupported),)),
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:sockets UDP subset (L-SOCK-UDP).
+    // Official 0.3 send/receive are async func; guest imports them as sync WIT.
+    // Loopback only; bind/send/receive on a helper thread (not ART main).
+    {
+        let mut udp = linker
+            .instance("wasi:sockets/udp@0.3.0")
+            .map_err(|e| e.to_string())?;
+        udp.resource(
+            "udp-socket",
+            ResourceType::host::<UdpSocket>(),
+            |mut store, rep| {
+                let resource = Resource::<UdpSocket>::new_own(rep);
+                store.data_mut().table.delete(resource)?;
+                Ok(())
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        udp.func_wrap(
+            "[method]udp-socket.bind",
+            |mut store, (sock, addr): (Resource<UdpSocket>, IpSocketAddress)| {
+                if store.data_mut().table.get(&sock)?.sock.is_some() {
+                    return Ok((Err(SockErrorCode::InvalidState),));
+                }
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(udp_bind_guest(addr));
+                });
+                let bound = match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("udp bind canceled"))?
+                {
+                    Ok(s) => s,
+                    Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                };
+                store.data_mut().table.get_mut(&sock)?.sock = Some(bound);
+                Ok((Ok::<(), SockErrorCode>(()),))
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        udp.func_wrap(
+            "[method]udp-socket.send",
+            |mut store, (sock, data, remote): (Resource<UdpSocket>, Vec<u8>, Option<IpSocketAddress>)| {
+                if data.len() > 65507 {
+                    return Ok((Err(SockErrorCode::DatagramTooLarge),));
+                }
+                if store.data_mut().table.get(&sock)?.sock.is_none() {
+                    let (done_tx, done_rx) = std::sync::mpsc::channel();
+                    std::thread::spawn(move || {
+                        let _ = done_tx.send(udp_bind_guest(IpSocketAddress::Ipv4(
+                            Ipv4SocketAddress {
+                                port: 0,
+                                address: (127, 0, 0, 1),
+                            },
+                        )));
+                    });
+                    let bound = match done_rx
+                        .recv()
+                        .map_err(|_| wasmtime::Error::msg("udp implicit bind canceled"))?
+                    {
+                        Ok(s) => s,
+                        Err(e) => return Ok((Err(sock_error_from_io(&e)),)),
+                    };
+                    store.data_mut().table.get_mut(&sock)?.sock = Some(bound);
+                }
+                let cloned = store
+                    .data_mut()
+                    .table
+                    .get(&sock)?
+                    .sock
+                    .as_ref()
+                    .ok_or_else(|| wasmtime::Error::msg("udp-socket missing"))?
+                    .try_clone()?;
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(udp_send_guest(&cloned, &data, remote));
+                });
+                match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("udp send canceled"))?
+                {
+                    Ok(()) => Ok((Ok::<(), SockErrorCode>(()),)),
+                    Err(e) => Ok((Err(sock_error_from_io(&e)),)),
+                }
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        udp.func_wrap(
+            "[method]udp-socket.receive",
+            |mut store, (sock,): (Resource<UdpSocket>,)| {
+                let cloned = match store.data_mut().table.get(&sock)?.sock.as_ref() {
+                    Some(s) => s.try_clone()?,
+                    None => return Ok((Err(SockErrorCode::InvalidState),)),
+                };
+                let (done_tx, done_rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = done_tx.send(udp_recv_guest(&cloned));
+                });
+                match done_rx
+                    .recv()
+                    .map_err(|_| wasmtime::Error::msg("udp receive canceled"))?
+                {
+                    Ok((bytes, from)) => Ok((Ok((bytes, from)),)),
+                    Err(e) => Ok((Err(sock_error_from_io(&e)),)),
+                }
+            },
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    {
+        let mut create = linker
+            .instance("wasi:sockets/udp-create-socket@0.3.0")
+            .map_err(|e| e.to_string())?;
+        create
+            .resource(
+                "udp-socket",
+                ResourceType::host::<UdpSocket>(),
+                |mut store, rep| {
+                    let resource = Resource::<UdpSocket>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        create
+            .func_wrap(
+                "create-udp-socket",
+                |mut store, (family,): (IpAddressFamily,)| match family {
+                    IpAddressFamily::Ipv4 => {
+                        let resource = store.data_mut().table.push(UdpSocket { sock: None })?;
                         Ok((Ok(resource),))
                     }
                     IpAddressFamily::Ipv6 => Ok((Err(SockErrorCode::NotSupported),)),
