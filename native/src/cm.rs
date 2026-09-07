@@ -328,6 +328,33 @@ struct SystemClockInstant {
     nanoseconds: u32,
 }
 
+/// Typed unwind for `wasi:cli/exit@0.3.0#exit`. Must not `process::exit` / abort ART.
+#[derive(Debug)]
+struct CliExit(Result<(), ()>);
+
+impl std::fmt::Display for CliExit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            Ok(()) => f.write_str("wasi:cli/exit ok"),
+            Err(()) => f.write_str("wasi:cli/exit err"),
+        }
+    }
+}
+
+impl std::error::Error for CliExit {}
+
+/// Guest `exit` completes `run` with the official empty `result`: ok → 0, err → 1.
+fn map_cli_run_result(result: wasmtime::Result<u32>) -> wasmtime::Result<u32> {
+    match result {
+        Ok(v) => Ok(v),
+        Err(e) => match e.downcast::<CliExit>() {
+            Ok(CliExit(Ok(()))) => Ok(0),
+            Ok(CliExit(Err(()))) => Ok(1),
+            Err(e) => Err(e),
+        },
+    }
+}
+
 /// WASI 0.3.0 `wasi:cli/types` `error-code` (official: io / illegal-byte-sequence / pipe).
 #[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
 #[component(enum)]
@@ -1960,6 +1987,22 @@ pub(crate) fn define_host(
         environment
             .func_wrap("get-arguments", |_store, ()| Ok((Vec::<String>::new(),)))
             .map_err(|e| e.to_string())?;
+    }
+
+    // WASI 0.3: wasi:cli/exit@0.3.0 — guest `exit` completes `run` with official
+    // `result`. Typed unwind only; do not kill the ART process. `exit-with-code`
+    // is not this lane.
+    {
+        let mut exit = linker
+            .instance("wasi:cli/exit@0.3.0")
+            .map_err(|e| e.to_string())?;
+        exit.func_wrap(
+            "exit",
+            |_store, (status,): (Result<(), ()>,)| -> wasmtime::Result<()> {
+                Err(CliExit(status).into())
+            },
+        )
+        .map_err(|e| e.to_string())?;
     }
 
     // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3).
@@ -12447,8 +12490,8 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
             return 0;
         }
     };
-    match func.call(&mut *store, ()) {
-        Ok((result,)) => result as jint,
+    match map_cli_run_result(func.call(&mut *store, ()).map(|(result,)| result)) {
+        Ok(v) => v as jint,
         Err(e) => {
             throw_err(&mut env, e);
             0
@@ -12616,7 +12659,7 @@ pub extern "system" fn Java_io_github_fenriliuguang_wasmtime_android_jni_NativeB
         }
     };
 
-    match result {
+    match map_cli_run_result(result) {
         Ok(v) => v as jint,
         Err(e) => {
             throw_err(&mut env, e);

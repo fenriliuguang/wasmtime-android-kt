@@ -179,6 +179,22 @@ wasm-tools parse fixtures/wasi/cli_environment.wat -o fixtures/wasi/cli_environm
 wasm-tools validate --features=component-model fixtures/wasi/cli_environment.wasm
 ```
 
+## `wasi:cli/exit` — exit（L-CMD-EXIT）
+
+Guest export: 根 `run: func() -> u32`（仪器：`exit(ok)` → 0，`exit(err)` → 1）；官方 `wasi:cli/run@0.3.0#run: func() -> result`  
+Host: `wasi:cli/exit@0.3.0#exit`（钉 `@0.3.0`）
+
+Guest 调用 `exit` 后不再继续。Host 用 typed unwind（`CliExit`）结束 `run`，映射官方空 `result`：ok → 0，err → 1。**不得** `process::exit` / abort，ART 进程继续活。`exit-with-code` 不在本刀。无 Kotlin SPI。
+
+成功：ok 夹具 `run` 返回 `0`；err 夹具返回 `1`；两次调用后测试进程仍在。
+
+```powershell
+wasm-tools parse fixtures/wasi/cli_exit.wat -o fixtures/wasi/cli_exit.wasm
+wasm-tools validate --features=component-model fixtures/wasi/cli_exit.wasm
+wasm-tools parse fixtures/wasi/cli_exit_err.wat -o fixtures/wasi/cli_exit_err.wasm
+wasm-tools validate --features=component-model fixtures/wasi/cli_exit_err.wasm
+```
+
 ## `wasi:filesystem` — preopen + read/write（Android 沙箱子集）
 
 Guest export: `run: func() -> u32`（写 `P3FS` 再读回，返回 4）  
