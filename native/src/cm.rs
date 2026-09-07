@@ -45,7 +45,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use wasmtime::component::{
-    Component, ComponentType, Destination, FutureReader, Lift, Linker, Lower, Resource,
+    flags, Component, ComponentType, Destination, FutureReader, Lift, Linker, Lower, Resource,
     ResourceType, Source, StreamConsumer, StreamProducer, StreamReader, StreamResult,
 };
 use wasmtime::{Engine, Store, StoreContextMut};
@@ -465,6 +465,62 @@ enum FsErrorCode {
     Other(Option<String>),
 }
 
+/// WASI 0.3.0 `wasi:filesystem` `descriptor-type`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+#[allow(dead_code)]
+enum DescriptorType {
+    #[component(name = "block-device")]
+    BlockDevice,
+    #[component(name = "character-device")]
+    CharacterDevice,
+    #[component(name = "directory")]
+    Directory,
+    #[component(name = "fifo")]
+    Fifo,
+    #[component(name = "symbolic-link")]
+    SymbolicLink,
+    #[component(name = "regular-file")]
+    RegularFile,
+    #[component(name = "socket")]
+    Socket,
+    #[component(name = "other")]
+    Other(Option<String>),
+}
+
+/// WASI 0.3.0 `path-flags` (`symlink-follow`).
+flags! {
+    PathFlags {
+        #[component(name = "symlink-follow")]
+        const SYMLINK_FOLLOW;
+    }
+}
+
+/// Clocks `instant` nested in `descriptor-stat` (export name `instant`).
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct Instant {
+    seconds: i64,
+    nanoseconds: u32,
+}
+
+/// WASI 0.3.0 `descriptor-stat`.
+#[derive(Clone, Debug, ComponentType, Lift, Lower)]
+#[component(record)]
+struct DescriptorStat {
+    #[component(name = "type")]
+    type_: DescriptorType,
+    #[component(name = "link-count")]
+    link_count: u64,
+    size: u64,
+    #[component(name = "data-access-timestamp")]
+    data_access_timestamp: Option<Instant>,
+    #[component(name = "data-modification-timestamp")]
+    data_modification_timestamp: Option<Instant>,
+    #[component(name = "status-change-timestamp")]
+    status_change_timestamp: Option<Instant>,
+}
+
 fn fs_error_from_io(err: &std::io::Error) -> FsErrorCode {
     use std::io::ErrorKind::*;
     match err.kind() {
@@ -555,6 +611,85 @@ fn fs_open_child(
             writer: None,
         })
         .map_err(|_| FsErrorCode::InsufficientMemory)
+}
+
+fn system_time_to_fs_instant(t: std::time::SystemTime) -> Instant {
+    match t.duration_since(std::time::UNIX_EPOCH) {
+        Ok(d) => Instant {
+            seconds: d.as_secs() as i64,
+            nanoseconds: d.subsec_nanos(),
+        },
+        Err(e) => {
+            let d = e.duration();
+            Instant {
+                seconds: -(d.as_secs() as i64),
+                nanoseconds: d.subsec_nanos(),
+            }
+        }
+    }
+}
+
+fn fs_descriptor_type(meta: &std::fs::Metadata) -> DescriptorType {
+    let ft = meta.file_type();
+    if ft.is_dir() {
+        DescriptorType::Directory
+    } else if ft.is_symlink() {
+        DescriptorType::SymbolicLink
+    } else if ft.is_file() {
+        DescriptorType::RegularFile
+    } else {
+        DescriptorType::Other(None)
+    }
+}
+
+fn fs_link_count(meta: &std::fs::Metadata) -> u64 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        meta.nlink()
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = meta;
+        1
+    }
+}
+
+fn fs_ctime(meta: &std::fs::Metadata) -> Option<Instant> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let nsec = meta.ctime_nsec();
+        if nsec < 0 {
+            return None;
+        }
+        Some(Instant {
+            seconds: meta.ctime(),
+            nanoseconds: nsec as u32,
+        })
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = meta;
+        None
+    }
+}
+
+fn fs_stat_path(path: &std::path::Path, follow: bool) -> Result<DescriptorStat, FsErrorCode> {
+    let meta = if follow {
+        std::fs::metadata(path)
+    } else {
+        std::fs::symlink_metadata(path)
+    }
+    .map_err(|e| fs_error_from_io(&e))?;
+    Ok(DescriptorStat {
+        type_: fs_descriptor_type(&meta),
+        link_count: fs_link_count(&meta),
+        size: meta.len(),
+        data_access_timestamp: meta.accessed().ok().map(system_time_to_fs_instant),
+        data_modification_timestamp: meta.modified().ok().map(system_time_to_fs_instant),
+        status_change_timestamp: fs_ctime(&meta),
+    })
 }
 
 /// Host `resource tcp-socket` for the W7 loopback smoke + P010 outbound dial.
@@ -2110,10 +2245,11 @@ pub(crate) fn define_host(
             .map_err(|e| e.to_string())?;
     }
 
-    // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3).
+    // WASI 0.3: wasi:filesystem Android sandbox (W6 + P1-FS1–FS3 + L-FS-STAT).
     // Official packages: wasi:filesystem/types@0.3.0 + preopens@0.3.0.
     // get-directories → list (sandbox directory, ".");
     // open-at(path) -> result; `..` is error-code.access; r/w on the child.
+    // stat / stat-at on the sandbox descriptor (sync WIT; guest does not use stackful async).
     {
         let mut types = linker
             .instance("wasi:filesystem/types@0.3.0")
@@ -2190,6 +2326,45 @@ pub(crate) fn define_host(
                 ) {
                     Ok(child) => Ok((Ok(child),)),
                     Err(code) => Ok((Err(code),)),
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.stat",
+                |mut store, (desc,): (Resource<FsDescriptor>,)| {
+                    let table = &mut store.data_mut().table;
+                    let entry = match table.get_mut(&desc) {
+                        Ok(e) => e,
+                        Err(_) => return Ok((Err(FsErrorCode::BadDescriptor),)),
+                    };
+                    if let Some(h) = entry.writer.take() {
+                        let _ = h.join();
+                    }
+                    let path = entry.path.clone();
+                    match fs_stat_path(&path, true) {
+                        Ok(st) => Ok((Ok(st),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.stat-at",
+                |mut store, (desc, flags, path): (Resource<FsDescriptor>, PathFlags, String)| {
+                    let table = &mut store.data_mut().table;
+                    if table.get(&desc).is_err() {
+                        return Ok((Err(FsErrorCode::BadDescriptor),));
+                    }
+                    let joined = match filesystem_sandbox_join(&path) {
+                        Ok(p) => p,
+                        Err(code) => return Ok((Err(code),)),
+                    };
+                    match fs_stat_path(&joined, flags.contains(PathFlags::SYMLINK_FOLLOW)) {
+                        Ok(st) => Ok((Ok(st),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
                 },
             )
             .map_err(|e| e.to_string())?;

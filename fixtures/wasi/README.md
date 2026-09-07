@@ -223,6 +223,20 @@ wasm-tools parse fixtures/wasi/filesystem_preopen.wat -o fixtures/wasi/filesyste
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/filesystem_preopen.wasm
 ```
 
+## `wasi:filesystem` — `stat` / `stat-at`（沙箱 descriptor）
+
+Guest export: `run: func() -> u32`（目录 `stat` + 文件 `stat` / `stat-at` 成功且 `stat-at("..")` 为 `access` 则返回 1）  
+Host: `wasi:filesystem/types@0.3.0` `[method]descriptor.stat` / `stat-at`（钉 `@0.3.0`）
+
+官方 WIT 为 `async func`；guest **按 sync 导入**（wasmtime 47 拒绝 stackful）。`descriptor-stat` 含 `descriptor-type` / `link-count` / `size` / clocks `instant` 时间戳。`path-flags` 仅 `symlink-follow`。`stat-at("..")` 仍为 `error-code.access`。沙箱见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §5。**L-FS-STAT。**
+
+成功：guest `run` 返回 `1`。
+
+```powershell
+wasm-tools parse fixtures/wasi/filesystem_stat.wat -o fixtures/wasi/filesystem_stat.wasm
+wasm-tools validate --features=component-model fixtures/wasi/filesystem_stat.wasm
+```
+
 ## `wasi:sockets` — TCP loopback echo（Android 子集）
 
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
