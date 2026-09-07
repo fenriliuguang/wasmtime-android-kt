@@ -3286,7 +3286,7 @@ pub(crate) fn define_host(
     // Subset: constructors + status-code; handle is guest-exported
     // async func(own<request>) -> result<own<response>, error-code> (ok path).
     // Body: [static]request.consume-body / [static]response.consume-body →
-    // tuple<stream<u8>, future<result>> (no trailers / res-future param);
+    // tuple<stream<u8>, future<result<option<fields>, error-code>>> (trailers none);
     // [static]response.new(contents: stream<u8>) → tuple<response, future>
     // (headers via fields / get-headers; request.new headers is L-HTTP-SVC).
     // Outbound: set-authority + client.send HTTP/1.1 GET on the
@@ -3473,7 +3473,9 @@ pub(crate) fn define_host(
                     let req = store.data_mut().table.delete(this)?;
                     let reader = StreamReader::new(&mut store, req.body)?;
                     let fut = FutureReader::new(&mut store, async move {
-                        Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
+                        Ok::<_, wasmtime::Error>(Ok::<Option<Resource<HttpFields>>, HttpErrorCode>(
+                            None,
+                        ))
                     })?;
                     Ok(((reader, fut),))
                 },
@@ -3514,7 +3516,9 @@ pub(crate) fn define_host(
                     let bytes = resp.body.lock().map(|b| b.clone()).unwrap_or_default();
                     let reader = StreamReader::new(&mut store, bytes)?;
                     let fut = FutureReader::new(&mut store, async move {
-                        Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
+                        Ok::<_, wasmtime::Error>(Ok::<Option<Resource<HttpFields>>, HttpErrorCode>(
+                            None,
+                        ))
                     })?;
                     Ok(((reader, fut),))
                 },

@@ -1,13 +1,15 @@
-;; WASI 0.3 package smoke: wasi:http body stream<u8> (P010-HBODY)
-;; Official: request/response consume-body → tuple<stream<u8>, future<…>>;
-;; response.new(contents: stream<u8>). Subset: no headers / trailers / res-future
-;; param. In-process (not a listening HTTP server).
+;; WASI 0.3 package smoke: wasi:http body stream<u8> (P010-HBODY + L-HTTP-TRAIL)
+;; Official: request/response consume-body → tuple<stream<u8>,
+;; future<result<option<fields>, error-code>>>; guest drops that future
+;; (error-code other/internal-error option<string> BLOCKS future.read).
+;; response.new(contents: stream<u8>). Subset: no res-future param.
 ;; Guest: ctor request (host body HBOD) → consume-body read → response.new write
 ;; → consume-body read echo → nbytes 4.
 (component
   (import "wasi:http/types@0.3.0" (instance $types
     (export "request" (type $request (sub resource)))
     (export "response" (type $response (sub resource)))
+    (export "fields" (type $fields (sub resource)))
     (type $dns-payload (record (field "rcode" (option string)) (field "info-code" (option u16))))
     (export "dns-error-payload" (type $dns-ex (eq $dns-payload)))
     (type $tls-alert (record (field "alert-id" (option u8)) (field "alert-message" (option string))))
@@ -59,7 +61,10 @@
     (type $io-result (result (error $error-code)))
     (type $st (stream u8))
     (type $ft (future $io-result))
-    (type $read-ret (tuple $st $ft))
+    (type $trail-ok (option (own $fields)))
+    (type $trail-result (result $trail-ok (error $error-code)))
+    (type $body-ft (future $trail-result))
+    (type $read-ret (tuple $st $body-ft))
     (type $new-ret (tuple (own $response) $ft))
     (export "[constructor]request" (func (result (own $request))))
     (export "[static]request.consume-body"
@@ -71,6 +76,7 @@
   ))
   (alias export $types "request" (type $request))
   (alias export $types "response" (type $response))
+  (alias export $types "fields" (type $fields))
   (alias export $types "error-code" (type $error-code))
   (alias export $types "[constructor]request" (func $request-ctor))
   (alias export $types "[static]request.consume-body" (func $req-consume))
@@ -79,6 +85,9 @@
   (type $io-result (result (error $error-code)))
   (type $st (stream u8))
   (type $ft (future $io-result))
+  (type $trail-ok (option (own $fields)))
+  (type $trail-result (result $trail-ok (error $error-code)))
+  (type $body-ft (future $trail-result))
 
   (core module $libc
     (memory (export "mem") 1)
@@ -106,6 +115,7 @@
     (import "" "stream.drop-writable" (func $stream.drop-writable (param i32)))
     (import "" "future.read" (func $future.read (param i32 i32) (result i32)))
     (import "" "future.drop-readable" (func $future.drop-readable (param i32)))
+    (import "" "body-future.drop-readable" (func $body-future.drop-readable (param i32)))
     (import "" "request-ctor" (func $request-ctor (result i32)))
     (import "" "req-consume" (func $req-consume (param i32 i32)))
     (import "" "response-new" (func $response-new (param i32 i32)))
@@ -135,7 +145,7 @@
       (if (i32.ne (i32.load (i32.const 48)) (i32.load (i32.const 16)))
         (then unreachable))
 
-      (call $future.drop-readable (local.get $fut))
+      (call $body-future.drop-readable (local.get $fut))
 
       (local.set $pair (call $stream.new))
       (local.set $r (i32.wrap_i64 (local.get $pair)))
@@ -162,7 +172,7 @@
       (if (i32.ne (i32.load (i32.const 112)) (i32.load (i32.const 16)))
         (then unreachable))
 
-      (call $future.drop-readable (local.get $fut))
+      (call $body-future.drop-readable (local.get $fut))
 
       (local.get $n)
     )
@@ -174,6 +184,7 @@
   (core func $stream.drop-writable (canon stream.drop-writable $st))
   (core func $future.read (canon future.read $ft async (memory $libc "mem") (realloc (func $libc "realloc"))))
   (core func $future.drop-readable (canon future.drop-readable $ft))
+  (core func $body-future.drop-readable (canon future.drop-readable $body-ft))
   (core func $request_ctor_lower (canon lower (func $request-ctor)))
   (core func $req_consume_lower
     (canon lower (func $req-consume)
@@ -197,6 +208,7 @@
       (export "stream.drop-writable" (func $stream.drop-writable))
       (export "future.read" (func $future.read))
       (export "future.drop-readable" (func $future.drop-readable))
+      (export "body-future.drop-readable" (func $body-future.drop-readable))
       (export "request-ctor" (func $request_ctor_lower))
       (export "req-consume" (func $req_consume_lower))
       (export "response-new" (func $response_new_lower))

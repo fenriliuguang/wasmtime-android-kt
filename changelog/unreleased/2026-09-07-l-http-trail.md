@@ -1,0 +1,1 @@
+- L-HTTP-TRAIL: `wasi:http/types@0.3.0` `[static]request.consume-body` / `[static]response.consume-body` 的 future 为官方 `result<option<fields>, error-code>`。本切片 trailers 为 `none`。Guest **drop** 该 future（`error-code` 含 `option<string>`，`future.read` 会 BLOCKED）。夹具 `http_body` / `http_out`。

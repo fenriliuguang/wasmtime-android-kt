@@ -409,7 +409,7 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_handl
 Guest export: `run: async func() -> u32`（读请求 body `HBOD`，经 `response.new` 写回，再 `consume-body` 读回，返回 4）  
 Host: `wasi:http/types@0.3.0` `[static]request.consume-body` / `[static]response.new` / `[static]response.consume-body`（钉 `@0.3.0`）
 
-官方 `consume-body` 还带 `res` future 与 `option<trailers>`；官方 `new` 还带 headers。本刀子集：`tuple<stream<u8>, future<result<_, error-code>>>`，无 trailers / headers。出站 send 见下节。
+官方 `consume-body` 还带 `res` future；本刀 `tuple<stream<u8>, future<result<option<fields>, error-code>>>`（trailers `none`）。官方 `new` 还带 headers。出站 send 见下节。
 
 成功：guest `run` 返回 `4`。
 

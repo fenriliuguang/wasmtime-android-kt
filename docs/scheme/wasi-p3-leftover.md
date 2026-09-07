@@ -43,7 +43,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | L-SOCK-UDP | landed 2026-09-07 (`wasi:sockets` UDP create/send/receive loopback only) |
 | L-SOCK-DNS | landed 2026-09-07 (`wasi:sockets` ip-name-lookup resolve-addresses helper thread) |
 | L-HTTP-FIELDS | landed 2026-09-07 (`wasi:http` fields / get-headers on request and response) |
-| L-HTTP-TRAIL | gap: l-http-trail pending |
+| L-HTTP-TRAIL | landed 2026-09-07 (`wasi:http` consume-body trailers option none) |
 | L-HTTP-TLS | gap: l-http-tls pending |
 | L-HTTP-SVC | gap: l-http-svc pending |
 
@@ -68,7 +68,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | **L-SOCK-UDP** | *(landed)* | `udp-create-socket` + send/receive subset. Same sandbox. Remove the needle. |
 | **L-SOCK-DNS** | *(landed)* | `ip-name-lookup` (helper thread). Remove the needle. |
 | **L-HTTP-FIELDS** | *(landed)* | `wasi:http` fields / headers on request/response. Product linker still omits fixture-only constructors unless this lane documents otherwise. Remove the needle. |
-| **L-HTTP-TRAIL** | `gap: l-http-trail pending` | Trailers on consume-body `option`. Remove the needle. |
+| **L-HTTP-TRAIL** | *(landed)* | Trailers on consume-body `option`. Remove the needle. |
 | **L-HTTP-TLS** | `gap: l-http-tls pending` | https on `client.send`. Changelog **must** record `.so` size + which thread does TLS. No `wasmtime-wasi`. Remove the needle. |
 | **L-HTTP-SVC** | `gap: l-http-svc pending` | Remaining `incoming-handler` / types shape for a guest `handle` (not a listen HTTP server). Remove the needle. Then remaining.py is empty → **one** PR to `main`. |
 

@@ -165,6 +165,8 @@ struct HttpResponse {
     body: Arc<Mutex<Vec<u8>>>,
 }
 
+struct HttpFields {}
+
 struct TestHost {
     table: ResourceTable,
 }
@@ -238,6 +240,15 @@ fn register_http(linker: &mut Linker<TestHost>, fixture_ctors: bool) -> wasmtime
             Ok(())
         },
     )?;
+    types.resource(
+        "fields",
+        ResourceType::host::<HttpFields>(),
+        |mut store, rep| {
+            let resource = Resource::<HttpFields>::new_own(rep);
+            store.data_mut().table.delete(resource)?;
+            Ok(())
+        },
+    )?;
     if fixture_ctors {
         types.func_wrap("[constructor]request", |mut store, ()| {
             let resource = store.data_mut().table.push(HttpRequest {
@@ -266,7 +277,7 @@ fn register_http(linker: &mut Linker<TestHost>, fixture_ctors: bool) -> wasmtime
             let req = store.data_mut().table.delete(this)?;
             let reader = StreamReader::new(&mut store, req.body)?;
             let fut = FutureReader::new(&mut store, async move {
-                Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
+                Ok::<_, wasmtime::Error>(Ok::<Option<Resource<HttpFields>>, HttpErrorCode>(None))
             })?;
             Ok(((reader, fut),))
         },
@@ -301,7 +312,7 @@ fn register_http(linker: &mut Linker<TestHost>, fixture_ctors: bool) -> wasmtime
             let bytes = resp.body.lock().map(|b| b.clone()).unwrap_or_default();
             let reader = StreamReader::new(&mut store, bytes)?;
             let fut = FutureReader::new(&mut store, async move {
-                Ok::<_, wasmtime::Error>(Ok::<(), HttpErrorCode>(()))
+                Ok::<_, wasmtime::Error>(Ok::<Option<Resource<HttpFields>>, HttpErrorCode>(None))
             })?;
             Ok(((reader, fut),))
         },

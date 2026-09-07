@@ -2,11 +2,12 @@
 ;; Official: wasi:http/client@0.3.0#send (0.3 equivalent of outgoing-handler).
 ;; Guest: ctor request → set-authority(P3HA host:port) → send → status 200
 ;; → consume-body "HOUT" → nbytes 4. Tests patch P3HA before instantiate.
-;; Wire GET (not in-process 200). No TLS / headers / trailers.
+;; Wire GET (not in-process 200). consume-body trailers future is option<fields> (none). No TLS.
 (component
   (import "wasi:http/types@0.3.0" (instance $types
     (export "request" (type $request (sub resource)))
     (export "response" (type $response (sub resource)))
+    (export "fields" (type $fields (sub resource)))
     (type $dns-payload (record (field "rcode" (option string)) (field "info-code" (option u16))))
     (export "dns-error-payload" (type $dns-ex (eq $dns-payload)))
     (type $tls-alert (record (field "alert-id" (option u8)) (field "alert-message" (option string))))
@@ -57,7 +58,9 @@
     (export "error-code" (type $error-code (eq $error-code-def)))
     (type $io-result (result (error $error-code)))
     (type $st (stream u8))
-    (type $ft (future $io-result))
+    (type $trail-ok (option (own $fields)))
+    (type $trail-result (result $trail-ok (error $error-code)))
+    (type $ft (future $trail-result))
     (type $read-ret (tuple $st $ft))
     (type $borrow-req (borrow $request))
     (type $borrow-resp (borrow $response))
@@ -71,6 +74,7 @@
   ))
   (alias export $types "request" (type $request))
   (alias export $types "response" (type $response))
+  (alias export $types "fields" (type $fields))
   (alias export $types "error-code" (type $error-code))
   (alias export $types "[constructor]request" (func $request-ctor))
   (alias export $types "[method]request.set-authority" (func $set-authority))
@@ -78,7 +82,9 @@
   (alias export $types "[static]response.consume-body" (func $resp-consume))
   (type $io-result (result (error $error-code)))
   (type $st (stream u8))
-  (type $ft (future $io-result))
+  (type $trail-ok (option (own $fields)))
+  (type $trail-result (result $trail-ok (error $error-code)))
+  (type $ft (future $trail-result))
   (type $send-result (result (own $response) (error $error-code)))
 
   (import "wasi:http/client@0.3.0" (instance $client
