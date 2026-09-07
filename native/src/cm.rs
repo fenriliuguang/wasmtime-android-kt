@@ -598,6 +598,15 @@ fn fs_append(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
         .write_all(bytes)
 }
 
+fn fs_sync_path(path: &std::path::Path, data_only: bool) -> Result<(), FsErrorCode> {
+    let file = std::fs::File::open(path).map_err(|e| fs_error_from_io(&e))?;
+    if data_only {
+        file.sync_data().map_err(|e| fs_error_from_io(&e))
+    } else {
+        file.sync_all().map_err(|e| fs_error_from_io(&e))
+    }
+}
+
 fn fs_read_from(path: &std::path::Path, offset: u64) -> Vec<u8> {
     let bytes = std::fs::read(path).unwrap_or_default();
     let start = (offset as usize).min(bytes.len());
@@ -2294,6 +2303,7 @@ pub(crate) fn define_host(
     // stat / stat-at on the sandbox descriptor (sync WIT; guest does not use stackful async).
     // read-directory → stream<directory-entry> (omit `.` / `..`); drop the future.
     // append-via-stream: helper thread; join before the next append/read.
+    // sync / sync-data: File::sync_all / sync_data after joining a pending writer.
     {
         let mut types = linker
             .instance("wasi:filesystem/types@0.3.0")
@@ -2479,6 +2489,52 @@ pub(crate) fn define_host(
                             })?;
                             Ok(((reader, fut),))
                         }
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.sync",
+                |mut store, (desc,): (Resource<FsDescriptor>,)| {
+                    let path = {
+                        let table = &mut store.data_mut().table;
+                        match table.get_mut(&desc) {
+                            Ok(entry) => {
+                                if let Some(h) = entry.writer.take() {
+                                    let _ = h.join();
+                                }
+                                entry.path.clone()
+                            }
+                            Err(_) => return Ok((Err(FsErrorCode::BadDescriptor),)),
+                        }
+                    };
+                    match fs_sync_path(&path, false) {
+                        Ok(()) => Ok((Ok(()),)),
+                        Err(code) => Ok((Err(code),)),
+                    }
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]descriptor.sync-data",
+                |mut store, (desc,): (Resource<FsDescriptor>,)| {
+                    let path = {
+                        let table = &mut store.data_mut().table;
+                        match table.get_mut(&desc) {
+                            Ok(entry) => {
+                                if let Some(h) = entry.writer.take() {
+                                    let _ = h.join();
+                                }
+                                entry.path.clone()
+                            }
+                            Err(_) => return Ok((Err(FsErrorCode::BadDescriptor),)),
+                        }
+                    };
+                    match fs_sync_path(&path, true) {
+                        Ok(()) => Ok((Ok(()),)),
+                        Err(code) => Ok((Err(code),)),
                     }
                 },
             )

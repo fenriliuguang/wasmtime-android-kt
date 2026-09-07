@@ -37,7 +37,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | L-FS-STAT | landed 2026-09-07 (`wasi:filesystem` `stat` / `stat-at` on sandbox descriptor) |
 | L-FS-DIR | landed 2026-09-07 (`wasi:filesystem` `read-directory` as a CM stream) |
 | L-FS-APPEND | landed 2026-09-07 (`wasi:filesystem` `append-via-stream`) |
-| L-FS-SYNC | gap: l-fs-sync pending |
+| L-FS-SYNC | landed 2026-09-07 (`wasi:filesystem` `sync` / `sync-data`) |
 | L-FS-TIMES | gap: l-fs-times pending |
 | L-SOCK-LISTEN | gap: l-sock-listen pending |
 | L-SOCK-UDP | gap: l-sock-udp pending |
@@ -62,7 +62,7 @@ Branch: **`cursor/wasi-p3-leftover-b677`**. Remaining: `python3 ./scripts/wasi-p
 | **L-FS-STAT** | *(landed)* | `stat` / `stat-at` on the sandbox descriptor. Remove the needle. |
 | **L-FS-DIR** | *(landed)* | `read-directory` as a CM stream of directory entries. Remove the needle. |
 | **L-FS-APPEND** | *(landed)* | `append-via-stream`. Remove the needle. |
-| **L-FS-SYNC** | `gap: l-fs-sync pending` | `sync` / `sync-data`. Remove the needle. |
+| **L-FS-SYNC** | *(landed)* | `sync` / `sync-data`. Remove the needle. |
 | **L-FS-TIMES** | `gap: l-fs-times pending` | `set-times` / `set-times-at` (sandbox files only). Remove the needle. |
 | **L-SOCK-LISTEN** | `gap: l-sock-listen pending` | TCP bind / listen / accept. **Default sandbox: loopback only.** Changelog: Android INTERNET + no bind on ART main. Remove the needle. |
 | **L-SOCK-UDP** | `gap: l-sock-udp pending` | `udp-create-socket` + send/receive subset. Same sandbox. Remove the needle. |

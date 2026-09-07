@@ -1,0 +1,155 @@
+;; L-FS-SYNC: wasi:filesystem/types@0.3.0 [method]descriptor.sync / sync-data
+;; Official async func; guest imports sync WIT. Join pending writer then fsync.
+;; Guest: get-directories → open-at file → sync + sync-data ok → sync dir ok. Harness 1.
+(component
+  (import "wasi:filesystem/types@0.3.0" (instance $types
+    (export "descriptor" (type $descriptor (sub resource)))
+    (type $error-code-def (variant
+      (case "access")
+      (case "already")
+      (case "bad-descriptor")
+      (case "busy")
+      (case "deadlock")
+      (case "quota")
+      (case "exist")
+      (case "file-too-large")
+      (case "illegal-byte-sequence")
+      (case "in-progress")
+      (case "interrupted")
+      (case "invalid")
+      (case "io")
+      (case "is-directory")
+      (case "loop")
+      (case "too-many-links")
+      (case "message-size")
+      (case "name-too-long")
+      (case "no-device")
+      (case "no-entry")
+      (case "no-lock")
+      (case "insufficient-memory")
+      (case "insufficient-space")
+      (case "not-directory")
+      (case "not-empty")
+      (case "not-recoverable")
+      (case "unsupported")
+      (case "no-tty")
+      (case "no-such-device")
+      (case "overflow")
+      (case "not-permitted")
+      (case "pipe")
+      (case "read-only")
+      (case "invalid-seek")
+      (case "text-file-busy")
+      (case "cross-device")
+      (case "other" (option string))
+    ))
+    (export "error-code" (type $error-code (eq $error-code-def)))
+    (type $io-result (result (error $error-code)))
+    (type $borrow-desc (borrow $descriptor))
+    (type $open-result (result (own $descriptor) (error $error-code)))
+    (export "[method]descriptor.sync"
+      (func (param "self" $borrow-desc) (result $io-result)))
+    (export "[method]descriptor.sync-data"
+      (func (param "self" $borrow-desc) (result $io-result)))
+    (export "[method]descriptor.open-at"
+      (func (param "self" $borrow-desc) (param "path" string) (result $open-result)))
+  ))
+  (alias export $types "descriptor" (type $descriptor))
+  (alias export $types "error-code" (type $error-code))
+  (alias export $types "[method]descriptor.sync" (func $sync))
+  (alias export $types "[method]descriptor.sync-data" (func $sync-data))
+  (alias export $types "[method]descriptor.open-at" (func $open-at))
+  (import "wasi:filesystem/preopens@0.3.0" (instance $preopens
+    (export "descriptor" (type (eq $descriptor)))
+    (type $dir-tuple (tuple (own $descriptor) string))
+    (export "get-directories" (func (result (list $dir-tuple))))
+  ))
+  (alias export $preopens "get-directories" (func $get-directories))
+
+  (core module $libc
+    (memory (export "mem") 1)
+    (data (i32.const 16) "hello.txt")
+    (global $last (mut i32) (i32.const 256))
+    (func (export "realloc")
+      (param $oldptr i32) (param $oldlen i32) (param $align i32) (param $newlen i32)
+      (result i32)
+      (local $ret i32)
+      (local.set $ret (global.get $last))
+      (global.set $last
+        (i32.and
+          (i32.add (i32.add (local.get $ret) (local.get $newlen)) (i32.const 7))
+          (i32.const -8)))
+      (local.get $ret)
+    )
+  )
+  (core instance $libc (instantiate $libc))
+
+  (core module $m
+    (import "" "mem" (memory 1))
+    (import "" "get-directories" (func $get-directories (param i32)))
+    (import "" "open-at" (func $open-at (param i32 i32 i32 i32)))
+    (import "" "sync" (func $sync (param i32 i32)))
+    (import "" "sync-data" (func $sync-data (param i32 i32)))
+
+    (func (export "run") (result i32)
+      (local $dir i32)
+      (local $desc i32)
+      (local $list i32)
+      (local $len i32)
+
+      (call $get-directories (i32.const 80))
+      (local.set $list (i32.load (i32.const 80)))
+      (local.set $len (i32.load (i32.const 84)))
+      (if (i32.eqz (local.get $len))
+        (then (return (i32.const 0))))
+      (local.set $dir (i32.load (local.get $list)))
+
+      (call $open-at (local.get $dir) (i32.const 16) (i32.const 9) (i32.const 192))
+      (if (i32.ne (i32.load8_u (i32.const 192)) (i32.const 0))
+        (then (return (i32.const 0))))
+      (local.set $desc (i32.load (i32.const 196)))
+
+      (call $sync (local.get $desc) (i32.const 256))
+      (if (i32.ne (i32.load8_u (i32.const 256)) (i32.const 0))
+        (then (return (i32.const 0))))
+      (call $sync-data (local.get $desc) (i32.const 256))
+      (if (i32.ne (i32.load8_u (i32.const 256)) (i32.const 0))
+        (then (return (i32.const 0))))
+      (call $sync (local.get $dir) (i32.const 256))
+      (if (i32.ne (i32.load8_u (i32.const 256)) (i32.const 0))
+        (then (return (i32.const 0))))
+
+      (i32.const 1)
+    )
+  )
+
+  (core func $get_directories_lower
+    (canon lower (func $get-directories)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
+  (core func $open_at_lower
+    (canon lower (func $open-at)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
+  (core func $sync_lower
+    (canon lower (func $sync)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
+  (core func $sync_data_lower
+    (canon lower (func $sync-data)
+      (memory $libc "mem")
+      (realloc (func $libc "realloc"))))
+
+  (core instance $i (instantiate $m
+    (with "" (instance
+      (export "mem" (memory $libc "mem"))
+      (export "get-directories" (func $get_directories_lower))
+      (export "open-at" (func $open_at_lower))
+      (export "sync" (func $sync_lower))
+      (export "sync-data" (func $sync_data_lower))
+    ))
+  ))
+
+  (func (export "run") (result u32)
+    (canon lift (core func $i "run")))
+)

@@ -265,6 +265,20 @@ wasm-tools parse fixtures/wasi/filesystem_append.wat -o fixtures/wasi/filesystem
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/filesystem_append.wasm
 ```
 
+## `wasi:filesystem` — `sync` / `sync-data`
+
+Guest export: `run: func() -> u32`（文件 `sync` / `sync-data` 与目录 `sync` 均为 ok 则返回 1）  
+Host: `wasi:filesystem/types@0.3.0` `[method]descriptor.sync` / `sync-data`（钉 `@0.3.0`）
+
+官方 WIT 为 `async func`；guest **按 sync 导入**。先 join 未完成的 writer，再 `File::sync_all` / `sync_data`。**L-FS-SYNC。**
+
+成功：guest `run` 返回 `1`。
+
+```powershell
+wasm-tools parse fixtures/wasi/filesystem_sync.wat -o fixtures/wasi/filesystem_sync.wasm
+wasm-tools validate --features=component-model fixtures/wasi/filesystem_sync.wasm
+```
+
 ## `wasi:sockets` — TCP loopback echo（Android 子集）
 
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
