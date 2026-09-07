@@ -347,12 +347,21 @@ impl std::error::Error for CliExit {}
 fn map_cli_run_result(result: wasmtime::Result<u32>) -> wasmtime::Result<u32> {
     match result {
         Ok(v) => Ok(v),
-        Err(e) => match e.downcast::<CliExit>() {
-            Ok(CliExit(Ok(()))) => Ok(0),
-            Ok(CliExit(Err(()))) => Ok(1),
-            Err(e) => Err(e),
+        Err(e) => match find_cli_exit(&e) {
+            Some(Ok(())) => Ok(0),
+            Some(Err(())) => Ok(1),
+            None => Err(e),
         },
     }
+}
+
+fn find_cli_exit(err: &wasmtime::Error) -> Option<Result<(), ()>> {
+    for cause in err.chain() {
+        if let Some(exit) = cause.downcast_ref::<CliExit>() {
+            return Some(exit.0);
+        }
+    }
+    None
 }
 
 /// WASI 0.3.0 `wasi:cli/types` `error-code` (official: io / illegal-byte-sequence / pipe).
