@@ -298,7 +298,7 @@ wasm-tools validate --features=component-model fixtures/wasi/filesystem_set_time
 Guest export: `run: async func() -> u32`（写 `P3SK`，经 loopback echo 读回，返回 4）  
 Host: `wasi:sockets/tcp-create-socket@0.3.0#create-tcp-socket`；`[method]tcp-socket.connect`（钉 `@0.3.0`）
 
-官方包名如上。本切片：`create-tcp-socket(ip-address-family) -> result`（smoke `ipv4`）；`connect: async func(ip-socket-address) -> result`（guest 传 loopback，host 可忽略 port，仍用 echo pair）；write/read 走 stream。无 name-lookup。UDP 见下节。仅 `127.0.0.1`。Android 需要 **INTERNET**（含 loopback）；阻塞 IO 在 helper 线程，见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §6。G-sock-shape **已完成**。**L-ERR-SOCK：** 官方 `error-code` variant；IPv6 create → `not-supported`（`sockets_tcp_ipv6`）。
+官方包名如上。本切片：`create-tcp-socket(ip-address-family) -> result`（smoke `ipv4`）；`connect: async func(ip-socket-address) -> result`（guest 传 loopback，host 可忽略 port，仍用 echo pair）；write/read 走 stream。UDP / DNS 见下节。仅 `127.0.0.1`。Android 需要 **INTERNET**（含 loopback）；阻塞 IO 在 helper 线程，见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §6。G-sock-shape **已完成**。**L-ERR-SOCK：** 官方 `error-code` variant；IPv6 create → `not-supported`（`sockets_tcp_ipv6`）。
 
 成功：guest `run` 经 `run_concurrent` 返回 `4`。
 
@@ -335,6 +335,20 @@ Host: `wasi:sockets/udp-create-socket@0.3.0#create-udp-socket`；`wasi:sockets/u
 ```powershell
 wasm-tools parse fixtures/wasi/sockets_udp.wat -o fixtures/wasi/sockets_udp.wasm
 wasm-tools validate --features=component-model fixtures/wasi/sockets_udp.wasm
+```
+
+## `wasi:sockets` — ip-name-lookup（helper 线程）
+
+Guest export: `run: func() -> u32`（`resolve-addresses("localhost")` 含 `127.0.0.1` 则返回 1）  
+Host: `wasi:sockets/ip-name-lookup@0.3.0#resolve-addresses`（钉 `@0.3.0`）
+
+官方 WIT 为 `async func`；guest **按 sync 导入**。`ToSocketAddrs` 在 **helper 线程**，不在 ART 主线程。返回 `list<ip-address>`（本切片 ipv4）。空名 → `invalid-argument`。Android 需要 **INTERNET**。**L-SOCK-DNS。**
+
+成功：guest `run` 返回 `1`。
+
+```powershell
+wasm-tools parse fixtures/wasi/sockets_dns.wat -o fixtures/wasi/sockets_dns.wasm
+wasm-tools validate --features=component-model fixtures/wasi/sockets_dns.wasm
 ```
 
 ## `wasi:sockets` — TCP outbound（非回环拨号）
