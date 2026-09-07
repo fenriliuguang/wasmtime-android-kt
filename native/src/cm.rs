@@ -1141,11 +1141,50 @@ fn udp_recv_guest(sock: &std::net::UdpSocket) -> std::io::Result<(Vec<u8>, IpSoc
 struct HttpRequest {
     body: Vec<u8>,
     authority: String,
+    headers: Vec<(String, Vec<u8>)>,
 }
 
 struct HttpResponse {
     status: u16,
     body: Arc<Mutex<Vec<u8>>>,
+    headers: Vec<(String, Vec<u8>)>,
+}
+
+/// WASI 0.3.0 `wasi:http` `fields` / `headers` / `trailers`.
+struct HttpFields {
+    entries: Vec<(String, Vec<u8>)>,
+    immutable: bool,
+}
+
+/// WASI 0.3.0 `header-error`.
+#[derive(Clone, Copy, Debug, ComponentType, Lift, Lower)]
+#[component(variant)]
+enum HeaderError {
+    #[component(name = "invalid-syntax")]
+    InvalidSyntax,
+    #[component(name = "forbidden")]
+    Forbidden,
+    #[component(name = "immutable")]
+    Immutable,
+}
+
+fn field_name_ok(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|b| b.is_ascii() && b != 0 && b != b' ' && b != b':')
+}
+
+fn fields_get<'a>(entries: &'a [(String, Vec<u8>)], name: &str) -> Vec<&'a [u8]> {
+    entries
+        .iter()
+        .filter(|(n, _)| n.eq_ignore_ascii_case(name))
+        .map(|(_, v)| v.as_slice())
+        .collect()
+}
+
+fn fields_has(entries: &[(String, Vec<u8>)], name: &str) -> bool {
+    entries.iter().any(|(n, _)| n.eq_ignore_ascii_case(name))
 }
 
 /// P010-GFXH/L: host `wasi-gfx:surface` (pin `v0.2.0`).
@@ -3249,7 +3288,8 @@ pub(crate) fn define_host(
     // Body: [static]request.consume-body / [static]response.consume-body →
     // tuple<stream<u8>, future<result>> (no trailers / res-future param);
     // [static]response.new(contents: stream<u8>) → tuple<response, future>
-    // (no headers). Outbound: set-authority + client.send HTTP/1.1 GET on the
+    // (headers via fields / get-headers; request.new headers is L-HTTP-SVC).
+    // Outbound: set-authority + client.send HTTP/1.1 GET on the
     // wire (helper thread). Product linker omits [constructor]request/response
     // (P010-HCTOR; test linker keeps them). No TLS crate / https → TLS-protocol-error.
     {
@@ -3278,6 +3318,122 @@ pub(crate) fn define_host(
                 },
             )
             .map_err(|e| e.to_string())?;
+        types
+            .resource(
+                "fields",
+                ResourceType::host::<HttpFields>(),
+                |mut store, rep| {
+                    let resource = Resource::<HttpFields>::new_own(rep);
+                    store.data_mut().table.delete(resource)?;
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap("[constructor]fields", |mut store, ()| {
+                let resource = store.data_mut().table.push(HttpFields {
+                    entries: Vec::new(),
+                    immutable: false,
+                })?;
+                Ok((resource,))
+            })
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.get",
+                |mut store, (fields, name): (Resource<HttpFields>, String)| {
+                    let entries = &store.data_mut().table.get(&fields)?.entries;
+                    let values: Vec<Vec<u8>> = fields_get(entries, &name)
+                        .into_iter()
+                        .map(|v| v.to_vec())
+                        .collect();
+                    Ok((values,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.has",
+                |mut store, (fields, name): (Resource<HttpFields>, String)| {
+                    let has = fields_has(&store.data_mut().table.get(&fields)?.entries, &name);
+                    Ok((has,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.append",
+                |mut store, (fields, name, value): (Resource<HttpFields>, String, Vec<u8>)| {
+                    let f = store.data_mut().table.get_mut(&fields)?;
+                    if f.immutable {
+                        return Ok((Err(HeaderError::Immutable),));
+                    }
+                    if !field_name_ok(&name) {
+                        return Ok((Err(HeaderError::InvalidSyntax),));
+                    }
+                    f.entries.push((name, value));
+                    Ok((Ok::<(), HeaderError>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.set",
+                |mut store, (fields, name, values): (Resource<HttpFields>, String, Vec<Vec<u8>>)| {
+                    let f = store.data_mut().table.get_mut(&fields)?;
+                    if f.immutable {
+                        return Ok((Err(HeaderError::Immutable),));
+                    }
+                    if !field_name_ok(&name) {
+                        return Ok((Err(HeaderError::InvalidSyntax),));
+                    }
+                    f.entries.retain(|(n, _)| !n.eq_ignore_ascii_case(&name));
+                    for v in values {
+                        f.entries.push((name.clone(), v));
+                    }
+                    Ok((Ok::<(), HeaderError>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]fields.delete",
+                |mut store, (fields, name): (Resource<HttpFields>, String)| {
+                    let f = store.data_mut().table.get_mut(&fields)?;
+                    if f.immutable {
+                        return Ok((Err(HeaderError::Immutable),));
+                    }
+                    f.entries.retain(|(n, _)| !n.eq_ignore_ascii_case(&name));
+                    Ok((Ok::<(), HeaderError>(()),))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]request.get-headers",
+                |mut store, (req,): (Resource<HttpRequest>,)| {
+                    let headers = store.data_mut().table.get(&req)?.headers.clone();
+                    let resource = store.data_mut().table.push(HttpFields {
+                        entries: headers,
+                        immutable: true,
+                    })?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        types
+            .func_wrap(
+                "[method]response.get-headers",
+                |mut store, (resp,): (Resource<HttpResponse>,)| {
+                    let headers = store.data_mut().table.get(&resp)?.headers.clone();
+                    let resource = store.data_mut().table.push(HttpFields {
+                        entries: headers,
+                        immutable: true,
+                    })?;
+                    Ok((resource,))
+                },
+            )
+            .map_err(|e| e.to_string())?;
         // P010-HCTOR: product linker omits [constructor]request / [constructor]response.
         // Host supplies request when calling handle. Test linker keeps the ctors.
         if fixture_ctors {
@@ -3286,6 +3442,7 @@ pub(crate) fn define_host(
                     let resource = store.data_mut().table.push(HttpRequest {
                         body: b"HBOD".to_vec(),
                         authority: String::new(),
+                        headers: Vec::new(),
                     })?;
                     Ok((resource,))
                 })
@@ -3295,6 +3452,7 @@ pub(crate) fn define_host(
                     let resource = store.data_mut().table.push(HttpResponse {
                         status: 200,
                         body: Arc::new(Mutex::new(Vec::new())),
+                        headers: Vec::new(),
                     })?;
                     Ok((resource,))
                 })
@@ -3338,6 +3496,7 @@ pub(crate) fn define_host(
                     let resource = store.data_mut().table.push(HttpResponse {
                         status: 200,
                         body: buf,
+                        headers: Vec::new(),
                     })?;
                     let fut = FutureReader::new(&mut store, async move {
                         let _n = rx.await.unwrap_or(0);
@@ -3418,6 +3577,7 @@ pub(crate) fn define_host(
                         let resource = store.data_mut().table.push(HttpResponse {
                             status,
                             body: Arc::new(Mutex::new(body)),
+                            headers: Vec::new(),
                         })?;
                         Ok((Ok::<Resource<HttpResponse>, HttpErrorCode>(resource),))
                     }

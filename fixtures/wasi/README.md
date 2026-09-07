@@ -370,13 +370,27 @@ wasm-tools validate --features=cm-async,component-model fixtures/wasi/sockets_tc
 Guest export: 根 `run: async func() -> u32`（200）；官方 `wasi:http/incoming-handler@0.3.0#handle: async func(own<request>) -> result<own<response>, error-code>`  
 Host: `wasi:http/types@0.3.0` constructors + `status-code`（钉 `@0.3.0`）
 
-官方包名如上。本切片子集：handle 官方 `result`（ok 路径）；**P010-HBODY** 另见下节 body `stream<u8>`。无 fields / outparam。**不是**监听 HTTP 服务器。未加 `wasmtime-wasi`（体积 + Android 线程，见 changelog）。线程契约见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §7。G-http-shape **已完成**。**P010-HCTOR：** 本夹具仍 import `[constructor]request`/`response`，只挂测试 linker（`Linker.createWithFixtureConstructors`）。产品路径见下节 `http_handle`。
+官方包名如上。本切片子集：handle 官方 `result`（ok 路径）；**P010-HBODY** 另见下节 body `stream<u8>`。fields 见下节。**不是**监听 HTTP 服务器。未加 `wasmtime-wasi`（体积 + Android 线程，见 changelog）。线程契约见 [`docs/mapping/threading-android.md`](../../docs/mapping/threading-android.md) §7。G-http-shape **已完成**。**P010-HCTOR：** 本夹具仍 import `[constructor]request`/`response`，只挂测试 linker（`Linker.createWithFixtureConstructors`）。产品路径见下节 `http_handle`。
 
 成功：根 `run` 经 `run_concurrent` 返回 `200`；官方 `handle` 返回的 response `status-code` 为 `200`。
 
 ```powershell
 wasm-tools parse fixtures/wasi/http_handler.wat -o fixtures/wasi/http_handler.wasm
 wasm-tools validate --features=cm-async,component-model fixtures/wasi/http_handler.wasm
+```
+
+## `wasi:http` — fields / headers（request + response）
+
+Guest export: `run: func() -> u32`（mutable fields append/get 成功且 `get-headers` 不可变则返回 1）  
+Host: `wasi:http/types@0.3.0` `resource fields` + `[method]request.get-headers` / `[method]response.get-headers`
+
+`headers` / `trailers` 是 `fields` 别名。`get-headers` 返回的 fields 不可变（append → `immutable`）。产品 linker 仍省略 request/response constructor。**L-HTTP-FIELDS。**
+
+成功：guest `run` 返回 `1`。
+
+```powershell
+wasm-tools parse fixtures/wasi/http_fields.wat -o fixtures/wasi/http_fields.wasm
+wasm-tools validate --features=component-model fixtures/wasi/http_fields.wasm
 ```
 
 ## `wasi:http` — product handle without constructors（P010-HCTOR）
