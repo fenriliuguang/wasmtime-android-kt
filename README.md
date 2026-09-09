@@ -8,18 +8,19 @@ An **upstream Wasmtime** embedding for Android (JNI / ART) that hosts [Component
 
 This repository is a **citable Android host** on the Wasm component chain — not a UI toolkit, not a **rewritten** Dawn, and not a production WASI distro. The **default product/test artifact includes Dawn**; the core runtime AAR does not. See [`rfc.md`](docs/scheme/rfc.md).
 
-Status: **experimental `0.x`**. Coordinate **`0.1.2`**. No compliant wasi:webgpu / CTS claim. Product subset: [`claim-010.md`](docs/scheme/claim-010.md). Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) (tag `v*` on `main` or `workflow_dispatch` from `main`, GitHub Environment `release`). SNAPSHOT is allowed (Central publishing limits).
+Status: **experimental `0.x`**. Coordinate **`0.1.3-SNAPSHOT`**. No compliant wasi:webgpu / CTS claim. Product subset: [`claim-010.md`](docs/scheme/claim-010.md). Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) (tag `v*` on `main` or `workflow_dispatch` from `main`, GitHub Environment `release`). SNAPSHOT is allowed (Central publishing limits).
 
 Do **not** file upstream GitHub issues. Non-urgent: `context.unconfigure`, timestamped `frame-event`, Lost/Outdated `result`, multi-window.
 
-## Use `0.1.2`
+## Use `0.1.3-SNAPSHOT`
 
-minSdk **24**. Repositories: `google()` (`androidx.webgpu`) and `mavenCentral()`:
+minSdk **24**. Repositories: `google()` (`androidx.webgpu`), `mavenCentral()`, **and** the Central Portal **snapshots** repo (this GAV is not on `mavenCentral()`):
 
 ```kotlin
 repositories {
     google()
     mavenCentral()
+    maven("https://central.sonatype.com/repository/maven-snapshots/")
 }
 ```
 
@@ -29,13 +30,13 @@ Recommended (0.x default bundle — runtime + Dawn host):
 
 ```kotlin
 dependencies {
-    implementation("io.github.fenriliuguang.wasmtime.android:android-webgpu:0.1.2")
+    implementation("io.github.fenriliuguang.wasmtime.android:android-webgpu:0.1.3-SNAPSHOT")
 }
 ```
 
-BYO / no GPU: `…:runtime:0.1.2`. Dawn host only: `…:host-dawn:0.1.2`. Do **not** depend on `runtime-api` / `runtime-jni` directly (Maven transitives of `runtime`). Never depend on `:smoke-app`.
+BYO / no GPU: `…:runtime:0.1.3-SNAPSHOT`. Dawn host only: `…:host-dawn:0.1.3-SNAPSHOT`. Do **not** depend on `runtime-api` / `runtime-jni` directly (Maven transitives of `runtime`). Never depend on `:smoke-app`.
 
-`host-dawn` / `android-webgpu` **0.1.2** pack press-pin `libwebgpu_dawn.so` (NativeGpu: Google Android `--prebuilt` SHA `bddf1a04…`, the on-device-green binary). **`0.1.1` packed a different `--build` Dawn and should not be used for GPU.** Apps do **not** rebuild Dawn and do **not** vendor `androidx.webgpu`. `runtime` has no Dawn `.so`. Without that `.so` (Cloud CI assemble, or a source tree that skipped the recipe) NativeGpu stays **table-backed**; **press** fails if the arm64 file is missing.
+`host-dawn` / `android-webgpu` **0.1.3-SNAPSHOT** pack press-pin `libwebgpu_dawn.so` (NativeGpu: Google Android `--prebuilt` SHA `bddf1a04…`, the on-device-green binary). **`0.1.1` packed a different `--build` Dawn and should not be used for GPU.** Apps do **not** rebuild Dawn and do **not** vendor `androidx.webgpu`. `runtime` has no Dawn `.so`. Without that `.so` (Cloud CI assemble, or a source tree that skipped the recipe) NativeGpu stays **table-backed**; **press** fails if the arm64 file is missing.
 
 Source checkout / `includeBuild` still works if you are not consuming Maven. **Press evidence** is in-tree: `scripts/verify-press-aar.py` (release AAR `.so` SHA matches the recipe). includeBuild of examples is not that check.
 
