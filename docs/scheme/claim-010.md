@@ -18,7 +18,7 @@ Default consume is Dawn C / NativeGpu. Maven **0.1.2** packs press-pin `libwebgp
 |-------|--------|-------|
 | Pin resource `[method]` names (224) | **Shape** + NativeGpu | All 224 names registered in `native/src/cm.rs`. Unwired store → `request-adapter` **`none`**. JNI leftover is `dawn-jni`. |
 | Boot / cube hot path | **Dawn C** when `.so` loads | `request-adapter` / `request-device` / queue / buffer / WGSL / render pipeline / encoder / draw / submit / write-buffer / Android surface present. Power / fallback / feature-level, required-features, and labels reach the C call. `required-limits` and `xr-compatible` stay Record. Blend / depth-stencil / MSAA / pipeline constants fill the C ctor. |
-| Remaining pin methods | **Dawn** when `.so` loads | texture / sampler / compute / copies / map / query / bundle / error / indexed-indirect / viewport / `write-texture` / work-done / destroy. Cloud / missing `.so` stays **Table**. |
+| Remaining pin methods | **Dawn** when `.so` loads | texture / sampler / compute / copies / **map + mapped-range** / query / **bundle recording** / indexed-indirect / viewport / `write-texture` / work-done / destroy / adapter `GetInfo` / buffer·texture getters. Cloud / missing `.so` stays **Table**. Leftovers listed in the gap **Remaining Table** section ([#317](https://github.com/fenriliuguang/wasmtime-android-kt/issues/317)): limits getters, compilation-info, pop-error-scope payload, uncaptured/lost, most labels. |
 | Dawn C / AAR missing ctor slots | **Record** | shader `compilation-hints`; canvas `color-space`; canvas `tone-mapping` |
 | Fixture `get-*` / `experimental:webgpu-cm` flats | **Not product** | Frozen; do not extend |
 

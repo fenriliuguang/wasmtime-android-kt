@@ -5,7 +5,7 @@
 
 #![allow(non_camel_case_types, dead_code)]
 
-use std::ffi::c_void;
+use std::ffi::{c_char, c_void};
 use std::sync::OnceLock;
 
 use crate::native_gpu::{DawnSlot, ResourceKind};
@@ -18,6 +18,8 @@ pub type WgpuFlags = u64;
 const RTLD_NOW: i32 = 2;
 const WGPU_STRLEN: usize = usize::MAX;
 pub const WGPU_WHOLE_SIZE: u64 = u64::MAX;
+/// `webgpu.h` `WGPU_WHOLE_MAP_SIZE` (`SIZE_MAX`): map to the end of the buffer.
+pub const WGPU_WHOLE_MAP_SIZE: usize = usize::MAX;
 pub const WGPU_DEPTH_SLICE_UNDEFINED: u32 = u32::MAX;
 const WGPU_MIP_UNDEFINED: u32 = u32::MAX;
 const WGPU_ARRAY_UNDEFINED: u32 = u32::MAX;
@@ -67,7 +69,7 @@ struct Chained {
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct StringView {
-    data: *const i8,
+    data: *const c_char,
     length: usize,
 }
 
@@ -84,10 +86,40 @@ impl StringView {
             return Self::empty();
         }
         Self {
-            data: s.as_ptr() as *const i8,
+            data: s.as_ptr() as *const c_char,
             length: s.len(),
         }
     }
+
+    fn to_string(self) -> String {
+        if self.data.is_null() {
+            return String::new();
+        }
+        let bytes = unsafe {
+            if self.length == WGPU_STRLEN {
+                std::ffi::CStr::from_ptr(self.data).to_bytes()
+            } else {
+                std::slice::from_raw_parts(self.data as *const u8, self.length)
+            }
+        };
+        String::from_utf8_lossy(bytes).into_owned()
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct AdapterInfo {
+    next_in_chain: *mut Chained,
+    vendor: StringView,
+    architecture: StringView,
+    device: StringView,
+    description: StringView,
+    backend_type: WgpuEnum,
+    adapter_type: WgpuEnum,
+    vendor_id: u32,
+    device_id: u32,
+    subgroup_min_size: u32,
+    subgroup_max_size: u32,
 }
 
 #[repr(C)]
@@ -699,6 +731,15 @@ type FnWorkDone = unsafe extern "C" fn(WgpuObj, CallbackInfo) -> Future;
 type FnMapAsync = unsafe extern "C" fn(WgpuObj, WgpuFlags, usize, usize, CallbackInfo) -> Future;
 type FnUnmap = unsafe extern "C" fn(WgpuObj);
 type FnMappedRange = unsafe extern "C" fn(WgpuObj, usize, usize) -> *const u8;
+type FnMappedRangeMut = unsafe extern "C" fn(WgpuObj, usize, usize) -> *mut u8;
+type FnAdapterGetInfo = unsafe extern "C" fn(WgpuObj, *mut AdapterInfo) -> WgpuEnum;
+type FnAdapterInfoFree = unsafe extern "C" fn(AdapterInfo);
+type FnBufferGetSize = unsafe extern "C" fn(WgpuObj) -> u64;
+type FnBufferGetUsage = unsafe extern "C" fn(WgpuObj) -> WgpuFlags;
+type FnBufferGetMapState = unsafe extern "C" fn(WgpuObj) -> WgpuEnum;
+type FnTexU32 = unsafe extern "C" fn(WgpuObj) -> u32;
+type FnTexEnum = unsafe extern "C" fn(WgpuObj) -> WgpuEnum;
+type FnTexUsage = unsafe extern "C" fn(WgpuObj) -> WgpuFlags;
 type FnDestroy = unsafe extern "C" fn(WgpuObj);
 type FnHasFeature = unsafe extern "C" fn(WgpuObj, WgpuEnum) -> WgpuBool;
 type FnViewport = unsafe extern "C" fn(WgpuObj, f32, f32, f32, f32, f32, f32);
@@ -781,6 +822,18 @@ procs! {
     buffer_map: FnMapAsync,
     buffer_unmap: FnUnmap,
     buffer_mapped_range: FnMappedRange,
+    buffer_mapped_range_mut: FnMappedRangeMut,
+    adapter_get_info: FnAdapterGetInfo,
+    adapter_info_free: FnAdapterInfoFree,
+    buffer_get_size: FnBufferGetSize,
+    buffer_get_usage: FnBufferGetUsage,
+    buffer_get_map_state: FnBufferGetMapState,
+    texture_depth: FnTexU32,
+    texture_mip: FnTexU32,
+    texture_sample: FnTexU32,
+    texture_dimension: FnTexEnum,
+    texture_format: FnTexEnum,
+    texture_usage_get: FnTexUsage,
     buffer_destroy: FnDestroy,
     texture_destroy: FnDestroy,
     query_destroy: FnDestroy,
@@ -950,6 +1003,18 @@ fn load_once() -> Option<Api> {
             buffer_map: std::mem::transmute(need(c"wgpuBufferMapAsync")),
             buffer_unmap: std::mem::transmute(need(c"wgpuBufferUnmap")),
             buffer_mapped_range: std::mem::transmute(need(c"wgpuBufferGetConstMappedRange")),
+            buffer_mapped_range_mut: std::mem::transmute(need(c"wgpuBufferGetMappedRange")),
+            adapter_get_info: std::mem::transmute(need(c"wgpuAdapterGetInfo")),
+            adapter_info_free: std::mem::transmute(need(c"wgpuAdapterInfoFreeMembers")),
+            buffer_get_size: std::mem::transmute(need(c"wgpuBufferGetSize")),
+            buffer_get_usage: std::mem::transmute(need(c"wgpuBufferGetUsage")),
+            buffer_get_map_state: std::mem::transmute(need(c"wgpuBufferGetMapState")),
+            texture_depth: std::mem::transmute(need(c"wgpuTextureGetDepthOrArrayLayers")),
+            texture_mip: std::mem::transmute(need(c"wgpuTextureGetMipLevelCount")),
+            texture_sample: std::mem::transmute(need(c"wgpuTextureGetSampleCount")),
+            texture_dimension: std::mem::transmute(need(c"wgpuTextureGetDimension")),
+            texture_format: std::mem::transmute(need(c"wgpuTextureGetFormat")),
+            texture_usage_get: std::mem::transmute(need(c"wgpuTextureGetUsage")),
             buffer_destroy: std::mem::transmute(need(c"wgpuBufferDestroy")),
             texture_destroy: std::mem::transmute(need(c"wgpuTextureDestroy")),
             query_destroy: std::mem::transmute(need(c"wgpuQuerySetDestroy")),
@@ -2070,6 +2135,63 @@ pub fn texture_size(texture: DawnSlot) -> (u32, u32) {
     }
 }
 
+/// Overlay Dawn C texture getters onto a table row when the slot is live.
+pub fn texture_meta_overlay(texture: DawnSlot, meta: &mut crate::native_gpu::NativeTexture) {
+    let Some(api) = api() else {
+        return;
+    };
+    if texture == 0 {
+        return;
+    }
+    unsafe {
+        if proc_ok(api.texture_width) {
+            let w = (api.texture_width)(as_ptr(texture));
+            if w != 0 {
+                meta.width = w;
+            }
+        }
+        if proc_ok(api.texture_height) {
+            let h = (api.texture_height)(as_ptr(texture));
+            if h != 0 {
+                meta.height = h;
+            }
+        }
+        if proc_ok(api.texture_depth) {
+            let d = (api.texture_depth)(as_ptr(texture));
+            if d != 0 {
+                meta.depth = d;
+            }
+        }
+        if proc_ok(api.texture_mip) {
+            let m = (api.texture_mip)(as_ptr(texture));
+            if m != 0 {
+                meta.mip = m;
+            }
+        }
+        if proc_ok(api.texture_sample) {
+            let s = (api.texture_sample)(as_ptr(texture));
+            if s != 0 {
+                meta.sample = s;
+            }
+        }
+        if proc_ok(api.texture_dimension) {
+            let dim = (api.texture_dimension)(as_ptr(texture));
+            if dim != 0 {
+                meta.dimension = dim;
+            }
+        }
+        if proc_ok(api.texture_format) {
+            let fmt = (api.texture_format)(as_ptr(texture));
+            if fmt != 0 {
+                meta.format = fmt;
+            }
+        }
+        if proc_ok(api.texture_usage_get) {
+            meta.usage = (api.texture_usage_get)(as_ptr(texture)) as u32;
+        }
+    }
+}
+
 pub fn create_view(
     texture: DawnSlot,
     dimension: u32,
@@ -2619,15 +2741,108 @@ pub fn buffer_mapped_range(buffer: DawnSlot, offset: u64, size: u64) -> Vec<u8> 
     if buffer == 0 || !proc_ok(api.buffer_mapped_range) {
         return Vec::new();
     }
-    let sz = if size == 0 { 0 } else { size as usize };
+    let sz = if size == 0 {
+        WGPU_WHOLE_MAP_SIZE
+    } else {
+        size as usize
+    };
     unsafe {
         let p = (api.buffer_mapped_range)(as_ptr(buffer), offset as usize, sz);
-        if p.is_null() || sz == 0 {
+        if p.is_null() || sz == 0 || sz == WGPU_WHOLE_MAP_SIZE {
             Vec::new()
         } else {
             std::slice::from_raw_parts(p, sz).to_vec()
         }
     }
+}
+
+/// Write `data` into a WRITE-mapped buffer via `wgpuBufferGetMappedRange`.
+pub fn buffer_write_mapped_range(buffer: DawnSlot, offset: u64, data: &[u8]) -> bool {
+    let Some(api) = api() else {
+        return false;
+    };
+    if buffer == 0 || data.is_empty() || !proc_ok(api.buffer_mapped_range_mut) {
+        return false;
+    }
+    unsafe {
+        let p = (api.buffer_mapped_range_mut)(as_ptr(buffer), offset as usize, data.len());
+        if p.is_null() {
+            false
+        } else {
+            std::ptr::copy_nonoverlapping(data.as_ptr(), p, data.len());
+            true
+        }
+    }
+}
+
+pub fn buffer_size(buffer: DawnSlot) -> Option<u64> {
+    let api = api()?;
+    if buffer == 0 || !proc_ok(api.buffer_get_size) {
+        return None;
+    }
+    Some(unsafe { (api.buffer_get_size)(as_ptr(buffer)) })
+}
+
+pub fn buffer_usage(buffer: DawnSlot) -> Option<u32> {
+    let api = api()?;
+    if buffer == 0 || !proc_ok(api.buffer_get_usage) {
+        return None;
+    }
+    Some(unsafe { (api.buffer_get_usage)(as_ptr(buffer)) as u32 })
+}
+
+/// Dawn `WGPUBufferMapState`: Undefined=0, Unmapped=1, Pending=2, Mapped=3.
+pub fn buffer_map_state(buffer: DawnSlot) -> Option<u32> {
+    let api = api()?;
+    if buffer == 0 || !proc_ok(api.buffer_get_map_state) {
+        return None;
+    }
+    Some(unsafe { (api.buffer_get_map_state)(as_ptr(buffer)) })
+}
+
+pub fn adapter_info(adapter: DawnSlot) -> Option<crate::native_gpu::NativeAdapterInfo> {
+    let api = api()?;
+    if adapter == 0 || !proc_ok(api.adapter_get_info) {
+        return None;
+    }
+    let mut info = AdapterInfo {
+        next_in_chain: std::ptr::null_mut(),
+        vendor: StringView::empty(),
+        architecture: StringView::empty(),
+        device: StringView::empty(),
+        description: StringView::empty(),
+        backend_type: 0,
+        adapter_type: 0,
+        vendor_id: 0,
+        device_id: 0,
+        subgroup_min_size: 0,
+        subgroup_max_size: 0,
+    };
+    let status = unsafe { (api.adapter_get_info)(as_ptr(adapter), &mut info) };
+    if status != 0 && status != STATUS_SUCCESS {
+        return None;
+    }
+    let out = crate::native_gpu::NativeAdapterInfo {
+        vendor: info.vendor.to_string(),
+        architecture: info.architecture.to_string(),
+        device: info.device.to_string(),
+        description: info.description.to_string(),
+        subgroup_min_size: if info.subgroup_min_size == 0 {
+            4
+        } else {
+            info.subgroup_min_size
+        },
+        subgroup_max_size: if info.subgroup_max_size == 0 {
+            128
+        } else {
+            info.subgroup_max_size
+        },
+        is_fallback_adapter: info.adapter_type == 3,
+    };
+    if proc_ok(api.adapter_info_free) {
+        unsafe { (api.adapter_info_free)(info) }
+    }
+    Some(out)
 }
 
 pub fn work_done(instance: DawnSlot, queue: DawnSlot) {
@@ -2954,6 +3169,14 @@ pub fn bundle_draw_indirect(enc: DawnSlot, buffer: DawnSlot, offset: u64) {
     if let Some(api) = api() {
         if enc != 0 && buffer != 0 && proc_ok(api.bundle_draw_indirect) {
             unsafe { (api.bundle_draw_indirect)(as_ptr(enc), as_ptr(buffer), offset) }
+        }
+    }
+}
+
+pub fn bundle_draw_indexed_indirect(enc: DawnSlot, buffer: DawnSlot, offset: u64) {
+    if let Some(api) = api() {
+        if enc != 0 && buffer != 0 && proc_ok(api.bundle_draw_indexed_indirect) {
+            unsafe { (api.bundle_draw_indexed_indirect)(as_ptr(enc), as_ptr(buffer), offset) }
         }
     }
 }
