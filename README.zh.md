@@ -8,7 +8,7 @@
 
 本仓目标是成为 Wasm 组件链上 **可引用的 Android Host**——不是 UI 框架、不是重写的 Dawn、也不是生产级 WASI 发行版。**默认产品/测试构件包含 Dawn**；核心 AAR 不含。见 [`rfc.md`](docs/scheme/rfc.md)。
 
-状态：**experimental `0.x`**。坐标 **`0.1.3-SNAPSHOT`**。不宣称合规 wasi:webgpu / CTS。产品子集：[`claim-010.md`](docs/scheme/claim-010.md)。发包：`.github/workflows/publish.yml`（`main` 上的 `v*` 标签，或从 `main` 手动触发；GitHub Environment `release`）。允许 SNAPSHOT（Central 发布限额）。
+状态：**experimental `0.x`**。坐标 **`0.1.3-SNAPSHOT`**。不宣称合规 wasi:webgpu / CTS。产品子集：[`claim-010.md`](docs/scheme/claim-010.md)。发包：`.github/workflows/publish.yml`（`main` 上的 `v*` 标签，或从 `main` 手动触发；`native` ∥ `dawn` → `pack`，再按 GAV 走 **snapshot** 或 **release** 线；GitHub Environment `release` 挂在上传 job）。允许 SNAPSHOT（Central 发布限额）。
 
 若与英文冲突，**以 [README.md](README.md) 为准**。禁止向上游开 GitHub issue。非紧急：`unconfigure`、带时间戳的 `frame-event`、Lost/Outdated `result`、多窗口。
 

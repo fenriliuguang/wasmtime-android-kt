@@ -61,8 +61,29 @@ Any other path runs the four heavy jobs. Docs-only still reports the required ch
 
 - Current GAV is **`0.1.3-SNAPSHOT`**. Later versions follow [`docs/scheme/api-stability.md`](docs/scheme/api-stability.md).
 - **`SNAPSHOT` is allowed.** Maven Central publishing limits apply to *releases*; a `-SNAPSHOT` press does not consume that quota and may be overwritten. Use it when a release GAV would hit the limit. A later SNAPSHOT or PATCH is a separate press. Still no `-rc` GAV. No `0.0.x-preview`.
-- [`.github/workflows/publish.yml`](.github/workflows/publish.yml) uploads only from **`main`**: annotated tag `v*` (including `v0.x.y-SNAPSHOT`) or `workflow_dispatch`. GitHub Environment **`release`** (required reviewer; allowed refs: `main`, tags `v*`).
-- The job cross-compiles wasmtime `.so` at opt-level **2** **and** links Google Android `--prebuilt` `libwebgpu_dawn.so`, then publishes. Missing arm64 wasmtime or Dawn C `.so` **fails** (does not skip). Maven Central secrets missing **fails** if Central is requested. SNAPSHOT goes to the Central Portal **snapshots** repo (`https://central.sonatype.com/repository/maven-snapshots/`); vanniktech routes this from the `-SNAPSHOT` version.
+- [`.github/workflows/publish.yml`](.github/workflows/publish.yml) uploads only from **`main`**: annotated tag `v*` (including `v0.x.y-SNAPSHOT`) or `workflow_dispatch`. GitHub Environment **`release`** (required reviewer; allowed refs: `main`, tags `v*`) sits on the **upload** job so a failed Central/Packages step can retry without re-running NDK or Dawn C.
+- Stages (Actions graph). `native` and `dawn` run in parallel. After `pack`, the graph **forks** into two lines; GAV `*-SNAPSHOT` runs `snapshot / publish` and skips `release / publish` (and the other way around). Re-run the failed job only.
+
+```mermaid
+flowchart LR
+  gate --> native
+  gate --> dawn
+  native --> pack
+  dawn --> pack
+  pack --> snapshot["snapshot / publish"]
+  pack --> release["release / publish"]
+```
+
+| Job | What |
+|-----|------|
+| `gate` | Tag is on `origin/main`; `scripts/publish-channel.py` sets `channel` + destination |
+| `native (wasmtime .so)` | opt-level **2** `libwasmtime_android_kt.so` → artifact `press-jniLibs` |
+| `dawn (libwebgpu_dawn.so)` | `--prebuilt` Dawn C `.so` → artifact `press-dawn-c` |
+| `pack (AAR + verify)` | assemble `:android` / `:host-dawn`; `verify-press-aar.py` |
+| `snapshot / publish` | Upload when GAV is `*-SNAPSHOT` (Environment `release`) |
+| `release / publish` | Upload when GAV is not SNAPSHOT (Environment `release`) |
+
+- Missing arm64 wasmtime or Dawn C `.so` **fails** (does not skip). Maven Central secrets missing **fails** if Central is requested. SNAPSHOT goes to the Central Portal **snapshots** repo (`https://central.sonatype.com/repository/maven-snapshots/`); vanniktech routes this from the `-SNAPSHOT` version.
 - **Never** run Publish from `release/0.1.0`. Never publish `:smoke-app`.
 - Approver checklist: full `:smoke-app:connectedDebugAndroidTest` green on a named device; in-tree **`verify-press-aar.py`** (release AAR `.so` SHA matches recipe). Out-of-tree cube via includeBuild is demo evidence only — it is not the Maven consume path.
 
