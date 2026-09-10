@@ -619,6 +619,232 @@ struct TexelCopyTextureInfo {
     aspect: WgpuEnum,
 }
 
+/// Guest texel copy fields forwarded into `texel_tex` / `texel_buf`.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct TexelCopyParams {
+    pub offset: u64,
+    pub bytes_per_row: u32,
+    pub rows_per_image: u32,
+    pub mip_level: u32,
+    pub origin_x: u32,
+    pub origin_y: u32,
+    pub origin_z: u32,
+    pub aspect: u32,
+}
+
+/// `gpu-supported-limits` snapshot. Table-backed (no `.so`) is all `1`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeLimits {
+    pub max_texture_dimension_1d: u32,
+    pub max_texture_dimension_2d: u32,
+    pub max_texture_dimension_3d: u32,
+    pub max_texture_array_layers: u32,
+    pub max_bind_groups: u32,
+    pub max_bind_groups_plus_vertex_buffers: u32,
+    pub max_bindings_per_bind_group: u32,
+    pub max_dynamic_uniform_buffers_per_pipeline_layout: u32,
+    pub max_dynamic_storage_buffers_per_pipeline_layout: u32,
+    pub max_sampled_textures_per_shader_stage: u32,
+    pub max_samplers_per_shader_stage: u32,
+    pub max_storage_buffers_per_shader_stage: u32,
+    pub max_storage_textures_per_shader_stage: u32,
+    pub max_uniform_buffers_per_shader_stage: u32,
+    pub max_uniform_buffer_binding_size: u64,
+    pub max_storage_buffer_binding_size: u64,
+    pub min_uniform_buffer_offset_alignment: u32,
+    pub min_storage_buffer_offset_alignment: u32,
+    pub max_vertex_buffers: u32,
+    pub max_buffer_size: u64,
+    pub max_vertex_attributes: u32,
+    pub max_vertex_buffer_array_stride: u32,
+    pub max_inter_stage_shader_variables: u32,
+    pub max_color_attachments: u32,
+    pub max_color_attachment_bytes_per_sample: u32,
+    pub max_compute_workgroup_storage_size: u32,
+    pub max_compute_invocations_per_workgroup: u32,
+    pub max_compute_workgroup_size_x: u32,
+    pub max_compute_workgroup_size_y: u32,
+    pub max_compute_workgroup_size_z: u32,
+    pub max_compute_workgroups_per_dimension: u32,
+    pub max_immediate_size: u32,
+    pub max_storage_buffers_in_vertex_stage: u32,
+    pub max_storage_textures_in_vertex_stage: u32,
+    pub max_storage_buffers_in_fragment_stage: u32,
+    pub max_storage_textures_in_fragment_stage: u32,
+}
+
+impl NativeLimits {
+    pub const TABLE: Self = Self {
+        max_texture_dimension_1d: 1,
+        max_texture_dimension_2d: 1,
+        max_texture_dimension_3d: 1,
+        max_texture_array_layers: 1,
+        max_bind_groups: 1,
+        max_bind_groups_plus_vertex_buffers: 1,
+        max_bindings_per_bind_group: 1,
+        max_dynamic_uniform_buffers_per_pipeline_layout: 1,
+        max_dynamic_storage_buffers_per_pipeline_layout: 1,
+        max_sampled_textures_per_shader_stage: 1,
+        max_samplers_per_shader_stage: 1,
+        max_storage_buffers_per_shader_stage: 1,
+        max_storage_textures_per_shader_stage: 1,
+        max_uniform_buffers_per_shader_stage: 1,
+        max_uniform_buffer_binding_size: 1,
+        max_storage_buffer_binding_size: 1,
+        min_uniform_buffer_offset_alignment: 1,
+        min_storage_buffer_offset_alignment: 1,
+        max_vertex_buffers: 1,
+        max_buffer_size: 1,
+        max_vertex_attributes: 1,
+        max_vertex_buffer_array_stride: 1,
+        max_inter_stage_shader_variables: 1,
+        max_color_attachments: 1,
+        max_color_attachment_bytes_per_sample: 1,
+        max_compute_workgroup_storage_size: 1,
+        max_compute_invocations_per_workgroup: 1,
+        max_compute_workgroup_size_x: 1,
+        max_compute_workgroup_size_y: 1,
+        max_compute_workgroup_size_z: 1,
+        max_compute_workgroups_per_dimension: 1,
+        max_immediate_size: 1,
+        max_storage_buffers_in_vertex_stage: 1,
+        max_storage_textures_in_vertex_stage: 1,
+        max_storage_buffers_in_fragment_stage: 1,
+        max_storage_textures_in_fragment_stage: 1,
+    };
+}
+
+/// Dawn `WGPULimits` (press pin `webgpu.h`) plus tail padding if Dawn grows.
+#[repr(C)]
+struct WgpuLimits {
+    next_in_chain: *mut Chained,
+    max_texture_dimension_1d: u32,
+    max_texture_dimension_2d: u32,
+    max_texture_dimension_3d: u32,
+    max_texture_array_layers: u32,
+    max_bind_groups: u32,
+    max_bind_groups_plus_vertex_buffers: u32,
+    max_bindings_per_bind_group: u32,
+    max_dynamic_uniform_buffers_per_pipeline_layout: u32,
+    max_dynamic_storage_buffers_per_pipeline_layout: u32,
+    max_sampled_textures_per_shader_stage: u32,
+    max_samplers_per_shader_stage: u32,
+    max_storage_buffers_per_shader_stage: u32,
+    max_storage_textures_per_shader_stage: u32,
+    max_uniform_buffers_per_shader_stage: u32,
+    max_uniform_buffer_binding_size: u64,
+    max_storage_buffer_binding_size: u64,
+    min_uniform_buffer_offset_alignment: u32,
+    min_storage_buffer_offset_alignment: u32,
+    max_vertex_buffers: u32,
+    max_buffer_size: u64,
+    max_vertex_attributes: u32,
+    max_vertex_buffer_array_stride: u32,
+    max_inter_stage_shader_variables: u32,
+    max_color_attachments: u32,
+    max_color_attachment_bytes_per_sample: u32,
+    max_compute_workgroup_storage_size: u32,
+    max_compute_invocations_per_workgroup: u32,
+    max_compute_workgroup_size_x: u32,
+    max_compute_workgroup_size_y: u32,
+    max_compute_workgroup_size_z: u32,
+    max_compute_workgroups_per_dimension: u32,
+    max_immediate_size: u32,
+    max_storage_buffers_in_vertex_stage: u32,
+    max_storage_textures_in_vertex_stage: u32,
+    max_storage_buffers_in_fragment_stage: u32,
+    max_storage_textures_in_fragment_stage: u32,
+    _tail: [u64; 8],
+}
+
+impl WgpuLimits {
+    fn zeroed() -> Self {
+        Self {
+            next_in_chain: std::ptr::null_mut(),
+            max_texture_dimension_1d: 0,
+            max_texture_dimension_2d: 0,
+            max_texture_dimension_3d: 0,
+            max_texture_array_layers: 0,
+            max_bind_groups: 0,
+            max_bind_groups_plus_vertex_buffers: 0,
+            max_bindings_per_bind_group: 0,
+            max_dynamic_uniform_buffers_per_pipeline_layout: 0,
+            max_dynamic_storage_buffers_per_pipeline_layout: 0,
+            max_sampled_textures_per_shader_stage: 0,
+            max_samplers_per_shader_stage: 0,
+            max_storage_buffers_per_shader_stage: 0,
+            max_storage_textures_per_shader_stage: 0,
+            max_uniform_buffers_per_shader_stage: 0,
+            max_uniform_buffer_binding_size: 0,
+            max_storage_buffer_binding_size: 0,
+            min_uniform_buffer_offset_alignment: 0,
+            min_storage_buffer_offset_alignment: 0,
+            max_vertex_buffers: 0,
+            max_buffer_size: 0,
+            max_vertex_attributes: 0,
+            max_vertex_buffer_array_stride: 0,
+            max_inter_stage_shader_variables: 0,
+            max_color_attachments: 0,
+            max_color_attachment_bytes_per_sample: 0,
+            max_compute_workgroup_storage_size: 0,
+            max_compute_invocations_per_workgroup: 0,
+            max_compute_workgroup_size_x: 0,
+            max_compute_workgroup_size_y: 0,
+            max_compute_workgroup_size_z: 0,
+            max_compute_workgroups_per_dimension: 0,
+            max_immediate_size: 0,
+            max_storage_buffers_in_vertex_stage: 0,
+            max_storage_textures_in_vertex_stage: 0,
+            max_storage_buffers_in_fragment_stage: 0,
+            max_storage_textures_in_fragment_stage: 0,
+            _tail: [0; 8],
+        }
+    }
+
+    fn to_native(self) -> NativeLimits {
+        NativeLimits {
+            max_texture_dimension_1d: self.max_texture_dimension_1d,
+            max_texture_dimension_2d: self.max_texture_dimension_2d,
+            max_texture_dimension_3d: self.max_texture_dimension_3d,
+            max_texture_array_layers: self.max_texture_array_layers,
+            max_bind_groups: self.max_bind_groups,
+            max_bind_groups_plus_vertex_buffers: self.max_bind_groups_plus_vertex_buffers,
+            max_bindings_per_bind_group: self.max_bindings_per_bind_group,
+            max_dynamic_uniform_buffers_per_pipeline_layout: self
+                .max_dynamic_uniform_buffers_per_pipeline_layout,
+            max_dynamic_storage_buffers_per_pipeline_layout: self
+                .max_dynamic_storage_buffers_per_pipeline_layout,
+            max_sampled_textures_per_shader_stage: self.max_sampled_textures_per_shader_stage,
+            max_samplers_per_shader_stage: self.max_samplers_per_shader_stage,
+            max_storage_buffers_per_shader_stage: self.max_storage_buffers_per_shader_stage,
+            max_storage_textures_per_shader_stage: self.max_storage_textures_per_shader_stage,
+            max_uniform_buffers_per_shader_stage: self.max_uniform_buffers_per_shader_stage,
+            max_uniform_buffer_binding_size: self.max_uniform_buffer_binding_size,
+            max_storage_buffer_binding_size: self.max_storage_buffer_binding_size,
+            min_uniform_buffer_offset_alignment: self.min_uniform_buffer_offset_alignment,
+            min_storage_buffer_offset_alignment: self.min_storage_buffer_offset_alignment,
+            max_vertex_buffers: self.max_vertex_buffers,
+            max_buffer_size: self.max_buffer_size,
+            max_vertex_attributes: self.max_vertex_attributes,
+            max_vertex_buffer_array_stride: self.max_vertex_buffer_array_stride,
+            max_inter_stage_shader_variables: self.max_inter_stage_shader_variables,
+            max_color_attachments: self.max_color_attachments,
+            max_color_attachment_bytes_per_sample: self.max_color_attachment_bytes_per_sample,
+            max_compute_workgroup_storage_size: self.max_compute_workgroup_storage_size,
+            max_compute_invocations_per_workgroup: self.max_compute_invocations_per_workgroup,
+            max_compute_workgroup_size_x: self.max_compute_workgroup_size_x,
+            max_compute_workgroup_size_y: self.max_compute_workgroup_size_y,
+            max_compute_workgroup_size_z: self.max_compute_workgroup_size_z,
+            max_compute_workgroups_per_dimension: self.max_compute_workgroups_per_dimension,
+            max_immediate_size: self.max_immediate_size,
+            max_storage_buffers_in_vertex_stage: self.max_storage_buffers_in_vertex_stage,
+            max_storage_textures_in_vertex_stage: self.max_storage_textures_in_vertex_stage,
+            max_storage_buffers_in_fragment_stage: self.max_storage_buffers_in_fragment_stage,
+            max_storage_textures_in_fragment_stage: self.max_storage_textures_in_fragment_stage,
+        }
+    }
+}
+
 #[repr(C)]
 struct RenderBundleEncDesc {
     next_in_chain: *mut Chained,
@@ -734,6 +960,7 @@ type FnMappedRange = unsafe extern "C" fn(WgpuObj, usize, usize) -> *const u8;
 type FnMappedRangeMut = unsafe extern "C" fn(WgpuObj, usize, usize) -> *mut u8;
 type FnAdapterGetInfo = unsafe extern "C" fn(WgpuObj, *mut AdapterInfo) -> WgpuEnum;
 type FnAdapterInfoFree = unsafe extern "C" fn(AdapterInfo);
+type FnGetLimits = unsafe extern "C" fn(WgpuObj, *mut WgpuLimits) -> WgpuEnum;
 type FnBufferGetSize = unsafe extern "C" fn(WgpuObj) -> u64;
 type FnBufferGetUsage = unsafe extern "C" fn(WgpuObj) -> WgpuFlags;
 type FnBufferGetMapState = unsafe extern "C" fn(WgpuObj) -> WgpuEnum;
@@ -825,6 +1052,8 @@ procs! {
     buffer_mapped_range_mut: FnMappedRangeMut,
     adapter_get_info: FnAdapterGetInfo,
     adapter_info_free: FnAdapterInfoFree,
+    adapter_get_limits: FnGetLimits,
+    device_get_limits: FnGetLimits,
     buffer_get_size: FnBufferGetSize,
     buffer_get_usage: FnBufferGetUsage,
     buffer_get_map_state: FnBufferGetMapState,
@@ -1006,6 +1235,8 @@ fn load_once() -> Option<Api> {
             buffer_mapped_range_mut: std::mem::transmute(need(c"wgpuBufferGetMappedRange")),
             adapter_get_info: std::mem::transmute(need(c"wgpuAdapterGetInfo")),
             adapter_info_free: std::mem::transmute(need(c"wgpuAdapterInfoFreeMembers")),
+            adapter_get_limits: std::mem::transmute(need(c"wgpuAdapterGetLimits")),
+            device_get_limits: std::mem::transmute(need(c"wgpuDeviceGetLimits")),
             buffer_get_size: std::mem::transmute(need(c"wgpuBufferGetSize")),
             buffer_get_usage: std::mem::transmute(need(c"wgpuBufferGetUsage")),
             buffer_get_map_state: std::mem::transmute(need(c"wgpuBufferGetMapState")),
@@ -2239,12 +2470,19 @@ pub fn pass_set_pipeline(pass: DawnSlot, pipeline: DawnSlot) {
     }
 }
 
-pub fn pass_set_bind_group(pass: DawnSlot, index: u32, group: DawnSlot) {
+fn bind_group_offset_args(offsets: &[u32]) -> (usize, *const u32) {
+    if offsets.is_empty() {
+        (0, std::ptr::null())
+    } else {
+        (offsets.len(), offsets.as_ptr())
+    }
+}
+
+pub fn pass_set_bind_group(pass: DawnSlot, index: u32, group: DawnSlot, offsets: &[u32]) {
     if let Some(api) = api() {
         if pass != 0 {
-            unsafe {
-                (api.pass_set_bind_group)(as_ptr(pass), index, as_ptr(group), 0, std::ptr::null())
-            }
+            let (count, ptr) = bind_group_offset_args(offsets);
+            unsafe { (api.pass_set_bind_group)(as_ptr(pass), index, as_ptr(group), count, ptr) }
         }
     }
 }
@@ -2538,6 +2776,21 @@ fn texel_tex(
     }
 }
 
+fn texel_buf_params(buffer: DawnSlot, p: TexelCopyParams) -> TexelCopyBufferInfo {
+    texel_buf(buffer, p.offset, p.bytes_per_row, p.rows_per_image)
+}
+
+fn texel_tex_params(texture: DawnSlot, p: TexelCopyParams) -> TexelCopyTextureInfo {
+    texel_tex(
+        texture,
+        p.mip_level,
+        p.origin_x,
+        p.origin_y,
+        p.origin_z,
+        p.aspect,
+    )
+}
+
 pub fn copy_buffer_to_texture(
     encoder: DawnSlot,
     buffer: DawnSlot,
@@ -2545,11 +2798,13 @@ pub fn copy_buffer_to_texture(
     width: u32,
     height: u32,
     depth: u32,
+    src: TexelCopyParams,
+    dst: TexelCopyParams,
 ) {
     if let Some(api) = api() {
         if encoder != 0 && buffer != 0 && texture != 0 && proc_ok(api.copy_b2t) {
-            let src = texel_buf(buffer, 0, 0, 0);
-            let dst = texel_tex(texture, 0, 0, 0, 0, 0);
+            let src = texel_buf_params(buffer, src);
+            let dst = texel_tex_params(texture, dst);
             let size = Extent3D {
                 width: width.max(1),
                 height: height.max(1),
@@ -2567,11 +2822,13 @@ pub fn copy_texture_to_buffer(
     width: u32,
     height: u32,
     depth: u32,
+    src: TexelCopyParams,
+    dst: TexelCopyParams,
 ) {
     if let Some(api) = api() {
         if encoder != 0 && buffer != 0 && texture != 0 && proc_ok(api.copy_t2b) {
-            let src = texel_tex(texture, 0, 0, 0, 0, 0);
-            let dst = texel_buf(buffer, 0, 0, 0);
+            let src = texel_tex_params(texture, src);
+            let dst = texel_buf_params(buffer, dst);
             let size = Extent3D {
                 width: width.max(1),
                 height: height.max(1),
@@ -2589,11 +2846,13 @@ pub fn copy_texture_to_texture(
     width: u32,
     height: u32,
     depth: u32,
+    src_texel: TexelCopyParams,
+    dst_texel: TexelCopyParams,
 ) {
     if let Some(api) = api() {
         if encoder != 0 && src != 0 && dst != 0 && proc_ok(api.copy_t2t) {
-            let s = texel_tex(src, 0, 0, 0, 0, 0);
-            let d = texel_tex(dst, 0, 0, 0, 0, 0);
+            let s = texel_tex_params(src, src_texel);
+            let d = texel_tex_params(dst, dst_texel);
             let size = Extent3D {
                 width: width.max(1),
                 height: height.max(1),
@@ -2645,10 +2904,11 @@ pub fn write_texture(
     width: u32,
     height: u32,
     depth: u32,
+    dst: TexelCopyParams,
 ) {
     if let Some(api) = api() {
         if queue != 0 && texture != 0 && proc_ok(api.write_texture) {
-            let dst = texel_tex(texture, 0, 0, 0, 0, 0);
+            let tex = texel_tex_params(texture, dst);
             let layout = TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: if bytes_per_row == 0 {
@@ -2656,7 +2916,11 @@ pub fn write_texture(
                 } else {
                     bytes_per_row
                 },
-                rows_per_image: WGPU_COPY_STRIDE_UNDEFINED,
+                rows_per_image: if dst.rows_per_image == 0 {
+                    WGPU_COPY_STRIDE_UNDEFINED
+                } else {
+                    dst.rows_per_image
+                },
             };
             let size = Extent3D {
                 width: width.max(1),
@@ -2666,7 +2930,7 @@ pub fn write_texture(
             unsafe {
                 (api.write_texture)(
                     as_ptr(queue),
-                    &dst,
+                    &tex,
                     bytes.as_ptr(),
                     bytes.len(),
                     &layout,
@@ -2843,6 +3107,28 @@ pub fn adapter_info(adapter: DawnSlot) -> Option<crate::native_gpu::NativeAdapte
         unsafe { (api.adapter_info_free)(info) }
     }
     Some(out)
+}
+
+fn read_limits(slot: DawnSlot, get: FnGetLimits) -> Option<NativeLimits> {
+    if slot == 0 || !proc_ok(get) {
+        return None;
+    }
+    let mut limits = WgpuLimits::zeroed();
+    let status = unsafe { get(as_ptr(slot), &mut limits) };
+    if status != 0 && status != STATUS_SUCCESS {
+        return None;
+    }
+    Some(limits.to_native())
+}
+
+pub fn adapter_limits(adapter: DawnSlot) -> Option<NativeLimits> {
+    let api = api()?;
+    read_limits(adapter, api.adapter_get_limits)
+}
+
+pub fn device_limits(device: DawnSlot) -> Option<NativeLimits> {
+    let api = api()?;
+    read_limits(device, api.device_get_limits)
 }
 
 pub fn work_done(instance: DawnSlot, queue: DawnSlot) {
@@ -3023,18 +3309,11 @@ pub fn compute_set_pipeline(pass: DawnSlot, pipeline: DawnSlot) {
     }
 }
 
-pub fn compute_set_bind_group(pass: DawnSlot, index: u32, group: DawnSlot) {
+pub fn compute_set_bind_group(pass: DawnSlot, index: u32, group: DawnSlot, offsets: &[u32]) {
     if let Some(api) = api() {
         if pass != 0 && proc_ok(api.compute_set_bind_group) {
-            unsafe {
-                (api.compute_set_bind_group)(
-                    as_ptr(pass),
-                    index,
-                    as_ptr(group),
-                    0,
-                    std::ptr::null(),
-                )
-            }
+            let (count, ptr) = bind_group_offset_args(offsets);
+            unsafe { (api.compute_set_bind_group)(as_ptr(pass), index, as_ptr(group), count, ptr) }
         }
     }
 }
@@ -3085,12 +3364,11 @@ pub fn bundle_set_pipeline(enc: DawnSlot, pipeline: DawnSlot) {
     }
 }
 
-pub fn bundle_set_bind_group(enc: DawnSlot, index: u32, group: DawnSlot) {
+pub fn bundle_set_bind_group(enc: DawnSlot, index: u32, group: DawnSlot, offsets: &[u32]) {
     if let Some(api) = api() {
         if enc != 0 && proc_ok(api.bundle_set_bind_group) {
-            unsafe {
-                (api.bundle_set_bind_group)(as_ptr(enc), index, as_ptr(group), 0, std::ptr::null())
-            }
+            let (count, ptr) = bind_group_offset_args(offsets);
+            unsafe { (api.bundle_set_bind_group)(as_ptr(enc), index, as_ptr(group), count, ptr) }
         }
     }
 }
@@ -3285,5 +3563,25 @@ pub fn process_events(instance: DawnSlot) {
         if instance != 0 {
             unsafe { (api.process_events)(as_ptr(instance)) }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wgpu_limits_has_tail_padding() {
+        assert!(std::mem::size_of::<WgpuLimits>() > std::mem::size_of::<NativeLimits>());
+        assert_eq!(NativeLimits::TABLE.max_bind_groups, 1);
+        assert_eq!(NativeLimits::TABLE.max_buffer_size, 1);
+    }
+
+    #[test]
+    fn texel_copy_params_default_is_origin_zero() {
+        let p = TexelCopyParams::default();
+        assert_eq!(p.mip_level, 0);
+        assert_eq!(p.origin_x, 0);
+        assert_eq!(p.aspect, 0);
     }
 }
