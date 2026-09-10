@@ -23,7 +23,7 @@ Language: English is canonical ([`docs/LANGUAGE.md`](docs/LANGUAGE.md)).
 1. From latest `main`: `docs/…` / `feat/…` / `fix/…` / `chore/…`.  
 2. **One PR, one thing.** User-visible changes: new file [`changelog/unreleased/<yyyy-mm-dd>-<slug>.md`](changelog/unreleased/README.md). **Do not** edit root `CHANGELOG.md`.  
 3. CI green, then squash-merge; delete the head branch.  
-4. No long-lived `feature/*` forks. **`release/0.1.0`** may stay as a maintenance branch; it never uploads Maven. Named exception: **`cursor/wasi-p3-leftover-b677`** (WASI 0.3 leftover fill) — one lane = one commit; leftover remaining is empty. Auto after that: NativeGpu Remaining Table — `python3 ./scripts/nativegpu-remaining.py`; one knife = one PR. Playbooks: [`docs/scheme/wasi-p3-leftover.md`](docs/scheme/wasi-p3-leftover.md), [`docs/scheme/nativegpu-remaining.md`](docs/scheme/nativegpu-remaining.md).
+4. No long-lived `feature/*` forks. **`release/0.1.0`** may stay as a maintenance branch; it never uploads Maven. Named exception: **`cursor/wasi-p3-leftover-b677`** (WASI 0.3 leftover fill) — leftover remaining is empty. NativeGpu Remaining Table (`python3 ./scripts/nativegpu-remaining.py`) is also empty. Playbooks: [`docs/scheme/wasi-p3-leftover.md`](docs/scheme/wasi-p3-leftover.md), [`docs/scheme/nativegpu-remaining.md`](docs/scheme/nativegpu-remaining.md).
 
 ## Hub freeze
 

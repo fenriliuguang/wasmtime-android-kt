@@ -30,31 +30,31 @@ Remaining: `python3 ./scripts/nativegpu-remaining.py` (next **PR**, not a long W
 | N-LIMITS | landed 2026-09-10 (`wgpuAdapterGetLimits` / `wgpuDeviceGetLimits`; Cloud stays table `1`) |
 | N-COPY | landed 2026-09-10 (copy / `write-texture` origin / mip / aspect / buffer layout) |
 | N-DYNOFF | landed 2026-09-10 (`set-bind-group` dynamic offsets reach the C `usize, *const u32`) |
-| N-COMPINFO | gap: n-compinfo pending |
-| N-POPERR | gap: n-poperr pending |
-| N-UNCAPTURED | gap: n-uncaptured pending |
-| N-WGSLFEAT | gap: n-wgslfeat pending |
-| N-LABELS | gap: n-labels pending |
-| N-IMMEDIATE | gap: n-immediate pending |
-| N-FENCE | gap: n-fence pending |
+| N-COMPINFO | landed 2026-09-10 (`wgpuShaderModuleGetCompilationInfo`; Cloud empty list) |
+| N-POPERR | landed 2026-09-10 (`pop-error-scope` returns callback type/message; Cloud `ok(none)`) |
+| N-UNCAPTURED | landed 2026-09-10 (uncaptured + lost callbacks; Cloud empty / unknown) |
+| N-WGSLFEAT | landed 2026-09-10 (`wgpuInstanceHasWGSLLanguageFeature`; Cloud `false`) |
+| N-LABELS | landed 2026-09-10 (`wgpu*SetLabel` + host get for resources other than buffer/texture) |
+| N-IMMEDIATE | landed 2026-09-10 (`set-immediates` / debug group·marker C wrappers) |
+| N-FENCE | landed 2026-09-10 (`queue.submit` waits `OnSubmittedWorkDone` before canvas recycle) |
 
 ## Lanes (auto)
 
 | Commit | Needle | DoD |
 |--------|--------|-----|
-| **N-RFC** | *(this commit)* | Playbook + remaining script. Leftover Named-only points here. `nativegpu-remaining.py` after the catch-up knives prints **`Next: N-COMPINFO`**. |
-| **N-LIMITS** | *(landed)* | Bind `wgpuAdapterGetLimits` / `wgpuDeviceGetLimits`. `gpu-supported-limits.*` read Dawn fields when the `.so` is loaded; missing `.so` still returns `1`. Do **not** fill `request-device` `required-limits` (Record / NG-7). Remove the needle. |
-| **N-COPY** | *(landed)* | Guest `GpuTexelCopyTextureInfo` / `GpuTexelCopyBufferInfo` origin / mip / aspect / offset / bytes-per-row / rows-per-image reach `texel_tex` / `texel_buf` (already in `dawn_c`). Includes `write-texture-with-copy`. Remove the needle. |
-| **N-DYNOFF** | *(landed)* | `set-bind-group` offsets + start/length slice reach `wgpu*SetBindGroup` (C already takes `usize, *const u32`). Render pass, compute pass, bundle encoder. Remove the needle. |
-| **N-COMPINFO** | `gap: n-compinfo pending` | `compilation-info` / messages from `wgpuShaderModuleGetCompilationInfo`. Remove the needle. |
-| **N-POPERR** | `gap: n-poperr pending` | `pop-error-scope` returns the callback type/message, not always `ok(none)`. Remove the needle. |
-| **N-UNCAPTURED** | `gap: n-uncaptured pending` | `on-uncaptured-error` + `gpu-error` / `device-lost-info` wired from Dawn callbacks. Remove the needle. |
-| **N-WGSLFEAT** | `gap: n-wgslfeat pending` | `wgsl-language-features.has` queries Dawn (not always `false`). Remove the needle. |
-| **N-LABELS** | `gap: n-labels pending` | `wgpu*SetLabel` / get for resources other than buffer/texture. Remove the needle. |
-| **N-IMMEDIATE** | `gap: n-immediate pending` | `set-immediates` / debug group·marker C wrappers (not no-op). Remove the needle. |
-| **N-FENCE** | `gap: n-fence pending` | `queue.submit` canvas recycle waits on a fence vs D24 `onSubmittedWorkDone`. Remove the needle. `remaining.py` empty → table §3 has no pending BIND leftover. |
+| **N-RFC** | *(this commit)* | Playbook + remaining script. Leftover Named-only points here. |
+| **N-LIMITS** | *(landed)* | Bind `wgpuAdapterGetLimits` / `wgpuDeviceGetLimits`. `gpu-supported-limits.*` read Dawn fields when the `.so` is loaded; missing `.so` still returns `1`. Do **not** fill `request-device` `required-limits` (Record / NG-7). |
+| **N-COPY** | *(landed)* | Guest `GpuTexelCopyTextureInfo` / `GpuTexelCopyBufferInfo` origin / mip / aspect / offset / bytes-per-row / rows-per-image reach `texel_tex` / `texel_buf`. Includes `write-texture-with-copy`. |
+| **N-DYNOFF** | *(landed)* | `set-bind-group` offsets + start/length slice reach `wgpu*SetBindGroup`. Render pass, compute pass, bundle encoder. |
+| **N-COMPINFO** | *(landed)* | `compilation-info` / messages from `wgpuShaderModuleGetCompilationInfo`. |
+| **N-POPERR** | *(landed)* | `pop-error-scope` returns the callback type/message, not always `ok(none)`. |
+| **N-UNCAPTURED** | *(landed)* | `on-uncaptured-error` + `gpu-error` / `device-lost-info` wired from Dawn callbacks. |
+| **N-WGSLFEAT** | *(landed)* | `wgsl-language-features.has` queries Dawn (not always `false`). |
+| **N-LABELS** | *(landed)* | `wgpu*SetLabel` / get for resources other than buffer/texture. |
+| **N-IMMEDIATE** | *(landed)* | `set-immediates` / debug group·marker C wrappers (not no-op). |
+| **N-FENCE** | *(landed)* | `queue.submit` canvas recycle waits on a fence vs D24 `onSubmittedWorkDone`. `remaining.py` empty → table §3 has no pending BIND leftover. |
 
-This amendment (catch-up): auto previously treated native-dawn as leftover Named-only **Closed**, so this table was never `Next:`. N-LIMITS / N-COPY / N-DYNOFF land with the playbook. Later knives stay **one Next per PR**.
+This amendment: auto previously treated native-dawn as leftover Named-only **Closed**, so this table was never `Next:`. All BIND leftover knives in §3 land on this PR (user: continue remaining defects here). Record holes / gfx named-only stay never `Next:`.
 
 ## Named-only (never `Next:`)
 

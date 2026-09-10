@@ -15,8 +15,8 @@ use crate::host::{
 };
 use crate::jvm;
 use crate::native_gpu::{
-    NativeRequestAdapterOptions, NativeRequestDeviceDescriptor, NativeTexelCopy,
-    slice_dynamic_offsets,
+    DebugOp, NativeRequestAdapterOptions, NativeRequestDeviceDescriptor, NativeTexelCopy,
+    PopErrorOutcome, ResourceKind, slice_dynamic_offsets, slice_immediate_bytes,
 };
 use crate::webgpu_abi::{
     CreatePipelineError, CreatePipelineErrorKind, CreateQuerySetError, GetMappedRangeError,
@@ -36,7 +36,7 @@ use crate::webgpu_abi::{
     GpuSupportedFeatures, GpuSupportedLimits, GpuTexelCopyBufferInfo, GpuTexelCopyBufferLayout,
     GpuTexelCopyTextureInfo, GpuTextureDescriptor, GpuTextureDimension, GpuTextureFormat,
     GpuTextureSampleType, GpuTextureUsage, GpuTextureViewDescriptor, GpuTextureViewDimension,
-    GpuUncapturedErrorEvent, GpuVertexFormat, GpuVertexStepMode, MapAsyncError, PopErrorScopeError,
+    GpuUncapturedErrorEvent, GpuVertexFormat, GpuVertexStepMode, MapAsyncError, PopErrorScopeError, PopErrorScopeErrorKind,
     RecordGpuPipelineConstantValue, RecordOptionGpuSize64, RequestDeviceError,
     RequestDeviceErrorKind, SetBindGroupError, UnmapError, WgslLanguageFeatures, WriteBufferError,
 };
@@ -4522,8 +4522,11 @@ pub(crate) fn define_host(
                 |mut caller, (features, value): (Resource<WgslLanguageFeatures>, String)| {
                     let _features_gpu = caller.data_mut().table.get(&features)?.gpu;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = value;
-                        return Ok((false,));
+                        let has = caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .wgsl_language_feature_has(&value);
+                        return Ok((has,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let has = jvm::exp_wgsl_language_features_has_described(&cb, value)
@@ -6079,7 +6082,7 @@ pub(crate) fn define_host(
         if fixture_ctors {
             webgpu
                 .func_wrap("get-gpu-error", |mut store, ()| {
-                    let resource = store.data_mut().table.push(GpuError { device: 0 })?;
+                    let resource = store.data_mut().table.push(GpuError { device: 0, ..Default::default() })?;
                     Ok((resource,))
                 })
                 .map_err(|e| e.to_string())?;
@@ -6090,7 +6093,8 @@ pub(crate) fn define_host(
                 |mut caller, (error,): (Resource<GpuError>,)| {
                     let error_device = caller.data_mut().table.get(&error)?.device;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        let message = caller.data_mut().table.get(&error)?.message.clone();
+                        return Ok((message,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if error_device == 0 {
@@ -6113,7 +6117,8 @@ pub(crate) fn define_host(
                 |mut caller, (error,): (Resource<GpuError>,)| {
                     let error_device = caller.data_mut().table.get(&error)?.device;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((GpuErrorKind::from_host_u32(0),));
+                        let kind = caller.data_mut().table.get(&error)?.kind;
+                        return Ok((GpuErrorKind::from_host_u32(kind),));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if error_device == 0 {
@@ -6301,10 +6306,15 @@ pub(crate) fn define_host(
                                 .map_err(native_gpu_error)?
                                 .raw()
                         };
-                        let info = caller
-                            .data_mut()
-                            .table
-                            .push(GpuDeviceLostInfo { device: l2_device })?;
+                        let (reason, message) = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.device_lost_info(device_rep).map_err(native_gpu_error)?
+                        };
+                        let info = caller.data_mut().table.push(GpuDeviceLostInfo {
+                            device: l2_device,
+                            reason,
+                            message,
+                        })?;
                         let fut = FutureReader::new(&mut caller, async move {
                             Ok::<Resource<GpuDeviceLostInfo>, wasmtime::Error>(info)
                         })?;
@@ -6323,7 +6333,7 @@ pub(crate) fn define_host(
                     let info = caller
                         .data_mut()
                         .table
-                        .push(GpuDeviceLostInfo { device: l2_device })?;
+                        .push(GpuDeviceLostInfo { device: l2_device, ..Default::default() })?;
                     let fut = FutureReader::new(&mut caller, async move {
                         Ok::<Resource<GpuDeviceLostInfo>, wasmtime::Error>(info)
                     })?;
@@ -6373,18 +6383,36 @@ pub(crate) fn define_host(
                             Ok(access.data_mut().webgpu_backend() == GpuBackend::NativeGpu)
                         })?;
                         if native {
-                            accessor.with(|mut access| -> wasmtime::Result<()> {
-                                let device_rep = access.data_mut().table.get(&device)?.rep;
-                                access
-                                    .data_mut()
-                                    .require_native_gpu()?
-                                    .pop_error_scope(device_rep)
-                                    .map_err(native_gpu_error)?;
-                                Ok(())
-                            })?;
-                            return Ok((Ok::<Option<Resource<GpuError>>, PopErrorScopeError>(
-                                None,
-                            ),));
+                            let (device_rep, outcome) =
+                                accessor.with(|mut access| -> wasmtime::Result<_> {
+                                    let device_rep = access.data_mut().table.get(&device)?.rep;
+                                    let outcome = access
+                                        .data_mut()
+                                        .require_native_gpu()?
+                                        .pop_error_scope(device_rep)
+                                        .map_err(native_gpu_error)?;
+                                    Ok((device_rep, outcome))
+                                })?;
+                            let result = match outcome {
+                                PopErrorOutcome::None => Ok(None),
+                                PopErrorOutcome::Error { kind, message } => {
+                                    let resource = accessor.with(|mut access| {
+                                        access.data_mut().table.push(GpuError {
+                                            device: device_rep,
+                                            kind,
+                                            message,
+                                        })
+                                    })?;
+                                    Ok(Some(resource))
+                                }
+                                PopErrorOutcome::Operation { message } => {
+                                    Err(PopErrorScopeError {
+                                        kind: PopErrorScopeErrorKind::OperationError,
+                                        message,
+                                    })
+                                }
+                            };
+                            return Ok((result,));
                         }
                         let (cb, device_rep) =
                             accessor.with(|mut access| -> wasmtime::Result<_> {
@@ -6413,7 +6441,19 @@ pub(crate) fn define_host(
                 |mut caller, (device,): (Resource<GpuDevice>,)| {
                     let device_rep = caller.data_mut().table.get(&device)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let reader = StreamReader::<Resource<GpuError>>::new(&mut caller, vec![])?;
+                        let events = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.drain_uncaptured(device_rep).map_err(native_gpu_error)?
+                        };
+                        let mut resources = Vec::with_capacity(events.len());
+                        for (kind, message) in events {
+                            resources.push(caller.data_mut().table.push(GpuError {
+                                device: device_rep,
+                                kind,
+                                message,
+                            })?);
+                        }
+                        let reader = StreamReader::<Resource<GpuError>>::new(&mut caller, resources)?;
                         return Ok((reader,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -6458,8 +6498,14 @@ pub(crate) fn define_host(
                 |mut caller, (event,): (Resource<GpuUncapturedErrorEvent>,)| {
                     let event_device = caller.data_mut().table.get(&event)?.device;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let (kind, message) = {
+                            let gpu = caller.data_mut().require_native_gpu()?;
+                            gpu.last_uncaptured(event_device).map_err(native_gpu_error)?
+                        };
                         let resource = caller.data_mut().table.push(GpuError {
                             device: event_device,
+                            kind,
+                            message,
                         })?;
                         return Ok((resource,));
                     }
@@ -6477,7 +6523,7 @@ pub(crate) fn define_host(
                     let resource = caller
                         .data_mut()
                         .table
-                        .push(GpuError { device: l2_device })?;
+                        .push(GpuError { device: l2_device, ..Default::default() })?;
                     Ok((resource,))
                 },
             )
@@ -6489,7 +6535,7 @@ pub(crate) fn define_host(
                     let resource = store
                         .data_mut()
                         .table
-                        .push(GpuDeviceLostInfo { device: 0 })?;
+                        .push(GpuDeviceLostInfo { device: 0, ..Default::default() })?;
                     Ok((resource,))
                 })
                 .map_err(|e| e.to_string())?;
@@ -6500,7 +6546,8 @@ pub(crate) fn define_host(
                 |mut caller, (info,): (Resource<GpuDeviceLostInfo>,)| {
                     let info_device = caller.data_mut().table.get(&info)?.device;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((GpuDeviceLostReason::Unknown,));
+                        let reason = caller.data_mut().table.get(&info)?.reason;
+                        return Ok((GpuDeviceLostReason::from_host_u32(reason),));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if info_device == 0 {
@@ -6523,7 +6570,8 @@ pub(crate) fn define_host(
                 |mut caller, (info,): (Resource<GpuDeviceLostInfo>,)| {
                     let info_device = caller.data_mut().table.get(&info)?.device;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        let message = caller.data_mut().table.get(&info)?.message.clone();
+                        return Ok((message,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_device = if info_device == 0 {
@@ -7086,7 +7134,7 @@ pub(crate) fn define_host(
                 |mut caller, (view,): (Resource<GpuTextureView>,)| {
                     let view_rep = caller.data_mut().table.get(&view)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, view_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if view_rep == 0 {
@@ -7123,8 +7171,7 @@ pub(crate) fn define_host(
                 |mut caller, (view, label): (Resource<GpuTextureView>, String)| {
                     let view_rep = caller.data_mut().table.get(&view)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, view_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if view_rep == 0 {
@@ -7975,7 +8022,7 @@ pub(crate) fn define_host(
                 |mut caller, (sampler,): (Resource<GpuSampler>,)| {
                     let sampler_rep = caller.data_mut().table.get(&sampler)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, sampler_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if sampler_rep == 0 {
@@ -8002,8 +8049,7 @@ pub(crate) fn define_host(
                 |mut caller, (sampler, label): (Resource<GpuSampler>, String)| {
                     let sampler_rep = caller.data_mut().table.get(&sampler)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, sampler_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if sampler_rep == 0 {
@@ -8152,10 +8198,25 @@ pub(crate) fn define_host(
                             let _ = rx.await;
                             let resource = accessor.with(|mut access| -> wasmtime::Result<_> {
                                 let shader_rep = access.data_mut().table.get(&shader)?.rep;
-                                let gpu = access.data_mut().require_native_gpu()?;
-                                let _ = gpu.resolve_shader(shader_rep).map_err(native_gpu_error)?;
+                                let messages = {
+                                    let gpu = access.data_mut().require_native_gpu()?;
+                                    gpu.compilation_info(shader_rep).map_err(native_gpu_error)?
+                                };
+                                let messages = messages
+                                    .into_iter()
+                                    .map(|m| GpuCompilationMessage {
+                                        shader_module: shader_rep,
+                                        message: m.message,
+                                        ty: m.ty,
+                                        line_num: m.line_num,
+                                        line_pos: m.line_pos,
+                                        offset: m.offset,
+                                        length: m.length,
+                                    })
+                                    .collect();
                                 Ok(access.data_mut().table.push(GpuCompilationInfo {
                                     shader_module: shader_rep,
+                                    messages,
                                 })?)
                             })?;
                             return Ok((resource,));
@@ -8181,6 +8242,7 @@ pub(crate) fn define_host(
                         let resource = accessor.with(|mut access| {
                             access.data_mut().table.push(GpuCompilationInfo {
                                 shader_module: l2_shader,
+                                ..Default::default()
                             })
                         })?;
                         Ok((resource,))
@@ -8194,7 +8256,7 @@ pub(crate) fn define_host(
                 |mut caller, (shader,): (Resource<GpuShaderModule>,)| {
                     let shader_rep = caller.data_mut().table.get(&shader)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, shader_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if shader_rep == 0 {
@@ -8226,8 +8288,7 @@ pub(crate) fn define_host(
                 |mut caller, (shader, label): (Resource<GpuShaderModule>, String)| {
                     let shader_rep = caller.data_mut().table.get(&shader)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, shader_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if shader_rep == 0 {
@@ -8493,7 +8554,7 @@ pub(crate) fn define_host(
                 |mut caller, (layout,): (Resource<GpuBindGroupLayout>,)| {
                     let layout_rep = caller.data_mut().table.get(&layout)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, layout_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if layout_rep == 0 {
@@ -8518,8 +8579,7 @@ pub(crate) fn define_host(
                 |mut caller, (layout, label): (Resource<GpuBindGroupLayout>, String)| {
                     let layout_rep = caller.data_mut().table.get(&layout)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, layout_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if layout_rep == 0 {
@@ -8735,7 +8795,7 @@ pub(crate) fn define_host(
                 |mut caller, (layout,): (Resource<GpuPipelineLayout>,)| {
                     let layout_rep = caller.data_mut().table.get(&layout)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, layout_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if layout_rep == 0 {
@@ -8760,8 +8820,7 @@ pub(crate) fn define_host(
                 |mut caller, (layout, label): (Resource<GpuPipelineLayout>, String)| {
                     let layout_rep = caller.data_mut().table.get(&layout)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, layout_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if layout_rep == 0 {
@@ -8907,7 +8966,7 @@ pub(crate) fn define_host(
                 |mut caller, (bind_group,): (Resource<GpuBindGroup>,)| {
                     let bind_group_rep = caller.data_mut().table.get(&bind_group)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, bind_group_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if bind_group_rep == 0 {
@@ -8931,8 +8990,7 @@ pub(crate) fn define_host(
                 |mut caller, (bind_group, label): (Resource<GpuBindGroup>, String)| {
                     let bind_group_rep = caller.data_mut().table.get(&bind_group)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, bind_group_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if bind_group_rep == 0 {
@@ -8973,7 +9031,7 @@ pub(crate) fn define_host(
                 |mut caller, (pipeline,): (Resource<GpuRenderPipeline>,)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, pipeline_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pipeline_rep == 0 {
@@ -8998,8 +9056,7 @@ pub(crate) fn define_host(
                 |mut caller, (pipeline, label): (Resource<GpuRenderPipeline>, String)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, pipeline_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pipeline_rep == 0 {
@@ -9073,7 +9130,7 @@ pub(crate) fn define_host(
                 |mut caller, (pipeline,): (Resource<GpuComputePipeline>,)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, pipeline_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pipeline_rep == 0 {
@@ -9098,8 +9155,7 @@ pub(crate) fn define_host(
                 |mut caller, (pipeline, label): (Resource<GpuComputePipeline>, String)| {
                     let pipeline_rep = caller.data_mut().table.get(&pipeline)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, pipeline_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pipeline_rep == 0 {
@@ -9676,7 +9732,7 @@ pub(crate) fn define_host(
                 |mut caller, (encoder,): (Resource<GpuCommandEncoder>,)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, encoder_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if encoder_rep == 0 {
@@ -9701,8 +9757,7 @@ pub(crate) fn define_host(
                 |mut caller, (encoder, label): (Resource<GpuCommandEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, encoder_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if encoder_rep == 0 {
@@ -9872,7 +9927,7 @@ pub(crate) fn define_host(
                 |mut caller, (query_set,): (Resource<GpuQuerySet>,)| {
                     let query_set_rep = caller.data_mut().table.get(&query_set)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, query_set_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if query_set_rep == 0 {
@@ -9896,8 +9951,7 @@ pub(crate) fn define_host(
                 |mut caller, (query_set, label): (Resource<GpuQuerySet>, String)| {
                     let query_set_rep = caller.data_mut().table.get(&query_set)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, query_set_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if query_set_rep == 0 {
@@ -10480,7 +10534,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .encoder_debug(encoder_rep)
+                            .encoder_debug(encoder_rep, DebugOp::Push, &group_label)
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -10510,7 +10564,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .encoder_debug(encoder_rep)
+                            .encoder_debug(encoder_rep, DebugOp::Pop, "")
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -10540,7 +10594,7 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .encoder_debug(encoder_rep)
+                            .encoder_debug(encoder_rep, DebugOp::Insert, &marker_label)
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -10642,7 +10696,7 @@ pub(crate) fn define_host(
                 |mut caller, (buffer,): (Resource<GpuCommandBuffer>,)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, buffer_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if buffer_rep == 0 {
@@ -10669,8 +10723,7 @@ pub(crate) fn define_host(
                 |mut caller, (buffer, label): (Resource<GpuCommandBuffer>, String)| {
                     let buffer_rep = caller.data_mut().table.get(&buffer)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, buffer_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if buffer_rep == 0 {
@@ -10718,7 +10771,7 @@ pub(crate) fn define_host(
                 let resource = store
                     .data_mut()
                     .table
-                    .push(GpuCompilationInfo { shader_module: 0 })?;
+                    .push(GpuCompilationInfo { shader_module: 0, ..Default::default() })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -10727,7 +10780,7 @@ pub(crate) fn define_host(
                 let resource = store
                     .data_mut()
                     .table
-                    .push(GpuCompilationMessage { shader_module: 0 })?;
+                    .push(GpuCompilationMessage { shader_module: 0, ..Default::default() })?;
                 Ok((resource,))
             })
             .map_err(|e| e.to_string())?;
@@ -10737,7 +10790,12 @@ pub(crate) fn define_host(
                 |mut caller, (info,): (Resource<GpuCompilationInfo>,)| {
                     let info_shader = caller.data_mut().table.get(&info)?.shader_module;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((Vec::<Resource<GpuCompilationMessage>>::new(),));
+                        let msgs = caller.data_mut().table.get(&info)?.messages.clone();
+                        let mut messages = Vec::with_capacity(msgs.len());
+                        for m in msgs {
+                            messages.push(caller.data_mut().table.push(m)?);
+                        }
+                        return Ok((messages,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if info_shader == 0 {
@@ -10763,6 +10821,7 @@ pub(crate) fn define_host(
                     for _ in 0..count {
                         messages.push(caller.data_mut().table.push(GpuCompilationMessage {
                             shader_module: l2_shader,
+                            ..Default::default()
                         })?);
                     }
                     Ok((messages,))
@@ -10775,7 +10834,8 @@ pub(crate) fn define_host(
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        let message = caller.data_mut().table.get(&msg)?.message.clone();
+                        return Ok((message,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
@@ -10807,7 +10867,8 @@ pub(crate) fn define_host(
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((GpuCompilationMessageType::from_host_u32(0),));
+                        let ty = caller.data_mut().table.get(&msg)?.ty;
+                        return Ok((GpuCompilationMessageType::from_host_u32(ty),));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
@@ -10839,7 +10900,8 @@ pub(crate) fn define_host(
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((0u64,));
+                        let line_num = caller.data_mut().table.get(&msg)?.line_num;
+                        return Ok((line_num,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
@@ -10871,7 +10933,8 @@ pub(crate) fn define_host(
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((0u64,));
+                        let line_pos = caller.data_mut().table.get(&msg)?.line_pos;
+                        return Ok((line_pos,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
@@ -10903,7 +10966,8 @@ pub(crate) fn define_host(
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((0u64,));
+                        let offset = caller.data_mut().table.get(&msg)?.offset;
+                        return Ok((offset,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
@@ -10935,7 +10999,8 @@ pub(crate) fn define_host(
                 |mut caller, (msg,): (Resource<GpuCompilationMessage>,)| {
                     let msg_shader = caller.data_mut().table.get(&msg)?.shader_module;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((0u64,));
+                        let length = caller.data_mut().table.get(&msg)?.length;
+                        return Ok((length,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2_shader = if msg_shader == 0 {
@@ -10967,7 +11032,7 @@ pub(crate) fn define_host(
                 |mut caller, (queue,): (Resource<GpuQueue>,)| {
                     let queue_rep = caller.data_mut().table.get(&queue)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, queue_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if queue_rep == 0 {
@@ -10991,8 +11056,7 @@ pub(crate) fn define_host(
                 |mut caller, (queue, label): (Resource<GpuQueue>, String)| {
                     let queue_rep = caller.data_mut().table.get(&queue)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, queue_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if queue_rep == 0 {
@@ -11858,7 +11922,12 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_render_pass(pass_rep)
+                            .pass_debug(
+                                ResourceKind::RenderPassEncoder,
+                                pass_rep,
+                                DebugOp::Push,
+                                &group_label,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -11890,7 +11959,12 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_render_pass(pass_rep)
+                            .pass_debug(
+                                ResourceKind::RenderPassEncoder,
+                                pass_rep,
+                                DebugOp::Pop,
+                                "",
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -11922,7 +11996,12 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_render_pass(pass_rep)
+                            .pass_debug(
+                                ResourceKind::RenderPassEncoder,
+                                pass_rep,
+                                DebugOp::Insert,
+                                &marker_label,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -12015,7 +12094,7 @@ pub(crate) fn define_host(
                 |mut caller, (pass,): (Resource<GpuRenderPassEncoder>,)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, pass_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pass_rep == 0 {
@@ -12056,8 +12135,7 @@ pub(crate) fn define_host(
                 |mut caller, (pass, label): (Resource<GpuRenderPassEncoder>, String)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, pass_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pass_rep == 0 {
@@ -12115,7 +12193,7 @@ pub(crate) fn define_host(
                 |mut caller, (bundle,): (Resource<GpuRenderBundle>,)| {
                     let bundle_rep = caller.data_mut().table.get(&bundle)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, bundle_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if bundle_rep == 0 {
@@ -12148,8 +12226,7 @@ pub(crate) fn define_host(
                 |mut caller, (bundle, label): (Resource<GpuRenderBundle>, String)| {
                     let bundle_rep = caller.data_mut().table.get(&bundle)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, bundle_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if bundle_rep == 0 {
@@ -12229,10 +12306,16 @@ pub(crate) fn define_host(
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let bytes = slice_immediate_bytes(&data, data_offset, data_size);
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_render_pass(pass_rep)
+                            .set_immediates(
+                                ResourceKind::RenderPassEncoder,
+                                pass_rep,
+                                range_offset,
+                                bytes,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -12288,7 +12371,7 @@ pub(crate) fn define_host(
                 |mut caller, (encoder,): (Resource<GpuRenderBundleEncoder>,)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, encoder_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if encoder_rep == 0 {
@@ -12313,8 +12396,7 @@ pub(crate) fn define_host(
                 |mut caller, (encoder, label): (Resource<GpuRenderBundleEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, encoder_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if encoder_rep == 0 {
@@ -12872,6 +12954,16 @@ pub(crate) fn define_host(
                 |mut caller, (encoder, group_label): (Resource<GpuRenderBundleEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pass_debug(
+                                ResourceKind::RenderBundleEncoder,
+                                encoder_rep,
+                                DebugOp::Push,
+                                &group_label,
+                            )
+                            .map_err(native_gpu_error)?;
                         return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -12906,6 +12998,16 @@ pub(crate) fn define_host(
                 |mut caller, (encoder,): (Resource<GpuRenderBundleEncoder>,)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pass_debug(
+                                ResourceKind::RenderBundleEncoder,
+                                encoder_rep,
+                                DebugOp::Pop,
+                                "",
+                            )
+                            .map_err(native_gpu_error)?;
                         return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -12936,6 +13038,16 @@ pub(crate) fn define_host(
                 |mut caller, (encoder, marker_label): (Resource<GpuRenderBundleEncoder>, String)| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .pass_debug(
+                                ResourceKind::RenderBundleEncoder,
+                                encoder_rep,
+                                DebugOp::Insert,
+                                &marker_label,
+                            )
+                            .map_err(native_gpu_error)?;
                         return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -12977,6 +13089,17 @@ pub(crate) fn define_host(
                 )| {
                     let encoder_rep = caller.data_mut().table.get(&encoder)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let bytes = slice_immediate_bytes(&data, data_offset, data_size);
+                        caller
+                            .data_mut()
+                            .require_native_gpu()?
+                            .set_immediates(
+                                ResourceKind::RenderBundleEncoder,
+                                encoder_rep,
+                                range_offset,
+                                bytes,
+                            )
+                            .map_err(native_gpu_error)?;
                         return Ok(());
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
@@ -13023,7 +13146,7 @@ pub(crate) fn define_host(
                 |mut caller, (pass,): (Resource<GpuComputePassEncoder>,)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        return Ok((String::new(),));
+                        return Ok((native_label(&mut caller, pass_rep)?,));
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pass_rep == 0 {
@@ -13050,8 +13173,7 @@ pub(crate) fn define_host(
                 |mut caller, (pass, label): (Resource<GpuComputePassEncoder>, String)| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
-                        let _ = label;
-                        return Ok(());
+                        return native_set_label(&mut caller, pass_rep, label);
                     }
                     let cb = caller.data().require_webgpu_jni_cb()?;
                     let l2 = if pass_rep == 0 {
@@ -13288,10 +13410,16 @@ pub(crate) fn define_host(
                 )| {
                     let pass_rep = caller.data_mut().table.get(&pass)?.rep;
                     if caller.data().webgpu_backend() == GpuBackend::NativeGpu {
+                        let bytes = slice_immediate_bytes(&data, data_offset, data_size);
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_compute_pass(pass_rep)
+                            .set_immediates(
+                                ResourceKind::ComputePassEncoder,
+                                pass_rep,
+                                range_offset,
+                                bytes,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -13330,7 +13458,12 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_compute_pass(pass_rep)
+                            .pass_debug(
+                                ResourceKind::ComputePassEncoder,
+                                pass_rep,
+                                DebugOp::Push,
+                                &group_label,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -13362,7 +13495,12 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_compute_pass(pass_rep)
+                            .pass_debug(
+                                ResourceKind::ComputePassEncoder,
+                                pass_rep,
+                                DebugOp::Pop,
+                                "",
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
@@ -13394,7 +13532,12 @@ pub(crate) fn define_host(
                         caller
                             .data_mut()
                             .require_native_gpu()?
-                            .resolve_compute_pass(pass_rep)
+                            .pass_debug(
+                                ResourceKind::ComputePassEncoder,
+                                pass_rep,
+                                DebugOp::Insert,
+                                &marker_label,
+                            )
                             .map_err(native_gpu_error)?;
                         return Ok(());
                     }
