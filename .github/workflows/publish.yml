@@ -3,11 +3,17 @@
 #
 # Never run from release/0.1.0. Never auto-publish on push to a branch.
 # Press: annotated tag v0.x.y or v0.x.y-SNAPSHOT on main, or workflow_dispatch
-# from main, both gated by GitHub Environment "release".
+# from main, both gated by GitHub Environment "release" on the upload job.
 # SNAPSHOT GAV is allowed (Central publishing limits: snapshots do not consume
 # a release quota and may be overwritten). Packs Google Android prebuilt
 # libwebgpu_dawn.so into :host-dawn. Missing arm64 wasmtime or Dawn C .so
 # fails (does not skip). Never publish :smoke-app.
+#
+# Stages (retry a failed job without re-running the others):
+#   gate → native ∥ dawn → pack → snapshot / publish
+#                                ↘ release / publish
+# GAV -SNAPSHOT takes the snapshot line; a non-SNAPSHOT GAV takes release.
+# The unused line is skipped so both branches stay visible on the graph.
 name: Publish
 
 on:
@@ -34,14 +40,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: publish
+  gate:
+    name: gate
     runs-on: ubuntu-latest
-    timeout-minutes: 180
-    environment: release
+    timeout-minutes: 10
     if: >-
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
       || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    outputs:
+      version: ${{ steps.channel.outputs.version }}
+      channel: ${{ steps.channel.outputs.channel }}
+      destination: ${{ steps.channel.outputs.destination }}
+      publish_github: ${{ steps.channel.outputs.publish_github }}
+      publish_central: ${{ steps.channel.outputs.publish_central }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -57,6 +68,31 @@ jobs:
             exit 1
           fi
 
+      - name: Classify snapshot vs release line
+        id: channel
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            DEST="${{ inputs.destination }}"
+            TAG=""
+          else
+            DEST="both"
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          python3 ./scripts/publish-channel.py \
+            --event "${{ github.event_name }}" \
+            --destination "$DEST" \
+            --tag "$TAG" \
+            --github-output "$GITHUB_OUTPUT"
+
+  native:
+    name: native (wasmtime .so)
+    needs: [gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config
 
@@ -69,11 +105,65 @@ jobs:
       - name: Build Android natives
         uses: ./.github/actions/build-android-natives
 
+      - name: Upload jniLibs
+        uses: actions/upload-artifact@v4
+        with:
+          name: press-jniLibs
+          path: android/jniLibs
+          if-no-files-found: error
+          retention-days: 7
+
+  dawn:
+    name: dawn (libwebgpu_dawn.so)
+    needs: [gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK and platform
+        run: |
+          set -euo pipefail
+          sdkmanager "ndk;28.2.13676358" "platforms;android-36" "build-tools;36.0.0"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-$ANDROID_HOME}" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+
       - name: Link Dawn C libwebgpu_dawn.so (--prebuilt)
         uses: ./.github/actions/build-dawn-c
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Upload Dawn C .so
+        uses: actions/upload-artifact@v4
+        with:
+          name: press-dawn-c
+          path: native/third_party/dawn-c/out
+          if-no-files-found: error
+          retention-days: 7
+
+  pack:
+    name: pack (AAR + verify)
+    needs: [gate, native, dawn]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download jniLibs
+        uses: actions/download-artifact@v4
+        with:
+          name: press-jniLibs
+          path: android/jniLibs
+
+      - name: Download Dawn C .so
+        uses: actions/download-artifact@v4
+        with:
+          name: press-dawn-c
+          path: native/third_party/dawn-c/out
+
+      - name: Setup press Java / SDK / Gradle
+        uses: ./.github/actions/setup-press-java
 
       - name: Assemble published AARs
         run: |
@@ -83,63 +173,71 @@ jobs:
           DAWN_SO="native/third_party/dawn-c/out/arm64-v8a/libwebgpu_dawn.so"
           test -f "$SO"
           test -f "$DAWN_SO"
+          VERSION="$(grep -E '^wasmtime\.android\.version=' gradle.properties | cut -d= -f2-)"
+          echo "Packing GAV ${VERSION} on ${{ needs.gate.outputs.channel }} line"
           ./gradlew :android:assembleRelease :host-dawn:assembleRelease --no-configuration-cache
 
       - name: AAR .so SHA must match recipe
         run: python3 ./scripts/verify-press-aar.py
 
-      - name: Publish
+      - name: Upload press AARs
+        uses: actions/upload-artifact@v4
+        with:
+          name: press-aars
+          path: |
+            android/build/outputs/aar/*.aar
+            host-dawn/build/outputs/aar/*.aar
+          if-no-files-found: error
+          retention-days: 7
+
+  snapshot:
+    name: snapshot / publish (${{ needs.gate.outputs.version }})
+    needs: [gate, pack]
+    if: needs.gate.outputs.channel == 'snapshot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: release
+      url: https://central.sonatype.com/repository/maven-snapshots/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup press Java / SDK / Gradle
+        uses: ./.github/actions/setup-press-java
+
+      - name: Publish SNAPSHOT
+        uses: ./.github/actions/press-publish
+        with:
+          destination: ${{ needs.gate.outputs.destination }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           SIGNING_IN_MEMORY_KEY: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
           SIGNING_IN_MEMORY_KEY_PASSWORD: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          chmod +x gradlew
-          VERSION="$(grep -E '^wasmtime\.android\.version=' gradle.properties | cut -d= -f2-)"
-          echo "Publishing GAV ${VERSION} (SNAPSHOT is allowed; Central snapshots skip release quota)"
-          SO="android/jniLibs/arm64-v8a/libwasmtime_android_kt.so"
-          DAWN_SO="native/third_party/dawn-c/out/arm64-v8a/libwebgpu_dawn.so"
-          if [ ! -f "$SO" ]; then
-            echo "missing $SO after cargo-ndk (cannot press)"
-            exit 1
-          fi
-          if [ ! -f "$DAWN_SO" ]; then
-            echo "missing $DAWN_SO after Dawn C recipe (cannot press)"
-            exit 1
-          fi
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            DEST="${{ inputs.destination }}"
-          else
-            DEST="both"
-          fi
+  release:
+    name: release / publish (${{ needs.gate.outputs.version }})
+    needs: [gate, pack]
+    if: needs.gate.outputs.channel == 'release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: release
+      url: https://repo1.maven.org/maven2/
+    steps:
+      - uses: actions/checkout@v4
 
-          publish_github=0
-          publish_central=0
-          case "$DEST" in
-            github-packages) publish_github=1 ;;
-            maven-central) publish_central=1 ;;
-            both) publish_github=1; publish_central=1 ;;
-            *) echo "unknown destination: $DEST"; exit 1 ;;
-          esac
+      - name: Setup press Java / SDK / Gradle
+        uses: ./.github/actions/setup-press-java
 
-          if [ "$publish_github" -eq 1 ]; then
-            export ORG_GRADLE_PROJECT_githubPackagesUsername="${GITHUB_ACTOR}"
-            export ORG_GRADLE_PROJECT_githubPackagesPassword="${GITHUB_TOKEN}"
-            ./gradlew publishAllPublicationsToGithubPackagesRepository --no-configuration-cache
-          fi
-
-          if [ "$publish_central" -eq 1 ]; then
-            if [ -z "${MAVEN_CENTRAL_USERNAME:-}" ] || [ -z "${MAVEN_CENTRAL_PASSWORD:-}" ] || [ -z "${SIGNING_IN_MEMORY_KEY:-}" ]; then
-              echo "Maven Central secrets missing (MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD / SIGNING_IN_MEMORY_KEY)"
-              exit 1
-            fi
-            export ORG_GRADLE_PROJECT_mavenCentralUsername="${MAVEN_CENTRAL_USERNAME}"
-            export ORG_GRADLE_PROJECT_mavenCentralPassword="${MAVEN_CENTRAL_PASSWORD}"
-            export ORG_GRADLE_PROJECT_signingInMemoryKey="${SIGNING_IN_MEMORY_KEY}"
-            export ORG_GRADLE_PROJECT_signingInMemoryKeyPassword="${SIGNING_IN_MEMORY_KEY_PASSWORD:-}"
-            ./gradlew publishToMavenCentral -PmavenCentralPublishing=true -PsignAllPublications=true --no-configuration-cache
-          fi
+      - name: Publish release
+        uses: ./.github/actions/press-publish
+        with:
+          destination: ${{ needs.gate.outputs.destination }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          SIGNING_IN_MEMORY_KEY: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+          SIGNING_IN_MEMORY_KEY_PASSWORD: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}

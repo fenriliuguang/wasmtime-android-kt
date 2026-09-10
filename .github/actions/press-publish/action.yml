@@ -1,0 +1,71 @@
+name: Press publish
+description: Upload this checkout's press AARs to GitHub Packages and/or Maven Central.
+
+inputs:
+  destination:
+    description: github-packages, maven-central, or both
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Download jniLibs
+      uses: actions/download-artifact@v4
+      with:
+        name: press-jniLibs
+        path: android/jniLibs
+
+    - name: Download Dawn C .so
+      uses: actions/download-artifact@v4
+      with:
+        name: press-dawn-c
+        path: native/third_party/dawn-c/out
+
+    - name: Assemble and verify press AARs
+      shell: bash
+      run: |
+        set -euo pipefail
+        chmod +x gradlew
+        SO="android/jniLibs/arm64-v8a/libwasmtime_android_kt.so"
+        DAWN_SO="native/third_party/dawn-c/out/arm64-v8a/libwebgpu_dawn.so"
+        test -f "$SO"
+        test -f "$DAWN_SO"
+        ./gradlew :android:assembleRelease :host-dawn:assembleRelease --no-configuration-cache
+        python3 ./scripts/verify-press-aar.py
+
+    - name: Publish
+      shell: bash
+      env:
+        DEST: ${{ inputs.destination }}
+      run: |
+        set -euo pipefail
+        chmod +x gradlew
+        VERSION="$(grep -E '^wasmtime\.android\.version=' gradle.properties | cut -d= -f2-)"
+        echo "Publishing GAV ${VERSION} dest ${DEST} (SNAPSHOT is allowed; Central snapshots skip release quota)"
+
+        publish_github=0
+        publish_central=0
+        case "$DEST" in
+          github-packages) publish_github=1 ;;
+          maven-central) publish_central=1 ;;
+          both) publish_github=1; publish_central=1 ;;
+          *) echo "unknown destination: $DEST"; exit 1 ;;
+        esac
+
+        if [ "$publish_github" -eq 1 ]; then
+          export ORG_GRADLE_PROJECT_githubPackagesUsername="${GITHUB_ACTOR}"
+          export ORG_GRADLE_PROJECT_githubPackagesPassword="${GITHUB_TOKEN}"
+          ./gradlew publishAllPublicationsToGithubPackagesRepository --no-configuration-cache
+        fi
+
+        if [ "$publish_central" -eq 1 ]; then
+          if [ -z "${MAVEN_CENTRAL_USERNAME:-}" ] || [ -z "${MAVEN_CENTRAL_PASSWORD:-}" ] || [ -z "${SIGNING_IN_MEMORY_KEY:-}" ]; then
+            echo "Maven Central secrets missing (MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD / SIGNING_IN_MEMORY_KEY)"
+            exit 1
+          fi
+          export ORG_GRADLE_PROJECT_mavenCentralUsername="${MAVEN_CENTRAL_USERNAME}"
+          export ORG_GRADLE_PROJECT_mavenCentralPassword="${MAVEN_CENTRAL_PASSWORD}"
+          export ORG_GRADLE_PROJECT_signingInMemoryKey="${SIGNING_IN_MEMORY_KEY}"
+          export ORG_GRADLE_PROJECT_signingInMemoryKeyPassword="${SIGNING_IN_MEMORY_KEY_PASSWORD:-}"
+          ./gradlew publishToMavenCentral -PmavenCentralPublishing=true -PsignAllPublications=true --no-configuration-cache
+        fi

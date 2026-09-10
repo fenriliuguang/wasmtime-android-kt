@@ -8,7 +8,7 @@ An **upstream Wasmtime** embedding for Android (JNI / ART) that hosts [Component
 
 This repository is a **citable Android host** on the Wasm component chain — not a UI toolkit, not a **rewritten** Dawn, and not a production WASI distro. The **default product/test artifact includes Dawn**; the core runtime AAR does not. See [`rfc.md`](docs/scheme/rfc.md).
 
-Status: **experimental `0.x`**. Coordinate **`0.1.3-SNAPSHOT`**. No compliant wasi:webgpu / CTS claim. Product subset: [`claim-010.md`](docs/scheme/claim-010.md). Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) (tag `v*` on `main` or `workflow_dispatch` from `main`, GitHub Environment `release`). SNAPSHOT is allowed (Central publishing limits).
+Status: **experimental `0.x`**. Coordinate **`0.1.3-SNAPSHOT`**. No compliant wasi:webgpu / CTS claim. Product subset: [`claim-010.md`](docs/scheme/claim-010.md). Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) (tag `v*` on `main` or `workflow_dispatch` from `main`; stages `native` ∥ `dawn` → `pack`, then a **snapshot** or **release** line; GitHub Environment `release` on upload). SNAPSHOT is allowed (Central publishing limits).
 
 Do **not** file upstream GitHub issues. Non-urgent: `context.unconfigure`, timestamped `frame-event`, Lost/Outdated `result`, multi-window.
 
