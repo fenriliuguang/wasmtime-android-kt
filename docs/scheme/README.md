@@ -9,7 +9,8 @@ Product RFC and shape docs. Language: [`../LANGUAGE.md`](../LANGUAGE.md). Coordi
 | [`rfc.md`](rfc.md) | **Accepted:** product / GPU host / gfx loop |
 | [`rfc-threads.md`](rfc-threads.md) | **Draft:** guest concurrency / stackful CM async (sibling short PR) |
 | [`rfc-wasi-p3.md`](rfc-wasi-p3.md) | **Draft:** leftover fill vs completeness |
-| [`wasi-p3-leftover.md`](wasi-p3-leftover.md) | Living WASI leftover `L-*` queue (thin host) |
+| [`wasi-p3-leftover.md`](wasi-p3-leftover.md) | WASI leftover `L-*` queue (empty) |
+| [`nativegpu-remaining.md`](nativegpu-remaining.md) | NativeGpu Remaining Table `N-*` auto queue |
 | [`claim-010.md`](claim-010.md) | 0.1.x claim table (not CTS) |
 | [`guest-shape.md`](guest-shape.md) | WIT shape gates |
 | [`charter.md`](charter.md) | Vision / principles |

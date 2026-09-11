@@ -5,8 +5,9 @@
 
 #![allow(non_camel_case_types, dead_code)]
 
+use std::collections::{HashMap, VecDeque};
 use std::ffi::{c_char, c_void};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 use crate::native_gpu::{DawnSlot, ResourceKind};
 
@@ -149,6 +150,150 @@ struct UncapturedInfo {
     callback: *const c_void,
     userdata1: *mut c_void,
     userdata2: *mut c_void,
+}
+
+#[repr(C)]
+struct CompilationMessageC {
+    next_in_chain: *mut Chained,
+    message: StringView,
+    ty: WgpuEnum,
+    line_num: u64,
+    line_pos: u64,
+    offset: u64,
+    length: u64,
+}
+
+#[repr(C)]
+struct CompilationInfoC {
+    next_in_chain: *mut Chained,
+    message_count: usize,
+    messages: *const CompilationMessageC,
+}
+
+/// Dawn `WGPUCompilationMessage` snapshot (WIT host ordinal in `ty`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CompilationMessage {
+    pub message: String,
+    pub ty: u32,
+    pub line_num: u64,
+    pub line_pos: u64,
+    pub offset: u64,
+    pub length: u64,
+}
+
+/// `pop-error-scope` after the Dawn callback (table-backed → `None`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PopErrorOutcome {
+    None,
+    Error { kind: u32, message: String },
+    Operation { message: String },
+}
+
+/// Command-encoder / pass / bundle debug group·marker.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DebugOp {
+    Push,
+    Pop,
+    Insert,
+}
+
+#[derive(Default)]
+struct DeviceEvents {
+    uncaptured: VecDeque<(u32, String)>,
+    lost: Option<(u32, String)>,
+}
+
+fn device_events() -> &'static Mutex<HashMap<DawnSlot, DeviceEvents>> {
+    static M: OnceLock<Mutex<HashMap<DawnSlot, DeviceEvents>>> = OnceLock::new();
+    M.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn forget_device_events(slot: DawnSlot) {
+    if slot == 0 {
+        return;
+    }
+    if let Ok(mut map) = device_events().lock() {
+        map.remove(&slot);
+    }
+}
+
+pub fn drain_uncaptured(slot: DawnSlot) -> Vec<(u32, String)> {
+    if slot == 0 {
+        return Vec::new();
+    }
+    device_events()
+        .lock()
+        .ok()
+        .and_then(|mut map| map.get_mut(&slot).map(|e| e.uncaptured.drain(..).collect()))
+        .unwrap_or_default()
+}
+
+pub fn peek_uncaptured(slot: DawnSlot) -> (u32, String) {
+    if slot == 0 {
+        return (0, String::new());
+    }
+    device_events()
+        .lock()
+        .ok()
+        .and_then(|map| map.get(&slot).and_then(|e| e.uncaptured.back().cloned()))
+        .unwrap_or((0, String::new()))
+}
+
+pub fn device_lost_info(slot: DawnSlot) -> (u32, String) {
+    if slot == 0 {
+        return (0, String::new());
+    }
+    device_events()
+        .lock()
+        .ok()
+        .and_then(|map| map.get(&slot).and_then(|e| e.lost.clone()))
+        .unwrap_or((0, String::new()))
+}
+
+fn push_uncaptured(slot: DawnSlot, kind: u32, message: String) {
+    if slot == 0 {
+        return;
+    }
+    if let Ok(mut map) = device_events().lock() {
+        map.entry(slot).or_default().uncaptured.push_back((kind, message));
+    }
+}
+
+fn set_lost(slot: DawnSlot, reason: u32, message: String) {
+    if slot == 0 {
+        return;
+    }
+    if let Ok(mut map) = device_events().lock() {
+        map.entry(slot).or_default().lost = Some((reason, message));
+    }
+}
+
+fn error_kind_from_dawn(ty: WgpuEnum) -> Option<u32> {
+    match ty {
+        2 => Some(0),
+        3 => Some(1),
+        4 => Some(2),
+        _ => None,
+    }
+}
+
+fn lost_reason_from_dawn(reason: WgpuEnum) -> u32 {
+    match reason {
+        2 => 1,
+        _ => 0,
+    }
+}
+
+fn wgsl_feature_enum(name: &str) -> u32 {
+    let n = name.trim().replace('-', "_");
+    match n.as_str() {
+        "readonly_and_readwrite_storage_textures" => 1,
+        "packed_4x8_integer_dot_product" => 2,
+        "unrestricted_pointer_parameters" => 3,
+        "pointer_composite_access" => 4,
+        "sized_binding_array" => 5,
+        _ => 0,
+    }
 }
 
 #[repr(C)]
@@ -619,6 +764,232 @@ struct TexelCopyTextureInfo {
     aspect: WgpuEnum,
 }
 
+/// Guest texel copy fields forwarded into `texel_tex` / `texel_buf`.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct TexelCopyParams {
+    pub offset: u64,
+    pub bytes_per_row: u32,
+    pub rows_per_image: u32,
+    pub mip_level: u32,
+    pub origin_x: u32,
+    pub origin_y: u32,
+    pub origin_z: u32,
+    pub aspect: u32,
+}
+
+/// `gpu-supported-limits` snapshot. Table-backed (no `.so`) is all `1`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeLimits {
+    pub max_texture_dimension_1d: u32,
+    pub max_texture_dimension_2d: u32,
+    pub max_texture_dimension_3d: u32,
+    pub max_texture_array_layers: u32,
+    pub max_bind_groups: u32,
+    pub max_bind_groups_plus_vertex_buffers: u32,
+    pub max_bindings_per_bind_group: u32,
+    pub max_dynamic_uniform_buffers_per_pipeline_layout: u32,
+    pub max_dynamic_storage_buffers_per_pipeline_layout: u32,
+    pub max_sampled_textures_per_shader_stage: u32,
+    pub max_samplers_per_shader_stage: u32,
+    pub max_storage_buffers_per_shader_stage: u32,
+    pub max_storage_textures_per_shader_stage: u32,
+    pub max_uniform_buffers_per_shader_stage: u32,
+    pub max_uniform_buffer_binding_size: u64,
+    pub max_storage_buffer_binding_size: u64,
+    pub min_uniform_buffer_offset_alignment: u32,
+    pub min_storage_buffer_offset_alignment: u32,
+    pub max_vertex_buffers: u32,
+    pub max_buffer_size: u64,
+    pub max_vertex_attributes: u32,
+    pub max_vertex_buffer_array_stride: u32,
+    pub max_inter_stage_shader_variables: u32,
+    pub max_color_attachments: u32,
+    pub max_color_attachment_bytes_per_sample: u32,
+    pub max_compute_workgroup_storage_size: u32,
+    pub max_compute_invocations_per_workgroup: u32,
+    pub max_compute_workgroup_size_x: u32,
+    pub max_compute_workgroup_size_y: u32,
+    pub max_compute_workgroup_size_z: u32,
+    pub max_compute_workgroups_per_dimension: u32,
+    pub max_immediate_size: u32,
+    pub max_storage_buffers_in_vertex_stage: u32,
+    pub max_storage_textures_in_vertex_stage: u32,
+    pub max_storage_buffers_in_fragment_stage: u32,
+    pub max_storage_textures_in_fragment_stage: u32,
+}
+
+impl NativeLimits {
+    pub const TABLE: Self = Self {
+        max_texture_dimension_1d: 1,
+        max_texture_dimension_2d: 1,
+        max_texture_dimension_3d: 1,
+        max_texture_array_layers: 1,
+        max_bind_groups: 1,
+        max_bind_groups_plus_vertex_buffers: 1,
+        max_bindings_per_bind_group: 1,
+        max_dynamic_uniform_buffers_per_pipeline_layout: 1,
+        max_dynamic_storage_buffers_per_pipeline_layout: 1,
+        max_sampled_textures_per_shader_stage: 1,
+        max_samplers_per_shader_stage: 1,
+        max_storage_buffers_per_shader_stage: 1,
+        max_storage_textures_per_shader_stage: 1,
+        max_uniform_buffers_per_shader_stage: 1,
+        max_uniform_buffer_binding_size: 1,
+        max_storage_buffer_binding_size: 1,
+        min_uniform_buffer_offset_alignment: 1,
+        min_storage_buffer_offset_alignment: 1,
+        max_vertex_buffers: 1,
+        max_buffer_size: 1,
+        max_vertex_attributes: 1,
+        max_vertex_buffer_array_stride: 1,
+        max_inter_stage_shader_variables: 1,
+        max_color_attachments: 1,
+        max_color_attachment_bytes_per_sample: 1,
+        max_compute_workgroup_storage_size: 1,
+        max_compute_invocations_per_workgroup: 1,
+        max_compute_workgroup_size_x: 1,
+        max_compute_workgroup_size_y: 1,
+        max_compute_workgroup_size_z: 1,
+        max_compute_workgroups_per_dimension: 1,
+        max_immediate_size: 1,
+        max_storage_buffers_in_vertex_stage: 1,
+        max_storage_textures_in_vertex_stage: 1,
+        max_storage_buffers_in_fragment_stage: 1,
+        max_storage_textures_in_fragment_stage: 1,
+    };
+}
+
+/// Dawn `WGPULimits` (press pin `webgpu.h`) plus tail padding if Dawn grows.
+#[repr(C)]
+struct WgpuLimits {
+    next_in_chain: *mut Chained,
+    max_texture_dimension_1d: u32,
+    max_texture_dimension_2d: u32,
+    max_texture_dimension_3d: u32,
+    max_texture_array_layers: u32,
+    max_bind_groups: u32,
+    max_bind_groups_plus_vertex_buffers: u32,
+    max_bindings_per_bind_group: u32,
+    max_dynamic_uniform_buffers_per_pipeline_layout: u32,
+    max_dynamic_storage_buffers_per_pipeline_layout: u32,
+    max_sampled_textures_per_shader_stage: u32,
+    max_samplers_per_shader_stage: u32,
+    max_storage_buffers_per_shader_stage: u32,
+    max_storage_textures_per_shader_stage: u32,
+    max_uniform_buffers_per_shader_stage: u32,
+    max_uniform_buffer_binding_size: u64,
+    max_storage_buffer_binding_size: u64,
+    min_uniform_buffer_offset_alignment: u32,
+    min_storage_buffer_offset_alignment: u32,
+    max_vertex_buffers: u32,
+    max_buffer_size: u64,
+    max_vertex_attributes: u32,
+    max_vertex_buffer_array_stride: u32,
+    max_inter_stage_shader_variables: u32,
+    max_color_attachments: u32,
+    max_color_attachment_bytes_per_sample: u32,
+    max_compute_workgroup_storage_size: u32,
+    max_compute_invocations_per_workgroup: u32,
+    max_compute_workgroup_size_x: u32,
+    max_compute_workgroup_size_y: u32,
+    max_compute_workgroup_size_z: u32,
+    max_compute_workgroups_per_dimension: u32,
+    max_immediate_size: u32,
+    max_storage_buffers_in_vertex_stage: u32,
+    max_storage_textures_in_vertex_stage: u32,
+    max_storage_buffers_in_fragment_stage: u32,
+    max_storage_textures_in_fragment_stage: u32,
+    _tail: [u64; 8],
+}
+
+impl WgpuLimits {
+    fn zeroed() -> Self {
+        Self {
+            next_in_chain: std::ptr::null_mut(),
+            max_texture_dimension_1d: 0,
+            max_texture_dimension_2d: 0,
+            max_texture_dimension_3d: 0,
+            max_texture_array_layers: 0,
+            max_bind_groups: 0,
+            max_bind_groups_plus_vertex_buffers: 0,
+            max_bindings_per_bind_group: 0,
+            max_dynamic_uniform_buffers_per_pipeline_layout: 0,
+            max_dynamic_storage_buffers_per_pipeline_layout: 0,
+            max_sampled_textures_per_shader_stage: 0,
+            max_samplers_per_shader_stage: 0,
+            max_storage_buffers_per_shader_stage: 0,
+            max_storage_textures_per_shader_stage: 0,
+            max_uniform_buffers_per_shader_stage: 0,
+            max_uniform_buffer_binding_size: 0,
+            max_storage_buffer_binding_size: 0,
+            min_uniform_buffer_offset_alignment: 0,
+            min_storage_buffer_offset_alignment: 0,
+            max_vertex_buffers: 0,
+            max_buffer_size: 0,
+            max_vertex_attributes: 0,
+            max_vertex_buffer_array_stride: 0,
+            max_inter_stage_shader_variables: 0,
+            max_color_attachments: 0,
+            max_color_attachment_bytes_per_sample: 0,
+            max_compute_workgroup_storage_size: 0,
+            max_compute_invocations_per_workgroup: 0,
+            max_compute_workgroup_size_x: 0,
+            max_compute_workgroup_size_y: 0,
+            max_compute_workgroup_size_z: 0,
+            max_compute_workgroups_per_dimension: 0,
+            max_immediate_size: 0,
+            max_storage_buffers_in_vertex_stage: 0,
+            max_storage_textures_in_vertex_stage: 0,
+            max_storage_buffers_in_fragment_stage: 0,
+            max_storage_textures_in_fragment_stage: 0,
+            _tail: [0; 8],
+        }
+    }
+
+    fn to_native(self) -> NativeLimits {
+        NativeLimits {
+            max_texture_dimension_1d: self.max_texture_dimension_1d,
+            max_texture_dimension_2d: self.max_texture_dimension_2d,
+            max_texture_dimension_3d: self.max_texture_dimension_3d,
+            max_texture_array_layers: self.max_texture_array_layers,
+            max_bind_groups: self.max_bind_groups,
+            max_bind_groups_plus_vertex_buffers: self.max_bind_groups_plus_vertex_buffers,
+            max_bindings_per_bind_group: self.max_bindings_per_bind_group,
+            max_dynamic_uniform_buffers_per_pipeline_layout: self
+                .max_dynamic_uniform_buffers_per_pipeline_layout,
+            max_dynamic_storage_buffers_per_pipeline_layout: self
+                .max_dynamic_storage_buffers_per_pipeline_layout,
+            max_sampled_textures_per_shader_stage: self.max_sampled_textures_per_shader_stage,
+            max_samplers_per_shader_stage: self.max_samplers_per_shader_stage,
+            max_storage_buffers_per_shader_stage: self.max_storage_buffers_per_shader_stage,
+            max_storage_textures_per_shader_stage: self.max_storage_textures_per_shader_stage,
+            max_uniform_buffers_per_shader_stage: self.max_uniform_buffers_per_shader_stage,
+            max_uniform_buffer_binding_size: self.max_uniform_buffer_binding_size,
+            max_storage_buffer_binding_size: self.max_storage_buffer_binding_size,
+            min_uniform_buffer_offset_alignment: self.min_uniform_buffer_offset_alignment,
+            min_storage_buffer_offset_alignment: self.min_storage_buffer_offset_alignment,
+            max_vertex_buffers: self.max_vertex_buffers,
+            max_buffer_size: self.max_buffer_size,
+            max_vertex_attributes: self.max_vertex_attributes,
+            max_vertex_buffer_array_stride: self.max_vertex_buffer_array_stride,
+            max_inter_stage_shader_variables: self.max_inter_stage_shader_variables,
+            max_color_attachments: self.max_color_attachments,
+            max_color_attachment_bytes_per_sample: self.max_color_attachment_bytes_per_sample,
+            max_compute_workgroup_storage_size: self.max_compute_workgroup_storage_size,
+            max_compute_invocations_per_workgroup: self.max_compute_invocations_per_workgroup,
+            max_compute_workgroup_size_x: self.max_compute_workgroup_size_x,
+            max_compute_workgroup_size_y: self.max_compute_workgroup_size_y,
+            max_compute_workgroup_size_z: self.max_compute_workgroup_size_z,
+            max_compute_workgroups_per_dimension: self.max_compute_workgroups_per_dimension,
+            max_immediate_size: self.max_immediate_size,
+            max_storage_buffers_in_vertex_stage: self.max_storage_buffers_in_vertex_stage,
+            max_storage_textures_in_vertex_stage: self.max_storage_textures_in_vertex_stage,
+            max_storage_buffers_in_fragment_stage: self.max_storage_buffers_in_fragment_stage,
+            max_storage_textures_in_fragment_stage: self.max_storage_textures_in_fragment_stage,
+        }
+    }
+}
+
 #[repr(C)]
 struct RenderBundleEncDesc {
     next_in_chain: *mut Chained,
@@ -734,6 +1105,7 @@ type FnMappedRange = unsafe extern "C" fn(WgpuObj, usize, usize) -> *const u8;
 type FnMappedRangeMut = unsafe extern "C" fn(WgpuObj, usize, usize) -> *mut u8;
 type FnAdapterGetInfo = unsafe extern "C" fn(WgpuObj, *mut AdapterInfo) -> WgpuEnum;
 type FnAdapterInfoFree = unsafe extern "C" fn(AdapterInfo);
+type FnGetLimits = unsafe extern "C" fn(WgpuObj, *mut WgpuLimits) -> WgpuEnum;
 type FnBufferGetSize = unsafe extern "C" fn(WgpuObj) -> u64;
 type FnBufferGetUsage = unsafe extern "C" fn(WgpuObj) -> WgpuFlags;
 type FnBufferGetMapState = unsafe extern "C" fn(WgpuObj) -> WgpuEnum;
@@ -742,6 +1114,10 @@ type FnTexEnum = unsafe extern "C" fn(WgpuObj) -> WgpuEnum;
 type FnTexUsage = unsafe extern "C" fn(WgpuObj) -> WgpuFlags;
 type FnDestroy = unsafe extern "C" fn(WgpuObj);
 type FnHasFeature = unsafe extern "C" fn(WgpuObj, WgpuEnum) -> WgpuBool;
+type FnSetLabel = unsafe extern "C" fn(WgpuObj, StringView);
+type FnPushDebug = unsafe extern "C" fn(WgpuObj, StringView);
+type FnPopDebug = unsafe extern "C" fn(WgpuObj);
+type FnSetImmediates = unsafe extern "C" fn(WgpuObj, u32, *const u8, usize);
 type FnViewport = unsafe extern "C" fn(WgpuObj, f32, f32, f32, f32, f32, f32);
 type FnScissor = unsafe extern "C" fn(WgpuObj, u32, u32, u32, u32);
 type FnBlend = unsafe extern "C" fn(WgpuObj, *const Color);
@@ -825,6 +1201,8 @@ procs! {
     buffer_mapped_range_mut: FnMappedRangeMut,
     adapter_get_info: FnAdapterGetInfo,
     adapter_info_free: FnAdapterInfoFree,
+    adapter_get_limits: FnGetLimits,
+    device_get_limits: FnGetLimits,
     buffer_get_size: FnBufferGetSize,
     buffer_get_usage: FnBufferGetUsage,
     buffer_get_map_state: FnBufferGetMapState,
@@ -868,6 +1246,42 @@ procs! {
     cp_get_bgl: FnGetBgl,
     push_error: FnPushError,
     pop_error: FnWorkDone,
+    shader_compinfo: FnWorkDone,
+    instance_has_wgsl: FnHasFeature,
+    set_label_device: FnSetLabel,
+    set_label_queue: FnSetLabel,
+    set_label_buffer: FnSetLabel,
+    set_label_texture: FnSetLabel,
+    set_label_view: FnSetLabel,
+    set_label_sampler: FnSetLabel,
+    set_label_shader: FnSetLabel,
+    set_label_bgl: FnSetLabel,
+    set_label_pl: FnSetLabel,
+    set_label_bg: FnSetLabel,
+    set_label_rp: FnSetLabel,
+    set_label_cp: FnSetLabel,
+    set_label_encoder: FnSetLabel,
+    set_label_cmd: FnSetLabel,
+    set_label_qs: FnSetLabel,
+    set_label_pass: FnSetLabel,
+    set_label_compute_pass: FnSetLabel,
+    set_label_bundle: FnSetLabel,
+    set_label_bundle_enc: FnSetLabel,
+    enc_push_debug: FnPushDebug,
+    enc_pop_debug: FnPopDebug,
+    enc_insert_debug: FnPushDebug,
+    pass_push_debug: FnPushDebug,
+    pass_pop_debug: FnPopDebug,
+    pass_insert_debug: FnPushDebug,
+    compute_push_debug: FnPushDebug,
+    compute_pop_debug: FnPopDebug,
+    compute_insert_debug: FnPushDebug,
+    bundle_push_debug: FnPushDebug,
+    bundle_pop_debug: FnPopDebug,
+    bundle_insert_debug: FnPushDebug,
+    pass_set_immediates: FnSetImmediates,
+    compute_set_immediates: FnSetImmediates,
+    bundle_set_immediates: FnSetImmediates,
     release_sampler: FnRelease,
     release_cp: FnRelease,
     release_qs: FnRelease,
@@ -1006,6 +1420,8 @@ fn load_once() -> Option<Api> {
             buffer_mapped_range_mut: std::mem::transmute(need(c"wgpuBufferGetMappedRange")),
             adapter_get_info: std::mem::transmute(need(c"wgpuAdapterGetInfo")),
             adapter_info_free: std::mem::transmute(need(c"wgpuAdapterInfoFreeMembers")),
+            adapter_get_limits: std::mem::transmute(need(c"wgpuAdapterGetLimits")),
+            device_get_limits: std::mem::transmute(need(c"wgpuDeviceGetLimits")),
             buffer_get_size: std::mem::transmute(need(c"wgpuBufferGetSize")),
             buffer_get_usage: std::mem::transmute(need(c"wgpuBufferGetUsage")),
             buffer_get_map_state: std::mem::transmute(need(c"wgpuBufferGetMapState")),
@@ -1067,6 +1483,50 @@ fn load_once() -> Option<Api> {
             cp_get_bgl: std::mem::transmute(need(c"wgpuComputePipelineGetBindGroupLayout")),
             push_error: std::mem::transmute(need(c"wgpuDevicePushErrorScope")),
             pop_error: std::mem::transmute(need(c"wgpuDevicePopErrorScope")),
+            shader_compinfo: std::mem::transmute(need(c"wgpuShaderModuleGetCompilationInfo")),
+            instance_has_wgsl: std::mem::transmute(need(c"wgpuInstanceHasWGSLLanguageFeature")),
+            set_label_device: std::mem::transmute(need(c"wgpuDeviceSetLabel")),
+            set_label_queue: std::mem::transmute(need(c"wgpuQueueSetLabel")),
+            set_label_buffer: std::mem::transmute(need(c"wgpuBufferSetLabel")),
+            set_label_texture: std::mem::transmute(need(c"wgpuTextureSetLabel")),
+            set_label_view: std::mem::transmute(need(c"wgpuTextureViewSetLabel")),
+            set_label_sampler: std::mem::transmute(need(c"wgpuSamplerSetLabel")),
+            set_label_shader: std::mem::transmute(need(c"wgpuShaderModuleSetLabel")),
+            set_label_bgl: std::mem::transmute(need(c"wgpuBindGroupLayoutSetLabel")),
+            set_label_pl: std::mem::transmute(need(c"wgpuPipelineLayoutSetLabel")),
+            set_label_bg: std::mem::transmute(need(c"wgpuBindGroupSetLabel")),
+            set_label_rp: std::mem::transmute(need(c"wgpuRenderPipelineSetLabel")),
+            set_label_cp: std::mem::transmute(need(c"wgpuComputePipelineSetLabel")),
+            set_label_encoder: std::mem::transmute(need(c"wgpuCommandEncoderSetLabel")),
+            set_label_cmd: std::mem::transmute(need(c"wgpuCommandBufferSetLabel")),
+            set_label_qs: std::mem::transmute(need(c"wgpuQuerySetSetLabel")),
+            set_label_pass: std::mem::transmute(need(c"wgpuRenderPassEncoderSetLabel")),
+            set_label_compute_pass: std::mem::transmute(need(c"wgpuComputePassEncoderSetLabel")),
+            set_label_bundle: std::mem::transmute(need(c"wgpuRenderBundleSetLabel")),
+            set_label_bundle_enc: std::mem::transmute(need(c"wgpuRenderBundleEncoderSetLabel")),
+            enc_push_debug: std::mem::transmute(need(c"wgpuCommandEncoderPushDebugGroup")),
+            enc_pop_debug: std::mem::transmute(need(c"wgpuCommandEncoderPopDebugGroup")),
+            enc_insert_debug: std::mem::transmute(need(c"wgpuCommandEncoderInsertDebugMarker")),
+            pass_push_debug: std::mem::transmute(need(c"wgpuRenderPassEncoderPushDebugGroup")),
+            pass_pop_debug: std::mem::transmute(need(c"wgpuRenderPassEncoderPopDebugGroup")),
+            pass_insert_debug: std::mem::transmute(need(c"wgpuRenderPassEncoderInsertDebugMarker")),
+            compute_push_debug: std::mem::transmute(need(c"wgpuComputePassEncoderPushDebugGroup")),
+            compute_pop_debug: std::mem::transmute(need(c"wgpuComputePassEncoderPopDebugGroup")),
+            compute_insert_debug: std::mem::transmute(need(
+                c"wgpuComputePassEncoderInsertDebugMarker",
+            )),
+            bundle_push_debug: std::mem::transmute(need(c"wgpuRenderBundleEncoderPushDebugGroup")),
+            bundle_pop_debug: std::mem::transmute(need(c"wgpuRenderBundleEncoderPopDebugGroup")),
+            bundle_insert_debug: std::mem::transmute(need(
+                c"wgpuRenderBundleEncoderInsertDebugMarker",
+            )),
+            pass_set_immediates: std::mem::transmute(need(c"wgpuRenderPassEncoderSetImmediates")),
+            compute_set_immediates: std::mem::transmute(need(
+                c"wgpuComputePassEncoderSetImmediates",
+            )),
+            bundle_set_immediates: std::mem::transmute(need(
+                c"wgpuRenderBundleEncoderSetImmediates",
+            )),
             release_sampler: std::mem::transmute(need(c"wgpuSamplerRelease")),
             release_cp: std::mem::transmute(need(c"wgpuComputePipelineRelease")),
             release_qs: std::mem::transmute(need(c"wgpuQuerySetRelease")),
@@ -1274,14 +1734,14 @@ pub fn request_device(
         },
         device_lost: CallbackInfo {
             next_in_chain: std::ptr::null_mut(),
-            mode: 0,
-            callback: std::ptr::null(),
+            mode: CALLBACK_PROCESS_EVENTS,
+            callback: on_device_lost as *const c_void,
             userdata1: std::ptr::null_mut(),
             userdata2: std::ptr::null_mut(),
         },
         uncaptured: UncapturedInfo {
             next_in_chain: std::ptr::null_mut(),
-            callback: std::ptr::null(),
+            callback: on_uncaptured as *const c_void,
             userdata1: std::ptr::null_mut(),
             userdata2: std::ptr::null_mut(),
         },
@@ -2239,12 +2699,19 @@ pub fn pass_set_pipeline(pass: DawnSlot, pipeline: DawnSlot) {
     }
 }
 
-pub fn pass_set_bind_group(pass: DawnSlot, index: u32, group: DawnSlot) {
+fn bind_group_offset_args(offsets: &[u32]) -> (usize, *const u32) {
+    if offsets.is_empty() {
+        (0, std::ptr::null())
+    } else {
+        (offsets.len(), offsets.as_ptr())
+    }
+}
+
+pub fn pass_set_bind_group(pass: DawnSlot, index: u32, group: DawnSlot, offsets: &[u32]) {
     if let Some(api) = api() {
         if pass != 0 {
-            unsafe {
-                (api.pass_set_bind_group)(as_ptr(pass), index, as_ptr(group), 0, std::ptr::null())
-            }
+            let (count, ptr) = bind_group_offset_args(offsets);
+            unsafe { (api.pass_set_bind_group)(as_ptr(pass), index, as_ptr(group), count, ptr) }
         }
     }
 }
@@ -2538,6 +3005,21 @@ fn texel_tex(
     }
 }
 
+fn texel_buf_params(buffer: DawnSlot, p: TexelCopyParams) -> TexelCopyBufferInfo {
+    texel_buf(buffer, p.offset, p.bytes_per_row, p.rows_per_image)
+}
+
+fn texel_tex_params(texture: DawnSlot, p: TexelCopyParams) -> TexelCopyTextureInfo {
+    texel_tex(
+        texture,
+        p.mip_level,
+        p.origin_x,
+        p.origin_y,
+        p.origin_z,
+        p.aspect,
+    )
+}
+
 pub fn copy_buffer_to_texture(
     encoder: DawnSlot,
     buffer: DawnSlot,
@@ -2545,11 +3027,13 @@ pub fn copy_buffer_to_texture(
     width: u32,
     height: u32,
     depth: u32,
+    src: TexelCopyParams,
+    dst: TexelCopyParams,
 ) {
     if let Some(api) = api() {
         if encoder != 0 && buffer != 0 && texture != 0 && proc_ok(api.copy_b2t) {
-            let src = texel_buf(buffer, 0, 0, 0);
-            let dst = texel_tex(texture, 0, 0, 0, 0, 0);
+            let src = texel_buf_params(buffer, src);
+            let dst = texel_tex_params(texture, dst);
             let size = Extent3D {
                 width: width.max(1),
                 height: height.max(1),
@@ -2567,11 +3051,13 @@ pub fn copy_texture_to_buffer(
     width: u32,
     height: u32,
     depth: u32,
+    src: TexelCopyParams,
+    dst: TexelCopyParams,
 ) {
     if let Some(api) = api() {
         if encoder != 0 && buffer != 0 && texture != 0 && proc_ok(api.copy_t2b) {
-            let src = texel_tex(texture, 0, 0, 0, 0, 0);
-            let dst = texel_buf(buffer, 0, 0, 0);
+            let src = texel_tex_params(texture, src);
+            let dst = texel_buf_params(buffer, dst);
             let size = Extent3D {
                 width: width.max(1),
                 height: height.max(1),
@@ -2589,11 +3075,13 @@ pub fn copy_texture_to_texture(
     width: u32,
     height: u32,
     depth: u32,
+    src_texel: TexelCopyParams,
+    dst_texel: TexelCopyParams,
 ) {
     if let Some(api) = api() {
         if encoder != 0 && src != 0 && dst != 0 && proc_ok(api.copy_t2t) {
-            let s = texel_tex(src, 0, 0, 0, 0, 0);
-            let d = texel_tex(dst, 0, 0, 0, 0, 0);
+            let s = texel_tex_params(src, src_texel);
+            let d = texel_tex_params(dst, dst_texel);
             let size = Extent3D {
                 width: width.max(1),
                 height: height.max(1),
@@ -2645,10 +3133,11 @@ pub fn write_texture(
     width: u32,
     height: u32,
     depth: u32,
+    dst: TexelCopyParams,
 ) {
     if let Some(api) = api() {
         if queue != 0 && texture != 0 && proc_ok(api.write_texture) {
-            let dst = texel_tex(texture, 0, 0, 0, 0, 0);
+            let tex = texel_tex_params(texture, dst);
             let layout = TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: if bytes_per_row == 0 {
@@ -2656,7 +3145,11 @@ pub fn write_texture(
                 } else {
                     bytes_per_row
                 },
-                rows_per_image: WGPU_COPY_STRIDE_UNDEFINED,
+                rows_per_image: if dst.rows_per_image == 0 {
+                    WGPU_COPY_STRIDE_UNDEFINED
+                } else {
+                    dst.rows_per_image
+                },
             };
             let size = Extent3D {
                 width: width.max(1),
@@ -2666,7 +3159,7 @@ pub fn write_texture(
             unsafe {
                 (api.write_texture)(
                     as_ptr(queue),
-                    &dst,
+                    &tex,
                     bytes.as_ptr(),
                     bytes.len(),
                     &layout,
@@ -2843,6 +3336,28 @@ pub fn adapter_info(adapter: DawnSlot) -> Option<crate::native_gpu::NativeAdapte
         unsafe { (api.adapter_info_free)(info) }
     }
     Some(out)
+}
+
+fn read_limits(slot: DawnSlot, get: FnGetLimits) -> Option<NativeLimits> {
+    if slot == 0 || !proc_ok(get) {
+        return None;
+    }
+    let mut limits = WgpuLimits::zeroed();
+    let status = unsafe { get(as_ptr(slot), &mut limits) };
+    if status != 0 && status != STATUS_SUCCESS {
+        return None;
+    }
+    Some(limits.to_native())
+}
+
+pub fn adapter_limits(adapter: DawnSlot) -> Option<NativeLimits> {
+    let api = api()?;
+    read_limits(adapter, api.adapter_get_limits)
+}
+
+pub fn device_limits(device: DawnSlot) -> Option<NativeLimits> {
+    let api = api()?;
+    read_limits(device, api.device_get_limits)
 }
 
 pub fn work_done(instance: DawnSlot, queue: DawnSlot) {
@@ -3023,18 +3538,11 @@ pub fn compute_set_pipeline(pass: DawnSlot, pipeline: DawnSlot) {
     }
 }
 
-pub fn compute_set_bind_group(pass: DawnSlot, index: u32, group: DawnSlot) {
+pub fn compute_set_bind_group(pass: DawnSlot, index: u32, group: DawnSlot, offsets: &[u32]) {
     if let Some(api) = api() {
         if pass != 0 && proc_ok(api.compute_set_bind_group) {
-            unsafe {
-                (api.compute_set_bind_group)(
-                    as_ptr(pass),
-                    index,
-                    as_ptr(group),
-                    0,
-                    std::ptr::null(),
-                )
-            }
+            let (count, ptr) = bind_group_offset_args(offsets);
+            unsafe { (api.compute_set_bind_group)(as_ptr(pass), index, as_ptr(group), count, ptr) }
         }
     }
 }
@@ -3085,12 +3593,11 @@ pub fn bundle_set_pipeline(enc: DawnSlot, pipeline: DawnSlot) {
     }
 }
 
-pub fn bundle_set_bind_group(enc: DawnSlot, index: u32, group: DawnSlot) {
+pub fn bundle_set_bind_group(enc: DawnSlot, index: u32, group: DawnSlot, offsets: &[u32]) {
     if let Some(api) = api() {
         if enc != 0 && proc_ok(api.bundle_set_bind_group) {
-            unsafe {
-                (api.bundle_set_bind_group)(as_ptr(enc), index, as_ptr(group), 0, std::ptr::null())
-            }
+            let (count, ptr) = bind_group_offset_args(offsets);
+            unsafe { (api.bundle_set_bind_group)(as_ptr(enc), index, as_ptr(group), count, ptr) }
         }
     }
 }
@@ -3207,19 +3714,117 @@ pub fn push_error_scope(device: DawnSlot, filter: u32) {
     }
 }
 
-pub fn pop_error_scope(instance: DawnSlot, device: DawnSlot) {
-    let Some(api) = api() else {
-        return;
-    };
-    if instance == 0 || device == 0 || !proc_ok(api.pop_error) {
+unsafe extern "C" fn on_uncaptured(
+    device: *const WgpuObj,
+    error_type: WgpuEnum,
+    message: StringView,
+    _userdata1: *mut c_void,
+    _userdata2: *mut c_void,
+) {
+    if device.is_null() {
         return;
     }
-    let mut status = 0u32;
+    let Some(kind) = error_kind_from_dawn(error_type) else {
+        return;
+    };
+    push_uncaptured(from_ptr(*device), kind, message.to_string());
+}
+
+unsafe extern "C" fn on_device_lost(
+    device: *const WgpuObj,
+    reason: WgpuEnum,
+    message: StringView,
+    _userdata1: *mut c_void,
+    _userdata2: *mut c_void,
+) {
+    if device.is_null() {
+        return;
+    }
+    set_lost(
+        from_ptr(*device),
+        lost_reason_from_dawn(reason),
+        message.to_string(),
+    );
+}
+
+struct PopOut {
+    status: WgpuEnum,
+    ty: WgpuEnum,
+    message: String,
+}
+
+unsafe extern "C" fn on_pop(
+    status: WgpuEnum,
+    ty: WgpuEnum,
+    message: StringView,
+    userdata1: *mut c_void,
+    _userdata2: *mut c_void,
+) {
+    let out = userdata1 as *mut PopOut;
+    if !out.is_null() {
+        (*out).status = status;
+        (*out).ty = ty;
+        (*out).message = message.to_string();
+    }
+}
+
+struct CompOut {
+    msgs: Vec<CompilationMessage>,
+}
+
+unsafe extern "C" fn on_compinfo(
+    status: WgpuEnum,
+    info: *const CompilationInfoC,
+    userdata1: *mut c_void,
+    _userdata2: *mut c_void,
+) {
+    if status != STATUS_SUCCESS || info.is_null() {
+        return;
+    }
+    let out = userdata1 as *mut CompOut;
+    if out.is_null() {
+        return;
+    }
+    let count = (*info).message_count;
+    let ptr = (*info).messages;
+    if ptr.is_null() || count == 0 {
+        return;
+    }
+    let slice = std::slice::from_raw_parts(ptr, count);
+    for m in slice {
+        let ty = match m.ty {
+            2 => 1,
+            3 => 2,
+            _ => 0,
+        };
+        (*out).msgs.push(CompilationMessage {
+            message: m.message.to_string(),
+            ty,
+            line_num: m.line_num,
+            line_pos: m.line_pos,
+            offset: m.offset,
+            length: m.length,
+        });
+    }
+}
+
+pub fn pop_error_scope(instance: DawnSlot, device: DawnSlot) -> PopErrorOutcome {
+    let Some(api) = api() else {
+        return PopErrorOutcome::None;
+    };
+    if instance == 0 || device == 0 || !proc_ok(api.pop_error) {
+        return PopErrorOutcome::None;
+    }
+    let mut out = PopOut {
+        status: 0,
+        ty: 0,
+        message: String::new(),
+    };
     let info = CallbackInfo {
         next_in_chain: std::ptr::null_mut(),
         mode: CALLBACK_WAIT_ANY,
-        callback: on_map as *const c_void,
-        userdata1: (&mut status) as *mut _ as *mut c_void,
+        callback: on_pop as *const c_void,
+        userdata1: (&mut out) as *mut _ as *mut c_void,
         userdata2: std::ptr::null_mut(),
     };
     let future = unsafe { (api.pop_error)(as_ptr(device), info) };
@@ -3229,7 +3834,165 @@ pub fn pop_error_scope(instance: DawnSlot, device: DawnSlot) {
     };
     unsafe {
         let _ = (api.wait_any)(as_ptr(instance), 1, &mut wait, 2_000_000_000);
+        if out.status == 0 {
+            (api.process_events)(as_ptr(instance));
+        }
     }
+    if out.status != STATUS_SUCCESS {
+        return PopErrorOutcome::Operation {
+            message: out.message,
+        };
+    }
+    match error_kind_from_dawn(out.ty) {
+        Some(kind) => PopErrorOutcome::Error {
+            kind,
+            message: out.message,
+        },
+        None => PopErrorOutcome::None,
+    }
+}
+
+pub fn compilation_info(instance: DawnSlot, shader: DawnSlot) -> Vec<CompilationMessage> {
+    let Some(api) = api() else {
+        return Vec::new();
+    };
+    if instance == 0 || shader == 0 || !proc_ok(api.shader_compinfo) {
+        return Vec::new();
+    }
+    let mut out = CompOut { msgs: Vec::new() };
+    let info = CallbackInfo {
+        next_in_chain: std::ptr::null_mut(),
+        mode: CALLBACK_WAIT_ANY,
+        callback: on_compinfo as *const c_void,
+        userdata1: (&mut out) as *mut _ as *mut c_void,
+        userdata2: std::ptr::null_mut(),
+    };
+    let future = unsafe { (api.shader_compinfo)(as_ptr(shader), info) };
+    let mut wait = FutureWaitInfo {
+        future,
+        completed: 0,
+    };
+    unsafe {
+        let _ = (api.wait_any)(as_ptr(instance), 1, &mut wait, 2_000_000_000);
+        (api.process_events)(as_ptr(instance));
+    }
+    out.msgs
+}
+
+pub fn has_wgsl_language_feature(instance: DawnSlot, name: &str) -> bool {
+    let Some(api) = api() else {
+        return false;
+    };
+    if instance == 0 || !proc_ok(api.instance_has_wgsl) {
+        return false;
+    }
+    let feat = wgsl_feature_enum(name);
+    if feat == 0 {
+        return false;
+    }
+    unsafe { (api.instance_has_wgsl)(as_ptr(instance), feat) != 0 }
+}
+
+fn set_label_fn(api: &Api, kind: ResourceKind) -> Option<FnSetLabel> {
+    let f = match kind {
+        ResourceKind::Device => api.set_label_device,
+        ResourceKind::Queue => api.set_label_queue,
+        ResourceKind::Buffer => api.set_label_buffer,
+        ResourceKind::Texture => api.set_label_texture,
+        ResourceKind::TextureView => api.set_label_view,
+        ResourceKind::Sampler => api.set_label_sampler,
+        ResourceKind::ShaderModule => api.set_label_shader,
+        ResourceKind::BindGroupLayout => api.set_label_bgl,
+        ResourceKind::PipelineLayout => api.set_label_pl,
+        ResourceKind::BindGroup => api.set_label_bg,
+        ResourceKind::RenderPipeline => api.set_label_rp,
+        ResourceKind::ComputePipeline => api.set_label_cp,
+        ResourceKind::CommandEncoder => api.set_label_encoder,
+        ResourceKind::CommandBuffer => api.set_label_cmd,
+        ResourceKind::QuerySet => api.set_label_qs,
+        ResourceKind::RenderPassEncoder => api.set_label_pass,
+        ResourceKind::ComputePassEncoder => api.set_label_compute_pass,
+        ResourceKind::RenderBundle => api.set_label_bundle,
+        ResourceKind::RenderBundleEncoder => api.set_label_bundle_enc,
+        ResourceKind::Adapter | ResourceKind::Surface | ResourceKind::CanvasContext => {
+            return None;
+        }
+    };
+    proc_ok(f).then_some(f)
+}
+
+pub fn set_label(kind: ResourceKind, slot: DawnSlot, label: &str) {
+    if slot == 0 {
+        return;
+    }
+    let Some(api) = api() else {
+        return;
+    };
+    if let Some(f) = set_label_fn(api, kind) {
+        unsafe { f(as_ptr(slot), StringView::from_str(label)) }
+    }
+}
+
+fn debug_fns(api: &Api, kind: ResourceKind) -> Option<(FnPushDebug, FnPopDebug, FnPushDebug)> {
+    let (push, pop, insert) = match kind {
+        ResourceKind::CommandEncoder => (api.enc_push_debug, api.enc_pop_debug, api.enc_insert_debug),
+        ResourceKind::RenderPassEncoder => {
+            (api.pass_push_debug, api.pass_pop_debug, api.pass_insert_debug)
+        }
+        ResourceKind::ComputePassEncoder => (
+            api.compute_push_debug,
+            api.compute_pop_debug,
+            api.compute_insert_debug,
+        ),
+        ResourceKind::RenderBundleEncoder => (
+            api.bundle_push_debug,
+            api.bundle_pop_debug,
+            api.bundle_insert_debug,
+        ),
+        _ => return None,
+    };
+    Some((push, pop, insert))
+}
+
+pub fn debug(kind: ResourceKind, slot: DawnSlot, op: DebugOp, label: &str) {
+    if slot == 0 {
+        return;
+    }
+    let Some(api) = api() else {
+        return;
+    };
+    let Some((push, pop, insert)) = debug_fns(api, kind) else {
+        return;
+    };
+    unsafe {
+        match op {
+            DebugOp::Push if proc_ok(push) => push(as_ptr(slot), StringView::from_str(label)),
+            DebugOp::Pop if proc_ok(pop) => pop(as_ptr(slot)),
+            DebugOp::Insert if proc_ok(insert) => {
+                insert(as_ptr(slot), StringView::from_str(label))
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn set_immediates(kind: ResourceKind, slot: DawnSlot, offset: u32, data: &[u8]) {
+    if slot == 0 {
+        return;
+    }
+    let Some(api) = api() else {
+        return;
+    };
+    let f = match kind {
+        ResourceKind::RenderPassEncoder => api.pass_set_immediates,
+        ResourceKind::ComputePassEncoder => api.compute_set_immediates,
+        ResourceKind::RenderBundleEncoder => api.bundle_set_immediates,
+        _ => return,
+    };
+    if !proc_ok(f) {
+        return;
+    }
+    unsafe { f(as_ptr(slot), offset, data.as_ptr(), data.len()) }
 }
 
 pub fn release(kind: ResourceKind, slot: DawnSlot) {
@@ -3243,7 +4006,10 @@ pub fn release(kind: ResourceKind, slot: DawnSlot) {
     unsafe {
         match kind {
             ResourceKind::Adapter => (api.release_adapter)(p),
-            ResourceKind::Device => (api.release_device)(p),
+            ResourceKind::Device => {
+                forget_device_events(slot);
+                (api.release_device)(p)
+            }
             ResourceKind::Queue => (api.release_queue)(p),
             ResourceKind::Buffer => (api.release_buffer)(p),
             ResourceKind::ShaderModule => (api.release_shader)(p),
@@ -3285,5 +4051,25 @@ pub fn process_events(instance: DawnSlot) {
         if instance != 0 {
             unsafe { (api.process_events)(as_ptr(instance)) }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wgpu_limits_has_tail_padding() {
+        assert!(std::mem::size_of::<WgpuLimits>() > std::mem::size_of::<NativeLimits>());
+        assert_eq!(NativeLimits::TABLE.max_bind_groups, 1);
+        assert_eq!(NativeLimits::TABLE.max_buffer_size, 1);
+    }
+
+    #[test]
+    fn texel_copy_params_default_is_origin_zero() {
+        let p = TexelCopyParams::default();
+        assert_eq!(p.mip_level, 0);
+        assert_eq!(p.origin_x, 0);
+        assert_eq!(p.aspect, 0);
     }
 }

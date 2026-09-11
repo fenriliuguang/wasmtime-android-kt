@@ -19,10 +19,10 @@ Living map for the **in-process Dawn C** path (`NativeGpu`). Pin: `wasi:webgpu@0
 
 | Family | When `.so` loaded | Otherwise |
 |--------|-------------------|-----------|
-| `request-adapter` / `request-device` / `queue` | **Dawn** (Vulkan adapter; power / fallback / feature-level / required-features / labels on the C call. `required-limits` and `xr-compatible` stay **Record**) | **Table** |
+| `request-adapter` / `request-device` / `queue` | **Dawn** (Vulkan adapter; power / fallback / feature-level / required-features / labels on the C call. `required-limits` and `xr-compatible` stay **Record**. Device-lost / uncaptured callbacks attached at request-device.) | **Table** |
 | create-buffer / shader-module / bind-group / layouts / render-pipeline | **Dawn** (blend / depth-stencil / MSAA / pipeline constants on the C ctor) | **Table** |
-| command encoder / begin-render-pass (color + optional depth) / draw / set-pipeline / set-bind-group / set-vertex-buffer / finish / submit / write-buffer | **Dawn** | **Table** |
-| create-texture / sampler / compute pipeline / compute pass / copies / clear / query-set / render-bundle **recording** / map-async + mapped-range get/set / write-texture / work-done / indexed-indirect / viewport / scissor / blend / stencil / occlusion / adapter `has` + `GetInfo` / buffer size·usage·map-state / texture getters / destroy | **Dawn** (compute pipeline constants on the C ctor). Mapped-range uses `wgpuBufferGetConstMappedRange` / `GetMappedRange`; bundle commands call `wgpuRenderBundleEncoder*`. | **Table** (CPU shadow of writes; offset/size honored) |
+| command encoder / begin-render-pass (color + optional depth) / draw / set-pipeline / set-bind-group / set-vertex-buffer / finish / submit / write-buffer | **Dawn** (`queue.submit` waits `OnSubmittedWorkDone` before canvas recycle) | **Table** |
+| create-texture / sampler / compute pipeline / compute pass / copies / clear / query-set / render-bundle **recording** / map-async + mapped-range get/set / write-texture / work-done / indexed-indirect / viewport / scissor / blend / stencil / occlusion / adapter `has` + `GetInfo` / **GetLimits** / buffer size·usage·map-state / texture getters / destroy / **compilation-info** / **pop-error-scope** / **wgsl-language-features.has** / **SetLabel** / **set-immediates** / debug group·marker | **Dawn** (compute pipeline constants on the C ctor; copy origin / mip / aspect / layout; `set-bind-group` dynamic offsets). Mapped-range uses `wgpuBufferGetConstMappedRange` / `GetMappedRange`; bundle commands call `wgpuRenderBundleEncoder*`. | **Table** (CPU shadow of writes; offset/size honored; limits getters `1`; compilation messages empty; `pop-error-scope` `ok(none)`; `has` `false`; labels from the host table) |
 | Android `ANativeWindow` surface / configure / get-current-texture / present | **Dawn** (Fifo; color-space / tone-mapping **Record**) | **Table** (keep-3 / H8 still) |
 
 `wasi-gfx` `on-pointer-*` / `on-key-*` are host-wired (`Store.postGfxPointer` / `postGfxKey` → bounded gate). Not Dawn C.
@@ -38,20 +38,20 @@ Living map for the **in-process Dawn C** path (`NativeGpu`). Pin: `wasi:webgpu@0
 
 ## 3. Remaining Table (BIND leftover, [#317](https://github.com/fenriliuguang/wasmtime-android-kt/issues/317))
 
-These pin names are registered. `.so` does **not** make them Dawn yet:
+These pin names are registered. Auto queue: [`../scheme/nativegpu-remaining.md`](../scheme/nativegpu-remaining.md) (`python3 ./scripts/nativegpu-remaining.py`). Do **not** skip this table because WASI leftover is empty. BIND leftover knives below are **Dawn** when the `.so` loads; Cloud / missing `.so` stays **Table**.
 
 | Family | NativeGpu today | Missing / skipped |
 |--------|-----------------|-------------------|
-| `gpu-supported-limits.*` | every getter returns `1` | `wgpuAdapterGetLimits` / `wgpuDeviceGetLimits` ABI not bound (large `WGPULimits`) |
-| `compilation-info` / messages | empty list | `wgpuShaderModuleGetCompilationInfo` |
-| `pop-error-scope` result | always `ok(none)` | callback type/message not returned to guest |
-| `on-uncaptured-error` | empty stream | Dawn uncaptured callback not attached |
-| `gpu-error` / `device-lost-info` | empty / unknown | no lost/uncaptured wiring |
-| `wgsl-language-features.has` | always `false` | no Dawn query |
-| labels except buffer/texture | get `""` / set dropped | `wgpu*SetLabel` not loaded; host table only for buffer/texture |
-| `set-immediates` / debug group·marker | no-op | no C wrappers |
-| copy origin / mip / aspect | pinned 0 | wrappers take extent only |
-| `set-bind-group` dynamic offsets | discarded | C call uses `0, null` |
-| `queue.submit` canvas recycle | `mark_canvas_gpu_done` without fence | hitch leftover vs D24 `onSubmittedWorkDone` |
+| `gpu-supported-limits.*` | **Dawn** `GetLimits` when `.so` loads; Cloud / missing `.so` still `1` | `required-limits` on request-device stays **Record** (NG-7) |
+| `compilation-info` / messages | **Dawn** `wgpuShaderModuleGetCompilationInfo`; Cloud empty list | — |
+| `pop-error-scope` result | **Dawn** callback type/message; Cloud `ok(none)` | — |
+| `on-uncaptured-error` | **Dawn** uncaptured callback; Cloud empty stream | — |
+| `gpu-error` / `device-lost-info` | **Dawn** lost/uncaptured wiring; Cloud empty / unknown | — |
+| `wgsl-language-features.has` | **Dawn** `wgpuInstanceHasWGSLLanguageFeature`; Cloud `false` | — |
+| labels except buffer/texture | **Dawn** `wgpu*SetLabel` + host table get | — |
+| `set-immediates` / debug group·marker | **Dawn** C wrappers (no-op without `.so`) | — |
+| copy origin / mip / aspect / layout | **Dawn** (guest fields reach `texel_tex` / `texel_buf`) | — |
+| `set-bind-group` dynamic offsets | **Dawn** (C `usize, *const u32`) | — |
+| `queue.submit` canvas recycle | **Dawn** wait `OnSubmittedWorkDone` then `mark_canvas_gpu_done` | — |
 
 Unwired store: `gpu.request-adapter` → guest **`none`**. `GpuBackends.dawn()` selected → table-backed adapter (not `none`) even without the `.so`.

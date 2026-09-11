@@ -1879,16 +1879,23 @@ impl GpuBufferMapState {
     }
 }
 
-/// WIT `resource gpu-compilation-info`. `get-compilation-info` pushes `{ shader_module: 0 }`.
-#[derive(Debug)]
+/// WIT `resource gpu-compilation-info`. `get-compilation-info` pushes empty messages.
+#[derive(Clone, Debug, Default)]
 pub struct GpuCompilationInfo {
     pub shader_module: u32,
+    pub messages: Vec<GpuCompilationMessage>,
 }
 
-/// WIT `resource gpu-compilation-message`. `get-compilation-message` pushes `{ shader_module: 0 }`.
-#[derive(Debug)]
+/// WIT `resource gpu-compilation-message`. Snapshot of one Dawn compilation message.
+#[derive(Clone, Debug, Default)]
 pub struct GpuCompilationMessage {
     pub shader_module: u32,
+    pub message: String,
+    pub ty: u32,
+    pub line_num: u64,
+    pub line_pos: u64,
+    pub offset: u64,
+    pub length: u64,
 }
 
 /// WIT `enum gpu-compilation-message-type`. Lift-only; L2 unused.
@@ -1917,9 +1924,11 @@ impl GpuCompilationMessageType {
 }
 
 /// WIT `resource gpu-device-lost-info`. `get-device-lost-info` pushes `{ device: 0 }`.
-#[derive(Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct GpuDeviceLostInfo {
     pub device: u32,
+    pub reason: u32,
+    pub message: String,
 }
 
 /// WIT `enum gpu-device-lost-reason`.
@@ -1945,9 +1954,11 @@ impl GpuDeviceLostReason {
 }
 
 /// WIT `resource gpu-error`. `get-gpu-error` pushes `{ device: 0 }`.
-#[derive(Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct GpuError {
     pub device: u32,
+    pub message: String,
+    pub kind: u32,
 }
 
 /// WIT `enum gpu-error-filter`. Lift-only; L2 unused.

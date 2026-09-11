@@ -14,6 +14,48 @@ use std::sync::OnceLock;
 
 use crate::dawn_c;
 
+pub use crate::dawn_c::{
+    DebugOp, NativeLimits, PopErrorOutcome, TexelCopyParams as NativeTexelCopy,
+};
+
+/// WIT `set-bind-group` offsets list + optional start/length window.
+pub fn slice_dynamic_offsets(
+    offsets: Option<Vec<u32>>,
+    start: Option<u64>,
+    length: Option<u32>,
+) -> Vec<u32> {
+    let all = offsets.unwrap_or_default();
+    let start = start.unwrap_or(0) as usize;
+    if start >= all.len() {
+        return Vec::new();
+    }
+    let rest = &all[start..];
+    match length {
+        Some(n) => rest.iter().copied().take(n as usize).collect(),
+        None => rest.to_vec(),
+    }
+}
+
+/// WIT `set-immediates` `list<u8>` plus optional offset/size.
+pub fn slice_immediate_bytes(data: &[u8], data_offset: Option<u64>, data_size: Option<u64>) -> &[u8] {
+    let start = data_offset.unwrap_or(0) as usize;
+    if start >= data.len() {
+        return &[];
+    }
+    let rest = &data[start..];
+    match data_size {
+        Some(n) => {
+            let n = n as usize;
+            if n >= rest.len() {
+                rest
+            } else {
+                &rest[..n]
+            }
+        }
+        None => rest,
+    }
+}
+
 /// Dawn C object pointer/id. `0` until a later lane binds `webgpu.h`.
 pub type DawnSlot = u64;
 
@@ -164,6 +206,10 @@ impl HandleTable {
 
     pub fn dawn_of(&self, handle: GpuHandle) -> DawnSlot {
         self.entries.get(&handle.0).map(|e| e.dawn).unwrap_or(0)
+    }
+
+    pub fn get_entry(&self, handle: GpuHandle) -> Option<&HandleEntry> {
+        self.entries.get(&handle.0)
     }
 
     pub fn set_dawn(&mut self, handle: GpuHandle, dawn: DawnSlot) {
@@ -861,6 +907,29 @@ impl NativeGpuHost {
         Ok(dawn_c::adapter_has_feature(dawn, feature_enum(name)))
     }
 
+    /// Dawn `GetLimits` when the `.so` is loaded; table-backed all `1` otherwise.
+    pub fn supported_limits(&self, adapter_rep: u32, device_rep: u32) -> NativeLimits {
+        if device_rep != 0 {
+            if let Ok(h) = GpuHandle::from_raw(device_rep) {
+                if self.get(h, ResourceKind::Device).is_ok() {
+                    if let Some(limits) = dawn_c::device_limits(self.dawn_of(h)) {
+                        return limits;
+                    }
+                }
+            }
+        }
+        if adapter_rep != 0 {
+            if let Ok(h) = GpuHandle::from_raw(adapter_rep) {
+                if self.get(h, ResourceKind::Adapter).is_ok() {
+                    if let Some(limits) = dawn_c::adapter_limits(self.dawn_of(h)) {
+                        return limits;
+                    }
+                }
+            }
+        }
+        NativeLimits::TABLE
+    }
+
     pub fn resolve_texture(&mut self, texture_rep: u32) -> Result<GpuHandle, NativeGpuError> {
         if texture_rep == GpuHandle::NULL {
             let device = self.resolve_device(GpuHandle::NULL)?;
@@ -1549,11 +1618,45 @@ impl NativeGpuHost {
         Ok(())
     }
 
-    pub fn pop_error_scope(&mut self, device_rep: u32) -> Result<(), NativeGpuError> {
+    pub fn pop_error_scope(
+        &mut self,
+        device_rep: u32,
+    ) -> Result<dawn_c::PopErrorOutcome, NativeGpuError> {
         let device = self.resolve_device(device_rep)?;
         let instance = self.ensure_instance();
-        dawn_c::pop_error_scope(instance, self.dawn_of(device));
-        Ok(())
+        Ok(dawn_c::pop_error_scope(instance, self.dawn_of(device)))
+    }
+
+    pub fn compilation_info(
+        &mut self,
+        shader_rep: u32,
+    ) -> Result<Vec<dawn_c::CompilationMessage>, NativeGpuError> {
+        let shader = self.resolve_shader(shader_rep)?;
+        let instance = self.ensure_instance();
+        Ok(dawn_c::compilation_info(instance, self.dawn_of(shader)))
+    }
+
+    pub fn wgsl_language_feature_has(&mut self, name: &str) -> bool {
+        let instance = self.ensure_instance();
+        dawn_c::has_wgsl_language_feature(instance, name)
+    }
+
+    pub fn drain_uncaptured(
+        &mut self,
+        device_rep: u32,
+    ) -> Result<Vec<(u32, String)>, NativeGpuError> {
+        let device = self.resolve_device(device_rep)?;
+        Ok(dawn_c::drain_uncaptured(self.dawn_of(device)))
+    }
+
+    pub fn device_lost_info(&mut self, device_rep: u32) -> Result<(u32, String), NativeGpuError> {
+        let device = self.resolve_device(device_rep)?;
+        Ok(dawn_c::device_lost_info(self.dawn_of(device)))
+    }
+
+    pub fn last_uncaptured(&mut self, device_rep: u32) -> Result<(u32, String), NativeGpuError> {
+        let device = self.resolve_device(device_rep)?;
+        Ok(dawn_c::peek_uncaptured(self.dawn_of(device)))
     }
 
     pub fn begin_render_pass(
@@ -1679,6 +1782,8 @@ impl NativeGpuHost {
             1,
             1,
             1,
+            NativeTexelCopy::default(),
+            NativeTexelCopy::default(),
         )
     }
 
@@ -1695,6 +1800,8 @@ impl NativeGpuHost {
         width: u32,
         height: u32,
         depth: u32,
+        src_texel: NativeTexelCopy,
+        dst_texel: NativeTexelCopy,
     ) -> Result<(), NativeGpuError> {
         let encoder = self.resolve_encoder(encoder_rep)?;
         let enc = self.dawn_of(encoder);
@@ -1721,6 +1828,8 @@ impl NativeGpuHost {
                     width,
                     height,
                     depth,
+                    src_texel,
+                    dst_texel,
                 );
             }
             (None, Some(dst), Some(src), None) => {
@@ -1733,6 +1842,8 @@ impl NativeGpuHost {
                     width,
                     height,
                     depth,
+                    src_texel,
+                    dst_texel,
                 );
             }
             (None, None, Some(src), Some(dst)) => {
@@ -1745,6 +1856,8 @@ impl NativeGpuHost {
                     width,
                     height,
                     depth,
+                    src_texel,
+                    dst_texel,
                 );
             }
             _ => {}
@@ -1805,8 +1918,53 @@ impl NativeGpuHost {
         Ok(())
     }
 
-    pub fn encoder_debug(&mut self, encoder_rep: u32) -> Result<(), NativeGpuError> {
-        let _ = self.resolve_encoder(encoder_rep)?;
+    pub fn encoder_debug(
+        &mut self,
+        encoder_rep: u32,
+        op: dawn_c::DebugOp,
+        label: &str,
+    ) -> Result<(), NativeGpuError> {
+        let encoder = self.resolve_encoder(encoder_rep)?;
+        dawn_c::debug(
+            ResourceKind::CommandEncoder,
+            self.dawn_of(encoder),
+            op,
+            label,
+        );
+        Ok(())
+    }
+
+    pub fn pass_debug(
+        &mut self,
+        kind: ResourceKind,
+        pass_rep: u32,
+        op: dawn_c::DebugOp,
+        label: &str,
+    ) -> Result<(), NativeGpuError> {
+        let handle = match kind {
+            ResourceKind::RenderPassEncoder => self.resolve_render_pass(pass_rep)?,
+            ResourceKind::ComputePassEncoder => self.resolve_compute_pass(pass_rep)?,
+            ResourceKind::RenderBundleEncoder => self.resolve_render_bundle_encoder(pass_rep)?,
+            _ => return Ok(()),
+        };
+        dawn_c::debug(kind, self.dawn_of(handle), op, label);
+        Ok(())
+    }
+
+    pub fn set_immediates(
+        &mut self,
+        kind: ResourceKind,
+        pass_rep: u32,
+        offset: u32,
+        data: &[u8],
+    ) -> Result<(), NativeGpuError> {
+        let handle = match kind {
+            ResourceKind::RenderPassEncoder => self.resolve_render_pass(pass_rep)?,
+            ResourceKind::ComputePassEncoder => self.resolve_compute_pass(pass_rep)?,
+            ResourceKind::RenderBundleEncoder => self.resolve_render_bundle_encoder(pass_rep)?,
+            _ => return Ok(()),
+        };
+        dawn_c::set_immediates(kind, self.dawn_of(handle), offset, data);
         Ok(())
     }
 
@@ -1860,6 +2018,7 @@ impl NativeGpuHost {
         pass_rep: u32,
         index: u32,
         bind_group_rep: u32,
+        offsets: &[u32],
     ) -> Result<(), NativeGpuError> {
         let pass = self.resolve_render_pass(pass_rep)?;
         let group = if bind_group_rep == 0 {
@@ -1869,7 +2028,7 @@ impl NativeGpuHost {
             self.get(h, ResourceKind::BindGroup)?;
             self.dawn_of(h)
         };
-        dawn_c::pass_set_bind_group(self.dawn_of(pass), index, group);
+        dawn_c::pass_set_bind_group(self.dawn_of(pass), index, group, offsets);
         Ok(())
     }
 
@@ -1932,6 +2091,7 @@ impl NativeGpuHost {
         pass_rep: u32,
         index: u32,
         bind_group_rep: u32,
+        offsets: &[u32],
     ) -> Result<(), NativeGpuError> {
         let pass = self.resolve_compute_pass(pass_rep)?;
         let group = if bind_group_rep == 0 {
@@ -1941,7 +2101,7 @@ impl NativeGpuHost {
             self.get(h, ResourceKind::BindGroup)?;
             self.dawn_of(h)
         };
-        dawn_c::compute_set_bind_group(self.dawn_of(pass), index, group);
+        dawn_c::compute_set_bind_group(self.dawn_of(pass), index, group, offsets);
         Ok(())
     }
 
@@ -2144,6 +2304,8 @@ impl NativeGpuHost {
         }
         // H8: submit may auto-present; second guest present is a no-op.
         let _ = self.canvas_present();
+        let instance = self.ensure_instance();
+        dawn_c::work_done(instance, self.dawn_of(queue));
         self.mark_canvas_gpu_done();
         self.retire_canvas_frames();
         Ok(())
@@ -2184,7 +2346,16 @@ impl NativeGpuHost {
         texture_rep: u32,
         bytes: Vec<u8>,
     ) -> Result<(), NativeGpuError> {
-        self.write_texture_described(queue_rep, texture_rep, bytes, 0, 1, 1, 1)
+        self.write_texture_described(
+            queue_rep,
+            texture_rep,
+            bytes,
+            0,
+            1,
+            1,
+            1,
+            NativeTexelCopy::default(),
+        )
     }
 
     pub fn write_texture_described(
@@ -2196,6 +2367,7 @@ impl NativeGpuHost {
         width: u32,
         height: u32,
         depth: u32,
+        dst: NativeTexelCopy,
     ) -> Result<(), NativeGpuError> {
         let queue = self.resolve_queue(queue_rep)?;
         let texture = self.resolve_texture(texture_rep)?;
@@ -2207,6 +2379,7 @@ impl NativeGpuHost {
             width,
             height,
             depth,
+            dst,
         );
         self.queue_writes.insert(
             queue.raw(),
@@ -2233,6 +2406,11 @@ impl NativeGpuHost {
     }
 
     pub fn set_label(&mut self, rep: u32, label: String) {
+        if let Ok(h) = GpuHandle::from_raw(rep) {
+            if let Some(entry) = self.table.get_entry(h) {
+                dawn_c::set_label(entry.kind, entry.dawn, &label);
+            }
+        }
         self.labels.insert(rep, label);
     }
 
@@ -2492,6 +2670,7 @@ impl NativeGpuHost {
         encoder_rep: u32,
         index: u32,
         bind_group_rep: u32,
+        offsets: &[u32],
     ) -> Result<(), NativeGpuError> {
         let enc = self.resolve_render_bundle_encoder(encoder_rep)?;
         let group = if bind_group_rep == 0 {
@@ -2501,7 +2680,7 @@ impl NativeGpuHost {
             self.get(h, ResourceKind::BindGroup)?;
             self.dawn_of(h)
         };
-        dawn_c::bundle_set_bind_group(self.dawn_of(enc), index, group);
+        dawn_c::bundle_set_bind_group(self.dawn_of(enc), index, group, offsets);
         Ok(())
     }
 
@@ -3177,6 +3356,32 @@ mod tests {
     }
 
     #[test]
+    fn supported_limits_table_backed_are_ones() {
+        let gpu = NativeGpuHost::new();
+        let limits = gpu.supported_limits(0, 0);
+        assert_eq!(limits, NativeLimits::TABLE);
+        assert_eq!(limits.max_bind_groups, 1);
+        assert_eq!(limits.max_buffer_size, 1);
+    }
+
+    #[test]
+    fn slice_dynamic_offsets_start_length() {
+        assert_eq!(slice_dynamic_offsets(None, None, None), Vec::<u32>::new());
+        assert_eq!(
+            slice_dynamic_offsets(Some(vec![10, 20, 30, 40]), Some(1), Some(2)),
+            vec![20, 30]
+        );
+        assert_eq!(
+            slice_dynamic_offsets(Some(vec![10, 20]), Some(5), None),
+            Vec::<u32>::new()
+        );
+        assert_eq!(
+            slice_dynamic_offsets(Some(vec![7, 8, 9]), None, None),
+            vec![7, 8, 9]
+        );
+    }
+
+    #[test]
     fn handle_table_default_skips_null() {
         let mut table = HandleTable::default();
         let h = table.insert(ResourceKind::Queue, 0);
@@ -3316,7 +3521,8 @@ mod tests {
         gpu.compute_pass_end(compute.raw()).expect("compute-end");
         gpu.encoder_copy(encoder.raw(), Some(0), Some(0), None, None)
             .expect("copy");
-        gpu.encoder_debug(encoder.raw()).expect("debug");
+        gpu.encoder_debug(encoder.raw(), dawn_c::DebugOp::Insert, "m")
+            .expect("debug");
         let buf = gpu.encoder_finish(encoder, "l2").expect("finish");
         assert_ne!(encoder.raw(), GpuHandle::NULL);
         assert_ne!(pass.raw(), GpuHandle::NULL);
@@ -3592,5 +3798,64 @@ mod tests {
                 "desired-present stays 1:1 with vsync + {stamp_beats} beats"
             );
         }
+    }
+
+    #[test]
+    fn remaining_table_table_backed_no_jni() {
+        let mut gpu = NativeGpuHost::new();
+        let device = gpu.resolve_device(0).expect("device");
+        let shader = gpu
+            .create_shader_module(device, "", "sh", &[], "")
+            .expect("shader");
+        assert!(
+            gpu.compilation_info(shader.raw())
+                .expect("compinfo")
+                .is_empty(),
+            "missing .so stays empty compilation messages"
+        );
+        assert_eq!(
+            gpu.pop_error_scope(device.raw()).expect("pop"),
+            PopErrorOutcome::None
+        );
+        assert!(gpu.drain_uncaptured(device.raw()).expect("uncaptured").is_empty());
+        assert_eq!(gpu.device_lost_info(device.raw()).expect("lost"), (0, String::new()));
+        assert!(!gpu.wgsl_language_feature_has("pointer_composite_access"));
+        assert!(!gpu.wgsl_language_feature_has(""));
+        let queue = gpu.device_queue(device).expect("queue");
+        gpu.set_label(queue.raw(), "q".into());
+        assert_eq!(gpu.label(queue.raw()), "q");
+        gpu.set_label(shader.raw(), "s".into());
+        assert_eq!(gpu.label(shader.raw()), "s");
+        let encoder = gpu.create_command_encoder(device, "").expect("enc");
+        gpu.encoder_debug(encoder.raw(), DebugOp::Push, "g")
+            .expect("push");
+        gpu.encoder_debug(encoder.raw(), DebugOp::Insert, "m")
+            .expect("insert");
+        gpu.encoder_debug(encoder.raw(), DebugOp::Pop, "")
+            .expect("pop");
+        let pass = gpu
+            .begin_render_pass(encoder, &[], 0)
+            .expect("render-pass");
+        gpu.set_immediates(ResourceKind::RenderPassEncoder, pass.raw(), 0, &[1, 2, 3])
+            .expect("immediates");
+        gpu.pass_debug(
+            ResourceKind::RenderPassEncoder,
+            pass.raw(),
+            DebugOp::Insert,
+            "p",
+        )
+        .expect("pass debug");
+        let compute = gpu
+            .begin_compute_pass(encoder, 0, 0, 0)
+            .expect("compute-pass");
+        gpu.set_immediates(ResourceKind::ComputePassEncoder, compute.raw(), 4, &[])
+            .expect("compute immediates");
+        let bundle = gpu
+            .create_render_bundle_encoder(device, 0)
+            .expect("bundle-enc");
+        gpu.set_immediates(ResourceKind::RenderBundleEncoder, bundle.raw(), 0, &[9])
+            .expect("bundle immediates");
+        gpu.queue_submit(queue.raw(), &[]).expect("submit fence");
+        assert_eq!(gpu.get(queue, ResourceKind::Queue).unwrap().dawn, 0);
     }
 }

@@ -18,7 +18,7 @@ Default consume is Dawn C / NativeGpu. Maven **0.1.3-SNAPSHOT** packs press-pin 
 |-------|--------|-------|
 | Pin resource `[method]` names (224) | **Shape** + NativeGpu | All 224 names registered in `native/src/cm.rs`. Unwired store → `request-adapter` **`none`**. JNI leftover is `dawn-jni`. |
 | Boot / cube hot path | **Dawn C** when `.so` loads | `request-adapter` / `request-device` / queue / buffer / WGSL / render pipeline / encoder / draw / submit / write-buffer / Android surface present. Power / fallback / feature-level, required-features, and labels reach the C call. `required-limits` and `xr-compatible` stay Record. Blend / depth-stencil / MSAA / pipeline constants fill the C ctor. |
-| Remaining pin methods | **Dawn** when `.so` loads | texture / sampler / compute / copies / **map + mapped-range** / query / **bundle recording** / indexed-indirect / viewport / `write-texture` / work-done / destroy / adapter `GetInfo` / buffer·texture getters. Cloud / missing `.so` stays **Table**. Leftovers listed in the gap **Remaining Table** section ([#317](https://github.com/fenriliuguang/wasmtime-android-kt/issues/317)): limits getters, compilation-info, pop-error-scope payload, uncaptured/lost, most labels. |
+| Remaining pin methods | **Dawn** when `.so` loads | texture / sampler / compute / copies (origin / mip / aspect / layout) / **map + mapped-range** / query / **bundle recording** / indexed-indirect / viewport / `write-texture` / work-done / destroy / adapter `GetInfo` / **GetLimits** / buffer·texture getters / `set-bind-group` dynamic offsets / **compilation-info** / **pop-error-scope** / uncaptured·lost / **SetLabel** / **set-immediates** / debug group·marker / submit fence. Cloud / missing `.so` stays **Table** (`gpu-supported-limits.*` return `1`; compilation empty; `has` `false`). BIND leftover queue ([`nativegpu-remaining.md`](nativegpu-remaining.md), [#317](https://github.com/fenriliuguang/wasmtime-android-kt/issues/317)) is empty. |
 | Dawn C / AAR missing ctor slots | **Record** | shader `compilation-hints`; canvas `color-space`; canvas `tone-mapping` |
 | Fixture `get-*` / `experimental:webgpu-cm` flats | **Not product** | Frozen; do not extend |
 
@@ -35,7 +35,7 @@ Leftovers: [`../mapping/gap-wasi-p3-wit.md`](../mapping/gap-wasi-p3-wit.md). Hos
 | `wasi:http` | Body `stream<u8>`; outbound GET; no product request/response constructors | `service` world, trailers, TLS |
 | `wasi-gfx` | `surface@0.2.0` constructor + `on-frame` + `height` / `width` / `request-set-size` / `on-resize` + `on-pointer-*` / `on-key-*` (Store `postGfxPointer` / `postGfxKey`) + `configure` / `get-current-texture` / `present` | See non-urgent below |
 
-**Remaining (auto):** WASI leftover `L-*` on `cursor/wasi-p3-leftover-b677` (`python3 ./scripts/wasi-p3-leftover-remaining.py`). Still **not** wasi-testsuite / `wasmtime-wasi`.
+**Remaining (auto):** NativeGpu Remaining Table `N-*` (`python3 ./scripts/nativegpu-remaining.py`; playbook [`nativegpu-remaining.md`](nativegpu-remaining.md)). WASI leftover `L-*` is empty (`python3 ./scripts/wasi-p3-leftover-remaining.py`). Still **not** wasi-testsuite / `wasmtime-wasi` / CTS.
 
 **Non-urgent (gfx, never leftover `Next:`):** `context.unconfigure`; timestamped `frame-event`; Lost/Outdated `result`; multi-window.
 

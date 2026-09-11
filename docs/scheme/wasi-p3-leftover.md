@@ -86,7 +86,7 @@ Path policy, INTERNET, and helper-thread IO stay as in [`../mapping/threading-an
 | Benchmarks | Deferred |
 | gfx `unconfigure` / timestamped `frame-event` / Lost/Outdated / multi-window | gfx named-only |
 | This-repo 1.0.0 / CTS | [`rfc.md`](rfc.md) §6 / NG-5 |
-| P0/P1 / native-dawn re-cuts | Closed |
+| P0/P1 / native-dawn rewrite | Landed (ND-DEFAULT). BIND leftover is **not** this queue — [`nativegpu-remaining.md`](nativegpu-remaining.md) / `python3 ./scripts/nativegpu-remaining.py` |
 
 ## File whitelist (typical leftover lane)
 

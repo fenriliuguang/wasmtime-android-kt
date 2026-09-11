@@ -161,6 +161,10 @@ def main() -> None:
             "clocks timezone, stackful CM async, benches, gfx unconfigure, "
             "this-repo 1.0 — do not auto-cut; never file upstream issues."
         )
+        print(
+            "NativeGpu Remaining Table is a separate auto queue: "
+            "python3 ./scripts/nativegpu-remaining.py"
+        )
 
     if not args.all:
         return
